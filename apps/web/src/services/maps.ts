@@ -1,142 +1,239 @@
-// apps/web/src/config/map.ts
-/**
- * Map configuration for MapLibre + Protomaps CDN + local PMTiles addresses.
- *
- * Обеспечивает считывание VITE_MAP_STYLE_URL и VITE_MAP_ADDRESSES_PMTILES_URL
- * как из process.env (SSR / server) так и из import.meta.env (Vite).
- *
- * MAP_STYLE_MODE выводится как:
- * - 'pmtiles' для векторных стилей (включая Protomaps CDN)
- * - 'raster' для tile.openstreetmap.org
- *
- * При использовании кастомного стиля из env, по умолчанию режим — 'pmtiles'
- * (если не задано __ERM_MAP_STYLE_MODE__ глобально).
- */
+// Назначение: функции для работы с API карт (разворачивание ссылок и геокодирование)
+// Модули: authFetch, Map API (/api/v1/maps)
+import authFetch from '../utils/authFetch';
 
-type MapStyleMode = 'pmtiles' | 'raster';
+export type AddressSuggestion = {
+  id: string;
+  label: string;
+  description?: string;
+  lat: number;
+  lng: number;
+  source?: string;
+};
 
-declare const __ERM_MAP_STYLE_MODE__: MapStyleMode | undefined;
+export type ExpandLinkResponse = {
+  url: string;
+  coords?: { lat: number; lng: number } | null;
+  short?: string;
+};
 
-// По умолчанию берём стиль Protomaps (можно переопределить через переменную среды)
-const DEFAULT_MAP_STYLE_URL =
-  'https://api.protomaps.com/styles/v5/light/uk.json?key=e2ee205f93bfd080';
+type SearchOptions = {
+  signal?: AbortSignal;
+  limit?: number;
+  language?: string;
+};
 
-type MapStyleSource = 'default' | 'env';
+type ReverseOptions = {
+  signal?: AbortSignal;
+  language?: string;
+};
 
-type ImportMetaWithEnv = {
-  readonly env?: {
-    readonly VITE_MAP_STYLE_URL?: string;
-    readonly VITE_MAP_ADDRESSES_PMTILES_URL?: string;
+const clampLimit = (value?: number): number | undefined => {
+  if (!Number.isFinite(value ?? Number.NaN)) {
+    return undefined;
+  }
+  const normalized = Math.trunc(value ?? 0);
+  return Math.min(Math.max(normalized, 1), 10);
+};
+
+const normalizeCoords = (
+  value: unknown,
+): { lat: number; lng: number } | null => {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+  const latValue = (value as { lat?: unknown }).lat;
+  const lngValue =
+    (value as { lng?: unknown; lon?: unknown }).lng ??
+    (value as { lon?: unknown }).lon;
+  const lat =
+    typeof latValue === 'number'
+      ? latValue
+      : typeof latValue === 'string'
+        ? Number.parseFloat(latValue)
+        : Number.NaN;
+  const lng =
+    typeof lngValue === 'number'
+      ? lngValue
+      : typeof lngValue === 'string'
+        ? Number.parseFloat(lngValue)
+        : Number.NaN;
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return null;
+  }
+  return { lat, lng };
+};
+
+const normalizeSuggestion = (item: unknown): AddressSuggestion | null => {
+  if (!item || typeof item !== 'object') {
+    return null;
+  }
+  const record = item as Record<string, unknown>;
+  const idRaw =
+    (record as { id?: unknown; place_id?: unknown }).id ??
+    (record as { place_id?: unknown }).place_id;
+  const id =
+    typeof idRaw === 'string'
+      ? idRaw
+      : typeof idRaw === 'number'
+        ? String(idRaw)
+        : null;
+  const labelCandidate =
+    (record as { label?: unknown }).label ??
+    (record as { display_name?: unknown }).display_name;
+  const label =
+    typeof labelCandidate === 'string'
+      ? (labelCandidate.split(',')[0]?.trim() ?? '')
+      : '';
+  const latValue = (record as { lat?: unknown }).lat;
+  const lngValue =
+    (record as { lng?: unknown; lon?: unknown }).lng ??
+    (record as { lon?: unknown }).lon;
+  const lat =
+    typeof latValue === 'number'
+      ? latValue
+      : typeof latValue === 'string'
+        ? Number.parseFloat(latValue)
+        : Number.NaN;
+  const lng =
+    typeof lngValue === 'number'
+      ? lngValue
+      : typeof lngValue === 'string'
+        ? Number.parseFloat(lngValue)
+        : Number.NaN;
+  if (!id || !label || !Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return null;
+  }
+  const description =
+    typeof (record as { description?: unknown }).description === 'string'
+      ? (record as { description?: string }).description
+      : typeof (record as { display_name?: unknown }).display_name === 'string'
+        ? (record as { display_name: string }).display_name
+            .split(',')
+            .slice(1)
+            .map((part) => part.trim())
+            .filter(Boolean)
+            .join(', ')
+        : undefined;
+  const source =
+    typeof (record as { source?: unknown }).source === 'string'
+      ? (record as { source: string }).source
+      : undefined;
+  return {
+    id,
+    label,
+    description,
+    lat,
+    lng,
+    ...(source ? { source } : {}),
   };
 };
 
-// Читаем URL стиля: сначала process.env (сервер), потом import.meta.env (клиент), иначе DEFAULT_MAP_STYLE_URL
-const readMapStyle = (): { url: string; source: MapStyleSource } => {
-  const processValue =
-    typeof process !== 'undefined' && typeof process.env === 'object'
-      ? process.env.VITE_MAP_STYLE_URL
-      : undefined;
-  if (typeof processValue === 'string' && processValue.trim() !== '') {
-    return { url: processValue.trim(), source: 'env' };
+export const expandLink = async (
+  url: string,
+): Promise<ExpandLinkResponse | null> => {
+  const trimmed = url.trim();
+  if (!trimmed) {
+    return null;
+  }
+  const response = await authFetch('/api/v1/maps/expand', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ url: trimmed }),
+  });
+  if (!response.ok) {
+    return null;
   }
   try {
-    const meta = import.meta as unknown as ImportMetaWithEnv;
-    const metaValue = meta?.env?.VITE_MAP_STYLE_URL;
-    if (typeof metaValue === 'string' && metaValue.trim() !== '') {
-      return { url: metaValue.trim(), source: 'env' };
+    const data = (await response.json()) as Record<string, unknown>;
+    if (!data || typeof data.url !== 'string' || !data.url.trim()) {
+      return null;
     }
+    const coords = normalizeCoords((data as { coords?: unknown }).coords);
+    const short =
+      typeof (data as { short?: unknown }).short === 'string'
+        ? (data as { short: string }).short.trim()
+        : undefined;
+    return {
+      url: data.url.trim(),
+      coords: coords ?? null,
+      ...(short ? { short } : {}),
+    };
   } catch {
-    // Игнорируем отсутствие import.meta в окружении тестов/SSR
+    return null;
   }
-  return { url: DEFAULT_MAP_STYLE_URL, source: 'default' };
 };
 
-// Считываем режим стиля, который можно установить глобально __ERM_MAP_STYLE_MODE__
-const readRuntimeMapStyleMode = (): MapStyleMode | undefined => {
-  if (typeof __ERM_MAP_STYLE_MODE__ !== 'undefined') {
-    return __ERM_MAP_STYLE_MODE__;
+export const searchAddress = async (
+  query: string,
+  options: SearchOptions = {},
+): Promise<AddressSuggestion[]> => {
+  const trimmed = query.trim();
+  if (!trimmed) {
+    return [];
   }
-  if (typeof globalThis === 'object' && globalThis !== null) {
-    const candidate = (
-      globalThis as {
-        __ERM_MAP_STYLE_MODE__?: unknown;
-      }
-    ).__ERM_MAP_STYLE_MODE__;
-    if (candidate === 'pmtiles' || candidate === 'raster') {
-      return candidate;
-    }
+  const limit = clampLimit(options.limit);
+  const params = new URLSearchParams({ q: trimmed });
+  if (typeof limit === 'number') {
+    params.set('limit', String(limit));
   }
-  return undefined;
-};
-
-// URL стиля (по умолчанию — ProtoMaps CDN)
-const mapStyle = readMapStyle();
-export const MAP_STYLE_URL = mapStyle.url;
-
-const runtimeMode = readRuntimeMapStyleMode();
-const isCustomStyle = mapStyle.source === 'env';
-
-// Итоговый режим:
-// - если есть глобальный __ERM_MAP_STYLE_MODE__ -> берём его
-// - иначе если стиль был задан из env -> runtimeMode ?? 'pmtiles'
-// - иначе определяем по URL (tile.openstreetmap.org -> raster, иначе pmtiles)
-const autoModeFromUrl = (url: string): MapStyleMode =>
-  url.includes('tile.openstreetmap.org') ? 'raster' : 'pmtiles';
-
-export const MAP_STYLE_MODE: MapStyleMode = (() => {
-  if (runtimeMode) return runtimeMode;
-  if (isCustomStyle) return runtimeMode ?? 'pmtiles';
-  return autoModeFromUrl(MAP_STYLE_URL);
-})();
-
-export const MAP_STYLE = MAP_STYLE_URL; // backward compatibility
-export const MAP_STYLE_DEFAULT_URL = DEFAULT_MAP_STYLE_URL;
-export const MAP_STYLE_IS_DEFAULT = mapStyle.source === 'default';
-
-// Атрибуция (Protomaps + OSM)
-export const MAP_ATTRIBUTION =
-  '© <a href="https://protomaps.com" target="_blank" rel="noopener">Protomaps</a> © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OSM contributors</a>';
-
-// Центр/зум по умолчанию — Киев
-export const MAP_DEFAULT_CENTER: [number, number] = [30.5234, 50.4501];
-export const MAP_DEFAULT_ZOOM = 6;
-
-// Границы мира
-export const MAP_MAX_BOUNDS: [[number, number], [number, number]] = [
-  [-180, -85],
-  [180, 85],
-];
-
-// Идентификатор векторного источника; для Protomaps v5 — 'basemap'
-export const MAP_VECTOR_SOURCE_ID = 'basemap';
-
-// Скорость анимации для пробегов транспорта
-export const MAP_ANIMATION_SPEED_KMH = 50;
-
-/* ---------- Локальные PMTiles (addresses) ---------- */
-
-const readAddressTilesUrl = (): string => {
-  const processValue =
-    typeof process !== 'undefined' && typeof process.env === 'object'
-      ? process.env.VITE_MAP_ADDRESSES_PMTILES_URL
-      : undefined;
-  if (typeof processValue === 'string' && processValue.trim() !== '') {
-    return processValue.trim();
+  const headers: Record<string, string> = {};
+  if (options.language) {
+    headers['Accept-Language'] = options.language;
+  }
+  const response = await authFetch(`/api/v1/maps/search?${params.toString()}`, {
+    method: 'GET',
+    signal: options.signal,
+    headers,
+  });
+  if (!response.ok) {
+    return [];
   }
   try {
-    const meta = import.meta as unknown as ImportMetaWithEnv;
-    const metaValue = meta?.env?.VITE_MAP_ADDRESSES_PMTILES_URL;
-    if (typeof metaValue === 'string' && metaValue.trim() !== '') {
-      return metaValue.trim();
-    }
+    const data = (await response.json()) as { items?: unknown };
+    const items = Array.isArray(data.items) ? data.items : [];
+    return items
+      .map((item) => normalizeSuggestion(item))
+      .filter((item): item is AddressSuggestion => Boolean(item));
   } catch {
-    // Игнорируем отсутствие import.meta в тестах/SSR
+    return [];
   }
-  return '';
 };
 
-export const MAP_ADDRESSES_PMTILES_URL = readAddressTilesUrl();
+export const reverseGeocode = async (
+  coords: { lat: number; lng: number },
+  options: ReverseOptions = {},
+): Promise<AddressSuggestion | null> => {
+  if (!coords || !Number.isFinite(coords.lat) || !Number.isFinite(coords.lng)) {
+    return null;
+  }
+  const headers: Record<string, string> = {};
+  if (options.language) {
+    headers['Accept-Language'] = options.language;
+  }
+  const params = new URLSearchParams({
+    lat: coords.lat.toString(),
+    lng: coords.lng.toString(),
+  });
+  const response = await authFetch(
+    `/api/v1/maps/reverse?${params.toString()}`,
+    {
+      method: 'GET',
+      signal: options.signal,
+      headers,
+    },
+  );
+  if (!response.ok) {
+    return null;
+  }
+  try {
+    const data = (await response.json()) as { place?: unknown };
+    return normalizeSuggestion(data.place);
+  } catch {
+    return null;
+  }
+};
 
-// Алиасы
-export const DEFAULT_CENTER = MAP_DEFAULT_CENTER;
-export const DEFAULT_ZOOM = MAP_DEFAULT_ZOOM;
+const maps = { expandLink, searchAddress, reverseGeocode };
+
+export default maps;

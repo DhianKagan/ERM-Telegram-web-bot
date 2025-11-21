@@ -20,7 +20,7 @@ import maplibregl, {
   type MapOptions,
 } from 'maplibre-gl';
 
-import { MAP_STYLE_DEFAULT_URL } from '../config/map';
+import { MAP_STYLE_DEFAULT_URL } from './config/map';
 
 // Не импортируем pmtiles статически: const { Protocol } from 'pmtiles'; <- это ломает билд в некоторых средах.
 

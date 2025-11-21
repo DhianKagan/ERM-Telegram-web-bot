@@ -39,6 +39,8 @@ pnpm run dev # запуск api и web без таймаута PNPM
 ./scripts/start_api_with_memdb.sh # только api с MongoDB в памяти
 ```
 
+- Подробная настройка локального окружения VS Code: [docs/vscode_local_setup.md](docs/vscode_local_setup.md)
+
 ## Проверки качества
 
 - Автоматическая конфигурация Codex хранится в `codex/config.yml` и запускается workflow `Codex Quality Gate` в GitHub Actions.

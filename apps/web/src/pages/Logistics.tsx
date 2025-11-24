@@ -3635,7 +3635,7 @@ export default function LogisticsPage() {
             <div
               ref={mapContainerRef}
               id="logistics-map"
-              className={`block w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-50 shadow-inner ${hasDialog ? 'hidden' : ''} min-h-[320px] md:min-h-[420px] lg:min-h-[520px] h-[58vh]`}
+              className={`block w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-50 shadow-inner ${hasDialog ? 'hidden' : ''} min-h-[320px] md:min-h-[420px] lg:min-h-[520px] h-[58vh] max-h-[820px]`}
             />
             <details className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 text-sm">
               <summary className="cursor-pointer select-none text-sm font-semibold text-slate-700">

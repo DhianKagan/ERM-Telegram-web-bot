@@ -198,6 +198,110 @@ type GeoZone = {
   createdAt: string;
 };
 
+type StoredMapState = {
+  center: [number, number];
+  zoom: number;
+  pitch: number;
+  bearing: number;
+  viewMode: 'planar' | 'perspective';
+};
+
+const LAYER_VISIBILITY_STORAGE_KEY = 'logistics:layer-visibility';
+const MAP_STATE_STORAGE_KEY = 'logistics:map-state';
+
+const readFromStorage = <T,>(key: string): T | null => {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+  try {
+    const value = window.localStorage.getItem(key);
+    if (!value) {
+      return null;
+    }
+    return JSON.parse(value) as T;
+  } catch {
+    return null;
+  }
+};
+
+const saveToStorage = <T,>(key: string, payload: T): void => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+  try {
+    window.localStorage.setItem(key, JSON.stringify(payload));
+  } catch {
+    /* пропускаем ошибки записи в localStorage */
+  }
+};
+
+const getPersistedLayerVisibility = (): LayerVisibilityState | null => {
+  const stored = readFromStorage<Partial<LayerVisibilityState>>(
+    LAYER_VISIBILITY_STORAGE_KEY,
+  );
+  if (!stored) {
+    return null;
+  }
+  const tasks = typeof stored.tasks === 'boolean' ? stored.tasks : undefined;
+  const optimized =
+    typeof stored.optimized === 'boolean' ? stored.optimized : undefined;
+  if (tasks === undefined || optimized === undefined) {
+    return null;
+  }
+  return { tasks, optimized };
+};
+
+const getPersistedMapState = (): StoredMapState | null => {
+  const stored = readFromStorage<Partial<StoredMapState>>(
+    MAP_STATE_STORAGE_KEY,
+  );
+  if (!stored) {
+    return null;
+  }
+  const center =
+    Array.isArray(stored.center) &&
+    stored.center.length === 2 &&
+    stored.center.every(
+      (value) => typeof value === 'number' && !Number.isNaN(value),
+    )
+      ? (stored.center as [number, number])
+      : null;
+  const zoom =
+    typeof stored.zoom === 'number' && Number.isFinite(stored.zoom)
+      ? stored.zoom
+      : null;
+  const pitch =
+    typeof stored.pitch === 'number' && Number.isFinite(stored.pitch)
+      ? stored.pitch
+      : null;
+  const bearing =
+    typeof stored.bearing === 'number' && Number.isFinite(stored.bearing)
+      ? stored.bearing
+      : null;
+  const viewMode =
+    stored.viewMode === 'planar' || stored.viewMode === 'perspective'
+      ? stored.viewMode
+      : null;
+  if (
+    !center ||
+    zoom === null ||
+    pitch === null ||
+    bearing === null ||
+    viewMode === null
+  ) {
+    return null;
+  }
+  return { center, zoom, pitch, bearing, viewMode };
+};
+
+const saveLayerVisibility = (value: LayerVisibilityState): void => {
+  saveToStorage(LAYER_VISIBILITY_STORAGE_KEY, value);
+};
+
+const saveMapState = (value: StoredMapState): void => {
+  saveToStorage(MAP_STATE_STORAGE_KEY, value);
+};
+
 const GEO_SOURCE_ID = 'logistics-geozones';
 const GEO_FILL_LAYER_ID = 'logistics-geozones-fill';
 const GEO_OUTLINE_LAYER_ID = 'logistics-geozones-outline';
@@ -827,6 +931,12 @@ export default function LogisticsPage() {
   const mapRef = React.useRef<MapInstance | null>(null);
   const mapContainerRef = React.useRef<HTMLDivElement | null>(null);
   const drawRef = React.useRef<MapLibreDraw | null>(null);
+  const persistedLayerVisibilityRef = React.useRef<LayerVisibilityState | null>(
+    getPersistedLayerVisibility(),
+  );
+  const persistedMapStateRef = React.useRef<StoredMapState | null>(
+    getPersistedMapState(),
+  );
   React.useEffect(() => {
     if (isRasterFallback) {
       console.warn(
@@ -842,12 +952,13 @@ export default function LogisticsPage() {
   }, []);
   const [mapViewMode, setMapViewMode] = React.useState<
     'planar' | 'perspective'
-  >('planar');
+  >(persistedMapStateRef.current?.viewMode ?? 'planar');
   const routeAnimationRef = React.useRef<{
     frameId: number | null;
     lastTimestamp: number | null;
     routes: AnimatedRoute[];
   }>({ frameId: null, lastTimestamp: null, routes: [] });
+  const initialMapStateAppliedRef = React.useRef(false);
   const [availableVehicles, setAvailableVehicles] = React.useState<
     FleetVehicleDto[]
   >([]);
@@ -869,7 +980,9 @@ export default function LogisticsPage() {
     }
   });
   const [layerVisibility, setLayerVisibility] =
-    React.useState<LayerVisibilityState>(DEFAULT_LAYER_VISIBILITY);
+    React.useState<LayerVisibilityState>(
+      persistedLayerVisibilityRef.current ?? DEFAULT_LAYER_VISIBILITY,
+    );
   const [mapReady, setMapReady] = React.useState(false);
   const [hiddenTaskTypes, setHiddenTaskTypes] = React.useState<string[]>([]);
   const [hiddenRouteStatuses, setHiddenRouteStatuses] = React.useState<
@@ -908,6 +1021,9 @@ export default function LogisticsPage() {
   const { user } = useAuth();
   const { controller } = useTasks();
   const role = user?.role ?? null;
+  React.useEffect(() => {
+    saveLayerVisibility(layerVisibility);
+  }, [layerVisibility]);
   React.useEffect(() => {
     try {
       const searchParams = new URLSearchParams(location.search);
@@ -2398,11 +2514,14 @@ export default function LogisticsPage() {
       if (!container) {
         return;
       }
+      const initialMapState = persistedMapStateRef.current;
       const mapInstance = new mapLibrary.Map({
         container,
         style: MAP_STYLE,
-        center: MAP_CENTER_LNG_LAT,
-        zoom: MAP_DEFAULT_ZOOM,
+        center: initialMapState?.center ?? MAP_CENTER_LNG_LAT,
+        zoom: initialMapState?.zoom ?? MAP_DEFAULT_ZOOM,
+        pitch: initialMapState?.pitch ?? 0,
+        bearing: initialMapState?.bearing ?? 0,
         minZoom: 5,
         maxZoom: 22,
         maxBounds: UKRAINE_BOUNDS,
@@ -2720,10 +2839,67 @@ export default function LogisticsPage() {
     };
   }, [stopRouteAnimation]);
 
+  const persistMapState = React.useCallback(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map) return;
+    const center = typeof map.getCenter === 'function' ? map.getCenter() : null;
+    if (!center || Number.isNaN(center.lng) || Number.isNaN(center.lat)) {
+      return;
+    }
+    const zoom =
+      typeof map.getZoom === 'function' ? map.getZoom() : MAP_DEFAULT_ZOOM;
+    const pitch = typeof map.getPitch === 'function' ? map.getPitch() : 0;
+    const bearing = typeof map.getBearing === 'function' ? map.getBearing() : 0;
+    saveMapState({
+      center: [center.lng, center.lat],
+      zoom,
+      pitch,
+      bearing,
+      viewMode: mapViewMode,
+    });
+  }, [mapReady, mapViewMode]);
+
+  React.useEffect(() => {
+    if (!mapReady) return;
+    const map = mapRef.current;
+    if (!map || typeof map.on !== 'function' || typeof map.off !== 'function') {
+      return;
+    }
+    const events: Array<[string, Listener]> = [
+      ['moveend', persistMapState],
+      ['zoomend', persistMapState],
+      ['rotateend', persistMapState],
+      ['pitchend', persistMapState],
+    ];
+    events.forEach(([event, handler]) => map.on(event, handler));
+    return () => {
+      events.forEach(([event, handler]) => map.off(event, handler));
+    };
+  }, [mapReady, persistMapState]);
+
   React.useEffect(() => {
     if (!mapReady) return;
     const map = mapRef.current;
     if (!map) return;
+    const persistedMapState = persistedMapStateRef.current;
+    const shouldUsePersisted =
+      !initialMapStateAppliedRef.current &&
+      persistedMapState &&
+      persistedMapState.viewMode === mapViewMode;
+    const targetPitch =
+      shouldUsePersisted && persistedMapState
+        ? persistedMapState.pitch
+        : mapViewMode === 'perspective'
+          ? 55
+          : 0;
+    const targetBearing =
+      shouldUsePersisted && persistedMapState
+        ? persistedMapState.bearing
+        : mapViewMode === 'perspective'
+          ? 28
+          : 0;
+    initialMapStateAppliedRef.current = true;
     const enableRotation = () => {
       if (typeof map.dragRotate?.enable === 'function') {
         map.dragRotate.enable();
@@ -2743,21 +2919,34 @@ export default function LogisticsPage() {
     if (mapViewMode === 'perspective') {
       enableRotation();
       if (typeof map.easeTo === 'function') {
-        map.easeTo({ pitch: 55, bearing: 28, duration: 600 });
+        map.easeTo({
+          pitch: targetPitch,
+          bearing: targetBearing,
+          duration: 600,
+        });
       } else {
-        map.setPitch(55);
-        map.setBearing(28);
+        map.setPitch(targetPitch);
+        map.setBearing(targetBearing);
       }
     } else {
       if (typeof map.easeTo === 'function') {
-        map.easeTo({ pitch: 0, bearing: 0, duration: 400 });
+        map.easeTo({
+          pitch: targetPitch,
+          bearing: targetBearing,
+          duration: 400,
+        });
       } else {
-        map.setPitch(0);
-        map.setBearing(0);
+        map.setPitch(targetPitch);
+        map.setBearing(targetBearing);
       }
       disableRotation();
     }
   }, [mapReady, mapViewMode]);
+
+  React.useEffect(() => {
+    if (!mapReady) return;
+    persistMapState();
+  }, [mapReady, mapViewMode, persistMapState]);
 
   React.useEffect(() => {
     if (!mapReady) return;

@@ -113,7 +113,7 @@ const registerPmtilesProtocol = async (): Promise<boolean> => {
       return true;
     } else {
       console.warn(
-        'maplibregl.addProtocol is not available; pmtiles protocol not registered',
+        'Метод maplibregl.addProtocol недоступен, протокол PMTiles не будет зарегистрирован.',
       );
       return false;
     }

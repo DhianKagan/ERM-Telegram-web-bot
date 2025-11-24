@@ -1,7 +1,7 @@
 // Назначение файла: добавление 3D-слоя зданий и обеспечение корректного порядка слоёв на карте
 // Основные модули: maplibre-gl
 import type { Map as MapInstance } from 'maplibre-gl';
-import { MAP_VECTOR_SOURCE_ID } from '../config/map';
+import { detectPrimaryVectorSourceId } from './vectorSource';
 
 export const BUILDINGS_LAYER_ID = 'logistics-3d-buildings';
 
@@ -16,16 +16,13 @@ type SymbolLayerSpecification = Extract<
 >;
 
 export const insert3dBuildingsLayer = (map: MapInstance): string | null => {
-  const style = map.getStyle();
-  const sources = style?.sources;
-  const hasVectorSource =
-    !!sources && typeof sources === 'object'
-      ? Object.prototype.hasOwnProperty.call(sources, MAP_VECTOR_SOURCE_ID)
-      : false;
+  const vectorSourceId = detectPrimaryVectorSourceId(map);
 
-  if (!hasVectorSource) {
+  if (!vectorSourceId) {
     return null;
   }
+
+  const style = map.getStyle();
 
   const layers = (style?.layers ?? []) as AnyLayerSpecification[];
   const labelLayer = layers.find((layer): layer is SymbolLayerSpecification => {
@@ -43,7 +40,7 @@ export const insert3dBuildingsLayer = (map: MapInstance): string | null => {
   const createBuildingsLayer = (): FillExtrusionLayerSpecification => ({
     id: BUILDINGS_LAYER_ID,
     type: 'fill-extrusion',
-    source: MAP_VECTOR_SOURCE_ID,
+    source: vectorSourceId,
     'source-layer': 'building',
     filter: ['==', ['get', 'extrude'], 'true'],
     minzoom: 15,

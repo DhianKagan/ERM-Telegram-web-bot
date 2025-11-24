@@ -2379,7 +2379,6 @@ export default function LogisticsPage() {
   }, [availableVehicles.length, fleetError, role, vehiclesLoading]);
 
   React.useEffect(() => {
-    if (hasDialog) return;
     if (mapRef.current) return;
 
     let cancelled = false;
@@ -2719,7 +2718,7 @@ export default function LogisticsPage() {
       }
       mapRef.current = null;
     };
-  }, [hasDialog, stopRouteAnimation]);
+  }, [stopRouteAnimation]);
 
   React.useEffect(() => {
     if (!mapReady) return;
@@ -3210,7 +3209,6 @@ export default function LogisticsPage() {
   }, [mapReady, openTask, toggleSelectedVehicleId]);
 
   React.useEffect(() => {
-    if (hasDialog) return;
     if (!mapReady) return;
     const map = mapRef.current;
     const container = mapContainerRef.current;
@@ -3635,8 +3633,15 @@ export default function LogisticsPage() {
             <div
               ref={mapContainerRef}
               id="logistics-map"
-              className={`block w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-50 shadow-inner ${hasDialog ? 'hidden' : ''} min-h-[320px] md:min-h-[420px] lg:min-h-[520px] h-[58vh] max-h-[820px]`}
-            />
+              className={`relative block w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-50 shadow-inner min-h-[320px] md:min-h-[420px] lg:min-h-[520px] h-[58vh] max-h-[820px]`}
+            >
+              {hasDialog ? (
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-auto absolute inset-0 z-10 bg-white/70 backdrop-blur-sm"
+                />
+              ) : null}
+            </div>
             <details className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 text-sm">
               <summary className="cursor-pointer select-none text-sm font-semibold text-slate-700">
                 {t('logistics.mapControlsTitle', {

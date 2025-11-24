@@ -4,7 +4,11 @@
 
 import '@testing-library/jest-dom';
 import React from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import {
+  MemoryRouter,
+  RouterProvider,
+  createMemoryRouter,
+} from 'react-router-dom';
 import {
   act,
   fireEvent,
@@ -1026,6 +1030,49 @@ describe('LogisticsPage', () => {
     await waitFor(() =>
       expect(listFleetVehiclesMock).toHaveBeenCalledWith('', 1, 100),
     );
+  });
+
+  it('сохраняет карту и слои при открытом диалоге задачи', async () => {
+    const router = createMemoryRouter(
+      [{ path: '/logistics', element: <LogisticsPage /> }],
+      { initialEntries: ['/logistics?task=t1'] },
+    );
+
+    render(<RouterProvider router={router} />);
+
+    const mapModule = jest.requireMock('maplibre-gl');
+    const mapCreation = mapModule.Map.mock.results.at(-1);
+    const mapInstance = (mapCreation?.value ?? null) as any;
+    expect(mapInstance).toBeTruthy();
+
+    await waitFor(() => {
+      expect(mapModule.Map).toHaveBeenCalledTimes(1);
+      expect(mapInstance.addSource).toHaveBeenCalled();
+    });
+
+    const initialSources = {
+      routes: mapInstance.getSource('logistics-task-routes'),
+      clusters: mapInstance.getSource('logistics-task-markers'),
+    };
+    const initialLayers = mapInstance
+      .getStyle()
+      .layers.map((layer: { id: string }) => layer.id);
+
+    await act(async () => {
+      await router.navigate('/logistics');
+    });
+
+    await waitFor(() => expect(mapModule.Map).toHaveBeenCalledTimes(1));
+    expect(mapInstance.remove).not.toHaveBeenCalled();
+    expect(mapInstance.getSource('logistics-task-routes')).toBe(
+      initialSources.routes,
+    );
+    expect(mapInstance.getSource('logistics-task-markers')).toBe(
+      initialSources.clusters,
+    );
+    expect(
+      mapInstance.getStyle().layers.map((layer: { id: string }) => layer.id),
+    ).toEqual(initialLayers);
   });
 
   it('перезагружает задачи и план при событии tasks.changed', async () => {

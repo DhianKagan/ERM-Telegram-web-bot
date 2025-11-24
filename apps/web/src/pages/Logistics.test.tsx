@@ -21,14 +21,20 @@ import LogisticsPage, { LOGISTICS_FLEET_POLL_INTERVAL_MS } from './Logistics';
 import { MAP_ADDRESSES_PMTILES_URL } from '../config/map';
 import { taskStateController } from '../controllers/taskStateController';
 import type { LogisticsEvent, RoutePlan } from 'shared';
-jest.mock('../config/map', () => {
-  const actual = jest.requireActual('../config/map');
-  return {
-    ...actual,
-    MAP_STYLE_MODE: 'pmtiles',
-    MAP_ADDRESSES_PMTILES_URL: 'pmtiles://test.pmtiles',
-  };
-});
+jest.mock('../config/map', () => ({
+  MAP_ATTRIBUTION: 'test attribution',
+  MAP_ANIMATION_SPEED_KMH: 60,
+  MAP_DEFAULT_CENTER: [30, 50],
+  MAP_DEFAULT_ZOOM: 6,
+  MAP_MAX_BOUNDS: [
+    [15, 35],
+    [40, 60],
+  ],
+  MAP_STYLE: 'pmtiles://style.pmtiles',
+  MAP_STYLE_MODE: 'pmtiles',
+  MAP_STYLE_IS_DEFAULT: false,
+  MAP_ADDRESSES_PMTILES_URL: 'pmtiles://test.pmtiles',
+}));
 jest.mock('react-i18next', () => {
   const translate = (key: string, options?: Record<string, unknown>) => {
     if (key === 'logistics.selectedVehicle') {
@@ -126,6 +132,8 @@ jest.mock('react-i18next', () => {
       'logistics.layersTitle': 'Слои карты',
       'logistics.layersSummary':
         'Настройте легенду карты по статусам, транспорту и типам задач.',
+      'logistics.layerTasks': 'Задачи',
+      'logistics.layerOptimization': 'Оптимизация',
       'logistics.viewModePlanar': '2D',
       'logistics.viewModeTilted': 'Перспектива',
       'logistics.legendTitle': 'Легенда',
@@ -171,7 +179,12 @@ jest.mock('pmtiles', () => ({
   Protocol: jest.fn(() => ({ tile: jest.fn() })),
 }));
 
-function buildMapInstance() {
+function buildMapInstance(options?: {
+  center?: [number, number];
+  zoom?: number;
+  pitch?: number;
+  bearing?: number;
+}) {
   const sources = new Map<string, { setData: jest.Mock }>();
   const layers = new Map<string, any>();
   const handlers = new Map<string, Set<(...args: any[]) => void>>();
@@ -179,6 +192,14 @@ function buildMapInstance() {
     { id: 'road-label' },
     { id: 'settlement-major-label' },
   ];
+  const viewState = {
+    center: Array.isArray(options?.center)
+      ? [options.center[0], options.center[1]]
+      : [0, 0],
+    zoom: typeof options?.zoom === 'number' ? options.zoom : 6,
+    pitch: typeof options?.pitch === 'number' ? options.pitch : 0,
+    bearing: typeof options?.bearing === 'number' ? options.bearing : 0,
+  };
   const getKey = (event: string, layerId?: string) =>
     layerId ? `${event}:${layerId}` : event;
   const getHandlers = (event: string, layerId?: string) => {
@@ -283,10 +304,40 @@ function buildMapInstance() {
     }),
     remove: jest.fn(),
     resize: jest.fn(),
-    easeTo: jest.fn(),
-    setPitch: jest.fn(),
-    setBearing: jest.fn(),
-    getZoom: jest.fn(() => 6),
+    easeTo: jest.fn(
+      (params?: {
+        center?: [number, number];
+        zoom?: number;
+        pitch?: number;
+        bearing?: number;
+      }) => {
+        if (params?.center) {
+          viewState.center = [params.center[0], params.center[1]];
+        }
+        if (typeof params?.zoom === 'number') {
+          viewState.zoom = params.zoom;
+        }
+        if (typeof params?.pitch === 'number') {
+          viewState.pitch = params.pitch;
+        }
+        if (typeof params?.bearing === 'number') {
+          viewState.bearing = params.bearing;
+        }
+      },
+    ),
+    setPitch: jest.fn((value: number) => {
+      viewState.pitch = value;
+    }),
+    setBearing: jest.fn((value: number) => {
+      viewState.bearing = value;
+    }),
+    getZoom: jest.fn(() => viewState.zoom),
+    getCenter: jest.fn(() => ({
+      lng: viewState.center[0],
+      lat: viewState.center[1],
+    })),
+    getPitch: jest.fn(() => viewState.pitch),
+    getBearing: jest.fn(() => viewState.bearing),
     getCanvas: jest.fn(() => ({ style: { cursor: '' } })),
     dragRotate: { enable: jest.fn(), disable: jest.fn() },
     touchZoomRotate: {
@@ -313,7 +364,16 @@ jest.mock(
     }));
     const NavigationControl = jest.fn();
     const AttributionControl = jest.fn();
-    const Map = jest.fn(() => buildMapInstance());
+    const Map = jest.fn((options?: Record<string, unknown>) =>
+      buildMapInstance(
+        options as {
+          center?: [number, number];
+          zoom?: number;
+          pitch?: number;
+          bearing?: number;
+        },
+      ),
+    );
     const addProtocol = jest.fn();
     const module = {
       __esModule: true,
@@ -770,6 +830,7 @@ describe('LogisticsPage', () => {
   jest.setTimeout(20000);
   beforeEach(() => {
     jest.clearAllMocks();
+    window.localStorage.clear();
     logisticsEventsMock.__clear();
     fetchTasksMock.mockResolvedValue(mockTasks);
     taskStateController.clear();
@@ -850,15 +911,16 @@ describe('LogisticsPage', () => {
       </MemoryRouter>,
     );
 
+    const mapModule = jest.requireMock('maplibre-gl');
+    await waitFor(() => expect(mapModule.Map).toHaveBeenCalled());
+    const mapInstance = mapModule.Map.mock.results[0]?.value as any;
+    expect(mapInstance).toBeTruthy();
+
     await waitFor(() =>
       expect(
         taskStateController.getIndexSnapshot('logistics:all'),
       ).toHaveLength(3),
     );
-
-    const mapModule = jest.requireMock('maplibre-gl');
-    const mapInstance = mapModule.Map.mock.results[0]?.value as any;
-    expect(mapInstance).toBeTruthy();
 
     await waitFor(() => {
       const handlers: Set<(...args: unknown[]) => void> | undefined =
@@ -1108,9 +1170,11 @@ describe('LogisticsPage', () => {
         </MemoryRouter>,
       );
 
-      expect(listFleetVehiclesMock).toHaveBeenCalled();
+      await waitFor(() => expect(listFleetVehiclesMock).toHaveBeenCalled());
 
-      const vehicleCell = await screen.findByText('Погрузчик');
+      const vehicleCell = await screen.findByText('Погрузчик', undefined, {
+        timeout: 5000,
+      });
       const row = vehicleCell.closest('tr');
       expect(row).toBeTruthy();
       fireEvent.click(row!);
@@ -1202,5 +1266,100 @@ describe('LogisticsPage', () => {
         delete (document as Partial<Document>).hidden;
       }
     }
+  });
+
+  it('сохраняет и восстанавливает состояние карты и слоёв', async () => {
+    const router = createMemoryRouter(
+      [
+        { path: '/logistics', element: <LogisticsPage /> },
+        { path: '*', element: <LogisticsPage /> },
+      ],
+      {
+        initialEntries: ['/logistics'],
+        future: { v7_relativeSplatPath: true },
+      },
+    );
+
+    const mapModule = jest.requireMock('maplibre-gl');
+    const firstRender = render(<RouterProvider router={router} />);
+
+    await waitFor(() => expect(mapModule.Map).toHaveBeenCalled());
+
+    const mapInstance = (mapModule.Map.mock.results.at(-1)?.value ??
+      null) as any;
+    expect(mapInstance).toBeTruthy();
+
+    const tasksToggle = await screen.findByLabelText('Задачи');
+    const optimizedToggle = screen.getByLabelText('Оптимизация');
+    expect(tasksToggle).toBeChecked();
+    expect(optimizedToggle).toBeChecked();
+
+    fireEvent.click(tasksToggle);
+    expect(tasksToggle).not.toBeChecked();
+
+    act(() => {
+      mapInstance.easeTo({
+        center: [12, 48],
+        zoom: 9,
+        pitch: 25,
+        bearing: 10,
+      });
+      mapInstance.__emit('moveend', {});
+      mapInstance.__emit('pitchend', {});
+      mapInstance.__emit('rotateend', {});
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Перспектива' }));
+
+    await waitFor(() => {
+      expect(window.localStorage.getItem('logistics:map-state')).toBeTruthy();
+    });
+
+    const savedLayers = JSON.parse(
+      window.localStorage.getItem('logistics:layer-visibility') ?? '{}',
+    );
+    expect(savedLayers).toMatchObject({ tasks: false, optimized: true });
+
+    const savedMapState = JSON.parse(
+      window.localStorage.getItem('logistics:map-state') ?? '{}',
+    );
+    expect(savedMapState).toMatchObject({
+      center: [12, 48],
+      zoom: 9,
+      pitch: 55,
+      bearing: 28,
+      viewMode: 'perspective',
+    });
+
+    firstRender.unmount();
+    mapModule.Map.mockClear();
+
+    const secondRouter = createMemoryRouter(
+      [
+        { path: '/logistics', element: <LogisticsPage /> },
+        { path: '*', element: <LogisticsPage /> },
+      ],
+      {
+        initialEntries: ['/logistics'],
+        future: { v7_relativeSplatPath: true },
+      },
+    );
+
+    render(<RouterProvider router={secondRouter} />);
+
+    const mapCall = mapModule.Map.mock.calls.at(-1)?.[0] as
+      | Record<string, unknown>
+      | undefined;
+    expect(mapCall?.center).toEqual([12, 48]);
+    expect(mapCall?.zoom).toBe(9);
+    expect(mapCall?.pitch).toBe(25);
+    expect(mapCall?.bearing).toBe(10);
+
+    const restoredTasksToggle = await screen.findByLabelText('Задачи');
+    expect(restoredTasksToggle).not.toBeChecked();
+    const perspectiveButton = screen.getByRole('button', {
+      name: 'Перспектива',
+    });
+    expect(perspectiveButton).toHaveAttribute('aria-pressed', 'true');
   });
 });

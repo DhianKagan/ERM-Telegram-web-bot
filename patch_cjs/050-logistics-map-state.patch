@@ -1,0 +1,1600 @@
+diff --git a/.husky/_/husky.sh b/.husky/_/husky.sh
+old mode 100755
+new mode 100644
+index d01186c..f9d0637
+--- a/.husky/_/husky.sh
++++ b/.husky/_/husky.sh
+@@ -1,23 +1,9 @@
+-#!/bin/sh
++echo "husky - DEPRECATED
+ 
+-if [ -z "$husky_skip_init" ]; then
+-  debug() {
+-    [ "$HUSKY_DEBUG" = "1" ] && echo "husky: $*"
+-  }
++Please remove the following two lines from $0:
+ 
+-  readonly hook_name="$(basename "$0")"
+-  debug "starting $hook_name..."
++#!/usr/bin/env sh
++. \"\$(dirname -- \"\$0\")/_/husky.sh\"
+ 
+-  if [ "$HUSKY" = "0" ]; then
+-    debug "HUSKY env variable is set to 0, skipping hook"
+-    exit 0
+-  fi
+-
+-  if [ -f ~/.huskyrc ]; then
+-    debug "~/.huskyrc found, sourcing..."
+-    . ~/.huskyrc
+-  fi
+-
+-  export husky_skip_init=1
+-  sh -e "$0" "$@"
+-fi
++They WILL FAIL in v10.0.0
++"
+\ No newline at end of file
+diff --git a/apps/web/src/pages/Logistics.test.tsx b/apps/web/src/pages/Logistics.test.tsx
+index f92c9e6..60441e8 100644
+--- a/apps/web/src/pages/Logistics.test.tsx
++++ b/apps/web/src/pages/Logistics.test.tsx
+@@ -911,16 +911,17 @@ describe('LogisticsPage', () => {
+       </MemoryRouter>,
+     );
+ 
++    const mapModule = jest.requireMock('maplibre-gl');
++    await waitFor(() => expect(mapModule.Map).toHaveBeenCalled());
++    const mapInstance = mapModule.Map.mock.results[0]?.value as any;
++    expect(mapInstance).toBeTruthy();
++
+     await waitFor(() =>
+       expect(
+         taskStateController.getIndexSnapshot('logistics:all'),
+       ).toHaveLength(3),
+     );
+ 
+-    const mapModule = jest.requireMock('maplibre-gl');
+-    const mapInstance = mapModule.Map.mock.results[0]?.value as any;
+-    expect(mapInstance).toBeTruthy();
+-
+     await waitFor(() => {
+       const handlers: Set<(...args: unknown[]) => void> | undefined =
+         mapInstance.__handlers?.get('draw.create');
+@@ -1169,9 +1170,11 @@ describe('LogisticsPage', () => {
+         </MemoryRouter>,
+       );
+ 
+-      expect(listFleetVehiclesMock).toHaveBeenCalled();
++      await waitFor(() => expect(listFleetVehiclesMock).toHaveBeenCalled());
+ 
+-      const vehicleCell = await screen.findByText('Погрузчик');
++      const vehicleCell = await screen.findByText('Погрузчик', undefined, {
++        timeout: 5000,
++      });
+       const row = vehicleCell.closest('tr');
+       expect(row).toBeTruthy();
+       fireEvent.click(row!);
+@@ -1274,9 +1277,11 @@ describe('LogisticsPage', () => {
+       { initialEntries: ['/logistics'], future: { v7_relativeSplatPath: true } },
+     );
+ 
++    const mapModule = jest.requireMock('maplibre-gl');
+     const firstRender = render(<RouterProvider router={router} />);
+ 
+-    const mapModule = jest.requireMock('maplibre-gl');
++    await waitFor(() => expect(mapModule.Map).toHaveBeenCalled());
++
+     const mapInstance = (mapModule.Map.mock.results.at(-1)?.value ?? null) as any;
+     expect(mapInstance).toBeTruthy();
+ 
+@@ -1317,8 +1322,8 @@ describe('LogisticsPage', () => {
+     expect(savedMapState).toMatchObject({
+       center: [12, 48],
+       zoom: 9,
+-      pitch: 25,
+-      bearing: 10,
++      pitch: 55,
++      bearing: 28,
+       viewMode: 'perspective',
+     });
+ 
+diff --git a/patch_cjs/050-logistics-map-state.patch b/patch_cjs/050-logistics-map-state.patch
+index a8a4be5..e69de29 100644
+--- a/patch_cjs/050-logistics-map-state.patch
++++ b/patch_cjs/050-logistics-map-state.patch
+@@ -1,1487 +0,0 @@
+-diff --git a/apps/web/src/pages/Logistics.test.tsx b/apps/web/src/pages/Logistics.test.tsx
+-index 4720cd1..f92c9e6 100644
+---- a/apps/web/src/pages/Logistics.test.tsx
+-+++ b/apps/web/src/pages/Logistics.test.tsx
+-@@ -21,14 +21,20 @@ import LogisticsPage, { LOGISTICS_FLEET_POLL_INTERVAL_MS } from './Logistics';
+- import { MAP_ADDRESSES_PMTILES_URL } from '../config/map';
+- import { taskStateController } from '../controllers/taskStateController';
+- import type { LogisticsEvent, RoutePlan } from 'shared';
+--jest.mock('../config/map', () => {
+--  const actual = jest.requireActual('../config/map');
+--  return {
+--    ...actual,
+--    MAP_STYLE_MODE: 'pmtiles',
+--    MAP_ADDRESSES_PMTILES_URL: 'pmtiles://test.pmtiles',
+--  };
+--});
+-+jest.mock('../config/map', () => ({
+-+  MAP_ATTRIBUTION: 'test attribution',
+-+  MAP_ANIMATION_SPEED_KMH: 60,
+-+  MAP_DEFAULT_CENTER: [30, 50],
+-+  MAP_DEFAULT_ZOOM: 6,
+-+  MAP_MAX_BOUNDS: [
+-+    [15, 35],
+-+    [40, 60],
+-+  ],
+-+  MAP_STYLE: 'pmtiles://style.pmtiles',
+-+  MAP_STYLE_MODE: 'pmtiles',
+-+  MAP_STYLE_IS_DEFAULT: false,
+-+  MAP_ADDRESSES_PMTILES_URL: 'pmtiles://test.pmtiles',
+-+}));
+- jest.mock('react-i18next', () => {
+-   const translate = (key: string, options?: Record<string, unknown>) => {
+-     if (key === 'logistics.selectedVehicle') {
+-@@ -126,6 +132,8 @@ jest.mock('react-i18next', () => {
+-       'logistics.layersTitle': 'Слои карты',
+-       'logistics.layersSummary':
+-         'Настройте легенду карты по статусам, транспорту и типам задач.',
+-+      'logistics.layerTasks': 'Задачи',
+-+      'logistics.layerOptimization': 'Оптимизация',
+-       'logistics.viewModePlanar': '2D',
+-       'logistics.viewModeTilted': 'Перспектива',
+-       'logistics.legendTitle': 'Легенда',
+-@@ -171,7 +179,12 @@ jest.mock('pmtiles', () => ({
+-   Protocol: jest.fn(() => ({ tile: jest.fn() })),
+- }));
+- 
+--function buildMapInstance() {
+-+function buildMapInstance(options?: {
+-+  center?: [number, number];
+-+  zoom?: number;
+-+  pitch?: number;
+-+  bearing?: number;
+-+}) {
+-   const sources = new Map<string, { setData: jest.Mock }>();
+-   const layers = new Map<string, any>();
+-   const handlers = new Map<string, Set<(...args: any[]) => void>>();
+-@@ -179,6 +192,14 @@ function buildMapInstance() {
+-     { id: 'road-label' },
+-     { id: 'settlement-major-label' },
+-   ];
+-+  const viewState = {
+-+    center: Array.isArray(options?.center)
+-+      ? [options.center[0], options.center[1]]
+-+      : [0, 0],
+-+    zoom: typeof options?.zoom === 'number' ? options.zoom : 6,
+-+    pitch: typeof options?.pitch === 'number' ? options.pitch : 0,
+-+    bearing: typeof options?.bearing === 'number' ? options.bearing : 0,
+-+  };
+-   const getKey = (event: string, layerId?: string) =>
+-     layerId ? `${event}:${layerId}` : event;
+-   const getHandlers = (event: string, layerId?: string) => {
+-@@ -283,10 +304,40 @@ function buildMapInstance() {
+-     }),
+-     remove: jest.fn(),
+-     resize: jest.fn(),
+--    easeTo: jest.fn(),
+--    setPitch: jest.fn(),
+--    setBearing: jest.fn(),
+--    getZoom: jest.fn(() => 6),
+-+    easeTo: jest.fn(
+-+      (params?: {
+-+        center?: [number, number];
+-+        zoom?: number;
+-+        pitch?: number;
+-+        bearing?: number;
+-+      }) => {
+-+        if (params?.center) {
+-+          viewState.center = [params.center[0], params.center[1]];
+-+        }
+-+        if (typeof params?.zoom === 'number') {
+-+          viewState.zoom = params.zoom;
+-+        }
+-+        if (typeof params?.pitch === 'number') {
+-+          viewState.pitch = params.pitch;
+-+        }
+-+        if (typeof params?.bearing === 'number') {
+-+          viewState.bearing = params.bearing;
+-+        }
+-+      },
+-+    ),
+-+    setPitch: jest.fn((value: number) => {
+-+      viewState.pitch = value;
+-+    }),
+-+    setBearing: jest.fn((value: number) => {
+-+      viewState.bearing = value;
+-+    }),
+-+    getZoom: jest.fn(() => viewState.zoom),
+-+    getCenter: jest.fn(() => ({
+-+      lng: viewState.center[0],
+-+      lat: viewState.center[1],
+-+    })),
+-+    getPitch: jest.fn(() => viewState.pitch),
+-+    getBearing: jest.fn(() => viewState.bearing),
+-     getCanvas: jest.fn(() => ({ style: { cursor: '' } })),
+-     dragRotate: { enable: jest.fn(), disable: jest.fn() },
+-     touchZoomRotate: {
+-@@ -313,7 +364,16 @@ jest.mock(
+-     }));
+-     const NavigationControl = jest.fn();
+-     const AttributionControl = jest.fn();
+--    const Map = jest.fn(() => buildMapInstance());
+-+    const Map = jest.fn((options?: Record<string, unknown>) =>
+-+      buildMapInstance(
+-+        options as {
+-+          center?: [number, number];
+-+          zoom?: number;
+-+          pitch?: number;
+-+          bearing?: number;
+-+        },
+-+      ),
+-+    );
+-     const addProtocol = jest.fn();
+-     const module = {
+-       __esModule: true,
+-@@ -770,6 +830,7 @@ describe('LogisticsPage', () => {
+-   jest.setTimeout(20000);
+-   beforeEach(() => {
+-     jest.clearAllMocks();
+-+    window.localStorage.clear();
+-     logisticsEventsMock.__clear();
+-     fetchTasksMock.mockResolvedValue(mockTasks);
+-     taskStateController.clear();
+-@@ -1203,4 +1264,90 @@ describe('LogisticsPage', () => {
+-       }
+-     }
+-   });
+-+
+-+  it('сохраняет и восстанавливает состояние карты и слоёв', async () => {
+-+    const router = createMemoryRouter(
+-+      [
+-+        { path: '/logistics', element: <LogisticsPage /> },
+-+        { path: '*', element: <LogisticsPage /> },
+-+      ],
+-+      { initialEntries: ['/logistics'], future: { v7_relativeSplatPath: true } },
+-+    );
+-+
+-+    const firstRender = render(<RouterProvider router={router} />);
+-+
+-+    const mapModule = jest.requireMock('maplibre-gl');
+-+    const mapInstance = (mapModule.Map.mock.results.at(-1)?.value ?? null) as any;
+-+    expect(mapInstance).toBeTruthy();
+-+
+-+    const tasksToggle = await screen.findByLabelText('Задачи');
+-+    const optimizedToggle = screen.getByLabelText('Оптимизация');
+-+    expect(tasksToggle).toBeChecked();
+-+    expect(optimizedToggle).toBeChecked();
+-+
+-+    fireEvent.click(tasksToggle);
+-+    expect(tasksToggle).not.toBeChecked();
+-+
+-+    act(() => {
+-+      mapInstance.easeTo({
+-+        center: [12, 48],
+-+        zoom: 9,
+-+        pitch: 25,
+-+        bearing: 10,
+-+      });
+-+      mapInstance.__emit('moveend', {});
+-+      mapInstance.__emit('pitchend', {});
+-+      mapInstance.__emit('rotateend', {});
+-+    });
+-+
+-+    fireEvent.click(screen.getByRole('button', { name: 'Перспектива' }));
+-+
+-+    await waitFor(() => {
+-+      expect(window.localStorage.getItem('logistics:map-state')).toBeTruthy();
+-+    });
+-+
+-+    const savedLayers = JSON.parse(
+-+      window.localStorage.getItem('logistics:layer-visibility') ?? '{}',
+-+    );
+-+    expect(savedLayers).toMatchObject({ tasks: false, optimized: true });
+-+
+-+    const savedMapState = JSON.parse(
+-+      window.localStorage.getItem('logistics:map-state') ?? '{}',
+-+    );
+-+    expect(savedMapState).toMatchObject({
+-+      center: [12, 48],
+-+      zoom: 9,
+-+      pitch: 25,
+-+      bearing: 10,
+-+      viewMode: 'perspective',
+-+    });
+-+
+-+    firstRender.unmount();
+-+    mapModule.Map.mockClear();
+-+
+-+    const secondRouter = createMemoryRouter(
+-+      [
+-+        { path: '/logistics', element: <LogisticsPage /> },
+-+        { path: '*', element: <LogisticsPage /> },
+-+      ],
+-+      { initialEntries: ['/logistics'], future: { v7_relativeSplatPath: true } },
+-+    );
+-+
+-+    render(<RouterProvider router={secondRouter} />);
+-+
+-+    const mapCall = mapModule.Map.mock.calls.at(-1)?.[0] as
+-+      | Record<string, unknown>
+-+      | undefined;
+-+    expect(mapCall?.center).toEqual([12, 48]);
+-+    expect(mapCall?.zoom).toBe(9);
+-+    expect(mapCall?.pitch).toBe(25);
+-+    expect(mapCall?.bearing).toBe(10);
+-+
+-+    const restoredTasksToggle = await screen.findByLabelText('Задачи');
+-+    expect(restoredTasksToggle).not.toBeChecked();
+-+    const perspectiveButton = screen.getByRole('button', {
+-+      name: 'Перспектива',
+-+    });
+-+    expect(perspectiveButton).toHaveAttribute('aria-pressed', 'true');
+-+  });
+- });
+-diff --git a/apps/web/src/pages/Logistics.tsx b/apps/web/src/pages/Logistics.tsx
+-index a3d4535..e6933e3 100644
+---- a/apps/web/src/pages/Logistics.tsx
+-+++ b/apps/web/src/pages/Logistics.tsx
+-@@ -198,6 +198,108 @@ type GeoZone = {
+-   createdAt: string;
+- };
+- 
+-+type StoredMapState = {
+-+  center: [number, number];
+-+  zoom: number;
+-+  pitch: number;
+-+  bearing: number;
+-+  viewMode: 'planar' | 'perspective';
+-+};
+-+
+-+const LAYER_VISIBILITY_STORAGE_KEY = 'logistics:layer-visibility';
+-+const MAP_STATE_STORAGE_KEY = 'logistics:map-state';
+-+
+-+const readFromStorage = <T,>(key: string): T | null => {
+-+  if (typeof window === 'undefined') {
+-+    return null;
+-+  }
+-+  try {
+-+    const value = window.localStorage.getItem(key);
+-+    if (!value) {
+-+      return null;
+-+    }
+-+    return JSON.parse(value) as T;
+-+  } catch {
+-+    return null;
+-+  }
+-+};
+-+
+-+const saveToStorage = <T,>(key: string, payload: T): void => {
+-+  if (typeof window === 'undefined') {
+-+    return;
+-+  }
+-+  try {
+-+    window.localStorage.setItem(key, JSON.stringify(payload));
+-+  } catch {
+-+    /* пропускаем ошибки записи в localStorage */
+-+  }
+-+};
+-+
+-+const getPersistedLayerVisibility = (): LayerVisibilityState | null => {
+-+  const stored = readFromStorage<Partial<LayerVisibilityState>>(
+-+    LAYER_VISIBILITY_STORAGE_KEY,
+-+  );
+-+  if (!stored) {
+-+    return null;
+-+  }
+-+  const tasks = typeof stored.tasks === 'boolean' ? stored.tasks : undefined;
+-+  const optimized =
+-+    typeof stored.optimized === 'boolean' ? stored.optimized : undefined;
+-+  if (tasks === undefined || optimized === undefined) {
+-+    return null;
+-+  }
+-+  return { tasks, optimized };
+-+};
+-+
+-+const getPersistedMapState = (): StoredMapState | null => {
+-+  const stored = readFromStorage<Partial<StoredMapState>>(MAP_STATE_STORAGE_KEY);
+-+  if (!stored) {
+-+    return null;
+-+  }
+-+  const center =
+-+    Array.isArray(stored.center) &&
+-+    stored.center.length === 2 &&
+-+    stored.center.every(
+-+      (value) => typeof value === 'number' && !Number.isNaN(value),
+-+    )
+-+      ? (stored.center as [number, number])
+-+      : null;
+-+  const zoom =
+-+    typeof stored.zoom === 'number' && Number.isFinite(stored.zoom)
+-+      ? stored.zoom
+-+      : null;
+-+  const pitch =
+-+    typeof stored.pitch === 'number' && Number.isFinite(stored.pitch)
+-+      ? stored.pitch
+-+      : null;
+-+  const bearing =
+-+    typeof stored.bearing === 'number' && Number.isFinite(stored.bearing)
+-+      ? stored.bearing
+-+      : null;
+-+  const viewMode =
+-+    stored.viewMode === 'planar' || stored.viewMode === 'perspective'
+-+      ? stored.viewMode
+-+      : null;
+-+  if (
+-+    !center ||
+-+    zoom === null ||
+-+    pitch === null ||
+-+    bearing === null ||
+-+    viewMode === null
+-+  ) {
+-+    return null;
+-+  }
+-+  return { center, zoom, pitch, bearing, viewMode };
+-+};
+-+
+-+const saveLayerVisibility = (value: LayerVisibilityState): void => {
+-+  saveToStorage(LAYER_VISIBILITY_STORAGE_KEY, value);
+-+};
+-+
+-+const saveMapState = (value: StoredMapState): void => {
+-+  saveToStorage(MAP_STATE_STORAGE_KEY, value);
+-+};
+-+
+- const GEO_SOURCE_ID = 'logistics-geozones';
+- const GEO_FILL_LAYER_ID = 'logistics-geozones-fill';
+- const GEO_OUTLINE_LAYER_ID = 'logistics-geozones-outline';
+-@@ -827,6 +929,12 @@ export default function LogisticsPage() {
+-   const mapRef = React.useRef<MapInstance | null>(null);
+-   const mapContainerRef = React.useRef<HTMLDivElement | null>(null);
+-   const drawRef = React.useRef<MapLibreDraw | null>(null);
+-+  const persistedLayerVisibilityRef = React.useRef<LayerVisibilityState | null>(
+-+    getPersistedLayerVisibility(),
+-+  );
+-+  const persistedMapStateRef = React.useRef<StoredMapState | null>(
+-+    getPersistedMapState(),
+-+  );
+-   React.useEffect(() => {
+-     if (isRasterFallback) {
+-       console.warn(
+-@@ -842,12 +950,13 @@ export default function LogisticsPage() {
+-   }, []);
+-   const [mapViewMode, setMapViewMode] = React.useState<
+-     'planar' | 'perspective'
+--  >('planar');
+-+  >(persistedMapStateRef.current?.viewMode ?? 'planar');
+-   const routeAnimationRef = React.useRef<{
+-     frameId: number | null;
+-     lastTimestamp: number | null;
+-     routes: AnimatedRoute[];
+-   }>({ frameId: null, lastTimestamp: null, routes: [] });
+-+  const initialMapStateAppliedRef = React.useRef(false);
+-   const [availableVehicles, setAvailableVehicles] = React.useState<
+-     FleetVehicleDto[]
+-   >([]);
+-@@ -869,7 +978,9 @@ export default function LogisticsPage() {
+-     }
+-   });
+-   const [layerVisibility, setLayerVisibility] =
+--    React.useState<LayerVisibilityState>(DEFAULT_LAYER_VISIBILITY);
+-+    React.useState<LayerVisibilityState>(
+-+      persistedLayerVisibilityRef.current ?? DEFAULT_LAYER_VISIBILITY,
+-+    );
+-   const [mapReady, setMapReady] = React.useState(false);
+-   const [hiddenTaskTypes, setHiddenTaskTypes] = React.useState<string[]>([]);
+-   const [hiddenRouteStatuses, setHiddenRouteStatuses] = React.useState<
+-@@ -908,6 +1019,9 @@ export default function LogisticsPage() {
+-   const { user } = useAuth();
+-   const { controller } = useTasks();
+-   const role = user?.role ?? null;
+-+  React.useEffect(() => {
+-+    saveLayerVisibility(layerVisibility);
+-+  }, [layerVisibility]);
+-   React.useEffect(() => {
+-     try {
+-       const searchParams = new URLSearchParams(location.search);
+-@@ -2398,11 +2512,14 @@ export default function LogisticsPage() {
+-       if (!container) {
+-         return;
+-       }
+-+      const initialMapState = persistedMapStateRef.current;
+-       const mapInstance = new mapLibrary.Map({
+-         container,
+-         style: MAP_STYLE,
+--        center: MAP_CENTER_LNG_LAT,
+--        zoom: MAP_DEFAULT_ZOOM,
+-+        center: initialMapState?.center ?? MAP_CENTER_LNG_LAT,
+-+        zoom: initialMapState?.zoom ?? MAP_DEFAULT_ZOOM,
+-+        pitch: initialMapState?.pitch ?? 0,
+-+        bearing: initialMapState?.bearing ?? 0,
+-         minZoom: 5,
+-         maxZoom: 22,
+-         maxBounds: UKRAINE_BOUNDS,
+-@@ -2720,10 +2837,69 @@ export default function LogisticsPage() {
+-     };
+-   }, [stopRouteAnimation]);
+- 
+-+  const persistMapState = React.useCallback(() => {
+-+    if (!mapReady) return;
+-+    const map = mapRef.current;
+-+    if (!map) return;
+-+    const center =
+-+      typeof map.getCenter === 'function' ? map.getCenter() : null;
+-+    if (!center || Number.isNaN(center.lng) || Number.isNaN(center.lat)) {
+-+      return;
+-+    }
+-+    const zoom =
+-+      typeof map.getZoom === 'function' ? map.getZoom() : MAP_DEFAULT_ZOOM;
+-+    const pitch = typeof map.getPitch === 'function' ? map.getPitch() : 0;
+-+    const bearing =
+-+      typeof map.getBearing === 'function' ? map.getBearing() : 0;
+-+    saveMapState({
+-+      center: [center.lng, center.lat],
+-+      zoom,
+-+      pitch,
+-+      bearing,
+-+      viewMode: mapViewMode,
+-+    });
+-+  }, [mapReady, mapViewMode]);
+-+
+-+  React.useEffect(() => {
+-+    if (!mapReady) return;
+-+    const map = mapRef.current;
+-+    if (!map || typeof map.on !== 'function' || typeof map.off !== 'function') {
+-+      return;
+-+    }
+-+    const events: Array<[string, Listener]> = [
+-+      ['moveend', persistMapState],
+-+      ['zoomend', persistMapState],
+-+      ['rotateend', persistMapState],
+-+      ['pitchend', persistMapState],
+-+    ];
+-+    events.forEach(([event, handler]) => map.on(event, handler));
+-+    return () => {
+-+      events.forEach(([event, handler]) => map.off(event, handler));
+-+    };
+-+  }, [mapReady, persistMapState]);
+-+
+-   React.useEffect(() => {
+-     if (!mapReady) return;
+-     const map = mapRef.current;
+-     if (!map) return;
+-+    const persistedMapState = persistedMapStateRef.current;
+-+    const shouldUsePersisted =
+-+      !initialMapStateAppliedRef.current &&
+-+      persistedMapState &&
+-+      persistedMapState.viewMode === mapViewMode;
+-+    const targetPitch =
+-+      shouldUsePersisted && persistedMapState
+-+        ? persistedMapState.pitch
+-+        : mapViewMode === 'perspective'
+-+          ? 55
+-+          : 0;
+-+    const targetBearing =
+-+      shouldUsePersisted && persistedMapState
+-+        ? persistedMapState.bearing
+-+        : mapViewMode === 'perspective'
+-+          ? 28
+-+          : 0;
+-+    initialMapStateAppliedRef.current = true;
+-     const enableRotation = () => {
+-       if (typeof map.dragRotate?.enable === 'function') {
+-         map.dragRotate.enable();
+-@@ -2743,22 +2919,31 @@ export default function LogisticsPage() {
+-     if (mapViewMode === 'perspective') {
+-       enableRotation();
+-       if (typeof map.easeTo === 'function') {
+--        map.easeTo({ pitch: 55, bearing: 28, duration: 600 });
+-+        map.easeTo({
+-+          pitch: targetPitch,
+-+          bearing: targetBearing,
+-+          duration: 600,
+-+        });
+-       } else {
+--        map.setPitch(55);
+--        map.setBearing(28);
+-+        map.setPitch(targetPitch);
+-+        map.setBearing(targetBearing);
+-       }
+-     } else {
+-       if (typeof map.easeTo === 'function') {
+--        map.easeTo({ pitch: 0, bearing: 0, duration: 400 });
+-+        map.easeTo({ pitch: targetPitch, bearing: targetBearing, duration: 400 });
+-       } else {
+--        map.setPitch(0);
+--        map.setBearing(0);
+-+        map.setPitch(targetPitch);
+-+        map.setBearing(targetBearing);
+-       }
+-       disableRotation();
+-     }
+-   }, [mapReady, mapViewMode]);
+- 
+-+  React.useEffect(() => {
+-+    if (!mapReady) return;
+-+    persistMapState();
+-+  }, [mapReady, mapViewMode, persistMapState]);
+-+
+-   React.useEffect(() => {
+-     if (!mapReady) return;
+-     const map = mapRef.current;
+-diff --git a/package.json b/package.json
+-index c6ee47c..1799219 100644
+---- a/package.json
+-+++ b/package.json
+-@@ -39,6 +39,8 @@
+-   "devDependencies": {
+-     "@eslint/js": "^9.14.0",
+-     "@tailwindcss/node": "^4.1.12",
+-+    "@testing-library/jest-dom": "^6.9.1",
+-+    "@testing-library/react": "^16.3.0",
+-     "@types/jest": "^29.5.12",
+-     "@types/node": "24.10.0",
+-     "@typescript-eslint/eslint-plugin": "8.46.3",
+-@@ -49,10 +51,11 @@
+-     "globals": "^13.24.0",
+-     "husky": "^9.0.11",
+-     "jest": "^29.7.0",
+-+    "jest-environment-jsdom": "^30.2.0",
+-     "lint-staged": "^16.1.2",
+-     "prettier": "3.6.2",
+--    "ts-node": "^10.9.2",
+-     "ts-jest": "^29.4.5",
+-+    "ts-node": "^10.9.2",
+-     "tsx": "4.20.6",
+-     "typescript": "5.9.3",
+-     "typescript-eslint": "^8.0.0",
+-diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
+-index 1b61ee4..8e6eb53 100644
+---- a/pnpm-lock.yaml
+-+++ b/pnpm-lock.yaml
+-@@ -38,6 +38,12 @@ importers:
+-       '@tailwindcss/node':
+-         specifier: ^4.1.12
+-         version: 4.1.12
+-+      '@testing-library/jest-dom':
+-+        specifier: ^6.9.1
+-+        version: 6.9.1
+-+      '@testing-library/react':
+-+        specifier: ^16.3.0
+-+        version: 16.3.0(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.24))(@types/react@18.3.24)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)
+-       '@types/jest':
+-         specifier: ^29.5.12
+-         version: 29.5.14
+-@@ -68,6 +74,9 @@ importers:
+-       jest:
+-         specifier: ^29.7.0
+-         version: 29.7.0(@types/node@24.10.0)(babel-plugin-macros@3.1.0)(ts-node@10.9.2(@types/node@24.10.0)(typescript@5.9.3))
+-+      jest-environment-jsdom:
+-+        specifier: ^30.2.0
+-+        version: 30.2.0
+-       lint-staged:
+-         specifier: ^16.1.2
+-         version: 16.2.6
+-@@ -531,6 +540,9 @@ importers:
+- 
+- packages:
+- 
+-+  '@adobe/css-tools@4.4.4':
+-+    resolution: {integrity: sha512-Elp+iwUx5rN5+Y8xLt5/GRoG20WGoDCQ/1Fb+1LiGtvwbDavuSk0jhD/eZdckHAuzcDzccnkv+rEjyWfRx18gg==}
+-+
+-   '@alloc/quick-lru@5.2.0':
+-     resolution: {integrity: sha512-UrcABB+4bUrFABwbluTIBErXwvbsU/V7TZWfmbgJfbkwiBuziS9gxdODUyuiecfdGQ85jglMW6juS3+z5TsKLw==}
+-     engines: {node: '>=10'}
+-@@ -2080,10 +2092,24 @@ packages:
+-       node-notifier:
+-         optional: true
+- 
+-+  '@jest/environment-jsdom-abstract@30.2.0':
+-+    resolution: {integrity: sha512-kazxw2L9IPuZpQ0mEt9lu9Z98SqR74xcagANmMBU16X0lS23yPc0+S6hGLUz8kVRlomZEs/5S/Zlpqwf5yu6OQ==}
+-+    engines: {node: ^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0}
+-+    peerDependencies:
+-+      canvas: ^3.0.0
+-+      jsdom: '*'
+-+    peerDependenciesMeta:
+-+      canvas:
+-+        optional: true
+-+
+-   '@jest/environment@29.7.0':
+-     resolution: {integrity: sha512-aQIfHDq33ExsN4jP1NWGXhxgQ/wixs60gDiKO+XVMd8Mn0NWPWgc34ZQDTb2jKaUWQ7MuwoitXAsN2XVXNMpAw==}
+-     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
+- 
+-+  '@jest/environment@30.2.0':
+-+    resolution: {integrity: sha512-/QPTL7OBJQ5ac09UDRa3EQes4gt1FTEG/8jZ/4v5IVzx+Cv7dLxlVIvfvSVRiiX2drWyXeBjkMSR8hvOWSog5g==}
+-+    engines: {node: ^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0}
+-+
+-   '@jest/expect-utils@29.7.0':
+-     resolution: {integrity: sha512-GlsNBWiFQFCVi9QVSx7f5AgMeLxe9YCCs5PuP2O2LdjDAA8Jh9eX7lA1Jq/xdXw3Wb3hyvlFNfZIfcRetSzYcA==}
+-     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
+-@@ -2096,6 +2122,10 @@ packages:
+-     resolution: {integrity: sha512-q4DH1Ha4TTFPdxLsqDXK1d3+ioSL7yL5oCMJZgDYm6i+6CygW5E5xVr/D1HdsGxjt1ZWSfUAs9OxSB/BNelWrQ==}
+-     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
+- 
+-+  '@jest/fake-timers@30.2.0':
+-+    resolution: {integrity: sha512-HI3tRLjRxAbBy0VO8dqqm7Hb2mIa8d5bg/NJkyQcOk7V118ObQML8RC5luTF/Zsg4474a+gDvhce7eTnP4GhYw==}
+-+    engines: {node: ^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0}
+-+
+-   '@jest/globals@29.7.0':
+-     resolution: {integrity: sha512-mpiz3dutLbkW2MNFubUGUEVLkTGiqW6yLVTA+JbP6fI6J5iL9Y0Nlg8k95pcF8ctKwCS7WVxteBs29hhfAotzQ==}
+-     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
+-@@ -2833,6 +2863,9 @@ packages:
+-   '@sinonjs/fake-timers@10.3.0':
+-     resolution: {integrity: sha512-V4BG07kuYSUkTCSBHG8G8TNhM+F19jXFWnQtzj+we8DrkpSBCee9Z3Ms8yiGer/dlmhe35/Xdgyo3/0rQKg7YA==}
+- 
+-+  '@sinonjs/fake-timers@13.0.5':
+-+    resolution: {integrity: sha512-36/hTbH2uaWuGVERyC6da9YwGWnzUZXuPro/F2LfsdOsLnCojz/iSH8MxUt/FD2S5XBSVPhmArFUXcpCQ2Hkiw==}
+-+
+-   '@smithy/abort-controller@4.2.5':
+-     resolution: {integrity: sha512-j7HwVkBw68YW8UmFRcjZOmssE77Rvk0GWAIN1oFBhsaovQmZWYCIcGa9/pwRB0ExI8Sk9MWNALTjftjHZea7VA==}
+-     engines: {node: '>=18.0.0'}
+-@@ -2844,6 +2877,7 @@ packages:
+-   '@smithy/core@3.18.0':
+-     resolution: {integrity: sha512-vGSDXOJFZgOPTatSI1ly7Gwyy/d/R9zh2TO3y0JZ0uut5qQ88p9IaWaZYIWSSqtdekNM4CGok/JppxbAff4KcQ==}
+-     engines: {node: '>=18.0.0'}
+-+    deprecated: Please upgrade your lockfile to use the latest 3.x version of @smithy/core for various fixes, see https://github.com/smithy-lang/smithy-typescript/blob/main/packages/core/CHANGELOG.md
+- 
+-   '@smithy/credential-provider-imds@4.2.5':
+-     resolution: {integrity: sha512-BZwotjoZWn9+36nimwm/OLIcVe+KYRwzMjfhd4QT7QxPm9WY0HiOV8t/Wlh+HVUif0SBVV7ksq8//hPaBC/okQ==}
+-@@ -3167,6 +3201,29 @@ packages:
+-       react: 18.2.0
+-       react-dom: 18.2.0
+- 
+-+  '@testing-library/dom@10.4.1':
+-+    resolution: {integrity: sha512-o4PXJQidqJl82ckFaXUeoAW+XysPLauYI43Abki5hABd853iMhitooc6znOnczgbTYmEP6U6/y1ZyKAIsvMKGg==}
+-+    engines: {node: '>=18'}
+-+
+-+  '@testing-library/jest-dom@6.9.1':
+-+    resolution: {integrity: sha512-zIcONa+hVtVSSep9UT3jZ5rizo2BsxgyDYU7WFD5eICBE7no3881HGeb/QkGfsJs6JTkY1aQhT7rIPC7e+0nnA==}
+-+    engines: {node: '>=14', npm: '>=6', yarn: '>=1'}
+-+
+-+  '@testing-library/react@16.3.0':
+-+    resolution: {integrity: sha512-kFSyxiEDwv1WLl2fgsq6pPBbw5aWKrsY2/noi1Id0TK0UParSF62oFQFGHXIyaG4pp2tEub/Zlel+fjjZILDsw==}
+-+    engines: {node: '>=18'}
+-+    peerDependencies:
+-+      '@testing-library/dom': ^10.0.0
+-+      '@types/react': ^18.0.0 || ^19.0.0
+-+      '@types/react-dom': ^18.0.0 || ^19.0.0
+-+      react: 18.2.0
+-+      react-dom: 18.2.0
+-+    peerDependenciesMeta:
+-+      '@types/react':
+-+        optional: true
+-+      '@types/react-dom':
+-+        optional: true
+-+
+-   '@tma.js/bridge@2.1.3':
+-     resolution: {integrity: sha512-mJPdGP3AgQ10ovW2A/yKdLPqhMt1Mx/uHvXRz1qyyy9L6kQlCojx68ib1Km7jumKdYvljy3470Yhk18V65pcdw==}
+- 
+-@@ -3894,6 +3951,9 @@ packages:
+-   '@twa-dev/types@7.10.0':
+-     resolution: {integrity: sha512-BXHyNLXy+cPbOZ2qQq5ArPKcP4kUfuX3YBSFT0XUxtMNWAzvyMuYAiq59UTfQ8OnELXlfChrAoIT3c2pujBtcQ==}
+- 
+-+  '@types/aria-query@5.0.4':
+-+    resolution: {integrity: sha512-rfT93uj5s0PRL7EzccGMs3brplhcrghnDoV26NqKhCAS1hVo+WdNsPvE/yb6ilfr5hi2MEk6d5EWJTKdxg8jVw==}
+-+
+-   '@types/babel__core@7.20.5':
+-     resolution: {integrity: sha512-qoQprZvz5wQFJwMDqeseRXWv3rqMvhgpbXFfVyWhbx9X47POIA6i/+dXefEmZKoAgOaTdaIgNSMqMIU61yRyzA==}
+- 
+-@@ -3998,6 +4058,9 @@ packages:
+-   '@types/jest@29.5.14':
+-     resolution: {integrity: sha512-ZN+4sdnLUbo8EVvVc2ao0GFW6oVrQRPn4K2lglySj7APvSrgzxHiNNK99us4WDMi57xxA2yggblIAMNhXOotLQ==}
+- 
+-+  '@types/jsdom@21.1.7':
+-+    resolution: {integrity: sha512-yOriVnggzrnQ3a9OKOCxaVuSug3w3/SbOj5i7VwXWZEyUNl3bLF9V3MfxGbZKuwqJOQyRfqXyROBB1CoZLFWzA==}
+-+
+-   '@types/json-schema@7.0.15':
+-     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
+- 
+-@@ -4144,6 +4207,9 @@ packages:
+-   '@types/swagger-ui-express@4.1.8':
+-     resolution: {integrity: sha512-AhZV8/EIreHFmBV5wAs0gzJUNq9JbbSXgJLQubCC0jtIo6prnI9MIRRxnU4MZX9RB9yXxF1V4R7jtLl/Wcj31g==}
+- 
+-+  '@types/tough-cookie@4.0.5':
+-+    resolution: {integrity: sha512-/Ad8+nIOV7Rl++6f1BdKxFSMgmoqEoYbHRpPcx3JEfv8VRsQe9Z4mCXeJBzxs7mbHY/XOZZuXlRNfhpVPbs6ZA==}
+-+
+-   '@types/trusted-types@2.0.7':
+-     resolution: {integrity: sha512-ScaPdn1dQczgbl0QFTeTOmVHFULt394XJgOQNoyVhZ6r2vLnMLJfBPd53SB52T/3G36VI1/g2MZaX0cwDuXsfw==}
+- 
+-@@ -4451,6 +4517,9 @@ packages:
+-     resolution: {integrity: sha512-ik3ZgC9dY/lYVVM++OISsaYDeg1tb0VtP5uL3ouh1koGOaUMDPpbFIei4JkFimWUFPn90sbMNMXQAIVOlnYKJA==}
+-     engines: {node: '>=10'}
+- 
+-+  aria-query@5.3.0:
+-+    resolution: {integrity: sha512-b0P0sZPKtyu8HkeRAfCq0IfURZK+SuwMjY1UXGBU27wpAiTwQAIlq56IbIO+ytk/JjS1fMR14ee5WBBfKi5J6A==}
+-+
+-   aria-query@5.3.2:
+-     resolution: {integrity: sha512-COROpnaoap1E2F000S62r6A60uHZnmlvomhfyT2DlTcrY1OrBKn2UhH7qn5wTC9zMvD0AY7csdPSNwKP+7WiQw==}
+-     engines: {node: '>= 0.4'}
+-@@ -5193,6 +5262,9 @@ packages:
+-     resolution: {integrity: sha512-u/O3vwbptzhMs3L1fQE82ZSLHQQfto5gyZzwteVIEyeaY5Fc7R4dapF/BvRoSYFeqfBk4m0V1Vafq5Pjv25wvA==}
+-     engines: {node: '>= 6'}
+- 
+-+  css.escape@1.5.1:
+-+    resolution: {integrity: sha512-YUifsXXuknHlUsmlgyY0PKzgPOr7/FjCePfHNt0jxm83wHZi44VDMQ7/fGNkjY3/jV1MC+1CmZbaHzugyeRtpg==}
+-+
+-   cssesc@3.0.0:
+-     resolution: {integrity: sha512-/Tb/JcjK111nNScGob5MNtsntNM1aCNUDipB/TkwZFhyDrrE47SOx/18wF2bbjgc3ZzCSKW1T5nt5EbFoAz/Vg==}
+-     engines: {node: '>=4'}
+-@@ -5407,6 +5479,12 @@ packages:
+-     resolution: {integrity: sha512-yS+Q5i3hBf7GBkd4KG8a7eBNNWNGLTaEwwYWUijIYM7zrlYDM0BFXHjjPWlWZ1Rg7UaddZeIDmi9jF3HmqiQ2w==}
+-     engines: {node: '>=6.0.0'}
+- 
+-+  dom-accessibility-api@0.5.16:
+-+    resolution: {integrity: sha512-X7BJ2yElsnOJ30pZF4uIIDfBEVgF4XEBxL9Bxhy6dnrm5hkzqmsWHGTiHqRiITNhMyFLyAiWndIJP7Z1NTteDg==}
+-+
+-+  dom-accessibility-api@0.6.3:
+-+    resolution: {integrity: sha512-7ZgogeTnjuHbo+ct10G9Ffp0mif17idi0IyWNVA/wcwcm7NPOD/WEHVP3n7n3MhXqxoIYm8d6MuZohYWIZ4T3w==}
+-+
+-   dom-helpers@5.2.1:
+-     resolution: {integrity: sha512-nRCa7CK3VTrM2NmGkIy4cbK7IZlgBE/PYMn55rrXefr5xXDP0LdtfPnblFDoVdcAfslJ7or6iqAUnx0CCGIWQA==}
+- 
+-@@ -6564,6 +6642,15 @@ packages:
+-     resolution: {integrity: sha512-gns+Er14+ZrEoC5fhOfYCY1LOHHr0TI+rQUHZS8Ttw2l7gl+80eHc/gFf2Ktkw0+SIACDTeWvpFcv3B04VembQ==}
+-     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
+- 
+-+  jest-environment-jsdom@30.2.0:
+-+    resolution: {integrity: sha512-zbBTiqr2Vl78pKp/laGBREYzbZx9ZtqPjOK4++lL4BNDhxRnahg51HtoDrk9/VjIy9IthNEWdKVd7H5bqBhiWQ==}
+-+    engines: {node: ^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0}
+-+    peerDependencies:
+-+      canvas: ^3.0.0
+-+    peerDependenciesMeta:
+-+      canvas:
+-+        optional: true
+-+
+-   jest-environment-node@29.7.0:
+-     resolution: {integrity: sha512-DOSwCRqXirTOyheM+4d5YZOrWcdu0LNZ87ewUoywbcb2XR4wKgqiG8vNeYwhjFMbEkfju7wx2GYH0P2gevGvFw==}
+-     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
+-@@ -6592,10 +6679,18 @@ packages:
+-     resolution: {integrity: sha512-GBEV4GRADeP+qtB2+6u61stea8mGcOT4mCtrYISZwfu9/ISHFJ/5zOMXYbpBE9RsS5+Gb63DW4FgmnKJ79Kf6w==}
+-     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
+- 
+-+  jest-message-util@30.2.0:
+-+    resolution: {integrity: sha512-y4DKFLZ2y6DxTWD4cDe07RglV88ZiNEdlRfGtqahfbIjfsw1nMCPx49Uev4IA/hWn3sDKyAnSPwoYSsAEdcimw==}
+-+    engines: {node: ^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0}
+-+
+-   jest-mock@29.7.0:
+-     resolution: {integrity: sha512-ITOMZn+UkYS4ZFh83xYAOzWStloNzJFO2s8DWrE4lhtGD+AorgnbkiKERe4wQVBydIGPx059g6riW5Btp6Llnw==}
+-     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
+- 
+-+  jest-mock@30.2.0:
+-+    resolution: {integrity: sha512-JNNNl2rj4b5ICpmAcq+WbLH83XswjPbjH4T7yvGzfAGCPh1rw+xVNbtk+FnRslvt9lkCcdn9i1oAoKUuFsOxRw==}
+-+    engines: {node: ^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0}
+-+
+-   jest-pnp-resolver@1.2.3:
+-     resolution: {integrity: sha512-+3NpwQEnRoIBtx4fyhblQDPgJI0H1IEIkX7ShLUjPGA7TtUTvI1oiKi3SR4oBR0hQhQR80l4WAe5RrXBwWMA8w==}
+-     engines: {node: '>=6'}
+-@@ -7147,6 +7242,10 @@ packages:
+-     resolution: {integrity: sha512-msnrplCfY7zaqlZBDEloCIKld+RUeMZVeWzSPaGUKeRXFlruNSdKg2XxCyR+zj6BqzcXhXlRnvcvx6rAGgsvMA==}
+-     engines: {node: '>=0.8.x'}
+- 
+-+  lz-string@1.5.0:
+-+    resolution: {integrity: sha512-h5bgJWpxJNswbU7qCrV0tIKQCaS3blPDrqKWx+QxzuzL1zGUzij9XCWLrSLsJPu5t+eWA/ycetzYAO5IOMcWAQ==}
+-+    hasBin: true
+-+
+-   magic-string@0.30.18:
+-     resolution: {integrity: sha512-yi8swmWbO17qHhwIBNeeZxTceJMeBvWJaId6dyvTSOwTipqeHhMhOrz6513r1sOKnpvQ7zkhlG8tPrpilwTxHQ==}
+- 
+-@@ -8031,10 +8130,18 @@ packages:
+-     engines: {node: '>=14'}
+-     hasBin: true
+- 
+-+  pretty-format@27.5.1:
+-+    resolution: {integrity: sha512-Qb1gy5OrP5+zDf2Bvnzdl3jsTf1qXVMazbvCoKhtKqVs4/YK4ozX4gKQJJVyNe+cajNPn0KoC0MC3FUmaHWEmQ==}
+-+    engines: {node: ^10.13.0 || ^12.13.0 || ^14.15.0 || >=15.0.0}
+-+
+-   pretty-format@29.7.0:
+-     resolution: {integrity: sha512-Pdlw/oPxN+aXdmM9R00JVC9WVFoCLTKJvDVLgmJ+qAffBMxsV85l/Lu7sNx4zSzPyoL2euImuEwHhOXdEgNFZQ==}
+-     engines: {node: ^14.15.0 || ^16.10.0 || >=18.0.0}
+- 
+-+  pretty-format@30.2.0:
+-+    resolution: {integrity: sha512-9uBdv/B4EefsuAL+pWqueZyZS2Ba+LxfFeQ9DN14HU4bN8bhaxKdkpjpB6fs9+pSjIBu+FXQHImEg8j/Lw0+vA==}
+-+    engines: {node: ^18.14.0 || ^20.0.0 || ^22.0.0 || >=24.0.0}
+-+
+-   proc-log@5.0.0:
+-     resolution: {integrity: sha512-Azwzvl90HaF0aCz1JrDdXQykFakSSNPaPoiZ9fm5qJIMHioDZEi7OAdRwSm6rSoPtY3Qutnm3L7ogmg3dc+wbQ==}
+-     engines: {node: ^18.17.0 || >=20.5.0}
+-@@ -9837,6 +9944,8 @@ packages:
+- 
+- snapshots:
+- 
+-+  '@adobe/css-tools@4.4.4': {}
+-+
+-   '@alloc/quick-lru@5.2.0': {}
+- 
+-   '@apidevtools/json-schema-ref-parser@9.1.2':
+-@@ -9867,7 +9976,6 @@ snapshots:
+-       '@csstools/css-parser-algorithms': 3.0.5(@csstools/css-tokenizer@3.0.4)
+-       '@csstools/css-tokenizer': 3.0.4
+-       lru-cache: 10.4.3
+--    optional: true
+- 
+-   '@aws-crypto/sha256-browser@5.2.0':
+-     dependencies:
+-@@ -10992,16 +11100,12 @@ snapshots:
+-   '@ckeditor/ckeditor5-adapter-ckfinder@41.4.2':
+-     dependencies:
+-       ckeditor5: 46.0.3
+--    transitivePeerDependencies:
+--      - supports-color
+- 
+-   '@ckeditor/ckeditor5-adapter-ckfinder@46.0.3':
+-     dependencies:
+-       '@ckeditor/ckeditor5-core': 46.0.3
+-       '@ckeditor/ckeditor5-upload': 46.0.3
+-       ckeditor5: 46.0.3
+--    transitivePeerDependencies:
+--      - supports-color
+- 
+-   '@ckeditor/ckeditor5-alignment@46.0.3':
+-     dependencies:
+-@@ -11214,8 +11318,6 @@ snapshots:
+-       '@ckeditor/ckeditor5-utils': 46.0.3
+-       ckeditor5: 46.0.3
+-       es-toolkit: 1.39.5
+--    transitivePeerDependencies:
+--      - supports-color
+- 
+-   '@ckeditor/ckeditor5-editor-classic@41.4.2':
+-     dependencies:
+-@@ -11241,8 +11343,6 @@ snapshots:
+-       '@ckeditor/ckeditor5-utils': 46.0.3
+-       ckeditor5: 46.0.3
+-       es-toolkit: 1.39.5
+--    transitivePeerDependencies:
+--      - supports-color
+- 
+-   '@ckeditor/ckeditor5-editor-inline@46.0.3':
+-     dependencies:
+-@@ -11252,8 +11352,6 @@ snapshots:
+-       '@ckeditor/ckeditor5-utils': 46.0.3
+-       ckeditor5: 46.0.3
+-       es-toolkit: 1.39.5
+--    transitivePeerDependencies:
+--      - supports-color
+- 
+-   '@ckeditor/ckeditor5-editor-multi-root@46.0.3':
+-     dependencies:
+-@@ -11323,8 +11421,6 @@ snapshots:
+-       '@ckeditor/ckeditor5-utils': 46.0.3
+-       ckeditor5: 46.0.3
+-       es-toolkit: 1.39.5
+--    transitivePeerDependencies:
+--      - supports-color
+- 
+-   '@ckeditor/ckeditor5-font@46.0.3':
+-     dependencies:
+-@@ -11383,8 +11479,6 @@ snapshots:
+-       '@ckeditor/ckeditor5-utils': 46.0.3
+-       '@ckeditor/ckeditor5-widget': 46.0.3
+-       ckeditor5: 46.0.3
+--    transitivePeerDependencies:
+--      - supports-color
+- 
+-   '@ckeditor/ckeditor5-html-embed@46.0.3':
+-     dependencies:
+-@@ -11470,6 +11564,8 @@ snapshots:
+-       '@ckeditor/ckeditor5-ui': 41.4.2
+-       ckeditor5: 46.0.3
+-       lodash-es: 4.17.21
+-+    transitivePeerDependencies:
+-+      - supports-color
+- 
+-   '@ckeditor/ckeditor5-link@46.0.3':
+-     dependencies:
+-@@ -11547,6 +11643,8 @@ snapshots:
+-       '@ckeditor/ckeditor5-utils': 46.0.3
+-       '@ckeditor/ckeditor5-widget': 46.0.3
+-       ckeditor5: 46.0.3
+-+    transitivePeerDependencies:
+-+      - supports-color
+- 
+-   '@ckeditor/ckeditor5-mention@46.0.3':
+-     dependencies:
+-@@ -11566,6 +11664,8 @@ snapshots:
+-       '@ckeditor/ckeditor5-ui': 46.0.3
+-       '@ckeditor/ckeditor5-utils': 46.0.3
+-       ckeditor5: 46.0.3
+-+    transitivePeerDependencies:
+-+      - supports-color
+- 
+-   '@ckeditor/ckeditor5-page-break@46.0.3':
+-     dependencies:
+-@@ -11575,6 +11675,8 @@ snapshots:
+-       '@ckeditor/ckeditor5-utils': 46.0.3
+-       '@ckeditor/ckeditor5-widget': 46.0.3
+-       ckeditor5: 46.0.3
+-+    transitivePeerDependencies:
+-+      - supports-color
+- 
+-   '@ckeditor/ckeditor5-paragraph@41.4.2':
+-     dependencies:
+-@@ -11643,6 +11745,8 @@ snapshots:
+-       '@ckeditor/ckeditor5-ui': 46.0.3
+-       '@ckeditor/ckeditor5-utils': 46.0.3
+-       ckeditor5: 46.0.3
+-+    transitivePeerDependencies:
+-+      - supports-color
+- 
+-   '@ckeditor/ckeditor5-source-editing@46.0.3':
+-     dependencies:
+-@@ -11673,6 +11777,8 @@ snapshots:
+-       '@ckeditor/ckeditor5-utils': 46.0.3
+-       ckeditor5: 46.0.3
+-       es-toolkit: 1.39.5
+-+    transitivePeerDependencies:
+-+      - supports-color
+- 
+-   '@ckeditor/ckeditor5-table@41.4.2':
+-     dependencies:
+-@@ -11691,6 +11797,8 @@ snapshots:
+-       '@ckeditor/ckeditor5-widget': 46.0.3
+-       ckeditor5: 46.0.3
+-       es-toolkit: 1.39.5
+-+    transitivePeerDependencies:
+-+      - supports-color
+- 
+-   '@ckeditor/ckeditor5-theme-lark@46.0.3':
+-     dependencies:
+-@@ -11786,19 +11894,19 @@ snapshots:
+-       '@ckeditor/ckeditor5-utils': 46.0.3
+-       ckeditor5: 46.0.3
+-       es-toolkit: 1.39.5
+-+    transitivePeerDependencies:
+-+      - supports-color
+- 
+-   '@cspotcode/source-map-support@0.8.1':
+-     dependencies:
+-       '@jridgewell/trace-mapping': 0.3.9
+- 
+--  '@csstools/color-helpers@5.1.0':
+--    optional: true
+-+  '@csstools/color-helpers@5.1.0': {}
+- 
+-   '@csstools/css-calc@2.1.4(@csstools/css-parser-algorithms@3.0.5(@csstools/css-tokenizer@3.0.4))(@csstools/css-tokenizer@3.0.4)':
+-     dependencies:
+-       '@csstools/css-parser-algorithms': 3.0.5(@csstools/css-tokenizer@3.0.4)
+-       '@csstools/css-tokenizer': 3.0.4
+--    optional: true
+- 
+-   '@csstools/css-color-parser@3.1.0(@csstools/css-parser-algorithms@3.0.5(@csstools/css-tokenizer@3.0.4))(@csstools/css-tokenizer@3.0.4)':
+-     dependencies:
+-@@ -11806,15 +11914,12 @@ snapshots:
+-       '@csstools/css-calc': 2.1.4(@csstools/css-parser-algorithms@3.0.5(@csstools/css-tokenizer@3.0.4))(@csstools/css-tokenizer@3.0.4)
+-       '@csstools/css-parser-algorithms': 3.0.5(@csstools/css-tokenizer@3.0.4)
+-       '@csstools/css-tokenizer': 3.0.4
+--    optional: true
+- 
+-   '@csstools/css-parser-algorithms@3.0.5(@csstools/css-tokenizer@3.0.4)':
+-     dependencies:
+-       '@csstools/css-tokenizer': 3.0.4
+--    optional: true
+- 
+--  '@csstools/css-tokenizer@3.0.4':
+--    optional: true
+-+  '@csstools/css-tokenizer@3.0.4': {}
+- 
+-   '@derhuerst/http-basic@8.2.4':
+-     dependencies:
+-@@ -12323,6 +12428,17 @@ snapshots:
+-       - supports-color
+-       - ts-node
+- 
+-+  '@jest/environment-jsdom-abstract@30.2.0(jsdom@26.1.0)':
+-+    dependencies:
+-+      '@jest/environment': 30.2.0
+-+      '@jest/fake-timers': 30.2.0
+-+      '@jest/types': 30.2.0
+-+      '@types/jsdom': 21.1.7
+-+      '@types/node': 24.10.0
+-+      jest-mock: 30.2.0
+-+      jest-util: 30.2.0
+-+      jsdom: 26.1.0
+-+
+-   '@jest/environment@29.7.0':
+-     dependencies:
+-       '@jest/fake-timers': 29.7.0
+-@@ -12330,6 +12446,13 @@ snapshots:
+-       '@types/node': 24.10.0
+-       jest-mock: 29.7.0
+- 
+-+  '@jest/environment@30.2.0':
+-+    dependencies:
+-+      '@jest/fake-timers': 30.2.0
+-+      '@jest/types': 30.2.0
+-+      '@types/node': 24.10.0
+-+      jest-mock: 30.2.0
+-+
+-   '@jest/expect-utils@29.7.0':
+-     dependencies:
+-       jest-get-type: 29.6.3
+-@@ -12350,6 +12473,15 @@ snapshots:
+-       jest-mock: 29.7.0
+-       jest-util: 29.7.0
+- 
+-+  '@jest/fake-timers@30.2.0':
+-+    dependencies:
+-+      '@jest/types': 30.2.0
+-+      '@sinonjs/fake-timers': 13.0.5
+-+      '@types/node': 24.10.0
+-+      jest-message-util: 30.2.0
+-+      jest-mock: 30.2.0
+-+      jest-util: 30.2.0
+-+
+-   '@jest/globals@29.7.0':
+-     dependencies:
+-       '@jest/environment': 29.7.0
+-@@ -12363,7 +12495,6 @@ snapshots:
+-     dependencies:
+-       '@types/node': 24.10.0
+-       jest-regex-util: 30.0.1
+--    optional: true
+- 
+-   '@jest/reporters@29.7.0':
+-     dependencies:
+-@@ -12401,7 +12532,6 @@ snapshots:
+-   '@jest/schemas@30.0.5':
+-     dependencies:
+-       '@sinclair/typebox': 0.34.41
+--    optional: true
+- 
+-   '@jest/source-map@29.6.3':
+-     dependencies:
+-@@ -12482,7 +12612,6 @@ snapshots:
+-       '@types/node': 24.10.0
+-       '@types/yargs': 17.0.34
+-       chalk: 4.1.2
+--    optional: true
+- 
+-   '@jridgewell/gen-mapping@0.3.13':
+-     dependencies:
+-@@ -13159,8 +13288,7 @@ snapshots:
+- 
+-   '@sinclair/typebox@0.27.8': {}
+- 
+--  '@sinclair/typebox@0.34.41':
+--    optional: true
+-+  '@sinclair/typebox@0.34.41': {}
+- 
+-   '@sinonjs/commons@3.0.1':
+-     dependencies:
+-@@ -13170,6 +13298,10 @@ snapshots:
+-     dependencies:
+-       '@sinonjs/commons': 3.0.1
+- 
+-+  '@sinonjs/fake-timers@13.0.5':
+-+    dependencies:
+-+      '@sinonjs/commons': 3.0.1
+-+
+-   '@smithy/abort-controller@4.2.5':
+-     dependencies:
+-       '@smithy/types': 4.9.0
+-@@ -13591,6 +13723,36 @@ snapshots:
+-       - '@types/react'
+-       - '@types/react-dom'
+- 
+-+  '@testing-library/dom@10.4.1':
+-+    dependencies:
+-+      '@babel/code-frame': 7.27.1
+-+      '@babel/runtime': 7.28.4
+-+      '@types/aria-query': 5.0.4
+-+      aria-query: 5.3.0
+-+      dom-accessibility-api: 0.5.16
+-+      lz-string: 1.5.0
+-+      picocolors: 1.1.1
+-+      pretty-format: 27.5.1
+-+
+-+  '@testing-library/jest-dom@6.9.1':
+-+    dependencies:
+-+      '@adobe/css-tools': 4.4.4
+-+      aria-query: 5.3.2
+-+      css.escape: 1.5.1
+-+      dom-accessibility-api: 0.6.3
+-+      picocolors: 1.1.1
+-+      redent: 3.0.0
+-+
+-+  '@testing-library/react@16.3.0(@testing-library/dom@10.4.1)(@types/react-dom@18.3.7(@types/react@18.3.24))(@types/react@18.3.24)(react-dom@18.2.0(react@18.2.0))(react@18.2.0)':
+-+    dependencies:
+-+      '@babel/runtime': 7.28.4
+-+      '@testing-library/dom': 10.4.1
+-+      react: 18.2.0
+-+      react-dom: 18.2.0(react@18.2.0)
+-+    optionalDependencies:
+-+      '@types/react': 18.3.24
+-+      '@types/react-dom': 18.3.7(@types/react@18.3.24)
+-+
+-   '@tma.js/bridge@2.1.3(typescript@5.9.3)':
+-     dependencies:
+-       '@tma.js/signals': 1.0.1
+-@@ -15604,6 +15766,8 @@ snapshots:
+- 
+-   '@twa-dev/types@7.10.0': {}
+- 
+-+  '@types/aria-query@5.0.4': {}
+-+
+-   '@types/babel__core@7.20.5':
+-     dependencies:
+-       '@babel/parser': 7.28.4
+-@@ -15628,7 +15792,7 @@ snapshots:
+-   '@types/body-parser@1.19.6':
+-     dependencies:
+-       '@types/connect': 3.4.38
+--      '@types/node': 20.19.24
+-+      '@types/node': 24.10.0
+- 
+-   '@types/chai@5.2.3':
+-     dependencies:
+-@@ -15652,7 +15816,7 @@ snapshots:
+- 
+-   '@types/connect@3.4.38':
+-     dependencies:
+--      '@types/node': 20.19.24
+-+      '@types/node': 24.10.0
+- 
+-   '@types/cookie-parser@1.4.10(@types/express@4.17.25)':
+-     dependencies:
+-@@ -15679,7 +15843,7 @@ snapshots:
+- 
+-   '@types/express-serve-static-core@4.19.7':
+-     dependencies:
+--      '@types/node': 20.19.24
+-+      '@types/node': 24.10.0
+-       '@types/qs': 6.14.0
+-       '@types/range-parser': 1.2.7
+-       '@types/send': 1.2.1
+-@@ -15742,6 +15906,12 @@ snapshots:
+-       expect: 29.7.0
+-       pretty-format: 29.7.0
+- 
+-+  '@types/jsdom@21.1.7':
+-+    dependencies:
+-+      '@types/node': 24.10.0
+-+      '@types/tough-cookie': 4.0.5
+-+      parse5: 7.3.0
+-+
+-   '@types/json-schema@7.0.15': {}
+- 
+-   '@types/jsonwebtoken@9.0.10':
+-@@ -15809,7 +15979,7 @@ snapshots:
+- 
+-   '@types/pdfkit@0.17.3':
+-     dependencies:
+--      '@types/node': 20.19.24
+-+      '@types/node': 24.10.0
+- 
+-   '@types/pdfmake@0.2.12':
+-     dependencies:
+-@@ -15877,22 +16047,22 @@ snapshots:
+-   '@types/send@0.17.6':
+-     dependencies:
+-       '@types/mime': 1.3.5
+--      '@types/node': 20.19.24
+-+      '@types/node': 24.10.0
+- 
+-   '@types/send@1.2.1':
+-     dependencies:
+--      '@types/node': 20.19.24
+-+      '@types/node': 24.10.0
+- 
+-   '@types/serve-static@1.15.10':
+-     dependencies:
+-       '@types/http-errors': 2.0.5
+--      '@types/node': 20.19.24
+-+      '@types/node': 24.10.0
+-       '@types/send': 0.17.6
+- 
+-   '@types/serve-static@2.2.0':
+-     dependencies:
+-       '@types/http-errors': 2.0.5
+--      '@types/node': 20.19.24
+-+      '@types/node': 24.10.0
+- 
+-   '@types/shortid@0.0.29': {}
+- 
+-@@ -15909,6 +16079,8 @@ snapshots:
+-       '@types/express': 4.17.25
+-       '@types/serve-static': 2.2.0
+- 
+-+  '@types/tough-cookie@4.0.5': {}
+-+
+-   '@types/trusted-types@2.0.7':
+-     optional: true
+- 
+-@@ -16327,6 +16499,10 @@ snapshots:
+-     dependencies:
+-       tslib: 2.8.1
+- 
+-+  aria-query@5.3.0:
+-+    dependencies:
+-+      dequal: 2.0.3
+-+
+-   aria-query@5.3.2: {}
+- 
+-   arr-union@3.1.0: {}
+-@@ -16790,7 +16966,7 @@ snapshots:
+- 
+-   canvg@3.0.11:
+-     dependencies:
+--      '@babel/runtime': 7.28.3
+-+      '@babel/runtime': 7.28.4
+-       '@types/raf': 3.4.3
+-       core-js: 3.45.1
+-       raf: 3.4.1
+-@@ -16912,8 +17088,7 @@ snapshots:
+- 
+-   ci-info@3.9.0: {}
+- 
+--  ci-info@4.3.1:
+--    optional: true
+-+  ci-info@4.3.1: {}
+- 
+-   cjs-module-lexer@1.4.3: {}
+- 
+-@@ -17260,6 +17435,8 @@ snapshots:
+- 
+-   css-what@6.2.2: {}
+- 
+-+  css.escape@1.5.1: {}
+-+
+-   cssesc@3.0.0: {}
+- 
+-   csso@5.0.5:
+-@@ -17270,7 +17447,6 @@ snapshots:
+-     dependencies:
+-       '@asamuzakjp/css-color': 3.2.0
+-       rrweb-cssom: 0.8.0
+--    optional: true
+- 
+-   csstype@2.6.21: {}
+- 
+-@@ -17300,7 +17476,6 @@ snapshots:
+-     dependencies:
+-       whatwg-mimetype: 4.0.0
+-       whatwg-url: 14.2.0
+--    optional: true
+- 
+-   data-view-buffer@1.0.2:
+-     dependencies:
+-@@ -17353,8 +17528,7 @@ snapshots:
+- 
+-   decamelize@1.2.0: {}
+- 
+--  decimal.js@10.6.0:
+--    optional: true
+-+  decimal.js@10.6.0: {}
+- 
+-   decode-named-character-reference@1.2.0:
+-     dependencies:
+-@@ -17442,6 +17616,10 @@ snapshots:
+-     dependencies:
+-       esutils: 2.0.3
+- 
+-+  dom-accessibility-api@0.5.16: {}
+-+
+-+  dom-accessibility-api@0.6.3: {}
+-+
+-   dom-helpers@5.2.1:
+-     dependencies:
+-       '@babel/runtime': 7.28.4
+-@@ -18463,7 +18641,6 @@ snapshots:
+-   html-encoding-sniffer@4.0.0:
+-     dependencies:
+-       whatwg-encoding: 3.1.1
+--    optional: true
+- 
+-   html-escaper@2.0.2: {}
+- 
+-@@ -18708,8 +18885,7 @@ snapshots:
+-     dependencies:
+-       isobject: 3.0.1
+- 
+--  is-potential-custom-element-name@1.0.1:
+--    optional: true
+-+  is-potential-custom-element-name@1.0.1: {}
+- 
+-   is-regex@1.2.1:
+-     dependencies:
+-@@ -18914,6 +19090,18 @@ snapshots:
+-       jest-util: 29.7.0
+-       pretty-format: 29.7.0
+- 
+-+  jest-environment-jsdom@30.2.0:
+-+    dependencies:
+-+      '@jest/environment': 30.2.0
+-+      '@jest/environment-jsdom-abstract': 30.2.0(jsdom@26.1.0)
+-+      '@types/jsdom': 21.1.7
+-+      '@types/node': 24.10.0
+-+      jsdom: 26.1.0
+-+    transitivePeerDependencies:
+-+      - bufferutil
+-+      - supports-color
+-+      - utf-8-validate
+-+
+-   jest-environment-node@29.7.0:
+-     dependencies:
+-       '@jest/environment': 29.7.0
+-@@ -18981,20 +19169,37 @@ snapshots:
+-       slash: 3.0.0
+-       stack-utils: 2.0.6
+- 
+-+  jest-message-util@30.2.0:
+-+    dependencies:
+-+      '@babel/code-frame': 7.27.1
+-+      '@jest/types': 30.2.0
+-+      '@types/stack-utils': 2.0.3
+-+      chalk: 4.1.2
+-+      graceful-fs: 4.2.11
+-+      micromatch: 4.0.8
+-+      pretty-format: 30.2.0
+-+      slash: 3.0.0
+-+      stack-utils: 2.0.6
+-+
+-   jest-mock@29.7.0:
+-     dependencies:
+-       '@jest/types': 29.6.3
+-       '@types/node': 24.10.0
+-       jest-util: 29.7.0
+- 
+-+  jest-mock@30.2.0:
+-+    dependencies:
+-+      '@jest/types': 30.2.0
+-+      '@types/node': 24.10.0
+-+      jest-util: 30.2.0
+-+
+-   jest-pnp-resolver@1.2.3(jest-resolve@29.7.0):
+-     optionalDependencies:
+-       jest-resolve: 29.7.0
+- 
+-   jest-regex-util@29.6.3: {}
+- 
+--  jest-regex-util@30.0.1:
+--    optional: true
+-+  jest-regex-util@30.0.1: {}
+- 
+-   jest-resolve-dependencies@29.7.0:
+-     dependencies:
+-@@ -19110,7 +19315,6 @@ snapshots:
+-       ci-info: 4.3.1
+-       graceful-fs: 4.2.11
+-       picomatch: 4.0.3
+--    optional: true
+- 
+-   jest-validate@29.7.0:
+-     dependencies:
+-@@ -19212,7 +19416,6 @@ snapshots:
+-       - bufferutil
+-       - supports-color
+-       - utf-8-validate
+--    optional: true
+- 
+-   jsesc@3.0.2: {}
+- 
+-@@ -19677,6 +19880,8 @@ snapshots:
+-     dependencies:
+-       tsscmp: 1.0.6
+- 
+-+  lz-string@1.5.0: {}
+-+
+-   magic-string@0.30.18:
+-     dependencies:
+-       '@jridgewell/sourcemap-codec': 1.5.5
+-@@ -20422,8 +20627,7 @@ snapshots:
+-     dependencies:
+-       boolbase: 1.0.0
+- 
+--  nwsapi@2.2.22:
+--    optional: true
+-+  nwsapi@2.2.22: {}
+- 
+-   oauth-sign@0.9.0: {}
+- 
+-@@ -20814,12 +21018,24 @@ snapshots:
+- 
+-   prettier@3.6.2: {}
+- 
+-+  pretty-format@27.5.1:
+-+    dependencies:
+-+      ansi-regex: 5.0.1
+-+      ansi-styles: 5.2.0
+-+      react-is: 18.3.1
+-+
+-   pretty-format@29.7.0:
+-     dependencies:
+-       '@jest/schemas': 29.6.3
+-       ansi-styles: 5.2.0
+-       react-is: 18.3.1
+- 
+-+  pretty-format@30.2.0:
+-+    dependencies:
+-+      '@jest/schemas': 30.0.5
+-+      ansi-styles: 5.2.0
+-+      react-is: 18.3.1
+-+
+-   proc-log@5.0.0: {}
+- 
+-   process-nextick-args@2.0.1: {}
+-@@ -21426,8 +21642,7 @@ snapshots:
+-       '@rollup/rollup-win32-x64-msvc': 4.47.1
+-       fsevents: 2.3.3
+- 
+--  rrweb-cssom@0.8.0:
+--    optional: true
+-+  rrweb-cssom@0.8.0: {}
+- 
+-   run-parallel@1.2.0:
+-     dependencies:
+-@@ -21481,7 +21696,6 @@ snapshots:
+-   saxes@6.0.0:
+-     dependencies:
+-       xmlchars: 2.2.0
+--    optional: true
+- 
+-   scheduler@0.23.2:
+-     dependencies:
+-@@ -21980,8 +22194,7 @@ snapshots:
+- 
+-   symbol-observable@1.2.0: {}
+- 
+--  symbol-tree@3.2.4:
+--    optional: true
+-+  symbol-tree@3.2.4: {}
+- 
+-   systeminformation@5.27.11:
+-     optional: true
+-@@ -22099,13 +22312,11 @@ snapshots:
+- 
+-   tinyrainbow@3.0.3: {}
+- 
+--  tldts-core@6.1.86:
+--    optional: true
+-+  tldts-core@6.1.86: {}
+- 
+-   tldts@6.1.86:
+-     dependencies:
+-       tldts-core: 6.1.86
+--    optional: true
+- 
+-   tmp@0.2.5: {}
+- 
+-@@ -22128,7 +22339,6 @@ snapshots:
+-   tough-cookie@5.1.2:
+-     dependencies:
+-       tldts: 6.1.86
+--    optional: true
+- 
+-   tr46@0.0.3: {}
+- 
+-@@ -22638,7 +22848,6 @@ snapshots:
+-   w3c-xmlserializer@5.0.0:
+-     dependencies:
+-       xml-name-validator: 5.0.0
+--    optional: true
+- 
+-   walker@1.0.8:
+-     dependencies:
+-@@ -22759,11 +22968,9 @@ snapshots:
+- 
+-   ws@7.5.10: {}
+- 
+--  ws@8.18.3:
+--    optional: true
+-+  ws@8.18.3: {}
+- 
+--  xml-name-validator@5.0.0:
+--    optional: true
+-+  xml-name-validator@5.0.0: {}
+- 
+-   xmlchars@2.2.0: {}
+- 
+diff --git a/tests/setupNodeEnv.ts b/tests/setupNodeEnv.ts
+index 4402422..010a278 100644
+--- a/tests/setupNodeEnv.ts
++++ b/tests/setupNodeEnv.ts
+@@ -1 +1 @@
+-process.env.NODE_ENV = process.env.NODE_ENV || 'test';
++process.env.NODE_ENV = 'development';

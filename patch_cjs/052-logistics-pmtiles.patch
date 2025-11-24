@@ -1,0 +1,82 @@
+diff --git a/apps/web/src/mapLibrary.ts b/apps/web/src/mapLibrary.ts
+index 9d5dc34..6b3a3f0 100644
+--- a/apps/web/src/mapLibrary.ts
++++ b/apps/web/src/mapLibrary.ts
+@@ -113,7 +113,7 @@ const registerPmtilesProtocol = async (): Promise<boolean> => {
+       return true;
+     } else {
+       console.warn(
+-        'maplibregl.addProtocol is not available; pmtiles protocol not registered',
++        'Метод maplibregl.addProtocol недоступен, протокол PMTiles не будет зарегистрирован.',
+       );
+       return false;
+     }
+diff --git a/apps/web/src/pages/Logistics.tsx b/apps/web/src/pages/Logistics.tsx
+index 9c80bc9..98d60ad 100644
+--- a/apps/web/src/pages/Logistics.tsx
++++ b/apps/web/src/pages/Logistics.tsx
+@@ -37,6 +37,7 @@ import {
+   MAP_DEFAULT_ZOOM,
+   MAP_MAX_BOUNDS,
+   MAP_STYLE,
++  MAP_STYLE_DEFAULT_URL,
+   MAP_STYLE_MODE,
+   MAP_STYLE_IS_DEFAULT,
+   MAP_ADDRESSES_PMTILES_URL,
+@@ -2517,15 +2518,33 @@ export default function LogisticsPage() {
+     let ensureAddressLayer: (() => Promise<void>) | null = null;
+ 
+     const initMap = async () => {
+-      const pmtilesReady = await registerPmtilesProtocol();
+-      if (MAP_STYLE_MODE === 'pmtiles' && !pmtilesReady) {
+-        console.warn(
+-          'PMTiles протокол не зарегистрирован, возможны проблемы с загрузкой векторных слоёв.',
+-        );
++      let pmtilesReady = false;
++      if (MAP_STYLE_MODE === 'pmtiles') {
++        try {
++          pmtilesReady = await registerPmtilesProtocol();
++          if (pmtilesReady) {
++            console.info(
++              'Протокол PMTiles зарегистрирован, инициализируем карту с векторным стилем.',
++            );
++          } else {
++            console.warn(
++              'Протокол PMTiles не зарегистрирован, будет использован запасной стиль карты.',
++            );
++          }
++        } catch (error) {
++          console.error('Ошибка регистрации протокола PMTiles.', error);
++        }
++        if (cancelled) {
++          return;
++        }
+       }
+       if (cancelled || mapRef.current) {
+         return;
+       }
++      const styleForMap =
++        MAP_STYLE_MODE === 'pmtiles' && !pmtilesReady
++          ? MAP_STYLE_DEFAULT_URL
++          : MAP_STYLE;
+       const container = mapContainerRef.current;
+       if (!container) {
+         return;
+@@ -2533,7 +2552,7 @@ export default function LogisticsPage() {
+       const initialMapState = persistedMapStateRef.current;
+       const mapInstance = new mapLibrary.Map({
+         container,
+-        style: MAP_STYLE,
++        style: styleForMap,
+         center: initialMapState?.center ?? MAP_CENTER_LNG_LAT,
+         zoom: initialMapState?.zoom ?? MAP_DEFAULT_ZOOM,
+         pitch: initialMapState?.pitch ?? 0,
+@@ -2545,7 +2564,7 @@ export default function LogisticsPage() {
+       map = mapInstance;
+       mapRef.current = mapInstance;
+       detachStyleFallback = attachMapStyleFallback(mapInstance, {
+-        initialStyle: MAP_STYLE,
++        initialStyle: styleForMap,
+       });
+       if (typeof mapInstance.dragRotate?.disable === 'function') {
+         mapInstance.dragRotate.disable();

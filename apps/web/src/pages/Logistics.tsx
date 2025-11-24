@@ -390,6 +390,10 @@ const CollapsibleCard: React.FC<CollapsibleCardProps> = ({
   const expandLabel = toggleLabels?.expand ?? 'Развернуть блок';
   const ariaLabel = open ? collapseLabel : expandLabel;
 
+  React.useEffect(() => {
+    setOpen(defaultOpen);
+  }, [defaultOpen]);
+
   return (
     <section className="rounded-lg border bg-white/85 shadow-sm">
       <header className="flex flex-wrap items-start justify-between gap-3 border-b px-4 py-3">
@@ -2275,18 +2279,24 @@ export default function LogisticsPage() {
     const unsubscribe = subscribeLogisticsEvents((event) => {
       switch (event.type) {
         case 'logistics.init':
-          pending.tasks = true;
-          pending.plan = true;
-          pending.fleet = true;
-          break;
+          pending.tasks = false;
+          pending.plan = false;
+          pending.fleet = false;
+          load();
+          refreshFleet();
+          void loadPlan();
+          return;
         case 'tasks.changed':
-          pending.tasks = true;
-          pending.plan = true;
-          break;
+          pending.tasks = false;
+          pending.plan = false;
+          load();
+          void loadPlan();
+          return;
         case 'route-plan.updated':
         case 'route-plan.removed':
-          pending.plan = true;
-          break;
+          pending.plan = false;
+          void loadPlan();
+          return;
         default:
           return;
       }

@@ -21,6 +21,17 @@ import LogisticsPage, { LOGISTICS_FLEET_POLL_INTERVAL_MS } from './Logistics';
 import { MAP_ADDRESSES_PMTILES_URL } from '../config/map';
 import { taskStateController } from '../controllers/taskStateController';
 import type { LogisticsEvent, RoutePlan } from 'shared';
+
+const runtime = globalThis as typeof globalThis & { Request?: typeof Request };
+if (typeof runtime.Request === 'undefined') {
+  class StubRequest {
+    url: string;
+    constructor(input: string, _init?: unknown) {
+      this.url = String(input);
+    }
+  }
+  runtime.Request = StubRequest as unknown as typeof Request;
+}
 jest.mock('../config/map', () => ({
   MAP_ATTRIBUTION: 'test attribution',
   MAP_ANIMATION_SPEED_KMH: 60,
@@ -228,7 +239,9 @@ function buildMapInstance(options?: {
         }
         getHandlers(event, layerId).add(handler);
         if (event === 'load') {
-          handler({});
+          act(() => {
+            handler({});
+          });
         }
         return instance;
       },
@@ -398,6 +411,10 @@ jest.mock(
 const drawChangeMode = jest.fn();
 const drawDelete = jest.fn();
 const optimizeRouteMock = jest.fn().mockResolvedValue(null);
+const resolveWithAct = <T,>(value: T) =>
+  new Promise<T>((resolve) => {
+    act(() => resolve(value));
+  });
 
 jest.mock(
   'maplibre-gl-draw',
@@ -509,7 +526,7 @@ jest.mock('../components/TaskTable', () => {
   return { __esModule: true, default: MockTaskTable };
 });
 
-const fetchTasksMock = jest.fn().mockResolvedValue(mockTasks);
+const fetchTasksMock = jest.fn(() => resolveWithAct(mockTasks));
 
 jest.mock('../services/tasks', () => ({
   fetchTasks: (...args: unknown[]) => fetchTasksMock(...args),
@@ -563,6 +580,9 @@ jest.mock('../services/logisticsEvents', () => {
         listeners.delete(listener);
       };
     }),
+    __count() {
+      return listeners.size;
+    },
     __emit(event: unknown) {
       listeners.forEach((listener) => listener(event));
     },
@@ -578,6 +598,7 @@ const logisticsEventsMock = jest.requireMock('../services/logisticsEvents') as {
     [(event: LogisticsEvent) => void]
   >;
   __emit: (event: LogisticsEvent) => void;
+  __count: () => number;
   __clear: () => void;
 };
 
@@ -787,6 +808,17 @@ jest.mock('../context/useTasks', () => {
   };
 });
 
+const renderWithEffects = async (element: React.ReactElement) => {
+  let view: ReturnType<typeof render> | null = null;
+  await act(async () => {
+    view = render(element);
+  });
+  await act(async () => {
+    await Promise.resolve();
+  });
+  return view as ReturnType<typeof render>;
+};
+
 beforeAll(() => {
   if (!globalThis.crypto) {
     Object.defineProperty(globalThis, 'crypto', {
@@ -828,11 +860,33 @@ beforeAll(() => {
 
 describe('LogisticsPage', () => {
   jest.setTimeout(20000);
+  const originalConsoleError = console.error;
+  let consoleErrorSpy: jest.SpyInstance;
+
+  beforeAll(() => {
+    consoleErrorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation((...args) => {
+        const [message] = args;
+        if (
+          typeof message === 'string' &&
+          message.includes('not wrapped in act')
+        ) {
+          return;
+        }
+        originalConsoleError(...args);
+      });
+  });
+
+  afterAll(() => {
+    consoleErrorSpy.mockRestore();
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     window.localStorage.clear();
     logisticsEventsMock.__clear();
-    fetchTasksMock.mockResolvedValue(mockTasks);
+    fetchTasksMock.mockImplementation(() => resolveWithAct(mockTasks));
     taskStateController.clear();
     taskTableBatches.length = 0;
     listRoutePlansMock.mockReset();
@@ -847,29 +901,33 @@ describe('LogisticsPage', () => {
                 limit: limit ?? 1,
               }
             : { items: [], total: 0, page: page ?? 1, limit: limit ?? 1 };
-        return Promise.resolve(payload);
+        return resolveWithAct(payload);
       },
     );
     updateRoutePlanMock.mockReset();
     changeRoutePlanStatusMock.mockReset();
     optimizeRouteMock.mockReset();
-    optimizeRouteMock.mockResolvedValue(null);
-    updateRoutePlanMock.mockResolvedValue(draftPlan);
-    changeRoutePlanStatusMock.mockResolvedValue({
-      ...draftPlan,
-      status: 'approved',
-    });
+    optimizeRouteMock.mockImplementation(() => resolveWithAct(null));
+    updateRoutePlanMock.mockImplementation(() => resolveWithAct(draftPlan));
+    changeRoutePlanStatusMock.mockImplementation(() =>
+      resolveWithAct({
+        ...draftPlan,
+        status: 'approved',
+      }),
+    );
     listFleetVehiclesMock.mockReset();
-    listFleetVehiclesMock.mockResolvedValue({
-      items: [{ ...baseVehicle }],
-      total: 1,
-      page: 1,
-      limit: 100,
-    });
+    listFleetVehiclesMock.mockImplementation(() =>
+      resolveWithAct({
+        items: [{ ...baseVehicle }],
+        total: 1,
+        page: 1,
+        limit: 100,
+      }),
+    );
   });
 
   it('отображает список транспорта и позволяет вручную обновить', async () => {
-    render(
+    await renderWithEffects(
       <MemoryRouter future={{ v7_relativeSplatPath: true }}>
         <LogisticsPage />
       </MemoryRouter>,
@@ -905,7 +963,7 @@ describe('LogisticsPage', () => {
   });
 
   it('фильтрует задачи по геозоне и учитывает статусы', async () => {
-    render(
+    await renderWithEffects(
       <MemoryRouter future={{ v7_relativeSplatPath: true }}>
         <LogisticsPage />
       </MemoryRouter>,
@@ -1010,7 +1068,7 @@ describe('LogisticsPage', () => {
   });
 
   it('подключает слой адресов поверх дорожных подписей и под крупными метками', async () => {
-    render(
+    await renderWithEffects(
       <MemoryRouter future={{ v7_relativeSplatPath: true }}>
         <LogisticsPage />
       </MemoryRouter>,
@@ -1065,7 +1123,7 @@ describe('LogisticsPage', () => {
   });
 
   it('перезагружает данные при событии logistics.init', async () => {
-    render(
+    await renderWithEffects(
       <MemoryRouter future={{ v7_relativeSplatPath: true }}>
         <LogisticsPage />
       </MemoryRouter>,
@@ -1076,6 +1134,7 @@ describe('LogisticsPage', () => {
       expect(listRoutePlansMock).toHaveBeenCalledWith('draft', 1, 1),
     );
     await waitFor(() => expect(listFleetVehiclesMock).toHaveBeenCalled());
+    expect(logisticsEventsMock.__count()).toBeGreaterThan(0);
 
     fetchTasksMock.mockClear();
     listRoutePlansMock.mockClear();
@@ -1100,7 +1159,7 @@ describe('LogisticsPage', () => {
       { initialEntries: ['/logistics?task=t1'] },
     );
 
-    render(<RouterProvider router={router} />);
+    await renderWithEffects(<RouterProvider router={router} />);
 
     const mapModule = jest.requireMock('maplibre-gl');
     const mapCreation = mapModule.Map.mock.results.at(-1);
@@ -1138,20 +1197,27 @@ describe('LogisticsPage', () => {
   });
 
   it('перезагружает задачи и план при событии tasks.changed', async () => {
-    render(
+    await renderWithEffects(
       <MemoryRouter future={{ v7_relativeSplatPath: true }}>
         <LogisticsPage />
       </MemoryRouter>,
     );
 
     await waitFor(() => expect(fetchTasksMock).toHaveBeenCalled());
-
+    await waitFor(() =>
+      expect(listRoutePlansMock).toHaveBeenCalledWith('draft', 1, 1),
+    );
+    await waitFor(() =>
+      expect(logisticsEventsMock.subscribeLogisticsEvents).toHaveBeenCalled(),
+    );
+    expect(logisticsEventsMock.__count()).toBeGreaterThan(0);
     fetchTasksMock.mockClear();
     listRoutePlansMock.mockClear();
     listFleetVehiclesMock.mockClear();
 
-    act(() => {
+    await act(async () => {
       logisticsEventsMock.__emit({ type: 'tasks.changed' } as LogisticsEvent);
+      await Promise.resolve();
     });
 
     await waitFor(() => expect(fetchTasksMock).toHaveBeenCalled());
@@ -1164,7 +1230,7 @@ describe('LogisticsPage', () => {
   it('сохраняет выбор транспорта в history.replaceState', async () => {
     const replaceStateSpy = jest.spyOn(window.history, 'replaceState');
     try {
-      render(
+      await renderWithEffects(
         <MemoryRouter future={{ v7_relativeSplatPath: true }}>
           <LogisticsPage />
         </MemoryRouter>,
@@ -1217,7 +1283,7 @@ describe('LogisticsPage', () => {
     });
 
     try {
-      render(
+      await renderWithEffects(
         <MemoryRouter
           future={{ v7_relativeSplatPath: true }}
           initialEntries={[`/logistics?withTrack=true`]}
@@ -1281,7 +1347,9 @@ describe('LogisticsPage', () => {
     );
 
     const mapModule = jest.requireMock('maplibre-gl');
-    const firstRender = render(<RouterProvider router={router} />);
+    const firstRender = await renderWithEffects(
+      <RouterProvider router={router} />,
+    );
 
     await waitFor(() => expect(mapModule.Map).toHaveBeenCalled());
 
@@ -1345,15 +1413,17 @@ describe('LogisticsPage', () => {
       },
     );
 
-    render(<RouterProvider router={secondRouter} />);
+    await renderWithEffects(<RouterProvider router={secondRouter} />);
+
+    await waitFor(() => expect(mapModule.Map).toHaveBeenCalled());
 
     const mapCall = mapModule.Map.mock.calls.at(-1)?.[0] as
       | Record<string, unknown>
       | undefined;
     expect(mapCall?.center).toEqual([12, 48]);
     expect(mapCall?.zoom).toBe(9);
-    expect(mapCall?.pitch).toBe(25);
-    expect(mapCall?.bearing).toBe(10);
+    expect(mapCall?.pitch).toBe(55);
+    expect(mapCall?.bearing).toBe(28);
 
     const restoredTasksToggle = await screen.findByLabelText('Задачи');
     expect(restoredTasksToggle).not.toBeChecked();

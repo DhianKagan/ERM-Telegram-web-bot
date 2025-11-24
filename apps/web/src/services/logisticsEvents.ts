@@ -101,6 +101,7 @@ export function subscribeLogisticsEvents(
   let source: EventSource | null = null;
   let closed = false;
   let fallbackTimer: ReturnType<typeof setInterval> | null = null;
+  let errorLogged = false;
 
   const stopFallback = () => {
     if (fallbackTimer !== null) {
@@ -117,7 +118,10 @@ export function subscribeLogisticsEvents(
     try {
       listener(syntheticEvent);
     } catch (error) {
-      console.error('Не удалось обработать синтетическое событие логистики', error);
+      console.error(
+        'Не удалось обработать синтетическое событие логистики',
+        error,
+      );
     }
   };
 
@@ -153,6 +157,14 @@ export function subscribeLogisticsEvents(
   };
 
   const handleError = (event: Event) => {
+    if (!errorLogged) {
+      errorLogged = true;
+      const readyState = (source as EventSource | null)?.readyState;
+      console.warn('SSE логистики недоступен, включён fallback.', {
+        readyState,
+        eventType: event?.type,
+      });
+    }
     startFallback();
     if (onError) {
       onError(event);

@@ -49,9 +49,9 @@ let pmtilesProtocolRegistered = false;
  * Регистрация протокола pmtiles — ДИНАМИЧЕСКИ и ТОЛЬКО в браузере.
  * Это предотвращает попытки бандлера/SSR включать node-only зависимости.
  */
-const registerPmtilesProtocol = async (): Promise<void> => {
-  if (pmtilesProtocolRegistered) return;
-  if (typeof window === 'undefined') return; // только в браузере
+const registerPmtilesProtocol = async (): Promise<boolean> => {
+  if (pmtilesProtocolRegistered) return true;
+  if (typeof window === 'undefined') return false; // только в браузере
 
   try {
     // Динамически загружаем пакет pmtiles
@@ -91,7 +91,7 @@ const registerPmtilesProtocol = async (): Promise<void> => {
         'pmtiles Protocol constructor not found in dynamic import',
         mod,
       );
-      return;
+      return false;
     }
 
     const protocol = new ProtocolCtor();
@@ -109,16 +109,20 @@ const registerPmtilesProtocol = async (): Promise<void> => {
         protocol.tile(request),
       );
       pmtilesProtocolRegistered = true;
+      console.info('Протокол pmtiles зарегистрирован успешно');
+      return true;
     } else {
       console.warn(
         'maplibregl.addProtocol is not available; pmtiles protocol not registered',
       );
+      return false;
     }
   } catch (error) {
     console.error(
       'Не удалось зарегистрировать протокол PMTiles (динамический импорт)',
       error,
     );
+    return false;
   }
 };
 
@@ -186,7 +190,11 @@ export const attachMapStyleFallback = (
     fallbackApplied = true;
     logger.warn(
       'Не удалось загрузить кастомный стиль карты, используем стиль по умолчанию.',
-      details,
+      {
+        details,
+        initialStyle,
+        fallbackUrl,
+      },
     );
     try {
       // force full replacement без diff — чтобы избежать проблем с несовместимыми стилями
@@ -212,6 +220,11 @@ export const attachMapStyleFallback = (
     }
     const status = typeof error.status === 'number' ? error.status : undefined;
     const message = typeof error.message === 'string' ? error.message : '';
+    logger.warn('Ошибка загрузки стиля карты', {
+      url,
+      status,
+      message,
+    });
     const isStyleFailure =
       (message && message.toLowerCase().includes('style')) ||
       !url ||

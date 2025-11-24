@@ -19,6 +19,7 @@ import mapLibrary, {
   attachMapStyleFallback,
   registerPmtilesProtocol,
 } from '../utils/mapLibrary';
+import { detectPrimaryVectorSourceId } from '../utils/vectorSource';
 import type * as GeoJSON from 'geojson';
 import MapLibreDraw from 'maplibre-gl-draw';
 import 'maplibre-gl-draw/dist/mapbox-gl-draw.css';
@@ -2513,10 +2514,14 @@ export default function LogisticsPage() {
     let detachStyleFallback: () => void = () => {};
     let ensureBuildingsLayer: (() => void) | null = null;
     let handleLoad: (() => void) | null = null;
+    let ensureAddressLayer: (() => Promise<void>) | null = null;
 
     const initMap = async () => {
-      if (MAP_STYLE_MODE === 'pmtiles') {
-        await registerPmtilesProtocol();
+      const pmtilesReady = await registerPmtilesProtocol();
+      if (MAP_STYLE_MODE === 'pmtiles' && !pmtilesReady) {
+        console.warn(
+          'PMTiles протокол не зарегистрирован, возможны проблемы с загрузкой векторных слоёв.',
+        );
       }
       if (cancelled || mapRef.current) {
         return;
@@ -2574,46 +2579,73 @@ export default function LogisticsPage() {
         }
         insert3dBuildingsLayer(mapInstance);
       };
+      ensureAddressLayer = async () => {
+        if (isRasterFallback || !HAS_ADDRESS_VECTOR_SOURCE) {
+          return;
+        }
+        if (!ADDRESS_VECTOR_SOURCE_URL) {
+          console.warn(
+            'Адресные плитки не подключены: отсутствует URL источника (VITE_MAP_ADDRESSES_PMTILES_URL).',
+          );
+          return;
+        }
+        if (mapInstance.getSource(ADDRESS_SOURCE_ID)) {
+          return;
+        }
+        const requiresPmtiles =
+          ADDRESS_VECTOR_SOURCE_URL.startsWith('pmtiles://') ||
+          ADDRESS_VECTOR_SOURCE_URL.endsWith('.pmtiles');
+        if (requiresPmtiles) {
+          const registered = await registerPmtilesProtocol();
+          if (!registered) {
+            console.warn(
+              'Адресные плитки не подключены: протокол pmtiles недоступен, источник будет пропущен.',
+            );
+            return;
+          }
+        }
+        const primaryVectorSourceId = detectPrimaryVectorSourceId(mapInstance);
+        if (!primaryVectorSourceId) {
+          console.warn(
+            'Не удалось определить основной векторный источник стиля — адресные подписи будут пропущены.',
+          );
+        }
+        mapInstance.addSource(ADDRESS_SOURCE_ID, {
+          type: 'vector',
+          url: ADDRESS_VECTOR_SOURCE_URL,
+        });
+        const addressLayer: SymbolLayerSpecification = {
+          id: ADDRESS_LAYER_ID,
+          type: 'symbol',
+          source: ADDRESS_SOURCE_ID,
+          'source-layer': ADDRESS_VECTOR_SOURCE_LAYER,
+          minzoom: 17,
+          layout: {
+            'text-field': ['get', 'housenumber'],
+            'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+            'text-size': 13,
+            'text-letter-spacing': 0.02,
+            'text-allow-overlap': false,
+            'text-ignore-placement': false,
+            'text-padding': 2,
+          },
+          paint: {
+            'text-color': '#0f172a',
+            'text-halo-color': '#f8fafc',
+            'text-halo-width': 1.2,
+            'text-halo-blur': 0.6,
+          },
+        };
+        const beforeLayerId = findExistingLayerId(
+          mapInstance,
+          MAJOR_LABEL_LAYER_CANDIDATES,
+        );
+        mapInstance.addLayer(addressLayer, beforeLayerId);
+        ensureAddressesLayerOrder(mapInstance);
+      };
       handleLoad = () => {
         ensureBuildingsLayer?.();
-        if (
-          !isRasterFallback &&
-          HAS_ADDRESS_VECTOR_SOURCE &&
-          !mapInstance.getSource(ADDRESS_SOURCE_ID)
-        ) {
-          mapInstance.addSource(ADDRESS_SOURCE_ID, {
-            type: 'vector',
-            url: ADDRESS_VECTOR_SOURCE_URL,
-          });
-          const addressLayer: SymbolLayerSpecification = {
-            id: ADDRESS_LAYER_ID,
-            type: 'symbol',
-            source: ADDRESS_SOURCE_ID,
-            'source-layer': ADDRESS_VECTOR_SOURCE_LAYER,
-            minzoom: 17,
-            layout: {
-              'text-field': ['get', 'housenumber'],
-              'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
-              'text-size': 13,
-              'text-letter-spacing': 0.02,
-              'text-allow-overlap': false,
-              'text-ignore-placement': false,
-              'text-padding': 2,
-            },
-            paint: {
-              'text-color': '#0f172a',
-              'text-halo-color': '#f8fafc',
-              'text-halo-width': 1.2,
-              'text-halo-blur': 0.6,
-            },
-          };
-          const beforeLayerId = findExistingLayerId(
-            mapInstance,
-            MAJOR_LABEL_LAYER_CANDIDATES,
-          );
-          mapInstance.addLayer(addressLayer, beforeLayerId);
-          ensureAddressesLayerOrder(mapInstance);
-        }
+        void ensureAddressLayer?.();
         mapInstance.addSource(GEO_SOURCE_ID, {
           type: 'geojson',
           data: createEmptyCollection(),

@@ -988,6 +988,7 @@ export default function LogisticsPage() {
       persistedLayerVisibilityRef.current ?? DEFAULT_LAYER_VISIBILITY,
     );
   const [mapReady, setMapReady] = React.useState(false);
+  const [mobileView, setMobileView] = React.useState<'map' | 'list'>('map');
   const [hiddenTaskTypes, setHiddenTaskTypes] = React.useState<string[]>([]);
   const [hiddenRouteStatuses, setHiddenRouteStatuses] = React.useState<
     RouteStatusFilterKey[]
@@ -3813,7 +3814,30 @@ export default function LogisticsPage() {
               </div>
             )}
           </CollapsibleCard>
-          <section className="space-y-4 rounded-lg border bg-white/90 p-4 shadow-sm">
+          <div className="flex flex-wrap gap-2 sm:hidden">
+            <Button
+              type="button"
+              size="sm"
+              variant={mobileView === 'map' ? 'default' : 'outline'}
+              onClick={() => setMobileView('map')}
+              aria-pressed={mobileView === 'map'}
+            >
+              {t('logistics.mapMobileTab', { defaultValue: 'Карта' })}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={mobileView === 'list' ? 'default' : 'outline'}
+              onClick={() => setMobileView('list')}
+              aria-pressed={mobileView === 'list'}
+            >
+              {t('logistics.listMobileTab', { defaultValue: 'Список' })}
+            </Button>
+          </div>
+          <section
+            data-testid="logistics-map-panel"
+            className={`space-y-4 rounded-lg border bg-white/90 p-4 shadow-sm ${mobileView === 'map' ? '' : 'hidden sm:block'}`}
+          >
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div className="space-y-1">
                 <h3 className="text-lg font-semibold">
@@ -3832,7 +3856,7 @@ export default function LogisticsPage() {
             <div
               ref={mapContainerRef}
               id="logistics-map"
-              className={`relative block w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-50 shadow-inner min-h-[320px] md:min-h-[420px] lg:min-h-[520px] h-[58vh] max-h-[820px]`}
+              className={`relative block w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-50 shadow-inner min-h-[260px] sm:min-h-[340px] lg:min-h-[440px] h-[46vh] sm:h-[56vh] lg:h-[64vh] xl:h-[72vh]`}
             >
               {hasDialog ? (
                 <div
@@ -3945,23 +3969,28 @@ export default function LogisticsPage() {
               </div>
             ) : null}
           </section>
-          <CollapsibleCard
-            title={t('logistics.tasksHeading')}
-            description={t('logistics.tasksActiveOnly', {
-              defaultValue:
-                'Показываются только активные задачи без завершённых и отменённых статусов.',
-            })}
-            toggleLabels={collapseToggleLabels}
+          <div
+            className={mobileView === 'list' ? '' : 'hidden sm:block'}
+            data-testid="logistics-tasks-card"
           >
-            <TaskTable
-              tasks={displayedTasks}
-              onDataChange={(rows) => setSorted(rows as RouteTask[])}
-              onRowClick={openTask}
-              page={page}
-              pageCount={Math.max(1, Math.ceil(displayedTasks.length / 25))}
-              onPageChange={setPage}
-            />
-          </CollapsibleCard>
+            <CollapsibleCard
+              title={t('logistics.tasksHeading')}
+              description={t('logistics.tasksActiveOnly', {
+                defaultValue:
+                  'Показываются только активные задачи без завершённых и отменённых статусов.',
+              })}
+              toggleLabels={collapseToggleLabels}
+            >
+              <TaskTable
+                tasks={displayedTasks}
+                onDataChange={(rows) => setSorted(rows as RouteTask[])}
+                onRowClick={openTask}
+                page={page}
+                pageCount={Math.max(1, Math.ceil(displayedTasks.length / 25))}
+                onPageChange={setPage}
+              />
+            </CollapsibleCard>
+          </div>
         </div>
         <aside className="space-y-4">
           {role === 'admin' ? (

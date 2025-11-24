@@ -1432,4 +1432,39 @@ describe('LogisticsPage', () => {
     });
     expect(perspectiveButton).toHaveAttribute('aria-pressed', 'true');
   });
+
+  it('переключает карту и список на мобильной ширине и задаёт адаптивную высоту карты', async () => {
+    await renderWithEffects(
+      <MemoryRouter future={{ v7_relativeSplatPath: true }}>
+        <LogisticsPage />
+      </MemoryRouter>,
+    );
+
+    const mapContainer = await waitFor(() =>
+      document.getElementById('logistics-map'),
+    );
+
+    expect(mapContainer).toBeTruthy();
+    expect(mapContainer?.className).toContain('h-[46vh]');
+    expect(mapContainer?.className).toContain('sm:h-[56vh]');
+    expect(mapContainer?.className).toContain('xl:h-[72vh]');
+
+    const mapSection = screen.getByTestId('logistics-map-panel');
+    const tasksCard = screen.getByTestId('logistics-tasks-card');
+    const mapTab = screen.getByRole('button', { name: 'Карта' });
+    const listTab = screen.getByRole('button', { name: 'Список' });
+
+    expect(mapSection.className).not.toContain('hidden');
+    expect(tasksCard.className).toContain('hidden');
+
+    fireEvent.click(listTab);
+
+    expect(mapSection.className).toContain('hidden');
+    expect(tasksCard.className).not.toContain('hidden');
+
+    fireEvent.click(mapTab);
+
+    expect(mapSection.className).not.toContain('hidden');
+    expect(tasksCard.className).toContain('hidden');
+  });
 });

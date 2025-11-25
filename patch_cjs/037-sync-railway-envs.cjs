@@ -127,9 +127,7 @@ CSP_SCRIPT_SRC_ALLOWLIST=blob:
 CSP_STYLE_SRC_ALLOWLIST=
 CSP_REPORT_ONLY=true
 
-# Порты: оставляем пустыми, Railway подставляет RAILWAY_TCP_PORT автоматически
-PORT=
-HOST_PORT=
+# Railway подставляет порт автоматически, переменные PORT и HOST_PORT не задаём
 
 LHCI_GITHUB_APP_TOKEN=
 `
@@ -202,7 +200,7 @@ writeFile(
 
 ## Порты
 
-- Переменные PORT=3001 и HOST_PORT=3001, использовавшиеся ранее, конфликтуют с автоматической выдачей порта Railway. Оставьте их пустыми или удалите — сервер возьмёт значение из RAILWAY_TCP_PORT/PORT, что исключит 502 при деплое.
+- Переменные PORT и HOST_PORT очищены: Railway выдаёт порт автоматически через RAILWAY_TCP_PORT/PORT. После обновления переменных перезапустите сервис, чтобы конфигурация применилась.
 
 ## Дополнительные параметры
 
@@ -212,7 +210,8 @@ writeFile(
 ## Итог
 
 1. Очистите PORT и HOST_PORT в настройках Railway, чтобы использовался порт платформы.
-2. Оставьте текущую строку MONGO_DATABASE_URL с authSource=admin и внутренним хостом; при переносе в публичный прокси добавьте "directConnection=true".
-3. Убедитесь, что карта использует те же URL и allowlist (Protomaps, pmtiles), а секреты заданы в панели Railway.
+2. После очистки перезапустите сервис Railway, чтобы новый порт подтянулся из переменных платформы.
+3. Оставьте текущую строку MONGO_DATABASE_URL с authSource=admin и внутренним хостом; при переносе в публичный прокси добавьте "directConnection=true".
+4. Убедитесь, что карта использует те же URL и allowlist (Protomaps, pmtiles), а секреты заданы в панели Railway.
 `
 );

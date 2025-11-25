@@ -84,6 +84,50 @@ const FALLBACK_POLL_INTERVAL_MS = readPollingInterval();
 
 export type LogisticsEventListener = (event: LogisticsEvent) => void;
 
+type EventSourceWithStatus = EventSource & { status?: number };
+
+type ReadyStateInfo = {
+  code?: number;
+  label: 'connecting' | 'open' | 'closed' | 'unknown';
+};
+
+const resolveReadyState = (readyState: number | undefined): ReadyStateInfo => {
+  switch (readyState) {
+    case EventSource.CONNECTING:
+      return { code: readyState, label: 'connecting' };
+    case EventSource.OPEN:
+      return { code: readyState, label: 'open' };
+    case EventSource.CLOSED:
+      return { code: readyState, label: 'closed' };
+    default:
+      return { code: readyState, label: 'unknown' };
+  }
+};
+
+const extractReadyState = (candidate: unknown): ReadyStateInfo => {
+  if (
+    typeof candidate === 'object' &&
+    candidate !== null &&
+    'readyState' in candidate &&
+    typeof (candidate as { readyState: unknown }).readyState === 'number'
+  ) {
+    return resolveReadyState((candidate as { readyState: number }).readyState);
+  }
+  return resolveReadyState(undefined);
+};
+
+const extractStatus = (candidate: unknown): number | undefined => {
+  if (
+    typeof candidate === 'object' &&
+    candidate !== null &&
+    'status' in candidate &&
+    typeof (candidate as { status: unknown }).status === 'number'
+  ) {
+    return (candidate as { status: number }).status;
+  }
+  return undefined;
+};
+
 export function subscribeLogisticsEvents(
   listener: LogisticsEventListener,
   onError?: (event: Event) => void,
@@ -102,6 +146,7 @@ export function subscribeLogisticsEvents(
   let closed = false;
   let fallbackTimer: ReturnType<typeof setInterval> | null = null;
   let errorLogged = false;
+  let connectionTimeout: ReturnType<typeof setTimeout> | null = null;
 
   const stopFallback = () => {
     if (fallbackTimer !== null) {
@@ -138,6 +183,13 @@ export function subscribeLogisticsEvents(
     fallbackTimer = setInterval(emitSyntheticInit, FALLBACK_POLL_INTERVAL_MS);
   };
 
+  const stopConnectionTimeout = () => {
+    if (connectionTimeout !== null) {
+      clearTimeout(connectionTimeout);
+      connectionTimeout = null;
+    }
+  };
+
   const buildSyntheticEvent = (type: string): Event => {
     if (typeof Event === 'function') {
       return new Event(type);
@@ -157,11 +209,17 @@ export function subscribeLogisticsEvents(
   };
 
   const handleError = (event: Event) => {
+    stopConnectionTimeout();
     if (!errorLogged) {
       errorLogged = true;
-      const readyState = (source as EventSource | null)?.readyState;
+      const readyStateDetails = extractReadyState(
+        event?.target ?? source ?? null,
+      );
+      const status = extractStatus(event) ?? extractStatus(source);
       console.warn('SSE логистики недоступен, включён fallback.', {
-        readyState,
+        readyState: readyStateDetails.label,
+        readyStateCode: readyStateDetails.code,
+        status,
         eventType: event?.type,
       });
     }
@@ -173,6 +231,7 @@ export function subscribeLogisticsEvents(
 
   const handleOpen = () => {
     stopFallback();
+    stopConnectionTimeout();
   };
 
   const attachSource = () => {
@@ -183,6 +242,20 @@ export function subscribeLogisticsEvents(
     source.addEventListener('message', handleMessage);
     source.addEventListener('open', handleOpen);
     source.addEventListener('error', handleError);
+
+    connectionTimeout = globalThis.setTimeout?.(() => {
+      if (errorLogged || closed) {
+        return;
+      }
+      const readyStateDetails = extractReadyState(source);
+      const status = extractStatus(source as EventSourceWithStatus);
+      console.warn('SSE логистики не открылся вовремя, включён fallback.', {
+        readyState: readyStateDetails.label,
+        readyStateCode: readyStateDetails.code,
+        status,
+      });
+      startFallback();
+    }, 8000);
   };
 
   const probeStreamSupport = async () => {
@@ -258,6 +331,7 @@ export function subscribeLogisticsEvents(
   return () => {
     closed = true;
     stopFallback();
+    stopConnectionTimeout();
     if (source) {
       source.removeEventListener('message', handleMessage);
       source.removeEventListener('open', handleOpen);

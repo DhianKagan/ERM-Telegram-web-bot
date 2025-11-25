@@ -16,7 +16,7 @@ if (!process.env.NODE_ENV && isMochaRun) {
 }
 
 const nodeEnv = process.env.NODE_ENV || 'development';
-const isTestEnvironment =
+export const isTestEnvironment =
   nodeEnv === 'test' ||
   Boolean(process.env.VITEST_WORKER_ID) ||
   Boolean(process.env.JEST_WORKER_ID) ||
@@ -298,6 +298,48 @@ const parseBooleanFlag = (
   return ['1', 'true', 'yes', 'on'].includes(normalized);
 };
 
+const geocoderEnabledFlag = parseBooleanFlag(
+  process.env.GEOCODER_ENABLED,
+  true,
+);
+const geocoderBaseUrlRaw = (
+  process.env.GEOCODER_URL || 'https://nominatim.openstreetmap.org/search'
+).trim();
+let geocoderBaseUrl = geocoderBaseUrlRaw;
+if (geocoderBaseUrlRaw) {
+  try {
+    const parsed = new URL(geocoderBaseUrlRaw);
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      throw new Error('GEOCODER_URL должен начинаться с http:// или https://');
+    }
+    geocoderBaseUrl = parsed.toString();
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    if (strictEnvs.has(nodeEnv)) {
+      throw new Error(`GEOCODER_URL имеет неверный формат: ${message}`);
+    }
+    console.warn(
+      'Геокодер отключён из-за некорректного GEOCODER_URL:',
+      message,
+    );
+    geocoderBaseUrl = '';
+  }
+}
+
+const geocoderUserAgentRaw = (process.env.GEOCODER_USER_AGENT || '').trim();
+const geocoderUserAgent = geocoderUserAgentRaw || 'ERM Logistics geocoder';
+const geocoderEmailRaw = (process.env.GEOCODER_EMAIL || '').trim();
+const geocoderEmail = geocoderEmailRaw || undefined;
+const geocoderEnabled =
+  geocoderEnabledFlag && Boolean(geocoderBaseUrl) && !isTestEnvironment;
+
+export const geocoderConfig = {
+  enabled: geocoderEnabled,
+  baseUrl: geocoderBaseUrl,
+  userAgent: geocoderUserAgent,
+  email: geocoderEmail,
+};
+
 let cookieDomainEnv = (process.env.COOKIE_DOMAIN || '').trim();
 if (cookieDomainEnv) {
   if (/^https?:\/\//.test(cookieDomainEnv)) {
@@ -434,6 +476,7 @@ const config = {
   vrpOrToolsEnabled,
   graphhopperConfig,
   graphhopper: graphhopperConfig,
+  geocoder: geocoderConfig,
 };
 
 export default config;

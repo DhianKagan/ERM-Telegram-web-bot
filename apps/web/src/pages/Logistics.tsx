@@ -38,6 +38,7 @@ import {
   MAP_MAX_BOUNDS,
   MAP_STYLE,
   MAP_STYLE_DEFAULT_URL,
+  MAP_RASTER_STYLE_URL,
   MAP_STYLE_MODE,
   MAP_STYLE_IS_DEFAULT,
   MAP_ADDRESSES_PMTILES_URL,
@@ -2593,6 +2594,8 @@ export default function LogisticsPage() {
       mapRef.current = mapInstance;
       detachStyleFallback = attachMapStyleFallback(mapInstance, {
         initialStyle: styleForMap,
+        fallbackUrl: MAP_RASTER_STYLE_URL,
+        vectorFallbackUrl: MAP_STYLE_DEFAULT_URL,
       });
       if (typeof mapInstance.dragRotate?.disable === 'function') {
         mapInstance.dragRotate.disable();

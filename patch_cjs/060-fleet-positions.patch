@@ -1,0 +1,1511 @@
+diff --git a/apps/api/tests/fleetsRoute.test.ts b/apps/api/tests/fleetsRoute.test.ts
+index 85e79ec..96725a5 100644
+--- a/apps/api/tests/fleetsRoute.test.ts
++++ b/apps/api/tests/fleetsRoute.test.ts
+@@ -19,15 +19,15 @@ import { FleetVehicle } from '../src/db/models/fleet';
+ 
+ jest.mock(
+   '../src/utils/rateLimiter',
+-  () => () => (_req: any, _res: any, next: () => void) => next(),
++  () => () => (_req: unknown, _res: unknown, next: () => void) => next(),
+ );
+ jest.mock(
+   '../src/middleware/auth',
+-  () => () => (_req: any, _res: any, next: () => void) => next(),
++  () => () => (_req: unknown, _res: unknown, next: () => void) => next(),
+ );
+ jest.mock(
+   '../src/auth/roles.guard',
+-  () => (_req: any, _res: any, next: () => void) => next(),
++  () => (_req: unknown, _res: unknown, next: () => void) => next(),
+ );
+ jest.mock('../src/auth/roles.decorator', () => ({
+   Roles: () => (_req: unknown, _res: unknown, next: () => void) => next(),
+diff --git a/patch_cjs/060-fleet-positions.patch b/patch_cjs/060-fleet-positions.patch
+index a616185..e69de29 100644
+--- a/patch_cjs/060-fleet-positions.patch
++++ b/patch_cjs/060-fleet-positions.patch
+@@ -1,1483 +0,0 @@
+-diff --git a/apps/api/src/db/models/fleet.ts b/apps/api/src/db/models/fleet.ts
+-index 872f3cd..4e390ef 100644
+---- a/apps/api/src/db/models/fleet.ts
+-+++ b/apps/api/src/db/models/fleet.ts
+-@@ -13,6 +13,12 @@ export interface VehicleTaskHistoryEntry {
+-   removedAt?: Date;
+- }
+- 
+-+export interface VehiclePosition {
+-+  lat: number;
+-+  lon: number;
+-+  timestamp?: Date;
+-+}
+-+
+- export interface FleetVehicleAttrs {
+-   name: string;
+-   registrationNumber: string;
+-@@ -26,6 +32,7 @@ export interface FleetVehicleAttrs {
+-   fuelSpentTotal: number;
+-   currentTasks: string[];
+-   transportHistory?: VehicleTaskHistoryEntry[];
+-+  position?: VehiclePosition | null;
+- }
+- 
+- export type FleetVehicleDocument = HydratedDocument<FleetVehicleAttrs>;
+-@@ -40,6 +47,15 @@ const vehicleTaskHistorySchema = new Schema<VehicleTaskHistoryEntry>(
+-   { _id: false },
+- );
+- 
+-+const vehiclePositionSchema = new Schema<VehiclePosition>(
+-+  {
+-+    lat: { type: Number, min: -90, max: 90, required: true },
+-+    lon: { type: Number, min: -180, max: 180, required: true },
+-+    timestamp: { type: Date, default: Date.now },
+-+  },
+-+  { _id: false },
+-+);
+-+
+- const fleetVehicleSchema = new Schema<FleetVehicleAttrs>(
+-   {
+-     name: { type: String, required: true, trim: true },
+-@@ -72,6 +88,7 @@ const fleetVehicleSchema = new Schema<FleetVehicleAttrs>(
+-     fuelSpentTotal: { type: Number, required: true, min: 0 },
+-     currentTasks: { type: [String], default: [] },
+-     transportHistory: { type: [vehicleTaskHistorySchema], default: [] },
+-+    position: { type: vehiclePositionSchema, default: null },
+-   },
+-   {
+-     timestamps: true,
+-diff --git a/apps/api/src/dto/fleets.dto.ts b/apps/api/src/dto/fleets.dto.ts
+-index 289c642..54f539e 100644
+---- a/apps/api/src/dto/fleets.dto.ts
+-+++ b/apps/api/src/dto/fleets.dto.ts
+-@@ -32,6 +32,46 @@ function tasksField() {
+-     });
+- }
+- 
+-+const parseCoordinate = (
+-+  value: unknown,
+-+  min: number,
+-+  max: number,
+-+  field: string,
+-+): number => {
+-+  const parsed = typeof value === 'string' ? Number(value) : value;
+-+  if (typeof parsed !== 'number' || !Number.isFinite(parsed)) {
+-+    throw new Error(`${field} должен быть числом`);
+-+  }
+-+  if (parsed < min || parsed > max) {
+-+    throw new Error(`${field} должен быть в диапазоне [${min}; ${max}]`);
+-+  }
+-+  return parsed;
+-+};
+-+
+-+function positionField() {
+-+  return body('position')
+-+    .optional({ nullable: true })
+-+    .custom((value) => {
+-+      if (value === null) {
+-+        return true;
+-+      }
+-+      if (typeof value !== 'object' || value === null) {
+-+        throw new Error('position должен быть объектом');
+-+      }
+-+      const { lat, lon, timestamp } = value as Record<string, unknown>;
+-+      parseCoordinate(lat, -90, 90, 'lat');
+-+      parseCoordinate(lon, -180, 180, 'lon');
+-+      if (timestamp !== undefined && timestamp !== null) {
+-+        const date =
+-+          timestamp instanceof Date ? timestamp : new Date(String(timestamp));
+-+        if (Number.isNaN(date.getTime())) {
+-+          throw new Error('timestamp должен быть корректной датой');
+-+        }
+-+      }
+-+      return true;
+-+    });
+-+}
+-+
+- export class CreateFleetDto {
+-   static rules() {
+-     return [
+-@@ -55,6 +95,7 @@ export class CreateFleetDto {
+-       numberField('fuelAverageConsumption'),
+-       numberField('fuelSpentTotal'),
+-       tasksField(),
+-+      positionField(),
+-     ];
+-   }
+- }
+-@@ -83,6 +124,7 @@ export class UpdateFleetDto {
+-       numberField('fuelAverageConsumption').optional({ nullable: true }),
+-       numberField('fuelSpentTotal').optional({ nullable: true }),
+-       tasksField(),
+-+      positionField(),
+-     ];
+-   }
+- }
+-diff --git a/apps/api/src/routes/fleets.ts b/apps/api/src/routes/fleets.ts
+-index 7902ff5..a4f5a57 100644
+---- a/apps/api/src/routes/fleets.ts
+-+++ b/apps/api/src/routes/fleets.ts
+-@@ -28,8 +28,32 @@ const middlewares = [
+- ];
+- 
+- const parseNumber = (value: unknown): number => Number(value);
+-+const parsePosition = (
+-+  value: unknown,
+-+): FleetVehicleAttrs['position'] => {
+-+  if (!value || typeof value !== 'object') {
+-+    return null;
+-+  }
+-+  if (value === null) {
+-+    return null;
+-+  }
+-+  const record = value as Record<string, unknown>;
+-+  const lat = Number(record.lat);
+-+  const lon = Number(record.lon);
+-+  const timestampRaw = record.timestamp;
+-+  const timestamp =
+-+    timestampRaw === undefined || timestampRaw === null
+-+      ? undefined
+-+      : timestampRaw instanceof Date
+-+        ? timestampRaw
+-+        : new Date(String(timestampRaw));
+-+  return { lat, lon, timestamp };
+-+};
+- 
+--type FleetVehicleResponseDto = Omit<FleetVehicleAttrs, 'transportHistory'> & {
+-+type FleetVehicleResponseDto = Omit<
+-+  FleetVehicleAttrs,
+-+  'transportHistory' | 'position'
+-+> & {
+-   id: string;
+-   createdAt?: string;
+-   updatedAt?: string;
+-@@ -39,6 +63,11 @@ type FleetVehicleResponseDto = Omit<FleetVehicleAttrs, 'transportHistory'> & {
+-     assignedAt?: string;
+-     removedAt?: string;
+-   }[];
+-+  position?: {
+-+    lat: number;
+-+    lon: number;
+-+    timestamp?: string;
+-+  } | null;
+- };
+- 
+- function mapVehicle(
+-@@ -60,6 +89,18 @@ function mapVehicle(
+-     fuelAverageConsumption: doc.fuelAverageConsumption,
+-     fuelSpentTotal: doc.fuelSpentTotal,
+-     currentTasks: doc.currentTasks,
+-+    position: doc.position
+-+      ? {
+-+          lat: Number(doc.position.lat),
+-+          lon: Number(doc.position.lon),
+-+          timestamp:
+-+            doc.position.timestamp instanceof Date
+-+              ? doc.position.timestamp.toISOString()
+-+              : doc.position.timestamp
+-+                ? String(doc.position.timestamp)
+-+                : undefined,
+-+        }
+-+      : null,
+-     transportHistory: Array.isArray(doc.transportHistory)
+-       ? doc.transportHistory.map((entry) => ({
+-           taskId: entry.taskId,
+-@@ -144,6 +185,7 @@ router.post(
+-       currentTasks: Array.isArray(req.body.currentTasks)
+-         ? (req.body.currentTasks as string[]).map((task) => String(task))
+-         : [],
+-+      position: parsePosition(req.body.position),
+-     };
+-     const created = await FleetVehicle.create(payload);
+-     res.status(201).json(mapVehicle(created.toObject()));
+-@@ -193,6 +235,9 @@ router.put(
+-         String(task),
+-       );
+-     }
+-+    if (Object.prototype.hasOwnProperty.call(req.body, 'position')) {
+-+      update.position = parsePosition(req.body.position);
+-+    }
+-     const updated = await FleetVehicle.findByIdAndUpdate(id, update, {
+-       new: true,
+-     });
+-diff --git a/apps/api/tests/fleetsRoute.test.ts b/apps/api/tests/fleetsRoute.test.ts
+-index 1a71262..85e79ec 100644
+---- a/apps/api/tests/fleetsRoute.test.ts
+-+++ b/apps/api/tests/fleetsRoute.test.ts
+-@@ -65,6 +65,11 @@ describe('fleets router', () => {
+-     fuelAverageConsumption: 0.25,
+-     fuelSpentTotal: 40,
+-     currentTasks: [] as string[],
+-+    position: {
+-+      lat: 50.45,
+-+      lon: 30.523333,
+-+      timestamp: '2024-01-01T00:00:00.000Z',
+-+    },
+-   };
+- 
+-   it('создаёт транспорт', async () => {
+-@@ -73,9 +78,13 @@ describe('fleets router', () => {
+-     expect(res.body.name).toBe('Газель');
+-     expect(res.body.registrationNumber).toBe('AA 1234 BB');
+-     expect(res.body.transportType).toBe('Легковой');
+-+    expect(res.body.position.lat).toBeCloseTo(50.45);
+-+    expect(res.body.position.lon).toBeCloseTo(30.523333);
+-     const stored = await FleetVehicle.findById(res.body.id).lean();
+-     expect(stored?.fuelType).toBe('Бензин');
+-     expect(stored?.transportType).toBe('Легковой');
+-+    expect(stored?.position?.lat).toBeCloseTo(50.45);
+-+    expect(stored?.position?.lon).toBeCloseTo(30.523333);
+-   });
+- 
+-   it('обновляет транспорт', async () => {
+-@@ -84,11 +93,18 @@ describe('fleets router', () => {
+-       odometerCurrent: 1300,
+-       fuelType: 'Газ',
+-       transportType: 'Грузовой',
+-+      position: {
+-+        lat: 51.5,
+-+        lon: 31.5,
+-+        timestamp: '2024-02-02T10:00:00.000Z',
+-+      },
+-     });
+-     expect(res.status).toBe(200);
+-     expect(res.body.odometerCurrent).toBe(1300);
+-     expect(res.body.fuelType).toBe('Газ');
+-     expect(res.body.transportType).toBe('Грузовой');
+-+    expect(res.body.position?.lat).toBeCloseTo(51.5);
+-+    expect(res.body.position?.lon).toBeCloseTo(31.5);
+-   });
+- 
+-   it('удаляет транспорт', async () => {
+-diff --git a/apps/web/src/services/fleets.ts b/apps/web/src/services/fleets.ts
+-index c1970dd..bc2d730 100644
+---- a/apps/web/src/services/fleets.ts
+-+++ b/apps/web/src/services/fleets.ts
+-@@ -13,6 +13,12 @@ const pendingRequests = new Map<string, PendingRequest>();
+- const buildKey = (search: string, page: number, limit: number): string =>
+-   `${search}::${page}::${limit}`;
+- 
+-+export interface FleetVehiclePositionPayload {
+-+  lat: number;
+-+  lon: number;
+-+  timestamp?: string;
+-+}
+-+
+- export interface FleetVehiclePayload {
+-   name: string;
+-   registrationNumber: string;
+-@@ -25,6 +31,7 @@ export interface FleetVehiclePayload {
+-   fuelAverageConsumption: number;
+-   fuelSpentTotal: number;
+-   currentTasks: string[];
+-+  position?: FleetVehiclePositionPayload | null;
+- }
+- 
+- export interface FleetVehicleResponse {
+-diff --git a/packages/shared/dist/index.js b/packages/shared/dist/index.js
+-index ddcb536..89f3cb3 100644
+---- a/packages/shared/dist/index.js
+-+++ b/packages/shared/dist/index.js
+-@@ -1,79 +1,31 @@
+--'use strict';
+-+"use strict";
+- // Назначение: точка входа общего пакета.
+- // Модули: constants, taskFields, mapUtils, types, taskFormSchema
+--var __createBinding =
+--  (this && this.__createBinding) ||
+--  (Object.create
+--    ? function (o, m, k, k2) {
+--        if (k2 === undefined) k2 = k;
+--        var desc = Object.getOwnPropertyDescriptor(m, k);
+--        if (
+--          !desc ||
+--          ('get' in desc ? !m.__esModule : desc.writable || desc.configurable)
+--        ) {
+--          desc = {
+--            enumerable: true,
+--            get: function () {
+--              return m[k];
+--            },
+--          };
+--        }
+--        Object.defineProperty(o, k2, desc);
+--      }
+--    : function (o, m, k, k2) {
+--        if (k2 === undefined) k2 = k;
+--        o[k2] = m[k];
+--      });
+--var __exportStar =
+--  (this && this.__exportStar) ||
+--  function (m, exports) {
+--    for (var p in m)
+--      if (p !== 'default' && !Object.prototype.hasOwnProperty.call(exports, p))
+--        __createBinding(exports, m, p);
+--  };
+--var __importDefault =
+--  (this && this.__importDefault) ||
+--  function (mod) {
+--    return mod && mod.__esModule ? mod : { default: mod };
+--  };
+--Object.defineProperty(exports, '__esModule', { value: true });
+--exports.taskFormSchema =
+--  exports.generateMultiRouteLink =
+--  exports.generateRouteLink =
+--  exports.extractCoords =
+--  exports.taskFields =
+--    void 0;
+--__exportStar(require('./constants'), exports);
+--var taskFields_1 = require('./taskFields');
+--Object.defineProperty(exports, 'taskFields', {
+--  enumerable: true,
+--  get: function () {
+--    return taskFields_1.taskFields;
+--  },
+--});
+--var mapUtils_1 = require('./mapUtils');
+--Object.defineProperty(exports, 'extractCoords', {
+--  enumerable: true,
+--  get: function () {
+--    return mapUtils_1.extractCoords;
+--  },
+--});
+--Object.defineProperty(exports, 'generateRouteLink', {
+--  enumerable: true,
+--  get: function () {
+--    return mapUtils_1.generateRouteLink;
+--  },
+--});
+--Object.defineProperty(exports, 'generateMultiRouteLink', {
+--  enumerable: true,
+--  get: function () {
+--    return mapUtils_1.generateMultiRouteLink;
+--  },
+--});
+--var taskForm_schema_json_1 = require('./taskForm.schema.json');
+--Object.defineProperty(exports, 'taskFormSchema', {
+--  enumerable: true,
+--  get: function () {
+--    return __importDefault(taskForm_schema_json_1).default;
+--  },
+--});
+-+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+-+    if (k2 === undefined) k2 = k;
+-+    var desc = Object.getOwnPropertyDescriptor(m, k);
+-+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+-+      desc = { enumerable: true, get: function() { return m[k]; } };
+-+    }
+-+    Object.defineProperty(o, k2, desc);
+-+}) : (function(o, m, k, k2) {
+-+    if (k2 === undefined) k2 = k;
+-+    o[k2] = m[k];
+-+}));
+-+var __exportStar = (this && this.__exportStar) || function(m, exports) {
+-+    for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
+-+};
+-+var __importDefault = (this && this.__importDefault) || function (mod) {
+-+    return (mod && mod.__esModule) ? mod : { "default": mod };
+-+};
+-+Object.defineProperty(exports, "__esModule", { value: true });
+-+exports.taskFormSchema = exports.generateMultiRouteLink = exports.generateRouteLink = exports.extractCoords = exports.taskFields = void 0;
+-+__exportStar(require("./constants"), exports);
+-+var taskFields_1 = require("./taskFields");
+-+Object.defineProperty(exports, "taskFields", { enumerable: true, get: function () { return taskFields_1.taskFields; } });
+-+var mapUtils_1 = require("./mapUtils");
+-+Object.defineProperty(exports, "extractCoords", { enumerable: true, get: function () { return mapUtils_1.extractCoords; } });
+-+Object.defineProperty(exports, "generateRouteLink", { enumerable: true, get: function () { return mapUtils_1.generateRouteLink; } });
+-+Object.defineProperty(exports, "generateMultiRouteLink", { enumerable: true, get: function () { return mapUtils_1.generateMultiRouteLink; } });
+-+var taskForm_schema_json_1 = require("./taskForm.schema.json");
+-+Object.defineProperty(exports, "taskFormSchema", { enumerable: true, get: function () { return __importDefault(taskForm_schema_json_1).default; } });
+-diff --git a/packages/shared/dist/mapUtils.d.ts b/packages/shared/dist/mapUtils.d.ts
+-index b07e639..b79c669 100644
+---- a/packages/shared/dist/mapUtils.d.ts
+-+++ b/packages/shared/dist/mapUtils.d.ts
+-@@ -1,20 +1,13 @@
+- export interface Coords {
+--  lat: number;
+--  lng: number;
+-+    lat: number;
+-+    lng: number;
+- }
+- export declare function extractCoords(url: string): Coords | null;
+--export declare function generateRouteLink(
+--  start: Coords | null | undefined,
+--  end: Coords | null | undefined,
+--  mode?: string,
+--): string;
+--export declare function generateMultiRouteLink(
+--  points?: Coords[],
+--  mode?: string,
+--): string;
+-+export declare function generateRouteLink(start: Coords | null | undefined, end: Coords | null | undefined, mode?: string): string;
+-+export declare function generateMultiRouteLink(points?: Coords[], mode?: string): string;
+- declare const _default: {
+--  extractCoords: typeof extractCoords;
+--  generateRouteLink: typeof generateRouteLink;
+--  generateMultiRouteLink: typeof generateMultiRouteLink;
+-+    extractCoords: typeof extractCoords;
+-+    generateRouteLink: typeof generateRouteLink;
+-+    generateMultiRouteLink: typeof generateMultiRouteLink;
+- };
+- export default _default;
+-diff --git a/packages/shared/dist/mapUtils.js b/packages/shared/dist/mapUtils.js
+-index 0259c16..4e66c59 100644
+---- a/packages/shared/dist/mapUtils.js
+-+++ b/packages/shared/dist/mapUtils.js
+-@@ -1,7 +1,7 @@
+--'use strict';
+-+"use strict";
+- // Назначение: общие функции для работы с Google Maps.
+- // Модули: utils
+--Object.defineProperty(exports, '__esModule', { value: true });
+-+Object.defineProperty(exports, "__esModule", { value: true });
+- exports.extractCoords = extractCoords;
+- exports.generateRouteLink = generateRouteLink;
+- exports.generateMultiRouteLink = generateMultiRouteLink;
+-@@ -9,159 +9,160 @@ const COORD_PAIR_PATTERN = /(-?\d+(?:\.\d+)?)[,\s+]+(-?\d+(?:\.\d+)?)/;
+- const NESTED_URL_KEYS = ['link', 'url', 'u'];
+- const MAX_NESTING_DEPTH = 3;
+- const parseCoordPair = (latRaw, lngRaw) => {
+--  const lat = Number.parseFloat(latRaw);
+--  const lng = Number.parseFloat(lngRaw);
+--  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+--    return null;
+--  }
+--  return { lat, lng };
+-+    const lat = Number.parseFloat(latRaw);
+-+    const lng = Number.parseFloat(lngRaw);
+-+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+-+        return null;
+-+    }
+-+    return { lat, lng };
+- };
+- const safeDecode = (value) => {
+--  let current = value;
+--  for (let attempt = 0; attempt < 3; attempt += 1) {
+--    try {
+--      const decoded = decodeURIComponent(current);
+--      if (decoded === current) {
+--        break;
+--      }
+--      current = decoded;
+--    } catch {
+--      break;
+--    }
+--  }
+--  return current;
+-+    let current = value;
+-+    for (let attempt = 0; attempt < 3; attempt += 1) {
+-+        try {
+-+            const decoded = decodeURIComponent(current);
+-+            if (decoded === current) {
+-+                break;
+-+            }
+-+            current = decoded;
+-+        }
+-+        catch {
+-+            break;
+-+        }
+-+    }
+-+    return current;
+- };
+- const parseCombinedValue = (value) => {
+--  if (!value) {
+--    return null;
+--  }
+--  const decoded = safeDecode(value);
+--  const match = decoded.match(COORD_PAIR_PATTERN);
+--  if (!match) {
+--    return null;
+--  }
+--  return parseCoordPair(match[1], match[2]);
+-+    if (!value) {
+-+        return null;
+-+    }
+-+    const decoded = safeDecode(value);
+-+    const match = decoded.match(COORD_PAIR_PATTERN);
+-+    if (!match) {
+-+        return null;
+-+    }
+-+    return parseCoordPair(match[1], match[2]);
+- };
+- const looksLikeUrl = (value) => {
+--  if (!value) {
+--    return false;
+--  }
+--  try {
+--    const parsed = new URL(value, 'https://maps.google.com');
+--    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+--  } catch {
+--    return false;
+--  }
+-+    if (!value) {
+-+        return false;
+-+    }
+-+    try {
+-+        const parsed = new URL(value, 'https://maps.google.com');
+-+        return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+-+    }
+-+    catch {
+-+        return false;
+-+    }
+- };
+- const extractNestedCoords = (value, depth) => {
+--  if (!value || depth > MAX_NESTING_DEPTH) {
+--    return null;
+--  }
+--  const direct = parseCombinedValue(value);
+--  if (direct) {
+--    return direct;
+--  }
+--  const decoded = safeDecode(value);
+--  if (decoded !== value) {
+--    const decodedDirect = parseCombinedValue(decoded);
+--    if (decodedDirect) {
+--      return decodedDirect;
+--    }
+--  }
+--  if (!looksLikeUrl(decoded)) {
+--    return null;
+--  }
+--  return extractCoordsInternal(decoded, depth + 1);
+-+    if (!value || depth > MAX_NESTING_DEPTH) {
+-+        return null;
+-+    }
+-+    const direct = parseCombinedValue(value);
+-+    if (direct) {
+-+        return direct;
+-+    }
+-+    const decoded = safeDecode(value);
+-+    if (decoded !== value) {
+-+        const decodedDirect = parseCombinedValue(decoded);
+-+        if (decodedDirect) {
+-+            return decodedDirect;
+-+        }
+-+    }
+-+    if (!looksLikeUrl(decoded)) {
+-+        return null;
+-+    }
+-+    return extractCoordsInternal(decoded, depth + 1);
+- };
+- const extractCoordsInternal = (url, depth = 0) => {
+--  if (!url || depth > MAX_NESTING_DEPTH) {
+-+    if (!url || depth > MAX_NESTING_DEPTH) {
+-+        return null;
+-+    }
+-+    try {
+-+        const candidate = new URL(url, 'https://maps.google.com');
+-+        const searchKeys = [
+-+            'q',
+-+            'query',
+-+            'll',
+-+            'center',
+-+            'sll',
+-+            'destination',
+-+            'origin',
+-+            'daddr',
+-+            'saddr',
+-+        ];
+-+        for (const key of searchKeys) {
+-+            const coords = parseCombinedValue(candidate.searchParams.get(key));
+-+            if (coords) {
+-+                return coords;
+-+            }
+-+        }
+-+        for (const nestedKey of NESTED_URL_KEYS) {
+-+            const coords = extractNestedCoords(candidate.searchParams.get(nestedKey), depth + 1);
+-+            if (coords) {
+-+                return coords;
+-+            }
+-+        }
+-+        const hashCoords = parseCombinedValue(candidate.hash.replace(/^#/, ''));
+-+        if (hashCoords) {
+-+            return hashCoords;
+-+        }
+-+    }
+-+    catch {
+-+        // Пропускаем ошибки парсинга URL, пробуем регулярные выражения ниже.
+-+    }
+-+    const decoded = safeDecode(url);
+-+    const bangMatch = decoded.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+-+    if (bangMatch) {
+-+        const coords = parseCoordPair(bangMatch[1], bangMatch[2]);
+-+        if (coords) {
+-+            return coords;
+-+        }
+-+    }
+-+    const invertedBangMatch = decoded.match(/!2d(-?\d+(?:\.\d+)?)!3d(-?\d+(?:\.\d+)?)/);
+-+    if (invertedBangMatch) {
+-+        const coords = parseCoordPair(invertedBangMatch[2], invertedBangMatch[1]);
+-+        if (coords) {
+-+            return coords;
+-+        }
+-+    }
+-+    const atMatch = decoded.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+-+    if (atMatch) {
+-+        const coords = parseCoordPair(atMatch[1], atMatch[2]);
+-+        if (coords) {
+-+            return coords;
+-+        }
+-+    }
+-+    if (decoded !== url && looksLikeUrl(decoded)) {
+-+        return extractCoordsInternal(decoded, depth + 1);
+-+    }
+-     return null;
+--  }
+--  try {
+--    const candidate = new URL(url, 'https://maps.google.com');
+--    const searchKeys = [
+--      'q',
+--      'query',
+--      'll',
+--      'center',
+--      'sll',
+--      'destination',
+--      'origin',
+--      'daddr',
+--      'saddr',
+--    ];
+--    for (const key of searchKeys) {
+--      const coords = parseCombinedValue(candidate.searchParams.get(key));
+--      if (coords) {
+--        return coords;
+--      }
+--    }
+--    for (const nestedKey of NESTED_URL_KEYS) {
+--      const coords = extractNestedCoords(
+--        candidate.searchParams.get(nestedKey),
+--        depth + 1,
+--      );
+--      if (coords) {
+--        return coords;
+--      }
+--    }
+--    const hashCoords = parseCombinedValue(candidate.hash.replace(/^#/, ''));
+--    if (hashCoords) {
+--      return hashCoords;
+--    }
+--  } catch {
+--    // Пропускаем ошибки парсинга URL, пробуем регулярные выражения ниже.
+--  }
+--  const decoded = safeDecode(url);
+--  const bangMatch = decoded.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+--  if (bangMatch) {
+--    const coords = parseCoordPair(bangMatch[1], bangMatch[2]);
+--    if (coords) {
+--      return coords;
+--    }
+--  }
+--  const invertedBangMatch = decoded.match(
+--    /!2d(-?\d+(?:\.\d+)?)!3d(-?\d+(?:\.\d+)?)/,
+--  );
+--  if (invertedBangMatch) {
+--    const coords = parseCoordPair(invertedBangMatch[2], invertedBangMatch[1]);
+--    if (coords) {
+--      return coords;
+--    }
+--  }
+--  const atMatch = decoded.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+--  if (atMatch) {
+--    const coords = parseCoordPair(atMatch[1], atMatch[2]);
+--    if (coords) {
+--      return coords;
+--    }
+--  }
+--  if (decoded !== url && looksLikeUrl(decoded)) {
+--    return extractCoordsInternal(decoded, depth + 1);
+--  }
+--  return null;
+- };
+- function extractCoords(url) {
+--  if (!url) {
+--    return null;
+--  }
+--  return extractCoordsInternal(url);
+-+    if (!url) {
+-+        return null;
+-+    }
+-+    return extractCoordsInternal(url);
+- }
+- function generateRouteLink(start, end, mode = 'driving') {
+--  if (!start || !end) return '';
+--  return `https://www.google.com/maps/dir/?api=1&origin=${start.lat},${start.lng}&destination=${end.lat},${end.lng}&travelmode=${mode}`;
+-+    if (!start || !end)
+-+        return '';
+-+    return `https://www.google.com/maps/dir/?api=1&origin=${start.lat},${start.lng}&destination=${end.lat},${end.lng}&travelmode=${mode}`;
+- }
+- function generateMultiRouteLink(points = [], mode = 'driving') {
+--  if (!Array.isArray(points) || points.length < 2) return '';
+--  const pts = points.slice(0, 10);
+--  const origin = pts[0];
+--  const destination = pts[pts.length - 1];
+--  const waypoints = pts
+--    .slice(1, -1)
+--    .map((p) => `${p.lat},${p.lng}`)
+--    .join('|');
+--  let url = `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=${destination.lat},${destination.lng}&travelmode=${mode}`;
+--  if (waypoints) url += `&waypoints=${waypoints}`;
+--  return url;
+-+    if (!Array.isArray(points) || points.length < 2)
+-+        return '';
+-+    const pts = points.slice(0, 10);
+-+    const origin = pts[0];
+-+    const destination = pts[pts.length - 1];
+-+    const waypoints = pts
+-+        .slice(1, -1)
+-+        .map((p) => `${p.lat},${p.lng}`)
+-+        .join('|');
+-+    let url = `https://www.google.com/maps/dir/?api=1&origin=${origin.lat},${origin.lng}&destination=${destination.lat},${destination.lng}&travelmode=${mode}`;
+-+    if (waypoints)
+-+        url += `&waypoints=${waypoints}`;
+-+    return url;
+- }
+- exports.default = { extractCoords, generateRouteLink, generateMultiRouteLink };
+-diff --git a/packages/shared/dist/taskFields.d.ts b/packages/shared/dist/taskFields.d.ts
+-index 3c6d73a..9637f53 100644
+---- a/packages/shared/dist/taskFields.d.ts
+-+++ b/packages/shared/dist/taskFields.d.ts
+-@@ -1,10 +1,10 @@
+- export interface TaskField {
+--  name: string;
+--  label: string;
+--  type: string;
+--  required?: boolean;
+--  options?: readonly string[];
+--  default?: string;
+-+    name: string;
+-+    label: string;
+-+    type: string;
+-+    required?: boolean;
+-+    options?: readonly string[];
+-+    default?: string;
+- }
+- export declare const taskFields: TaskField[];
+- export default taskFields;
+-diff --git a/packages/shared/dist/taskFields.js b/packages/shared/dist/taskFields.js
+-index 19352a8..b20119e 100644
+---- a/packages/shared/dist/taskFields.js
+-+++ b/packages/shared/dist/taskFields.js
+-@@ -1,65 +1,62 @@
+--'use strict';
+-+"use strict";
+- // Назначение файла: общие поля формы задачи для бота и веб-клиента
+- // Модули: constants
+--Object.defineProperty(exports, '__esModule', { value: true });
+-+Object.defineProperty(exports, "__esModule", { value: true });
+- exports.taskFields = void 0;
+--const constants_1 = require('./constants');
+-+const constants_1 = require("./constants");
+- exports.taskFields = [
+--  { name: 'title', label: 'Название', type: 'text', required: true },
+--  {
+--    name: 'task_type',
+--    label: 'Тип',
+--    type: 'select',
+--    options: constants_1.TASK_TYPES,
+--    default: constants_1.TASK_TYPES[0],
+--  },
+--  {
+--    name: 'priority',
+--    label: 'Приоритет',
+--    type: 'select',
+--    options: constants_1.PRIORITIES,
+--    default: constants_1.PRIORITIES[1],
+--  },
+--  { name: 'creator', label: 'Задачу создал', type: 'select' },
+--  { name: 'assignees', label: 'Исполнители', type: 'multiselect' },
+--  { name: 'start_location', label: 'Старт точка', type: 'location' },
+--  {
+--    name: 'transport_type',
+--    label: 'Тип транспорта',
+--    type: 'select',
+--    options: constants_1.TRANSPORT_TYPES,
+--    default: constants_1.TRANSPORT_TYPES[0],
+--  },
+--  { name: 'cargo_length_m', label: 'Длина, м', type: 'number' },
+--  { name: 'cargo_width_m', label: 'Ширина, м', type: 'number' },
+--  { name: 'cargo_height_m', label: 'Высота, м', type: 'number' },
+--  { name: 'cargo_volume_m3', label: 'Объём, м³', type: 'number' },
+--  { name: 'cargo_weight_kg', label: 'Вес, кг', type: 'number' },
+--  { name: 'end_location', label: 'Финальная точка', type: 'location' },
+--  {
+--    name: 'payment_method',
+--    label: 'Способ оплаты',
+--    type: 'select',
+--    options: constants_1.PAYMENT_METHODS,
+--    default:
+--      constants_1.PAYMENT_METHODS.find((method) =>
+--        /^без оплаты$/i.test(method.trim()),
+--      ) || constants_1.PAYMENT_METHODS[0],
+--  },
+--  {
+--    name: 'payment_amount',
+--    label: 'Сумма',
+--    type: 'number',
+--    default: '0',
+--  },
+--  {
+--    name: 'status',
+--    label: 'Статус',
+--    type: 'select',
+--    options: constants_1.TASK_STATUSES,
+--    default: constants_1.TASK_STATUSES[0],
+--  },
+--  { name: 'description', label: '🔨 Задача', type: 'richtext' },
+--  { name: 'comment', label: 'Комментарий', type: 'richtext' },
+-+    { name: 'title', label: 'Название', type: 'text', required: true },
+-+    {
+-+        name: 'task_type',
+-+        label: 'Тип',
+-+        type: 'select',
+-+        options: constants_1.TASK_TYPES,
+-+        default: constants_1.TASK_TYPES[0],
+-+    },
+-+    {
+-+        name: 'priority',
+-+        label: 'Приоритет',
+-+        type: 'select',
+-+        options: constants_1.PRIORITIES,
+-+        default: constants_1.PRIORITIES[1],
+-+    },
+-+    { name: 'creator', label: 'Задачу создал', type: 'select' },
+-+    { name: 'assignees', label: 'Исполнители', type: 'multiselect' },
+-+    { name: 'start_location', label: 'Старт точка', type: 'location' },
+-+    {
+-+        name: 'transport_type',
+-+        label: 'Тип транспорта',
+-+        type: 'select',
+-+        options: constants_1.TRANSPORT_TYPES,
+-+        default: constants_1.TRANSPORT_TYPES[0],
+-+    },
+-+    { name: 'cargo_length_m', label: 'Длина, м', type: 'number' },
+-+    { name: 'cargo_width_m', label: 'Ширина, м', type: 'number' },
+-+    { name: 'cargo_height_m', label: 'Высота, м', type: 'number' },
+-+    { name: 'cargo_volume_m3', label: 'Объём, м³', type: 'number' },
+-+    { name: 'cargo_weight_kg', label: 'Вес, кг', type: 'number' },
+-+    { name: 'end_location', label: 'Финальная точка', type: 'location' },
+-+    {
+-+        name: 'payment_method',
+-+        label: 'Способ оплаты',
+-+        type: 'select',
+-+        options: constants_1.PAYMENT_METHODS,
+-+        default: constants_1.PAYMENT_METHODS.find((method) => /^без оплаты$/i.test(method.trim())) || constants_1.PAYMENT_METHODS[0],
+-+    },
+-+    {
+-+        name: 'payment_amount',
+-+        label: 'Сумма',
+-+        type: 'number',
+-+        default: '0',
+-+    },
+-+    {
+-+        name: 'status',
+-+        label: 'Статус',
+-+        type: 'select',
+-+        options: constants_1.TASK_STATUSES,
+-+        default: constants_1.TASK_STATUSES[0],
+-+    },
+-+    { name: 'description', label: '🔨 Задача', type: 'richtext' },
+-+    { name: 'comment', label: 'Комментарий', type: 'richtext' },
+- ];
+- exports.default = exports.taskFields;
+-diff --git a/packages/shared/dist/taskForm.schema.json b/packages/shared/dist/taskForm.schema.json
+-index 5243246..2844c2a 100644
+---- a/packages/shared/dist/taskForm.schema.json
+-+++ b/packages/shared/dist/taskForm.schema.json
+-@@ -1,52 +1,52 @@
+- {
+--  "formVersion": 1,
+--  "sections": [
+--    {
+--      "name": "main",
+--      "label": "Основное",
+--      "fields": [
+-+    "formVersion": 1,
+-+    "sections": [
+-         {
+--          "name": "title",
+--          "type": "text",
+--          "label": "Название",
+--          "required": true
+-+            "name": "main",
+-+            "label": "Основное",
+-+            "fields": [
+-+                {
+-+                    "name": "title",
+-+                    "type": "text",
+-+                    "label": "Название",
+-+                    "required": true
+-+                },
+-+                { "name": "startDate", "type": "datetime", "label": "Начало" },
+-+                { "name": "dueDate", "type": "datetime", "label": "Дедлайн" }
+-+            ]
+-         },
+--        { "name": "startDate", "type": "datetime", "label": "Начало" },
+--        { "name": "dueDate", "type": "datetime", "label": "Дедлайн" }
+--      ]
+--    },
+--    {
+--      "name": "params",
+--      "label": "Параметры",
+--      "fields": [
+-         {
+--          "name": "status",
+--          "type": "segment",
+--          "label": "Статус",
+--          "options": [
+--            { "value": "new", "label": "Новая" },
+--            { "value": "in_day", "label": "В день" },
+--            { "value": "overdue", "label": "Просроч" },
+--            { "value": "no_due", "label": "Без срока" }
+--          ]
+-+            "name": "params",
+-+            "label": "Параметры",
+-+            "fields": [
+-+                {
+-+                    "name": "status",
+-+                    "type": "segment",
+-+                    "label": "Статус",
+-+                    "options": [
+-+                        { "value": "new", "label": "Новая" },
+-+                        { "value": "in_day", "label": "В день" },
+-+                        { "value": "overdue", "label": "Просроч" },
+-+                        { "value": "no_due", "label": "Без срока" }
+-+                    ]
+-+                },
+-+                {
+-+                    "name": "priority",
+-+                    "type": "segment",
+-+                    "label": "Приоритет",
+-+                    "options": [
+-+                        { "value": "low", "label": "Низкий" },
+-+                        { "value": "normal", "label": "Обычный" },
+-+                        { "value": "high", "label": "Высокий" },
+-+                        { "value": "urgent", "label": "Срочный" }
+-+                    ]
+-+                }
+-+            ]
+-         },
+-         {
+--          "name": "priority",
+--          "type": "segment",
+--          "label": "Приоритет",
+--          "options": [
+--            { "value": "low", "label": "Низкий" },
+--            { "value": "normal", "label": "Обычный" },
+--            { "value": "high", "label": "Высокий" },
+--            { "value": "urgent", "label": "Срочный" }
+--          ]
+-+            "name": "details",
+-+            "label": "Детали",
+-+            "fields": [{ "name": "note", "type": "textarea", "label": "Комментарий" }]
+-         }
+--      ]
+--    },
+--    {
+--      "name": "details",
+--      "label": "Детали",
+--      "fields": [{ "name": "note", "type": "textarea", "label": "Комментарий" }]
+--    }
+--  ]
+-+    ]
+- }
+-diff --git a/packages/shared/dist/types.d.ts b/packages/shared/dist/types.d.ts
+-index 59581e6..1a0e690 100644
+---- a/packages/shared/dist/types.d.ts
+-+++ b/packages/shared/dist/types.d.ts
+-@@ -1,256 +1,248 @@
+- import type { Coords } from './mapUtils';
+- export type PaymentMethod = 'Наличные' | 'Карта' | 'Безнал' | 'Без оплаты';
+- export interface Task {
+--  _id: string;
+--  title: string;
+--  status: 'Новая' | 'В работе' | 'Выполнена' | 'Отменена';
+--  kind?: 'task' | 'request';
+--  request_id?: string;
+--  task_number?: string;
+--  completed_at?: string | null;
+--  in_progress_at?: string | null;
+--  assignees?: number[];
+--  cargo_length_m?: number;
+--  cargo_width_m?: number;
+--  cargo_height_m?: number;
+--  cargo_volume_m3?: number;
+--  cargo_weight_kg?: number;
+--  logistics_enabled?: boolean;
+--  transport_driver_id?: number | null;
+--  transport_driver_name?: string | null;
+--  transport_vehicle_id?: string | null;
+--  transport_vehicle_name?: string | null;
+--  transport_vehicle_registration?: string | null;
+--  payment_method?: PaymentMethod;
+--  payment_amount?: number;
+--  telegram_message_id?: number;
+--  telegram_status_message_id?: number;
+--  telegram_history_message_id?: number;
+--  telegram_summary_message_id?: number;
+--  telegram_preview_message_ids?: number[];
+--  telegram_attachments_message_ids?: number[];
+--  telegram_photos_message_id?: number;
+--  telegram_photos_chat_id?: string | number;
+--  telegram_photos_topic_id?: number;
+--  deadline_reminder_sent_at?: string;
+--  [key: string]: unknown;
+-+    _id: string;
+-+    title: string;
+-+    status: 'Новая' | 'В работе' | 'Выполнена' | 'Отменена';
+-+    kind?: 'task' | 'request';
+-+    request_id?: string;
+-+    task_number?: string;
+-+    completed_at?: string | null;
+-+    in_progress_at?: string | null;
+-+    assignees?: number[];
+-+    cargo_length_m?: number;
+-+    cargo_width_m?: number;
+-+    cargo_height_m?: number;
+-+    cargo_volume_m3?: number;
+-+    cargo_weight_kg?: number;
+-+    logistics_enabled?: boolean;
+-+    transport_driver_id?: number | null;
+-+    transport_driver_name?: string | null;
+-+    transport_vehicle_id?: string | null;
+-+    transport_vehicle_name?: string | null;
+-+    transport_vehicle_registration?: string | null;
+-+    payment_method?: PaymentMethod;
+-+    payment_amount?: number;
+-+    telegram_message_id?: number;
+-+    telegram_status_message_id?: number;
+-+    telegram_history_message_id?: number;
+-+    telegram_summary_message_id?: number;
+-+    telegram_preview_message_ids?: number[];
+-+    telegram_attachments_message_ids?: number[];
+-+    telegram_photos_message_id?: number;
+-+    telegram_photos_chat_id?: string | number;
+-+    telegram_photos_topic_id?: number;
+-+    deadline_reminder_sent_at?: string;
+-+    [key: string]: unknown;
+- }
+- export interface User {
+--  telegram_id: number;
+--  username: string;
+--  name?: string;
+--  phone?: string;
+--  mobNumber?: string;
+--  email?: string;
+--  role?: string;
+--  access?: number;
+--  roleId?: string;
+--  departmentId?: string;
+--  divisionId?: string;
+--  positionId?: string;
+--  is_bot?: boolean;
+-+    telegram_id: number;
+-+    username: string;
+-+    name?: string;
+-+    phone?: string;
+-+    mobNumber?: string;
+-+    email?: string;
+-+    role?: string;
+-+    access?: number;
+-+    roleId?: string;
+-+    departmentId?: string;
+-+    divisionId?: string;
+-+    positionId?: string;
+-+    is_bot?: boolean;
+- }
+- export type TrackingAlarmType = 'delay' | 'route-deviation';
+- export type TrackingAlarmSeverity = 'info' | 'warning' | 'critical';
+- export interface TrackingAlarmEvent {
+--  type: 'alarm';
+--  vehicleId: string;
+--  alarmType: TrackingAlarmType;
+--  message: string;
+--  severity: TrackingAlarmSeverity;
+--  occurredAt: string;
+--  taskId?: string;
+--  routeId?: string;
+-+    type: 'alarm';
+-+    vehicleId: string;
+-+    alarmType: TrackingAlarmType;
+-+    message: string;
+-+    severity: TrackingAlarmSeverity;
+-+    occurredAt: string;
+-+    taskId?: string;
+-+    routeId?: string;
+- }
+- export interface TrackingPositionEvent {
+--  type: 'position';
+--  vehicleId: string;
+--  position: {
+--    lat: number;
+--    lon: number;
+--    speed?: number;
+--    course?: number;
+--    updatedAt?: string;
+--  };
+--  track?: {
+--    lat: number;
+--    lon: number;
+--    speed?: number;
+--    course?: number;
+--    timestamp: string;
+--  }[];
+-+    type: 'position';
+-+    vehicleId: string;
+-+    position: {
+-+        lat: number;
+-+        lon: number;
+-+        speed?: number;
+-+        course?: number;
+-+        updatedAt?: string;
+-+    };
+-+    track?: {
+-+        lat: number;
+-+        lon: number;
+-+        speed?: number;
+-+        course?: number;
+-+        timestamp: string;
+-+    }[];
+- }
+- export interface TrackingHeartbeatEvent {
+--  type: 'heartbeat';
+--  timestamp: string;
+-+    type: 'heartbeat';
+-+    timestamp: string;
+- }
+- export interface TrackingInitEvent {
+--  type: 'init';
+--  timestamp: string;
+--  alarms?: TrackingAlarmEvent[];
+-+    type: 'init';
+-+    timestamp: string;
+-+    alarms?: TrackingAlarmEvent[];
+- }
+--export type TrackingEvent =
+--  | TrackingAlarmEvent
+--  | TrackingPositionEvent
+--  | TrackingHeartbeatEvent
+--  | TrackingInitEvent;
+-+export type TrackingEvent = TrackingAlarmEvent | TrackingPositionEvent | TrackingHeartbeatEvent | TrackingInitEvent;
+- export interface FleetVehicleDto {
+--  id: string;
+--  name: string;
+--  registrationNumber: string;
+--  odometerInitial: number;
+--  odometerCurrent: number;
+--  mileageTotal: number;
+--  transportType: 'Легковой' | 'Грузовой';
+--  fuelType: 'Бензин' | 'Дизель' | 'Газ';
+--  fuelRefilled: number;
+--  fuelAverageConsumption: number;
+--  fuelSpentTotal: number;
+--  currentTasks: string[];
+--  transportHistory?: {
+--    taskId: string;
+--    taskTitle?: string;
+--    assignedAt: string;
+--    removedAt?: string;
+--  }[];
+--  createdAt?: string;
+--  updatedAt?: string;
+--  unitId?: number;
+--  remoteName?: string;
+--  notes?: string;
+-+    id: string;
+-+    name: string;
+-+    registrationNumber: string;
+-+    odometerInitial: number;
+-+    odometerCurrent: number;
+-+    mileageTotal: number;
+-+    transportType: 'Легковой' | 'Грузовой';
+-+    fuelType: 'Бензин' | 'Дизель' | 'Газ';
+-+    fuelRefilled: number;
+-+    fuelAverageConsumption: number;
+-+    fuelSpentTotal: number;
+-+    currentTasks: string[];
+-+    transportHistory?: {
+-+        taskId: string;
+-+        taskTitle?: string;
+-+        assignedAt: string;
+-+        removedAt?: string;
+-+    }[];
+-+    position?: {
+-+        lat: number;
+-+        lon: number;
+-+        timestamp?: string;
+-+    } | null;
+-+    createdAt?: string;
+-+    updatedAt?: string;
+-+    unitId?: number;
+-+    remoteName?: string;
+-+    notes?: string;
+- }
+- export type RoutePlanStatus = 'draft' | 'approved' | 'completed';
+- export interface RoutePlanStop {
+--  order: number;
+--  kind: 'start' | 'finish';
+--  taskId: string;
+--  coordinates?: Coords;
+--  address?: string | null;
+--  etaMinutes?: number | null;
+--  delayMinutes?: number | null;
+--  load?: number | null;
+--  windowStartMinutes?: number | null;
+--  windowEndMinutes?: number | null;
+-+    order: number;
+-+    kind: 'start' | 'finish';
+-+    taskId: string;
+-+    coordinates?: Coords;
+-+    address?: string | null;
+-+    etaMinutes?: number | null;
+-+    delayMinutes?: number | null;
+-+    load?: number | null;
+-+    windowStartMinutes?: number | null;
+-+    windowEndMinutes?: number | null;
+- }
+- export interface RoutePlanTaskRef {
+--  taskId: string;
+--  order: number;
+--  title?: string;
+--  start?: Coords;
+--  finish?: Coords;
+--  startAddress?: string | null;
+--  finishAddress?: string | null;
+--  distanceKm?: number | null;
+-+    taskId: string;
+-+    order: number;
+-+    title?: string;
+-+    start?: Coords;
+-+    finish?: Coords;
+-+    startAddress?: string | null;
+-+    finishAddress?: string | null;
+-+    distanceKm?: number | null;
+- }
+- export interface RoutePlanRouteMetrics {
+--  distanceKm?: number | null;
+--  tasks?: number;
+--  stops?: number;
+--  load?: number | null;
+--  etaMinutes?: number | null;
+-+    distanceKm?: number | null;
+-+    tasks?: number;
+-+    stops?: number;
+-+    load?: number | null;
+-+    etaMinutes?: number | null;
+- }
+- export interface RoutePlanRoute {
+--  id: string;
+--  order: number;
+--  vehicleId?: string | null;
+--  vehicleName?: string | null;
+--  driverId?: number | null;
+--  driverName?: string | null;
+--  tasks: RoutePlanTaskRef[];
+--  stops: RoutePlanStop[];
+--  metrics?: RoutePlanRouteMetrics;
+--  routeLink?: string | null;
+--  notes?: string | null;
+-+    id: string;
+-+    order: number;
+-+    vehicleId?: string | null;
+-+    vehicleName?: string | null;
+-+    driverId?: number | null;
+-+    driverName?: string | null;
+-+    tasks: RoutePlanTaskRef[];
+-+    stops: RoutePlanStop[];
+-+    metrics?: RoutePlanRouteMetrics;
+-+    routeLink?: string | null;
+-+    notes?: string | null;
+- }
+- export interface RoutePlanMetrics {
+--  totalDistanceKm?: number | null;
+--  totalRoutes: number;
+--  totalTasks: number;
+--  totalStops?: number;
+--  totalEtaMinutes?: number | null;
+--  totalLoad?: number | null;
+-+    totalDistanceKm?: number | null;
+-+    totalRoutes: number;
+-+    totalTasks: number;
+-+    totalStops?: number;
+-+    totalEtaMinutes?: number | null;
+-+    totalLoad?: number | null;
+- }
+- export interface RoutePlan {
+--  id: string;
+--  title: string;
+--  status: RoutePlanStatus;
+--  suggestedBy?: number | null;
+--  method?: 'angle' | 'trip';
+--  count?: number;
+--  notes?: string | null;
+--  approvedBy?: number | null;
+--  approvedAt?: string | null;
+--  completedBy?: number | null;
+--  completedAt?: string | null;
+--  metrics: RoutePlanMetrics;
+--  routes: RoutePlanRoute[];
+--  tasks: string[];
+--  createdAt?: string;
+--  updatedAt?: string;
+-+    id: string;
+-+    title: string;
+-+    status: RoutePlanStatus;
+-+    suggestedBy?: number | null;
+-+    method?: 'angle' | 'trip';
+-+    count?: number;
+-+    notes?: string | null;
+-+    approvedBy?: number | null;
+-+    approvedAt?: string | null;
+-+    completedBy?: number | null;
+-+    completedAt?: string | null;
+-+    metrics: RoutePlanMetrics;
+-+    routes: RoutePlanRoute[];
+-+    tasks: string[];
+-+    createdAt?: string;
+-+    updatedAt?: string;
+- }
+- export interface LogisticsInitEvent {
+--  type: 'logistics.init';
+--  timestamp: string;
+-+    type: 'logistics.init';
+-+    timestamp: string;
+- }
+- export interface LogisticsHeartbeatEvent {
+--  type: 'logistics.heartbeat';
+--  timestamp: string;
+-+    type: 'logistics.heartbeat';
+-+    timestamp: string;
+- }
+- export type LogisticsTaskChangeAction = 'created' | 'updated' | 'deleted';
+- export interface LogisticsTasksChangedEvent {
+--  type: 'tasks.changed';
+--  timestamp: string;
+--  action: LogisticsTaskChangeAction;
+--  taskIds: string[];
+-+    type: 'tasks.changed';
+-+    timestamp: string;
+-+    action: LogisticsTaskChangeAction;
+-+    taskIds: string[];
+- }
+--export type LogisticsRoutePlanUpdateReason =
+--  | 'created'
+--  | 'updated'
+--  | 'recalculated'
+--  | 'deleted';
+-+export type LogisticsRoutePlanUpdateReason = 'created' | 'updated' | 'recalculated' | 'deleted';
+- export interface LogisticsRoutePlanUpdatedEvent {
+--  type: 'route-plan.updated';
+--  timestamp: string;
+--  reason: LogisticsRoutePlanUpdateReason;
+--  plan: RoutePlan;
+-+    type: 'route-plan.updated';
+-+    timestamp: string;
+-+    reason: LogisticsRoutePlanUpdateReason;
+-+    plan: RoutePlan;
+- }
+- export interface LogisticsRoutePlanRemovedEvent {
+--  type: 'route-plan.removed';
+--  timestamp: string;
+--  planId: string;
+-+    type: 'route-plan.removed';
+-+    timestamp: string;
+-+    planId: string;
+- }
+--export type LogisticsEvent =
+--  | LogisticsInitEvent
+--  | LogisticsHeartbeatEvent
+--  | LogisticsTasksChangedEvent
+--  | LogisticsRoutePlanUpdatedEvent
+--  | LogisticsRoutePlanRemovedEvent;
+-+export type LogisticsEvent = LogisticsInitEvent | LogisticsHeartbeatEvent | LogisticsTasksChangedEvent | LogisticsRoutePlanUpdatedEvent | LogisticsRoutePlanRemovedEvent;
+- export interface RoutePlanAnalyticsSummary {
+--  period: {
+--    from: string;
+--    to: string;
+--  };
+--  mileage: {
+--    total: number;
+--    byPeriod: Array<{
+--      date: string;
+--      value: number;
+--    }>;
+--  };
+--  load: {
+--    average: number | null;
+--    byPeriod: Array<{
+--      date: string;
+--      value: number | null;
+--    }>;
+--  };
+--  sla: {
+--    average: number | null;
+--    byPeriod: Array<{
+--      date: string;
+--      onTime: number;
+--      total: number;
+--      rate: number | null;
+--    }>;
+--  };
+-+    period: {
+-+        from: string;
+-+        to: string;
+-+    };
+-+    mileage: {
+-+        total: number;
+-+        byPeriod: Array<{
+-+            date: string;
+-+            value: number;
+-+        }>;
+-+    };
+-+    load: {
+-+        average: number | null;
+-+        byPeriod: Array<{
+-+            date: string;
+-+            value: number | null;
+-+        }>;
+-+    };
+-+    sla: {
+-+        average: number | null;
+-+        byPeriod: Array<{
+-+            date: string;
+-+            onTime: number;
+-+            total: number;
+-+            rate: number | null;
+-+        }>;
+-+    };
+- }
+-diff --git a/packages/shared/dist/types.js b/packages/shared/dist/types.js
+-index 33e390b..ce4a47b 100644
+---- a/packages/shared/dist/types.js
+-+++ b/packages/shared/dist/types.js
+-@@ -1,4 +1,4 @@
+--'use strict';
+-+"use strict";
+- // Назначение: общие интерфейсы Task и User.
+- // Модули: mapUtils
+--Object.defineProperty(exports, '__esModule', { value: true });
+-+Object.defineProperty(exports, "__esModule", { value: true });
+-diff --git a/packages/shared/src/types.ts b/packages/shared/src/types.ts
+-index da2336f..0389d4c 100644
+---- a/packages/shared/src/types.ts
+-+++ b/packages/shared/src/types.ts
+-@@ -127,6 +127,11 @@ export interface FleetVehicleDto {
+-     assignedAt: string;
+-     removedAt?: string;
+-   }[];
+-+  position?: {
+-+    lat: number;
+-+    lon: number;
+-+    timestamp?: string;
+-+  } | null;
+-   createdAt?: string;
+-   updatedAt?: string;
+-   unitId?: number;
+-diff --git a/packages/shared/tsconfig.tsbuildinfo b/packages/shared/tsconfig.tsbuildinfo
+-index 27dc705..4cef853 100644
+---- a/packages/shared/tsconfig.tsbuildinfo
+-+++ b/packages/shared/tsconfig.tsbuildinfo
+-@@ -1 +1 @@
+--{"fileNames":["../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es5.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2015.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2016.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2017.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2018.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2019.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.dom.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.dom.iterable.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.dom.asynciterable.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.webworker.importscripts.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.scripthost.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2015.core.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2015.collection.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2015.generator.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2015.iterable.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2015.promise.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2015.proxy.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2015.reflect.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2015.symbol.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2015.symbol.wellknown.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2016.array.include.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2016.intl.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2017.arraybuffer.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2017.date.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2017.object.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2017.sharedmemory.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2017.string.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2017.intl.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2017.typedarrays.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2018.asyncgenerator.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2018.asynciterable.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2018.intl.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2018.promise.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2018.regexp.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2019.array.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2019.object.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2019.string.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2019.symbol.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2019.intl.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.decorators.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.decorators.legacy.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2019.full.d.ts","./src/constants.ts","./src/taskfields.ts","./src/maputils.ts","./src/types.ts","./src/taskform.schema.json","./src/index.ts"],"fileIdsList":[[43,44,45,46,47],[43],[45]],"fileInfos":[{"version":"c430d44666289dae81f30fa7b2edebf186ecc91a2d4c71266ea6ae76388792e1","affectsGlobalScope":true,"impliedFormat":1},{"version":"45b7ab580deca34ae9729e97c13cfd999df04416a79116c3bfb483804f85ded4","impliedFormat":1},{"version":"3facaf05f0c5fc569c5649dd359892c98a85557e3e0c847964caeb67076f4d75","impliedFormat":1},{"version":"e44bb8bbac7f10ecc786703fe0a6a4b952189f908707980ba8f3c8975a760962","impliedFormat":1},{"version":"5e1c4c362065a6b95ff952c0eab010f04dcd2c3494e813b493ecfd4fcb9fc0d8","impliedFormat":1},{"version":"68d73b4a11549f9c0b7d352d10e91e5dca8faa3322bfb77b661839c42b1ddec7","impliedFormat":1},{"version":"080941d9f9ff9307f7e27a83bcd888b7c8270716c39af943532438932ec1d0b9","affectsGlobalScope":true,"impliedFormat":1},{"version":"2e80ee7a49e8ac312cc11b77f1475804bee36b3b2bc896bead8b6e1266befb43","affectsGlobalScope":true,"impliedFormat":1},{"version":"d7a3c8b952931daebdfc7a2897c53c0a1c73624593fa070e46bd537e64dcd20a","affectsGlobalScope":true,"impliedFormat":1},{"version":"80e18897e5884b6723488d4f5652167e7bb5024f946743134ecc4aa4ee731f89","affectsGlobalScope":true,"impliedFormat":1},{"version":"cd034f499c6cdca722b60c04b5b1b78e058487a7085a8e0d6fb50809947ee573","affectsGlobalScope":true,"impliedFormat":1},{"version":"c57796738e7f83dbc4b8e65132f11a377649c00dd3eee333f672b8f0a6bea671","affectsGlobalScope":true,"impliedFormat":1},{"version":"dc2df20b1bcdc8c2d34af4926e2c3ab15ffe1160a63e58b7e09833f616efff44","affectsGlobalScope":true,"impliedFormat":1},{"version":"515d0b7b9bea2e31ea4ec968e9edd2c39d3eebf4a2d5cbd04e88639819ae3b71","affectsGlobalScope":true,"impliedFormat":1},{"version":"0559b1f683ac7505ae451f9a96ce4c3c92bdc71411651ca6ddb0e88baaaad6a3","affectsGlobalScope":true,"impliedFormat":1},{"version":"0dc1e7ceda9b8b9b455c3a2d67b0412feab00bd2f66656cd8850e8831b08b537","affectsGlobalScope":true,"impliedFormat":1},{"version":"ce691fb9e5c64efb9547083e4a34091bcbe5bdb41027e310ebba8f7d96a98671","affectsGlobalScope":true,"impliedFormat":1},{"version":"8d697a2a929a5fcb38b7a65594020fcef05ec1630804a33748829c5ff53640d0","affectsGlobalScope":true,"impliedFormat":1},{"version":"4ff2a353abf8a80ee399af572debb8faab2d33ad38c4b4474cff7f26e7653b8d","affectsGlobalScope":true,"impliedFormat":1},{"version":"fb0f136d372979348d59b3f5020b4cdb81b5504192b1cacff5d1fbba29378aa1","affectsGlobalScope":true,"impliedFormat":1},{"version":"d15bea3d62cbbdb9797079416b8ac375ae99162a7fba5de2c6c505446486ac0a","affectsGlobalScope":true,"impliedFormat":1},{"version":"68d18b664c9d32a7336a70235958b8997ebc1c3b8505f4f1ae2b7e7753b87618","affectsGlobalScope":true,"impliedFormat":1},{"version":"eb3d66c8327153d8fa7dd03f9c58d351107fe824c79e9b56b462935176cdf12a","affectsGlobalScope":true,"impliedFormat":1},{"version":"38f0219c9e23c915ef9790ab1d680440d95419ad264816fa15009a8851e79119","affectsGlobalScope":true,"impliedFormat":1},{"version":"69ab18c3b76cd9b1be3d188eaf8bba06112ebbe2f47f6c322b5105a6fbc45a2e","affectsGlobalScope":true,"impliedFormat":1},{"version":"a680117f487a4d2f30ea46f1b4b7f58bef1480456e18ba53ee85c2746eeca012","affectsGlobalScope":true,"impliedFormat":1},{"version":"2f11ff796926e0832f9ae148008138ad583bd181899ab7dd768a2666700b1893","affectsGlobalScope":true,"impliedFormat":1},{"version":"4de680d5bb41c17f7f68e0419412ca23c98d5749dcaaea1896172f06435891fc","affectsGlobalScope":true,"impliedFormat":1},{"version":"954296b30da6d508a104a3a0b5d96b76495c709785c1d11610908e63481ee667","affectsGlobalScope":true,"impliedFormat":1},{"version":"ac9538681b19688c8eae65811b329d3744af679e0bdfa5d842d0e32524c73e1c","affectsGlobalScope":true,"impliedFormat":1},{"version":"0a969edff4bd52585473d24995c5ef223f6652d6ef46193309b3921d65dd4376","affectsGlobalScope":true,"impliedFormat":1},{"version":"9e9fbd7030c440b33d021da145d3232984c8bb7916f277e8ffd3dc2e3eae2bdb","affectsGlobalScope":true,"impliedFormat":1},{"version":"811ec78f7fefcabbda4bfa93b3eb67d9ae166ef95f9bff989d964061cbf81a0c","affectsGlobalScope":true,"impliedFormat":1},{"version":"717937616a17072082152a2ef351cb51f98802fb4b2fdabd32399843875974ca","affectsGlobalScope":true,"impliedFormat":1},{"version":"d7e7d9b7b50e5f22c915b525acc5a49a7a6584cf8f62d0569e557c5cfc4b2ac2","affectsGlobalScope":true,"impliedFormat":1},{"version":"71c37f4c9543f31dfced6c7840e068c5a5aacb7b89111a4364b1d5276b852557","affectsGlobalScope":true,"impliedFormat":1},{"version":"576711e016cf4f1804676043e6a0a5414252560eb57de9faceee34d79798c850","affectsGlobalScope":true,"impliedFormat":1},{"version":"89c1b1281ba7b8a96efc676b11b264de7a8374c5ea1e6617f11880a13fc56dc6","affectsGlobalScope":true,"impliedFormat":1},{"version":"74f7fa2d027d5b33eb0471c8e82a6c87216223181ec31247c357a3e8e2fddc5b","affectsGlobalScope":true,"impliedFormat":1},{"version":"8e7f8264d0fb4c5339605a15daadb037bf238c10b654bb3eee14208f860a32ea","affectsGlobalScope":true,"impliedFormat":1},{"version":"782dec38049b92d4e85c1585fbea5474a219c6984a35b004963b00beb1aab538","affectsGlobalScope":true,"impliedFormat":1},{"version":"08f6861df84fba9719c14d5adc3ba40be9f0c687639e6c4df3c05b9301b8ff94","impliedFormat":1},{"version":"8612200b692dfd83afc92a0845ee4066637ab55f127c79c699090da3e0bedb18","signature":"79ca67732834543215e1c2507905410f67c5da041667762d8b53639fcc8e5062"},{"version":"8a570818254d02bcacef011d6526e9cae083a3e72957b994cee54ef2de4e1c35","signature":"ae5e3e10b53cb956ccf0ca70fbdff0900e8eff0bd590257d6bfb31e3a2c8ed4c"},{"version":"2c8d65d8838ed5b3876659af1544d6753b2265cc970ae7d3a64405fa692c2493","signature":"f977567564bbcd20a5197d23b753c041bff4d2b6a56a6b635fad19532b91a11d"},{"version":"be9aa401dcb0a8324d7d304386d6ce294fb92d05b206278adfe0f7e3a8a46a55","signature":"36582fd22ca64af202338784e0f0cb1222a518580deff8d58324953de75776e4"},{"version":"fdeed1c47eea15a50abf984e01e09f588dcbd86e15335128fb574d517fb5faed","signature":"db07e15704cff623da994f978764f5b403624887a656ea31875745c3957df225"},{"version":"e43fab7d7358a802721c478786b9ac345da3933f1e21b21738ad62e2712a3e0a","signature":"91fb8ffcac9970bb4a08bd7637c20782aaddfbdb17f35b1e9ff68b1d2a52e9c0"}],"root":[[43,48]],"options":{"composite":true,"declaration":true,"esModuleInterop":true,"module":1,"noImplicitAny":true,"outDir":"./dist","rootDir":"./src","skipLibCheck":true,"strict":true,"target":6},"referencedMap":[[48,1],[44,2],[46,3]],"latestChangedDtsFile":"./dist/index.d.ts","version":"5.9.3"}
+-\ No newline at end of file
+-+{"fileNames":["../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es5.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2015.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2016.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2017.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2018.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2019.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.dom.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.dom.iterable.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.dom.asynciterable.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.webworker.importscripts.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.scripthost.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2015.core.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2015.collection.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2015.generator.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2015.iterable.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2015.promise.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2015.proxy.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2015.reflect.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2015.symbol.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2015.symbol.wellknown.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2016.array.include.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2016.intl.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2017.arraybuffer.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2017.date.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2017.object.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2017.sharedmemory.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2017.string.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2017.intl.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2017.typedarrays.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2018.asyncgenerator.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2018.asynciterable.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2018.intl.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2018.promise.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2018.regexp.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2019.array.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2019.object.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2019.string.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2019.symbol.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2019.intl.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.decorators.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.decorators.legacy.d.ts","../../node_modules/.pnpm/typescript@5.9.3/node_modules/typescript/lib/lib.es2019.full.d.ts","./src/constants.ts","./src/taskFields.ts","./src/mapUtils.ts","./src/types.ts","./src/taskForm.schema.json","./src/index.ts"],"fileIdsList":[[43,44,45,46,47],[43],[45]],"fileInfos":[{"version":"c430d44666289dae81f30fa7b2edebf186ecc91a2d4c71266ea6ae76388792e1","affectsGlobalScope":true,"impliedFormat":1},{"version":"45b7ab580deca34ae9729e97c13cfd999df04416a79116c3bfb483804f85ded4","impliedFormat":1},{"version":"3facaf05f0c5fc569c5649dd359892c98a85557e3e0c847964caeb67076f4d75","impliedFormat":1},{"version":"e44bb8bbac7f10ecc786703fe0a6a4b952189f908707980ba8f3c8975a760962","impliedFormat":1},{"version":"5e1c4c362065a6b95ff952c0eab010f04dcd2c3494e813b493ecfd4fcb9fc0d8","impliedFormat":1},{"version":"68d73b4a11549f9c0b7d352d10e91e5dca8faa3322bfb77b661839c42b1ddec7","impliedFormat":1},{"version":"080941d9f9ff9307f7e27a83bcd888b7c8270716c39af943532438932ec1d0b9","affectsGlobalScope":true,"impliedFormat":1},{"version":"2e80ee7a49e8ac312cc11b77f1475804bee36b3b2bc896bead8b6e1266befb43","affectsGlobalScope":true,"impliedFormat":1},{"version":"d7a3c8b952931daebdfc7a2897c53c0a1c73624593fa070e46bd537e64dcd20a","affectsGlobalScope":true,"impliedFormat":1},{"version":"80e18897e5884b6723488d4f5652167e7bb5024f946743134ecc4aa4ee731f89","affectsGlobalScope":true,"impliedFormat":1},{"version":"cd034f499c6cdca722b60c04b5b1b78e058487a7085a8e0d6fb50809947ee573","affectsGlobalScope":true,"impliedFormat":1},{"version":"c57796738e7f83dbc4b8e65132f11a377649c00dd3eee333f672b8f0a6bea671","affectsGlobalScope":true,"impliedFormat":1},{"version":"dc2df20b1bcdc8c2d34af4926e2c3ab15ffe1160a63e58b7e09833f616efff44","affectsGlobalScope":true,"impliedFormat":1},{"version":"515d0b7b9bea2e31ea4ec968e9edd2c39d3eebf4a2d5cbd04e88639819ae3b71","affectsGlobalScope":true,"impliedFormat":1},{"version":"0559b1f683ac7505ae451f9a96ce4c3c92bdc71411651ca6ddb0e88baaaad6a3","affectsGlobalScope":true,"impliedFormat":1},{"version":"0dc1e7ceda9b8b9b455c3a2d67b0412feab00bd2f66656cd8850e8831b08b537","affectsGlobalScope":true,"impliedFormat":1},{"version":"ce691fb9e5c64efb9547083e4a34091bcbe5bdb41027e310ebba8f7d96a98671","affectsGlobalScope":true,"impliedFormat":1},{"version":"8d697a2a929a5fcb38b7a65594020fcef05ec1630804a33748829c5ff53640d0","affectsGlobalScope":true,"impliedFormat":1},{"version":"4ff2a353abf8a80ee399af572debb8faab2d33ad38c4b4474cff7f26e7653b8d","affectsGlobalScope":true,"impliedFormat":1},{"version":"fb0f136d372979348d59b3f5020b4cdb81b5504192b1cacff5d1fbba29378aa1","affectsGlobalScope":true,"impliedFormat":1},{"version":"d15bea3d62cbbdb9797079416b8ac375ae99162a7fba5de2c6c505446486ac0a","affectsGlobalScope":true,"impliedFormat":1},{"version":"68d18b664c9d32a7336a70235958b8997ebc1c3b8505f4f1ae2b7e7753b87618","affectsGlobalScope":true,"impliedFormat":1},{"version":"eb3d66c8327153d8fa7dd03f9c58d351107fe824c79e9b56b462935176cdf12a","affectsGlobalScope":true,"impliedFormat":1},{"version":"38f0219c9e23c915ef9790ab1d680440d95419ad264816fa15009a8851e79119","affectsGlobalScope":true,"impliedFormat":1},{"version":"69ab18c3b76cd9b1be3d188eaf8bba06112ebbe2f47f6c322b5105a6fbc45a2e","affectsGlobalScope":true,"impliedFormat":1},{"version":"a680117f487a4d2f30ea46f1b4b7f58bef1480456e18ba53ee85c2746eeca012","affectsGlobalScope":true,"impliedFormat":1},{"version":"2f11ff796926e0832f9ae148008138ad583bd181899ab7dd768a2666700b1893","affectsGlobalScope":true,"impliedFormat":1},{"version":"4de680d5bb41c17f7f68e0419412ca23c98d5749dcaaea1896172f06435891fc","affectsGlobalScope":true,"impliedFormat":1},{"version":"954296b30da6d508a104a3a0b5d96b76495c709785c1d11610908e63481ee667","affectsGlobalScope":true,"impliedFormat":1},{"version":"ac9538681b19688c8eae65811b329d3744af679e0bdfa5d842d0e32524c73e1c","affectsGlobalScope":true,"impliedFormat":1},{"version":"0a969edff4bd52585473d24995c5ef223f6652d6ef46193309b3921d65dd4376","affectsGlobalScope":true,"impliedFormat":1},{"version":"9e9fbd7030c440b33d021da145d3232984c8bb7916f277e8ffd3dc2e3eae2bdb","affectsGlobalScope":true,"impliedFormat":1},{"version":"811ec78f7fefcabbda4bfa93b3eb67d9ae166ef95f9bff989d964061cbf81a0c","affectsGlobalScope":true,"impliedFormat":1},{"version":"717937616a17072082152a2ef351cb51f98802fb4b2fdabd32399843875974ca","affectsGlobalScope":true,"impliedFormat":1},{"version":"d7e7d9b7b50e5f22c915b525acc5a49a7a6584cf8f62d0569e557c5cfc4b2ac2","affectsGlobalScope":true,"impliedFormat":1},{"version":"71c37f4c9543f31dfced6c7840e068c5a5aacb7b89111a4364b1d5276b852557","affectsGlobalScope":true,"impliedFormat":1},{"version":"576711e016cf4f1804676043e6a0a5414252560eb57de9faceee34d79798c850","affectsGlobalScope":true,"impliedFormat":1},{"version":"89c1b1281ba7b8a96efc676b11b264de7a8374c5ea1e6617f11880a13fc56dc6","affectsGlobalScope":true,"impliedFormat":1},{"version":"74f7fa2d027d5b33eb0471c8e82a6c87216223181ec31247c357a3e8e2fddc5b","affectsGlobalScope":true,"impliedFormat":1},{"version":"8e7f8264d0fb4c5339605a15daadb037bf238c10b654bb3eee14208f860a32ea","affectsGlobalScope":true,"impliedFormat":1},{"version":"782dec38049b92d4e85c1585fbea5474a219c6984a35b004963b00beb1aab538","affectsGlobalScope":true,"impliedFormat":1},{"version":"08f6861df84fba9719c14d5adc3ba40be9f0c687639e6c4df3c05b9301b8ff94","impliedFormat":1},{"version":"8612200b692dfd83afc92a0845ee4066637ab55f127c79c699090da3e0bedb18","signature":"79ca67732834543215e1c2507905410f67c5da041667762d8b53639fcc8e5062"},{"version":"8a570818254d02bcacef011d6526e9cae083a3e72957b994cee54ef2de4e1c35","signature":"ae5e3e10b53cb956ccf0ca70fbdff0900e8eff0bd590257d6bfb31e3a2c8ed4c"},{"version":"2c8d65d8838ed5b3876659af1544d6753b2265cc970ae7d3a64405fa692c2493","signature":"f977567564bbcd20a5197d23b753c041bff4d2b6a56a6b635fad19532b91a11d"},{"version":"187e2f26f332fac44b0775b2819ae2651ac73531e979a2e8c405171e9b03278d","signature":"bbb8ea2641f763e0c0b1cedb92d6c921e7b9a18acb0aa1976358eb7c88b4ab07"},{"version":"fdeed1c47eea15a50abf984e01e09f588dcbd86e15335128fb574d517fb5faed","signature":"db07e15704cff623da994f978764f5b403624887a656ea31875745c3957df225"},{"version":"e43fab7d7358a802721c478786b9ac345da3933f1e21b21738ad62e2712a3e0a","signature":"91fb8ffcac9970bb4a08bd7637c20782aaddfbdb17f35b1e9ff68b1d2a52e9c0"}],"root":[[43,48]],"options":{"composite":true,"declaration":true,"esModuleInterop":true,"module":1,"noImplicitAny":true,"outDir":"./dist","rootDir":"./src","skipLibCheck":true,"strict":true,"target":6},"referencedMap":[[48,1],[44,2],[46,3]],"latestChangedDtsFile":"./dist/types.d.ts","version":"5.9.3"}
+-\ No newline at end of file

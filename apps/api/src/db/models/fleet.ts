@@ -13,6 +13,12 @@ export interface VehicleTaskHistoryEntry {
   removedAt?: Date;
 }
 
+export interface VehiclePosition {
+  lat: number;
+  lon: number;
+  timestamp?: Date;
+}
+
 export interface FleetVehicleAttrs {
   name: string;
   registrationNumber: string;
@@ -26,6 +32,7 @@ export interface FleetVehicleAttrs {
   fuelSpentTotal: number;
   currentTasks: string[];
   transportHistory?: VehicleTaskHistoryEntry[];
+  position?: VehiclePosition | null;
 }
 
 export type FleetVehicleDocument = HydratedDocument<FleetVehicleAttrs>;
@@ -36,6 +43,15 @@ const vehicleTaskHistorySchema = new Schema<VehicleTaskHistoryEntry>(
     taskTitle: String,
     assignedAt: { type: Date, default: Date.now },
     removedAt: Date,
+  },
+  { _id: false },
+);
+
+const vehiclePositionSchema = new Schema<VehiclePosition>(
+  {
+    lat: { type: Number, min: -90, max: 90, required: true },
+    lon: { type: Number, min: -180, max: 180, required: true },
+    timestamp: { type: Date, default: Date.now },
   },
   { _id: false },
 );
@@ -72,6 +88,7 @@ const fleetVehicleSchema = new Schema<FleetVehicleAttrs>(
     fuelSpentTotal: { type: Number, required: true, min: 0 },
     currentTasks: { type: [String], default: [] },
     transportHistory: { type: [vehicleTaskHistorySchema], default: [] },
+    position: { type: vehiclePositionSchema, default: null },
   },
   {
     timestamps: true,

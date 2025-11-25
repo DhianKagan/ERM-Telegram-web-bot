@@ -13,6 +13,12 @@ const pendingRequests = new Map<string, PendingRequest>();
 const buildKey = (search: string, page: number, limit: number): string =>
   `${search}::${page}::${limit}`;
 
+export interface FleetVehiclePositionPayload {
+  lat: number;
+  lon: number;
+  timestamp?: string;
+}
+
 export interface FleetVehiclePayload {
   name: string;
   registrationNumber: string;
@@ -25,6 +31,7 @@ export interface FleetVehiclePayload {
   fuelAverageConsumption: number;
   fuelSpentTotal: number;
   currentTasks: string[];
+  position?: FleetVehiclePositionPayload | null;
 }
 
 export interface FleetVehicleResponse {

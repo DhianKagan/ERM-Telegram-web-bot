@@ -2599,21 +2599,23 @@ export default function LogisticsPage() {
         insert3dBuildingsLayer(mapInstance);
       };
       ensureAddressLayer = async () => {
-        if (isRasterFallback || !HAS_ADDRESS_VECTOR_SOURCE) {
+        if (isRasterFallback) {
           return;
         }
-        if (!ADDRESS_VECTOR_SOURCE_URL) {
+        const addressTilesUrl = MAP_ADDRESSES_PMTILES_URL;
+        if (!addressTilesUrl) {
           console.warn(
             'Адресные плитки не подключены: отсутствует URL источника (VITE_MAP_ADDRESSES_PMTILES_URL).',
           );
           return;
         }
         if (mapInstance.getSource(ADDRESS_SOURCE_ID)) {
+          ensureAddressesLayerOrder(mapInstance);
           return;
         }
         const requiresPmtiles =
-          ADDRESS_VECTOR_SOURCE_URL.startsWith('pmtiles://') ||
-          ADDRESS_VECTOR_SOURCE_URL.endsWith('.pmtiles');
+          addressTilesUrl.startsWith('pmtiles://') ||
+          addressTilesUrl.endsWith('.pmtiles');
         if (requiresPmtiles) {
           const registered = await registerPmtilesProtocol();
           if (!registered) {
@@ -2632,7 +2634,7 @@ export default function LogisticsPage() {
         }
         mapInstance.addSource(ADDRESS_SOURCE_ID, {
           type: 'vector',
-          url: ADDRESS_VECTOR_SOURCE_URL,
+          url: addressTilesUrl,
         });
         const addressLayer: SymbolLayerSpecification = {
           id: ADDRESS_LAYER_ID,

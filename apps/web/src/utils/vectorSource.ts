@@ -8,6 +8,18 @@ type MapStyleSource = { type?: string };
 const isVectorSource = (source: MapStyleSource | undefined): boolean =>
   !!source && typeof source === 'object' && source.type === 'vector';
 
+const resolveSources = (
+  map: MapInstance,
+): Record<string, MapStyleSource> | null => {
+  const style = map.getStyle();
+  const sources = style?.sources;
+  if (!sources || typeof sources !== 'object') {
+    return null;
+  }
+
+  return sources;
+};
+
 const pickFirstVectorSourceId = (
   sources: Record<string, MapStyleSource>,
 ): string | null => {
@@ -19,18 +31,24 @@ const pickFirstVectorSourceId = (
   return null;
 };
 
-export const detectPrimaryVectorSourceId = (
-  map: MapInstance,
-): string | null => {
-  const style = map.getStyle();
-  const sources = style?.sources;
-  if (!sources || typeof sources !== 'object') {
+export const findFirstVectorSourceId = (map: MapInstance): string | null => {
+  const sources = resolveSources(map);
+  if (!sources) {
     return null;
   }
 
-  if (isVectorSource(sources[MAP_VECTOR_SOURCE_ID])) {
-    return MAP_VECTOR_SOURCE_ID;
+  return pickFirstVectorSourceId(sources);
+};
+
+export const detectPrimaryVectorSourceId = (
+  map: MapInstance,
+): string | null => {
+  const sources = resolveSources(map);
+  if (!sources) {
+    return null;
   }
 
-  return pickFirstVectorSourceId(sources);
+  return isVectorSource(sources[MAP_VECTOR_SOURCE_ID])
+    ? MAP_VECTOR_SOURCE_ID
+    : null;
 };

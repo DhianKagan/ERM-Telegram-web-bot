@@ -636,6 +636,24 @@ const toPosition = (coords?: Coords | null): [number, number] | null => {
   return [lng, lat];
 };
 
+const hasCoords = (coords?: Coords | null) => Boolean(toPosition(coords));
+
+const normalizeLocation = (value: unknown): string => {
+  if (typeof value !== 'string') {
+    return '';
+  }
+  const trimmed = value.trim();
+  return trimmed;
+};
+
+const resolveLocation = (primary: unknown, fallback: unknown): string => {
+  const primaryValue = normalizeLocation(primary);
+  if (primaryValue) {
+    return primaryValue;
+  }
+  return normalizeLocation(fallback);
+};
+
 type AnimatedRoute = {
   taskId: string;
   title: string;
@@ -1226,6 +1244,27 @@ export default function LogisticsPage() {
       counts[rawStatus] = (counts[rawStatus] ?? 0) + 1;
     });
     return counts;
+  }, [categoryFilteredTasks]);
+
+  const geocodingQueue = React.useMemo(() => {
+    return categoryFilteredTasks.filter((task) => {
+      const details = (task as Record<string, unknown>).logistics_details as
+        | LogisticsDetails
+        | undefined;
+      const startLocation = resolveLocation(
+        details?.start_location,
+        (task as Record<string, unknown>).start_location,
+      );
+      const endLocation = resolveLocation(
+        details?.end_location,
+        (task as Record<string, unknown>).end_location,
+      );
+      const startMissing =
+        Boolean(startLocation) && !hasCoords(task.startCoordinates);
+      const finishMissing =
+        Boolean(endLocation) && !hasCoords(task.finishCoordinates);
+      return startMissing || finishMissing;
+    });
   }, [categoryFilteredTasks]);
 
   const routeStatusMetadata = React.useMemo(() => {
@@ -2078,12 +2117,6 @@ export default function LogisticsPage() {
   );
 
   const filterRouteTasks = React.useCallback((input: RouteTask[]) => {
-    const hasPoint = (coords?: Coords | null) =>
-      typeof coords?.lat === 'number' &&
-      Number.isFinite(coords.lat) &&
-      typeof coords?.lng === 'number' &&
-      Number.isFinite(coords.lng);
-
     const result: RouteTask[] = [];
     input.forEach((task) => {
       const taskStatus =
@@ -2100,22 +2133,6 @@ export default function LogisticsPage() {
         | LogisticsDetails
         | undefined;
 
-      const resolveLocation = (primary: unknown, fallback: unknown): string => {
-        if (typeof primary === 'string') {
-          const value = primary.trim();
-          if (value) {
-            return value;
-          }
-        }
-        if (typeof fallback === 'string') {
-          const value = fallback.trim();
-          if (value) {
-            return value;
-          }
-        }
-        return '';
-      };
-
       const startLocation = resolveLocation(
         details?.start_location,
         (task as Record<string, unknown>).start_location,
@@ -2126,7 +2143,7 @@ export default function LogisticsPage() {
       );
 
       const hasCoordinates =
-        hasPoint(task.startCoordinates) || hasPoint(task.finishCoordinates);
+        hasCoords(task.startCoordinates) || hasCoords(task.finishCoordinates);
       const hasAddresses = Boolean(startLocation) || Boolean(endLocation);
 
       if (!hasCoordinates && !hasAddresses) {
@@ -3573,6 +3590,52 @@ export default function LogisticsPage() {
       {shouldWarnAddressConfig && addressLayerNotice ? (
         <div className={addressLayerNoticeClassName}>
           {addressLayerNotice.text}
+        </div>
+      ) : null}
+      {geocodingQueue.length ? (
+        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="font-semibold">
+              {t('logistics.noGeoPointTitle', {
+                defaultValue: 'Задачи без геоточки',
+              })}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {t('logistics.noGeoPointHint', {
+                defaultValue: 'Адрес сохранён, задача ожидает геокодирования.',
+              })}
+            </span>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {geocodingQueue.slice(0, 6).map((task) => {
+              const label =
+                typeof task.title === 'string' && task.title.trim()
+                  ? task.title.trim()
+                  : task._id;
+              return (
+                <span
+                  key={task._id}
+                  className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-800"
+                >
+                  <span
+                    className="inline-flex h-2.5 w-2.5 rounded-full bg-amber-500"
+                    aria-hidden
+                  />
+                  <span className="whitespace-nowrap">{label}</span>
+                  <span className="text-[11px] uppercase tracking-wide text-amber-700">
+                    {t('logistics.noGeoPointLabel', {
+                      defaultValue: 'без геоточки',
+                    })}
+                  </span>
+                </span>
+              );
+            })}
+            {geocodingQueue.length > 6 ? (
+              <span className="text-xs text-muted-foreground">
+                +{geocodingQueue.length - 6}
+              </span>
+            ) : null}
+          </div>
         </div>
       ) : null}
       <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">

@@ -6,6 +6,7 @@ import { notifyTasksChanged } from '../services/logisticsEvents';
 import { generateRouteLink } from 'shared';
 import { applyIntakeRules } from '../intake/rules';
 import type { TaskDocument } from '../db/model';
+import { geocodeAddress } from '../geo/geocoder';
 import type {
   TaskFilters,
   SummaryFilters,
@@ -15,6 +16,7 @@ import { writeLog as writeAttachmentLog } from '../services/wgLogEngine';
 import { extractAttachmentIds } from '../utils/attachments';
 import { resolveTaskTypeTopicId } from '../services/taskTypeSettings';
 import { ensureTaskLinksShort } from '../services/taskLinks';
+import type { Logistics } from '../db/model';
 
 interface TasksRepository {
   createTask(
@@ -79,6 +81,14 @@ const toNumeric = (value: unknown): number | undefined => {
 
 const roundValue = (value: number, digits = 3) =>
   Number(Number.isFinite(value) ? value.toFixed(digits) : Number.NaN);
+
+const hasPoint = (
+  coords?: { lat?: number | null; lng?: number | null } | null,
+) =>
+  typeof coords?.lat === 'number' &&
+  Number.isFinite(coords.lat) &&
+  typeof coords?.lng === 'number' &&
+  Number.isFinite(coords.lng);
 
 const setMetric = (
   target: Record<string, unknown>,
@@ -181,6 +191,7 @@ class TasksService {
     if (payload.due_date && !payload.remind_at)
       payload.remind_at = payload.due_date;
     this.applyCargoMetrics(payload);
+    await this.applyGeocoding(payload);
     await this.applyRouteInfo(payload);
     await ensureTaskLinksShort(payload);
     await this.applyTaskTypeTopic(payload);
@@ -243,6 +254,7 @@ class TasksService {
         undefined;
     }
     this.applyCargoMetrics(payload);
+    await this.applyGeocoding(payload);
     await this.applyRouteInfo(payload);
     await ensureTaskLinksShort(payload);
     await this.applyTaskTypeTopic(payload);
@@ -311,6 +323,50 @@ class TasksService {
         'cargo_volume_m3',
         volume !== undefined ? roundValue(volume) : undefined,
       );
+    }
+  }
+
+  private async applyGeocoding(data: Partial<TaskDocument> = {}) {
+    const normalize = (value: unknown): string => {
+      if (typeof value !== 'string') {
+        return '';
+      }
+      const trimmed = value.trim();
+      return trimmed;
+    };
+
+    const details = (data.logistics_details ?? {}) as Logistics;
+    const startLocation = normalize(
+      details.start_location ?? data.start_location,
+    );
+    const endLocation = normalize(details.end_location ?? data.end_location);
+
+    const shouldGeocodeStart =
+      Boolean(startLocation) && !hasPoint(data.startCoordinates);
+    const shouldGeocodeFinish =
+      Boolean(endLocation) && !hasPoint(data.finishCoordinates);
+
+    if (!shouldGeocodeStart && !shouldGeocodeFinish) {
+      return;
+    }
+
+    const startPromise = shouldGeocodeStart
+      ? geocodeAddress(startLocation)
+      : Promise.resolve<null>(null);
+    const finishPromise = shouldGeocodeFinish
+      ? geocodeAddress(endLocation)
+      : Promise.resolve<null>(null);
+
+    const [startCoords, finishCoords] = await Promise.all([
+      startPromise,
+      finishPromise,
+    ]);
+
+    if (startCoords) {
+      data.startCoordinates = startCoords;
+    }
+    if (finishCoords) {
+      data.finishCoordinates = finishCoords;
     }
   }
 

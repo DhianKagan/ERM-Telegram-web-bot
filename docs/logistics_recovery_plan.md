@@ -13,12 +13,12 @@
 ### Эпик 2. Стабильность источников данных
 
 - **Story 2.1**: Безопасное добавление адресного слоя только при наличии URL и доступном `pmtiles`.
-- **Story 2.2**: Улучшить обработку ошибок SSE и fallback-поллинга.
+- **Story 2.2**: Улучшить обработку ошибок SSE и fallback-поллинга: детальный лог `readyState/status`, таймаут открытия SSE и гарантированный переход на fallback.
 
 ### Эпик 3. Инфраструктура и отдача статики
 
 - **Story 3.1**: Проверка MIME для CSS (`text/css`) на фронтовом CDN/прокси.
-- **Story 3.2**: Проверка заголовков SSE (`Content-Type: text/event-stream`, `Cache-Control: no-cache`) и HTTP/2 keep-alive.
+- **Story 3.2**: Проверка заголовков SSE (`Content-Type: text/event-stream`, `Cache-Control: no-cache`, `Connection: keep-alive`) и HTTP/2 keep-alive без преждевременного закрытия.
 
 ## Готовые патчи (фрагменты)
 
@@ -80,7 +80,15 @@
 ## DEV/DEVOPS чек-лист
 
 - **CSS MIME**: `curl -I https://<host>/js/index-*.css` — ожидаем `Content-Type: text/css`. В nginx: `types { text/css css; }` и `add_header Content-Type text/css;` для fallback.
-- **SSE/HTTP2**: `curl -v --http2 https://<host>/api/v1/logistics/events -H 'Accept: text/event-stream'` — заголовки `HTTP/2 200`, `content-type: text/event-stream`, поток не закрывается сразу.
+- **SSE/HTTP2**:
+  - `curl -v --http2 https://<host>/api/v1/logistics/events -H 'Accept: text/event-stream'` — ожидаем `HTTP/2 200`, заголовки `content-type: text/event-stream`, `cache-control: no-cache`, `connection: keep-alive`.
+  - `curl -v -N --http2 https://<host>/api/v1/logistics/events -H 'Accept: text/event-stream' --max-time 15` — поток должен оставаться открытым (нет `Empty reply from server`), приходит хотя бы один heartbeat за 15 секунд.
+  - `curl -v --http2 https://<host>/api/v1/logistics/events -H 'Accept: text/event-stream' --write-out '\ncode:%{response_code} time:%{time_total}\n' --max-time 10` — фиксируем код 200 и отсутствие раннего обрыва соединения.
+
+## Клиентский fallback SSE
+
+- Таймаут открытия SSE: если соединение не переходит в `open` за 8 секунд, клиент пишет предупреждение с `readyState`/`status` и включает fallback-поллинг.
+- Лог при ошибке SSE теперь дополнительно фиксирует `readyState` и, если доступен, `status` из EventSource/события.
 - **CORS/тайлы**: `curl -I https://<host>/<path>.pmtiles` и JSON стиля — проверка `Access-Control-Allow-Origin` и кода 200.
 
 ## UX/адаптивность (технический план)

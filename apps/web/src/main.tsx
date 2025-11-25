@@ -15,6 +15,12 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 
 import { ensureWebpackNonce } from './utils/ensureWebpackNonce';
 
+(
+  globalThis as { __ERM_IMPORT_META_ENV__?: ImportMetaEnv }
+).__ERM_IMPORT_META_ENV__ = (
+  import.meta as ImportMeta & { env?: ImportMetaEnv }
+).env;
+
 ensureWebpackNonce();
 
 function bootstrap() {

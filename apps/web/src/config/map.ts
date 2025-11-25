@@ -7,6 +7,8 @@ declare const __ERM_MAP_STYLE_MODE__: MapStyleMode | undefined;
 // По умолчанию берём стиль Protomaps (можно переопределить через переменную среды)
 const DEFAULT_MAP_STYLE_URL =
   'https://api.protomaps.com/styles/v5/light/uk.json?key=e2ee205f93bfd080';
+const DEFAULT_RASTER_STYLE_URL =
+  'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
 type MapStyleSource = 'default' | 'env';
 
@@ -94,6 +96,7 @@ const autoModeFromUrl = (url: string): MapStyleMode =>
 // Совместимость с существующими импортами:
 export const MAP_STYLE = MAP_STYLE_URL; // ранее могли импортировать как MAP_STYLE
 export const MAP_STYLE_DEFAULT_URL = DEFAULT_MAP_STYLE_URL;
+export const MAP_RASTER_STYLE_URL = DEFAULT_RASTER_STYLE_URL;
 export const MAP_STYLE_MODE: MapStyleMode = (() => {
   if (runtimeMode) return runtimeMode;
   if (isCustomStyle) return 'pmtiles';

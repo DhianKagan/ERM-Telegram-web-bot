@@ -20,7 +20,7 @@ import maplibregl, {
   type MapOptions,
 } from 'maplibre-gl';
 
-import { MAP_STYLE_DEFAULT_URL } from './config/map';
+import { MAP_RASTER_STYLE_URL, MAP_STYLE_DEFAULT_URL } from './config/map';
 
 // Не импортируем pmtiles статически: const { Protocol } from 'pmtiles'; <- это ломает билд в некоторых средах.
 
@@ -175,16 +175,17 @@ export const attachMapStyleFallback = (
   const initialStyle =
     typeof options.initialStyle === 'string' ? options.initialStyle : '';
   const fallbackUrl =
-    typeof options.fallbackUrl === 'string'
+    typeof options.fallbackUrl === 'string' && options.fallbackUrl.trim() !== ''
       ? options.fallbackUrl
-      : MAP_STYLE_DEFAULT_URL;
+      : MAP_RASTER_STYLE_URL;
   const vectorFallbackUrl =
-    typeof options.vectorFallbackUrl === 'string'
+    typeof options.vectorFallbackUrl === 'string' &&
+    options.vectorFallbackUrl.trim() !== ''
       ? options.vectorFallbackUrl
-      : '';
+      : MAP_STYLE_DEFAULT_URL;
   const fallbackCandidates = Array.from(
     new Set(
-      [vectorFallbackUrl, fallbackUrl].filter(
+      [fallbackUrl, vectorFallbackUrl].filter(
         (urlCandidate): urlCandidate is string =>
           Boolean(urlCandidate) && urlCandidate !== initialStyle,
       ),

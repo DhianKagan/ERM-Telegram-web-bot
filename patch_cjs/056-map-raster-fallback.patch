@@ -1,0 +1,103 @@
+diff --git a/apps/web/src/config/map.ts b/apps/web/src/config/map.ts
+index 27bca28..ae2f687 100644
+--- a/apps/web/src/config/map.ts
++++ b/apps/web/src/config/map.ts
+@@ -7,6 +7,8 @@ declare const __ERM_MAP_STYLE_MODE__: MapStyleMode | undefined;
+ // По умолчанию берём стиль Protomaps (можно переопределить через переменную среды)
+ const DEFAULT_MAP_STYLE_URL =
+   'https://api.protomaps.com/styles/v5/light/uk.json?key=e2ee205f93bfd080';
++const DEFAULT_RASTER_STYLE_URL =
++  'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+ 
+ type MapStyleSource = 'default' | 'env';
+ 
+@@ -94,6 +96,7 @@ const autoModeFromUrl = (url: string): MapStyleMode =>
+ // Совместимость с существующими импортами:
+ export const MAP_STYLE = MAP_STYLE_URL; // ранее могли импортировать как MAP_STYLE
+ export const MAP_STYLE_DEFAULT_URL = DEFAULT_MAP_STYLE_URL;
++export const MAP_RASTER_STYLE_URL = DEFAULT_RASTER_STYLE_URL;
+ export const MAP_STYLE_MODE: MapStyleMode = (() => {
+   if (runtimeMode) return runtimeMode;
+   if (isCustomStyle) return 'pmtiles';
+diff --git a/apps/web/src/mapLibrary.ts b/apps/web/src/mapLibrary.ts
+index 1b7c75f..5a1803a 100644
+--- a/apps/web/src/mapLibrary.ts
++++ b/apps/web/src/mapLibrary.ts
+@@ -20,7 +20,7 @@ import maplibregl, {
+   type MapOptions,
+ } from 'maplibre-gl';
+ 
+-import { MAP_STYLE_DEFAULT_URL } from './config/map';
++import { MAP_RASTER_STYLE_URL, MAP_STYLE_DEFAULT_URL } from './config/map';
+ 
+ // Не импортируем pmtiles статически: const { Protocol } from 'pmtiles'; <- это ломает билд в некоторых средах.
+ 
+@@ -175,16 +175,17 @@ export const attachMapStyleFallback = (
+   const initialStyle =
+     typeof options.initialStyle === 'string' ? options.initialStyle : '';
+   const fallbackUrl =
+-    typeof options.fallbackUrl === 'string'
++    typeof options.fallbackUrl === 'string' && options.fallbackUrl.trim() !== ''
+       ? options.fallbackUrl
+-      : MAP_STYLE_DEFAULT_URL;
++      : MAP_RASTER_STYLE_URL;
+   const vectorFallbackUrl =
+-    typeof options.vectorFallbackUrl === 'string'
++    typeof options.vectorFallbackUrl === 'string' &&
++    options.vectorFallbackUrl.trim() !== ''
+       ? options.vectorFallbackUrl
+-      : '';
++      : MAP_STYLE_DEFAULT_URL;
+   const fallbackCandidates = Array.from(
+     new Set(
+-      [vectorFallbackUrl, fallbackUrl].filter(
++      [fallbackUrl, vectorFallbackUrl].filter(
+         (urlCandidate): urlCandidate is string =>
+           Boolean(urlCandidate) && urlCandidate !== initialStyle,
+       ),
+diff --git a/apps/web/src/pages/Logistics.tsx b/apps/web/src/pages/Logistics.tsx
+index 2033b1d..d16a490 100644
+--- a/apps/web/src/pages/Logistics.tsx
++++ b/apps/web/src/pages/Logistics.tsx
+@@ -38,6 +38,7 @@ import {
+   MAP_MAX_BOUNDS,
+   MAP_STYLE,
+   MAP_STYLE_DEFAULT_URL,
++  MAP_RASTER_STYLE_URL,
+   MAP_STYLE_MODE,
+   MAP_STYLE_IS_DEFAULT,
+   MAP_ADDRESSES_PMTILES_URL,
+@@ -2593,6 +2594,8 @@ export default function LogisticsPage() {
+       mapRef.current = mapInstance;
+       detachStyleFallback = attachMapStyleFallback(mapInstance, {
+         initialStyle: styleForMap,
++        fallbackUrl: MAP_RASTER_STYLE_URL,
++        vectorFallbackUrl: MAP_STYLE_DEFAULT_URL,
+       });
+       if (typeof mapInstance.dragRotate?.disable === 'function') {
+         mapInstance.dragRotate.disable();
+diff --git a/docs/technical_manual.md b/docs/technical_manual.md
+index 18b89ea..3cbe489 100644
+--- a/docs/technical_manual.md
++++ b/docs/technical_manual.md
+@@ -84,6 +84,7 @@ Danger проверяет наличие описания PR, требует о
+ - При загрузке `LogisticsPage` карта добавляет векторный источник `logistics-addresses` с URL `pmtiles://tiles/addresses.pmtiles` и символ-слой `logistics-addresses-labels` с полем `housenumber`.
+ - Порядок слоёв фиксирован: адреса располагаются выше дорожных подписей и ниже крупных географических меток; при работе в растровом режиме (`MAP_STYLE_MODE !== "pmtiles"`) источник не подключается.
+ - Минимальный масштаб для отображения номеров домов — 17, размеры текста 13 pt с белым halo шириной 1.2, цвет подписи — `#0f172a`.
++- При ошибке загрузки основного стиля (403/404) карта автоматически переключается на резервный растровый слой `https://tile.openstreetmap.org/{z}/{x}/{y}.png`.
+ - SSE-канал `/api/v1/logistics/events` отправляет события `route-plan.updated` с причинами `created`, `recalculated` и `updated`, поэтому все открытые `LogisticsPage` мгновенно перезагружают список задач и текущий маршрутный план после появления нового черновика или пересчёта оптимизатора.
+ - Для регрессионной проверки используется текстовый снапшот Playwright (`tests/e2e/logistics.addresses.spec.ts-snapshots/logistics-addresses-chromium-linux.txt`), актуализация выполняется командой `pnpm test:e2e -- --project=chromium --grep="визуальный слой адресов"`.
+ - Для руководства и демо используйте векторную иллюстрацию `docs/images/logistics-addresses.svg`, отображающую расположение номеров домов.
+@@ -104,10 +105,11 @@ Danger проверяет наличие описания PR, требует о
+ 3. Добавьте ключ в окружение клиента и API: впишите `VITE_MAP_STYLE_URL=<URL>` в `.env` корня и перезапустите `pnpm run dev` или инфраструктуру Railway/Docker.
+ 4. При наличии собственного файла адресов скопируйте `addresses.pmtiles` в `apps/web/public/tiles` и установите `VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles` (для боевой сборки переменная обязательна).
+ 5. После изменения переменных удалите кэш браузера и перезагрузите страницу — CSP автоматически разрешит новый origin, потому что API читает тот же `VITE_MAP_STYLE_URL`.
++6. Убедитесь, что ключ Protomaps или другого провайдера валиден: при ответах 403/404 клиент переключится на растровый OSM-стиль, но адресный слой и 3D-здания будут недоступны.
+ 
+ ### Переменные окружения карты
+ 
+-- `VITE_MAP_STYLE_URL` — URL JSON-стиля, по умолчанию используется демо MapLibre (`https://demotiles.maplibre.org/style.json`).
++- `VITE_MAP_STYLE_URL` — URL JSON-стиля, по умолчанию используется демо-стиль Protomaps (`https://api.protomaps.com/styles/v5/light/uk.json?key=e2ee205f93bfd080`); замените ключ на собственный для продакшн.
+ - `VITE_MAP_ADDRESSES_PMTILES_URL` — путь к локальному файлу адресов, для продакшн обязателен (`pmtiles://tiles/addresses.pmtiles`).
+ - `VITE_LOGISTICS_POLL_INTERVAL_MS` — период опроса логистики в миллисекундах, используется когда SSE недоступен (значение по умолчанию 30000).
+ 

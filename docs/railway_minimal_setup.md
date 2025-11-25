@@ -12,7 +12,7 @@
    - `BOT_TOKEN` — токен вашего Telegram-бота от BotFather.
    - `MONGO_DATABASE_URL` — строка подключения к MongoDB (можно взять из плагина Railway MongoDB или собственного кластера).
    - `APP_URL` — домен Railway вида `https://<имя>.up.railway.app`.
-   - `ROUTING_URL` и `VITE_ROUTING_URL` — адрес сервиса OSRM (например, `https://osrm-production.up.railway.app`).
+   - `ROUTING_URL` и `VITE_ROUTING_URL` — адрес сервиса OSRM (например, `https://orsm-production.up.railway.app/route`).
    - `NODE_ENV=production`.
 4. Если используете отдельный сервис OSRM, разверните его аналогично и возьмите URL для переменных `ROUTING_URL` и `VITE_ROUTING_URL`.
 

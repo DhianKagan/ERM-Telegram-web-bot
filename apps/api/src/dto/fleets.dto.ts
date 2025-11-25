@@ -32,6 +32,46 @@ function tasksField() {
     });
 }
 
+const parseCoordinate = (
+  value: unknown,
+  min: number,
+  max: number,
+  field: string,
+): number => {
+  const parsed = typeof value === 'string' ? Number(value) : value;
+  if (typeof parsed !== 'number' || !Number.isFinite(parsed)) {
+    throw new Error(`${field} должен быть числом`);
+  }
+  if (parsed < min || parsed > max) {
+    throw new Error(`${field} должен быть в диапазоне [${min}; ${max}]`);
+  }
+  return parsed;
+};
+
+function positionField() {
+  return body('position')
+    .optional({ nullable: true })
+    .custom((value) => {
+      if (value === null) {
+        return true;
+      }
+      if (typeof value !== 'object' || value === null) {
+        throw new Error('position должен быть объектом');
+      }
+      const { lat, lon, timestamp } = value as Record<string, unknown>;
+      parseCoordinate(lat, -90, 90, 'lat');
+      parseCoordinate(lon, -180, 180, 'lon');
+      if (timestamp !== undefined && timestamp !== null) {
+        const date =
+          timestamp instanceof Date ? timestamp : new Date(String(timestamp));
+        if (Number.isNaN(date.getTime())) {
+          throw new Error('timestamp должен быть корректной датой');
+        }
+      }
+      return true;
+    });
+}
+
 export class CreateFleetDto {
   static rules() {
     return [
@@ -55,6 +95,7 @@ export class CreateFleetDto {
       numberField('fuelAverageConsumption'),
       numberField('fuelSpentTotal'),
       tasksField(),
+      positionField(),
     ];
   }
 }
@@ -83,6 +124,7 @@ export class UpdateFleetDto {
       numberField('fuelAverageConsumption').optional({ nullable: true }),
       numberField('fuelSpentTotal').optional({ nullable: true }),
       tasksField(),
+      positionField(),
     ];
   }
 }

@@ -28,8 +28,30 @@ const middlewares = [
 ];
 
 const parseNumber = (value: unknown): number => Number(value);
+const parsePosition = (value: unknown): FleetVehicleAttrs['position'] => {
+  if (!value || typeof value !== 'object') {
+    return null;
+  }
+  if (value === null) {
+    return null;
+  }
+  const record = value as Record<string, unknown>;
+  const lat = Number(record.lat);
+  const lon = Number(record.lon);
+  const timestampRaw = record.timestamp;
+  const timestamp =
+    timestampRaw === undefined || timestampRaw === null
+      ? undefined
+      : timestampRaw instanceof Date
+        ? timestampRaw
+        : new Date(String(timestampRaw));
+  return { lat, lon, timestamp };
+};
 
-type FleetVehicleResponseDto = Omit<FleetVehicleAttrs, 'transportHistory'> & {
+type FleetVehicleResponseDto = Omit<
+  FleetVehicleAttrs,
+  'transportHistory' | 'position'
+> & {
   id: string;
   createdAt?: string;
   updatedAt?: string;
@@ -39,6 +61,11 @@ type FleetVehicleResponseDto = Omit<FleetVehicleAttrs, 'transportHistory'> & {
     assignedAt?: string;
     removedAt?: string;
   }[];
+  position?: {
+    lat: number;
+    lon: number;
+    timestamp?: string;
+  } | null;
 };
 
 function mapVehicle(
@@ -60,6 +87,18 @@ function mapVehicle(
     fuelAverageConsumption: doc.fuelAverageConsumption,
     fuelSpentTotal: doc.fuelSpentTotal,
     currentTasks: doc.currentTasks,
+    position: doc.position
+      ? {
+          lat: Number(doc.position.lat),
+          lon: Number(doc.position.lon),
+          timestamp:
+            doc.position.timestamp instanceof Date
+              ? doc.position.timestamp.toISOString()
+              : doc.position.timestamp
+                ? String(doc.position.timestamp)
+                : undefined,
+        }
+      : null,
     transportHistory: Array.isArray(doc.transportHistory)
       ? doc.transportHistory.map((entry) => ({
           taskId: entry.taskId,
@@ -144,6 +183,7 @@ router.post(
       currentTasks: Array.isArray(req.body.currentTasks)
         ? (req.body.currentTasks as string[]).map((task) => String(task))
         : [],
+      position: parsePosition(req.body.position),
     };
     const created = await FleetVehicle.create(payload);
     res.status(201).json(mapVehicle(created.toObject()));
@@ -192,6 +232,9 @@ router.put(
       update.currentTasks = (req.body.currentTasks as string[]).map((task) =>
         String(task),
       );
+    }
+    if (Object.prototype.hasOwnProperty.call(req.body, 'position')) {
+      update.position = parsePosition(req.body.position);
     }
     const updated = await FleetVehicle.findByIdAndUpdate(id, update, {
       new: true,

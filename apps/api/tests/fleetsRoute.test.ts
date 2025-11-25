@@ -19,15 +19,15 @@ import { FleetVehicle } from '../src/db/models/fleet';
 
 jest.mock(
   '../src/utils/rateLimiter',
-  () => () => (_req: any, _res: any, next: () => void) => next(),
+  () => () => (_req: unknown, _res: unknown, next: () => void) => next(),
 );
 jest.mock(
   '../src/middleware/auth',
-  () => () => (_req: any, _res: any, next: () => void) => next(),
+  () => () => (_req: unknown, _res: unknown, next: () => void) => next(),
 );
 jest.mock(
   '../src/auth/roles.guard',
-  () => (_req: any, _res: any, next: () => void) => next(),
+  () => (_req: unknown, _res: unknown, next: () => void) => next(),
 );
 jest.mock('../src/auth/roles.decorator', () => ({
   Roles: () => (_req: unknown, _res: unknown, next: () => void) => next(),
@@ -65,6 +65,11 @@ describe('fleets router', () => {
     fuelAverageConsumption: 0.25,
     fuelSpentTotal: 40,
     currentTasks: [] as string[],
+    position: {
+      lat: 50.45,
+      lon: 30.523333,
+      timestamp: '2024-01-01T00:00:00.000Z',
+    },
   };
 
   it('создаёт транспорт', async () => {
@@ -73,22 +78,35 @@ describe('fleets router', () => {
     expect(res.body.name).toBe('Газель');
     expect(res.body.registrationNumber).toBe('AA 1234 BB');
     expect(res.body.transportType).toBe('Легковой');
+    expect(res.body.position.lat).toBeCloseTo(50.45);
+    expect(res.body.position.lon).toBeCloseTo(30.523333);
     const stored = await FleetVehicle.findById(res.body.id).lean();
     expect(stored?.fuelType).toBe('Бензин');
     expect(stored?.transportType).toBe('Легковой');
+    expect(stored?.position?.lat).toBeCloseTo(50.45);
+    expect(stored?.position?.lon).toBeCloseTo(30.523333);
   });
 
   it('обновляет транспорт', async () => {
     const created = await FleetVehicle.create(payload);
-    const res = await request(app).put(`/api/v1/fleets/${created._id}`).send({
-      odometerCurrent: 1300,
-      fuelType: 'Газ',
-      transportType: 'Грузовой',
-    });
+    const res = await request(app)
+      .put(`/api/v1/fleets/${created._id}`)
+      .send({
+        odometerCurrent: 1300,
+        fuelType: 'Газ',
+        transportType: 'Грузовой',
+        position: {
+          lat: 51.5,
+          lon: 31.5,
+          timestamp: '2024-02-02T10:00:00.000Z',
+        },
+      });
     expect(res.status).toBe(200);
     expect(res.body.odometerCurrent).toBe(1300);
     expect(res.body.fuelType).toBe('Газ');
     expect(res.body.transportType).toBe('Грузовой');
+    expect(res.body.position?.lat).toBeCloseTo(51.5);
+    expect(res.body.position?.lon).toBeCloseTo(31.5);
   });
 
   it('удаляет транспорт', async () => {

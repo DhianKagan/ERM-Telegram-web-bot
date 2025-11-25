@@ -127,6 +127,11 @@ export interface FleetVehicleDto {
     assignedAt: string;
     removedAt?: string;
   }[];
+  position?: {
+    lat: number;
+    lon: number;
+    timestamp?: string;
+  } | null;
   createdAt?: string;
   updatedAt?: string;
   unitId?: number;

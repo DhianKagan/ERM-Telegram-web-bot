@@ -1,0 +1,595 @@
+diff --git a/.env.example b/.env.example
+index 82cf067..0a1226c 100644
+--- a/.env.example
++++ b/.env.example
+@@ -58,6 +58,7 @@ VITE_BOT_USERNAME=ERP_AM_BOT
+ VITE_CHAT_ID=-1002705661520
+ VITE_ROUTING_URL=https://orsm-production.up.railway.app/route
+ VITE_MAP_STYLE_URL=https://api.protomaps.com/styles/v5/light/uk.json?key=e2ee205f93bfd080
++# Для продакшн-сборки обязательно задайте путь к локальным адресным плиткам.
+ VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles
+ VITE_MAP_STYLE_MODE=pmtiles
+ VITE_USE_PMTILES=1
+diff --git a/apps/web/src/config/map.ts b/apps/web/src/config/map.ts
+index 7467bd7..414a5c4 100644
+--- a/apps/web/src/config/map.ts
++++ b/apps/web/src/config/map.ts
+@@ -17,6 +17,36 @@ type ImportMetaWithEnv = {
+   };
+ };
+ 
++type AddressTilesSource = 'env' | 'local' | 'missing';
++
++const readImportMetaEnv = (): ImportMetaWithEnv['env'] | undefined =>
++  (globalThis as { __ERM_IMPORT_META_ENV__?: ImportMetaWithEnv['env'] })
++    .__ERM_IMPORT_META_ENV__;
++
++const LOCAL_ADDRESS_PMTILES_PATH = 'pmtiles://tiles/addresses.pmtiles';
++
++const hasLocalAddressTiles = (() => {
++  if (typeof window !== 'undefined') {
++    return true;
++  }
++  if (typeof process !== 'undefined' && process.versions?.node) {
++    try {
++      // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
++      const fs = require('node:fs') as typeof import('node:fs');
++      // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
++      const path = require('node:path') as typeof import('node:path');
++      const localPath = path.resolve(
++        process.cwd(),
++        'apps/web/public/tiles/addresses.pmtiles',
++      );
++      return fs.existsSync(localPath);
++    } catch {
++      return false;
++    }
++  }
++  return false;
++})();
++
+ // Читаем URL стиля: сначала пытаемся взять из process.env (сервер), потом из import.meta.env (клиент), иначе используем DEFAULT_MAP_STYLE_URL
+ const readMapStyle = (): { url: string; source: MapStyleSource } => {
+   const processValue =
+@@ -26,14 +56,10 @@ const readMapStyle = (): { url: string; source: MapStyleSource } => {
+   if (typeof processValue === 'string' && processValue.trim() !== '') {
+     return { url: processValue.trim(), source: 'env' };
+   }
+-  try {
+-    const meta = import.meta as unknown as ImportMetaWithEnv;
+-    const metaValue = meta?.env?.VITE_MAP_STYLE_URL;
+-    if (typeof metaValue === 'string' && metaValue.trim() !== '') {
+-      return { url: metaValue, source: 'env' };
+-    }
+-  } catch {
+-    // Игнорируем отсутствие import.meta в окружении тестов
++  const meta = readImportMetaEnv();
++  const metaValue = meta?.VITE_MAP_STYLE_URL;
++  if (typeof metaValue === 'string' && metaValue.trim() !== '') {
++    return { url: metaValue, source: 'env' };
+   }
+   return { url: DEFAULT_MAP_STYLE_URL, source: 'default' };
+ };
+@@ -96,28 +122,32 @@ export const MAP_VECTOR_SOURCE_ID = 'basemap';
+ export const MAP_ANIMATION_SPEED_KMH = 50;
+ 
+ // Локальный путь к адресным PMTiles. Можно переопределить через VITE_MAP_ADDRESSES_PMTILES_URL
+-const readAddressTilesUrl = (): string => {
++const readAddressTilesUrl = (): { url: string | null; source: AddressTilesSource } => {
+   const processValue =
+     typeof process !== 'undefined' && typeof process.env === 'object'
+       ? process.env.VITE_MAP_ADDRESSES_PMTILES_URL
+       : undefined;
+   if (typeof processValue === 'string' && processValue.trim() !== '') {
+-    return processValue.trim();
++    return { url: processValue.trim(), source: 'env' };
+   }
+-  try {
+-    const meta = import.meta as unknown as ImportMetaWithEnv;
+-    const metaValue = meta?.env?.VITE_MAP_ADDRESSES_PMTILES_URL;
+-    if (typeof metaValue === 'string' && metaValue.trim() !== '') {
+-      return metaValue.trim();
+-    }
+-  } catch {
+-    // Игнорируем окружения без import.meta
++  const meta = readImportMetaEnv();
++  const metaValue = meta?.VITE_MAP_ADDRESSES_PMTILES_URL;
++  if (typeof metaValue === 'string' && metaValue.trim() !== '') {
++    return { url: metaValue.trim(), source: 'env' };
++  }
++  if (hasLocalAddressTiles) {
++    return { url: LOCAL_ADDRESS_PMTILES_PATH, source: 'local' };
+   }
+-  return '';
++  console.error(
++    'Ошибка конфигурации: адресные плитки не найдены. Установите VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles и проверьте наличие файла apps/web/public/tiles/addresses.pmtiles.',
++  );
++  return { url: null, source: 'missing' };
+ };
+ 
+ // Экспортируем URL адресных плит (pmtiles://...), либо пустую строку
+-export const MAP_ADDRESSES_PMTILES_URL = readAddressTilesUrl();
++const addressTilesConfig = readAddressTilesUrl();
++export const MAP_ADDRESSES_PMTILES_URL = addressTilesConfig.url ?? '';
++export const MAP_ADDRESSES_PMTILES_SOURCE = addressTilesConfig.source;
+ 
+ // Дополнительные алиасы (если где-то использовались короткие имена)
+ export const DEFAULT_CENTER = MAP_DEFAULT_CENTER;
+diff --git a/apps/web/src/main.tsx b/apps/web/src/main.tsx
+index dd182fb..3a5d7a7 100644
+--- a/apps/web/src/main.tsx
++++ b/apps/web/src/main.tsx
+@@ -15,6 +15,9 @@ import 'maplibre-gl/dist/maplibre-gl.css';
+ 
+ import { ensureWebpackNonce } from './utils/ensureWebpackNonce';
+ 
++(globalThis as { __ERM_IMPORT_META_ENV__?: ImportMetaEnv }).__ERM_IMPORT_META_ENV__ =
++  (import.meta as ImportMeta & { env?: ImportMetaEnv }).env;
++
+ ensureWebpackNonce();
+ 
+ function bootstrap() {
+diff --git a/apps/web/src/pages/Logistics.tsx b/apps/web/src/pages/Logistics.tsx
+index 16a3987..6250ab1 100644
+--- a/apps/web/src/pages/Logistics.tsx
++++ b/apps/web/src/pages/Logistics.tsx
+@@ -41,6 +41,7 @@ import {
+   MAP_STYLE_MODE,
+   MAP_STYLE_IS_DEFAULT,
+   MAP_ADDRESSES_PMTILES_URL,
++  MAP_ADDRESSES_PMTILES_SOURCE,
+ } from '../config/map';
+ import { insert3dBuildingsLayer } from '../utils/insert3dBuildingsLayer';
+ import { customTheme } from '../utils/drawTheme';
+@@ -906,6 +907,7 @@ const MAP_CENTER_LNG_LAT: [number, number] = [
+ const UKRAINE_BOUNDS: LngLatBoundsLike = MAP_MAX_BOUNDS;
+ const isRasterFallback = MAP_STYLE_MODE !== 'pmtiles';
+ const shouldShowMapFallbackNotice = isRasterFallback && MAP_STYLE_IS_DEFAULT;
++const shouldWarnAddressConfig = MAP_ADDRESSES_PMTILES_SOURCE !== 'env';
+ 
+ export default function LogisticsPage() {
+   const { t, i18n } = useTranslation();
+@@ -956,6 +958,32 @@ export default function LogisticsPage() {
+       );
+     }
+   }, []);
++  const addressLayerNotice = React.useMemo(() => {
++    if (MAP_ADDRESSES_PMTILES_SOURCE === 'missing') {
++      return {
++        tone: 'error' as const,
++        text: t('logistics.addressLayerMissing', {
++          defaultValue:
++            'Слой номеров домов недоступен: добавьте файл public/tiles/addresses.pmtiles и установите VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles.',
++        }),
++      };
++    }
++    if (MAP_ADDRESSES_PMTILES_SOURCE === 'local') {
++      return {
++        tone: 'warning' as const,
++        text: t('logistics.addressLayerLocalFallback', {
++          defaultValue:
++            'Используется локальный файл адресов из public/tiles/addresses.pmtiles. Для продакшн-сборки обязательно установите VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles.',
++        }),
++      };
++    }
++    return null;
++  }, [t]);
++  const addressLayerNoticeClassName = addressLayerNotice
++    ? addressLayerNotice.tone === 'error'
++      ? 'rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900'
++      : 'rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900'
++    : '';
+   const [mapViewMode, setMapViewMode] = React.useState<
+     'planar' | 'perspective'
+   >(persistedMapStateRef.current?.viewMode ?? 'planar');
+@@ -2605,7 +2633,7 @@ export default function LogisticsPage() {
+         const addressTilesUrl = MAP_ADDRESSES_PMTILES_URL;
+         if (!addressTilesUrl) {
+           console.warn(
+-            'Адресные плитки не подключены: отсутствует URL источника (VITE_MAP_ADDRESSES_PMTILES_URL).',
++            'Адресные плитки не подключены: укажите VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles и разместите файл в public/tiles.',
+           );
+           return;
+         }
+@@ -3539,6 +3567,9 @@ export default function LogisticsPage() {
+           })}
+         </div>
+       ) : null}
++      {shouldWarnAddressConfig && addressLayerNotice ? (
++        <div className={addressLayerNoticeClassName}>{addressLayerNotice.text}</div>
++      ) : null}
+       <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+         <div className="space-y-4">
+           <CollapsibleCard
+diff --git a/docs/logistics_recovery_plan.md b/docs/logistics_recovery_plan.md
+index 17474fd..1fb3021 100644
+--- a/docs/logistics_recovery_plan.md
++++ b/docs/logistics_recovery_plan.md
+@@ -73,7 +73,7 @@
+ - **Ручные проверки**:
+   1. Запустить фронт: `pnpm -F web run dev`.
+   2. Убедиться, что карта грузится без переключения на raster fallback (консоль без warn о стиле).
+-  3. При наличии `VITE_MAP_ADDRESSES_PMTILES_URL` увидеть домовые номера на zoom ≥ 17; при пустой переменной — получить warn «Адресные плитки не подключены».
++  3. При установленном `VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles` или наличии файла `apps/web/public/tiles/addresses.pmtiles` увидеть домовые номера на zoom ≥ 17; отсутствие файла и переменной фиксируется как ошибка конфигурации.
+   4. Проверить 3D-здания на zoom 15+ и что слой не пропадает при смене стиля.
+   5. Проверить SSE: в консоли нет `ERR_HTTP2_PROTOCOL_ERROR`; при отключении SSE (`VITE_DISABLE_SSE=1`) включается поллинг с интервалом `VITE_LOGISTICS_POLL_INTERVAL_MS`.
+ 
+diff --git a/docs/technical_manual.md b/docs/technical_manual.md
+index 7422a59..18b89ea 100644
+--- a/docs/technical_manual.md
++++ b/docs/technical_manual.md
+@@ -102,13 +102,13 @@ Danger проверяет наличие описания PR, требует о
+ 1. Зарегистрируйтесь на [https://protomaps.com](https://protomaps.com) или другом провайдере MapLibre-совместимых стилей и создайте бесплатный API-ключ.
+ 2. Скопируйте URL стиля (обычно он заканчивается на `style.json?key=...`).
+ 3. Добавьте ключ в окружение клиента и API: впишите `VITE_MAP_STYLE_URL=<URL>` в `.env` корня и перезапустите `pnpm run dev` или инфраструктуру Railway/Docker.
+-4. При наличии собственного файла адресов скопируйте `addresses.pmtiles` в `apps/web/public/tiles` и установите `VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles`.
++4. При наличии собственного файла адресов скопируйте `addresses.pmtiles` в `apps/web/public/tiles` и установите `VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles` (для боевой сборки переменная обязательна).
+ 5. После изменения переменных удалите кэш браузера и перезагрузите страницу — CSP автоматически разрешит новый origin, потому что API читает тот же `VITE_MAP_STYLE_URL`.
+ 
+ ### Переменные окружения карты
+ 
+ - `VITE_MAP_STYLE_URL` — URL JSON-стиля, по умолчанию используется демо MapLibre (`https://demotiles.maplibre.org/style.json`).
+-- `VITE_MAP_ADDRESSES_PMTILES_URL` — путь к локальному файлу адресов (оставьте пустым, если слоя нет).
++- `VITE_MAP_ADDRESSES_PMTILES_URL` — путь к локальному файлу адресов, для продакшн обязателен (`pmtiles://tiles/addresses.pmtiles`).
+ - `VITE_LOGISTICS_POLL_INTERVAL_MS` — период опроса логистики в миллисекундах, используется когда SSE недоступен (значение по умолчанию 30000).
+ 
+ ## Миграции базы данных
+diff --git a/patch_cjs/055-map-address-config.cjs b/patch_cjs/055-map-address-config.cjs
+new file mode 100644
+index 0000000..d2d4bf4
+--- /dev/null
++++ b/patch_cjs/055-map-address-config.cjs
+@@ -0,0 +1,21 @@
++#!/usr/bin/env node
++// patch: 055-map-address-config.cjs
++// purpose: добавить дефолтные адресные плитки и уведомления о конфигурации
++const fs = require('fs');
++const path = require('path');
++const { execSync } = require('child_process');
++
++const patchPath = path.resolve(__dirname, '055-map-address-config.patch');
++
++if (!fs.existsSync(patchPath)) {
++  throw new Error('Файл патча не найден: ' + patchPath);
++}
++
++const patch = fs.readFileSync(patchPath, 'utf8');
++
++if (!patch.trim()) {
++  console.log('Нет изменений для применения');
++  process.exit(0);
++}
++
++execSync('git apply -', { stdio: 'inherit', input: patch });
+diff --git a/patch_cjs/055-map-address-config.patch b/patch_cjs/055-map-address-config.patch
+new file mode 100644
+index 0000000..63f3962
+--- /dev/null
++++ b/patch_cjs/055-map-address-config.patch
+@@ -0,0 +1,257 @@
++diff --git a/.env.example b/.env.example
++index 82cf067..0a1226c 100644
++--- a/.env.example
+++++ b/.env.example
++@@ -58,6 +58,7 @@ VITE_BOT_USERNAME=ERP_AM_BOT
++ VITE_CHAT_ID=-1002705661520
++ VITE_ROUTING_URL=https://orsm-production.up.railway.app/route
++ VITE_MAP_STYLE_URL=https://api.protomaps.com/styles/v5/light/uk.json?key=e2ee205f93bfd080
+++# Для продакшн-сборки обязательно задайте путь к локальным адресным плиткам.
++ VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles
++ VITE_MAP_STYLE_MODE=pmtiles
++ VITE_USE_PMTILES=1
++diff --git a/apps/web/src/config/map.ts b/apps/web/src/config/map.ts
++index 7467bd7..57297c9 100644
++--- a/apps/web/src/config/map.ts
+++++ b/apps/web/src/config/map.ts
++@@ -17,6 +17,32 @@ type ImportMetaWithEnv = {
++   };
++ };
++ 
+++type AddressTilesSource = 'env' | 'local' | 'missing';
+++
+++const LOCAL_ADDRESS_PMTILES_PATH = 'pmtiles://tiles/addresses.pmtiles';
+++
+++const hasLocalAddressTiles = (() => {
+++  if (typeof window !== 'undefined') {
+++    return true;
+++  }
+++  if (typeof process !== 'undefined' && process.versions?.node) {
+++    try {
+++      // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
+++      const fs = require('node:fs') as typeof import('node:fs');
+++      // eslint-disable-next-line @typescript-eslint/no-var-requires, @typescript-eslint/no-require-imports
+++      const path = require('node:path') as typeof import('node:path');
+++      const localPath = path.resolve(
+++        process.cwd(),
+++        'apps/web/public/tiles/addresses.pmtiles',
+++      );
+++      return fs.existsSync(localPath);
+++    } catch {
+++      return false;
+++    }
+++  }
+++  return false;
+++})();
+++
++ // Читаем URL стиля: сначала пытаемся взять из process.env (сервер), потом из import.meta.env (клиент), иначе используем DEFAULT_MAP_STYLE_URL
++ const readMapStyle = (): { url: string; source: MapStyleSource } => {
++   const processValue =
++@@ -96,28 +122,36 @@ export const MAP_VECTOR_SOURCE_ID = 'basemap';
++ export const MAP_ANIMATION_SPEED_KMH = 50;
++ 
++ // Локальный путь к адресным PMTiles. Можно переопределить через VITE_MAP_ADDRESSES_PMTILES_URL
++-const readAddressTilesUrl = (): string => {
+++const readAddressTilesUrl = (): { url: string | null; source: AddressTilesSource } => {
++   const processValue =
++     typeof process !== 'undefined' && typeof process.env === 'object'
++       ? process.env.VITE_MAP_ADDRESSES_PMTILES_URL
++       : undefined;
++   if (typeof processValue === 'string' && processValue.trim() !== '') {
++-    return processValue.trim();
+++    return { url: processValue.trim(), source: 'env' };
++   }
++   try {
++     const meta = import.meta as unknown as ImportMetaWithEnv;
++     const metaValue = meta?.env?.VITE_MAP_ADDRESSES_PMTILES_URL;
++     if (typeof metaValue === 'string' && metaValue.trim() !== '') {
++-      return metaValue.trim();
+++      return { url: metaValue.trim(), source: 'env' };
++     }
++   } catch {
++     // Игнорируем окружения без import.meta
++   }
++-  return '';
+++  if (hasLocalAddressTiles) {
+++    return { url: LOCAL_ADDRESS_PMTILES_PATH, source: 'local' };
+++  }
+++  console.error(
+++    'Ошибка конфигурации: адресные плитки не найдены. Установите VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles и проверьте наличие файла apps/web/public/tiles/addresses.pmtiles.',
+++  );
+++  return { url: null, source: 'missing' };
++ };
++ 
++ // Экспортируем URL адресных плит (pmtiles://...), либо пустую строку
++-export const MAP_ADDRESSES_PMTILES_URL = readAddressTilesUrl();
+++const addressTilesConfig = readAddressTilesUrl();
+++export const MAP_ADDRESSES_PMTILES_URL = addressTilesConfig.url ?? '';
+++export const MAP_ADDRESSES_PMTILES_SOURCE = addressTilesConfig.source;
++ 
++ // Дополнительные алиасы (если где-то использовались короткие имена)
++ export const DEFAULT_CENTER = MAP_DEFAULT_CENTER;
++diff --git a/apps/web/src/pages/Logistics.tsx b/apps/web/src/pages/Logistics.tsx
++index 16a3987..6250ab1 100644
++--- a/apps/web/src/pages/Logistics.tsx
+++++ b/apps/web/src/pages/Logistics.tsx
++@@ -41,6 +41,7 @@ import {
++   MAP_STYLE_MODE,
++   MAP_STYLE_IS_DEFAULT,
++   MAP_ADDRESSES_PMTILES_URL,
+++  MAP_ADDRESSES_PMTILES_SOURCE,
++ } from '../config/map';
++ import { insert3dBuildingsLayer } from '../utils/insert3dBuildingsLayer';
++ import { customTheme } from '../utils/drawTheme';
++@@ -906,6 +907,7 @@ const MAP_CENTER_LNG_LAT: [number, number] = [
++ const UKRAINE_BOUNDS: LngLatBoundsLike = MAP_MAX_BOUNDS;
++ const isRasterFallback = MAP_STYLE_MODE !== 'pmtiles';
++ const shouldShowMapFallbackNotice = isRasterFallback && MAP_STYLE_IS_DEFAULT;
+++const shouldWarnAddressConfig = MAP_ADDRESSES_PMTILES_SOURCE !== 'env';
++ 
++ export default function LogisticsPage() {
++   const { t, i18n } = useTranslation();
++@@ -956,6 +958,32 @@ export default function LogisticsPage() {
++       );
++     }
++   }, []);
+++  const addressLayerNotice = React.useMemo(() => {
+++    if (MAP_ADDRESSES_PMTILES_SOURCE === 'missing') {
+++      return {
+++        tone: 'error' as const,
+++        text: t('logistics.addressLayerMissing', {
+++          defaultValue:
+++            'Слой номеров домов недоступен: добавьте файл public/tiles/addresses.pmtiles и установите VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles.',
+++        }),
+++      };
+++    }
+++    if (MAP_ADDRESSES_PMTILES_SOURCE === 'local') {
+++      return {
+++        tone: 'warning' as const,
+++        text: t('logistics.addressLayerLocalFallback', {
+++          defaultValue:
+++            'Используется локальный файл адресов из public/tiles/addresses.pmtiles. Для продакшн-сборки обязательно установите VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles.',
+++        }),
+++      };
+++    }
+++    return null;
+++  }, [t]);
+++  const addressLayerNoticeClassName = addressLayerNotice
+++    ? addressLayerNotice.tone === 'error'
+++      ? 'rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900'
+++      : 'rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900'
+++    : '';
++   const [mapViewMode, setMapViewMode] = React.useState<
++     'planar' | 'perspective'
++   >(persistedMapStateRef.current?.viewMode ?? 'planar');
++@@ -2605,7 +2633,7 @@ export default function LogisticsPage() {
++         const addressTilesUrl = MAP_ADDRESSES_PMTILES_URL;
++         if (!addressTilesUrl) {
++           console.warn(
++-            'Адресные плитки не подключены: отсутствует URL источника (VITE_MAP_ADDRESSES_PMTILES_URL).',
+++            'Адресные плитки не подключены: укажите VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles и разместите файл в public/tiles.',
++           );
++           return;
++         }
++@@ -3539,6 +3567,9 @@ export default function LogisticsPage() {
++           })}
++         </div>
++       ) : null}
+++      {shouldWarnAddressConfig && addressLayerNotice ? (
+++        <div className={addressLayerNoticeClassName}>{addressLayerNotice.text}</div>
+++      ) : null}
++       <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
++         <div className="space-y-4">
++           <CollapsibleCard
++diff --git a/docs/logistics_recovery_plan.md b/docs/logistics_recovery_plan.md
++index 17474fd..1fb3021 100644
++--- a/docs/logistics_recovery_plan.md
+++++ b/docs/logistics_recovery_plan.md
++@@ -73,7 +73,7 @@
++ - **Ручные проверки**:
++   1. Запустить фронт: `pnpm -F web run dev`.
++   2. Убедиться, что карта грузится без переключения на raster fallback (консоль без warn о стиле).
++-  3. При наличии `VITE_MAP_ADDRESSES_PMTILES_URL` увидеть домовые номера на zoom ≥ 17; при пустой переменной — получить warn «Адресные плитки не подключены».
+++  3. При установленном `VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles` или наличии файла `apps/web/public/tiles/addresses.pmtiles` увидеть домовые номера на zoom ≥ 17; отсутствие файла и переменной фиксируется как ошибка конфигурации.
++   4. Проверить 3D-здания на zoom 15+ и что слой не пропадает при смене стиля.
++   5. Проверить SSE: в консоли нет `ERR_HTTP2_PROTOCOL_ERROR`; при отключении SSE (`VITE_DISABLE_SSE=1`) включается поллинг с интервалом `VITE_LOGISTICS_POLL_INTERVAL_MS`.
++ 
++diff --git a/docs/technical_manual.md b/docs/technical_manual.md
++index 7422a59..18b89ea 100644
++--- a/docs/technical_manual.md
+++++ b/docs/technical_manual.md
++@@ -102,13 +102,13 @@ Danger проверяет наличие описания PR, требует о
++ 1. Зарегистрируйтесь на [https://protomaps.com](https://protomaps.com) или другом провайдере MapLibre-совместимых стилей и создайте бесплатный API-ключ.
++ 2. Скопируйте URL стиля (обычно он заканчивается на `style.json?key=...`).
++ 3. Добавьте ключ в окружение клиента и API: впишите `VITE_MAP_STYLE_URL=<URL>` в `.env` корня и перезапустите `pnpm run dev` или инфраструктуру Railway/Docker.
++-4. При наличии собственного файла адресов скопируйте `addresses.pmtiles` в `apps/web/public/tiles` и установите `VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles`.
+++4. При наличии собственного файла адресов скопируйте `addresses.pmtiles` в `apps/web/public/tiles` и установите `VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles` (для боевой сборки переменная обязательна).
++ 5. После изменения переменных удалите кэш браузера и перезагрузите страницу — CSP автоматически разрешит новый origin, потому что API читает тот же `VITE_MAP_STYLE_URL`.
++ 
++ ### Переменные окружения карты
++ 
++ - `VITE_MAP_STYLE_URL` — URL JSON-стиля, по умолчанию используется демо MapLibre (`https://demotiles.maplibre.org/style.json`).
++-- `VITE_MAP_ADDRESSES_PMTILES_URL` — путь к локальному файлу адресов (оставьте пустым, если слоя нет).
+++- `VITE_MAP_ADDRESSES_PMTILES_URL` — путь к локальному файлу адресов, для продакшн обязателен (`pmtiles://tiles/addresses.pmtiles`).
++ - `VITE_LOGISTICS_POLL_INTERVAL_MS` — период опроса логистики в миллисекундах, используется когда SSE недоступен (значение по умолчанию 30000).
++ 
++ ## Миграции базы данных
++diff --git a/tests/logistics.addressLayer.config.spec.ts b/tests/logistics.addressLayer.config.spec.ts
++new file mode 100644
++index 0000000..03a9091
++--- /dev/null
+++++ b/tests/logistics.addressLayer.config.spec.ts
++@@ -0,0 +1,55 @@
+++/**
+++ * Назначение файла: проверка конфигурации адресных плиток и fallback значений.
+++ * Основные модули: apps/web/src/config/map.
+++ */
+++import fs from 'node:fs';
+++
+++describe('config map: адресные плитки', () => {
+++  const originalEnv = process.env.VITE_MAP_ADDRESSES_PMTILES_URL;
+++
+++  afterEach(() => {
+++    process.env.VITE_MAP_ADDRESSES_PMTILES_URL = originalEnv;
+++    jest.resetModules();
+++  });
+++
+++  it('возвращает локальный путь при отсутствии переменной окружения', async () => {
+++    delete process.env.VITE_MAP_ADDRESSES_PMTILES_URL;
+++    jest.resetModules();
+++
+++    const config = await import('../apps/web/src/config/map');
+++
+++    expect(config.MAP_ADDRESSES_PMTILES_URL).toBe(
+++      'pmtiles://tiles/addresses.pmtiles',
+++    );
+++    expect(config.MAP_ADDRESSES_PMTILES_SOURCE).toBe('local');
+++  });
+++
+++  it('использует значение из переменной окружения', async () => {
+++    process.env.VITE_MAP_ADDRESSES_PMTILES_URL =
+++      'pmtiles://custom/addresses.pmtiles';
+++    jest.resetModules();
+++
+++    const config = await import('../apps/web/src/config/map');
+++
+++    expect(config.MAP_ADDRESSES_PMTILES_URL).toBe(
+++      'pmtiles://custom/addresses.pmtiles',
+++    );
+++    expect(config.MAP_ADDRESSES_PMTILES_SOURCE).toBe('env');
+++  });
+++
+++  it('логирует ошибку при отсутствии файла и переменной', async () => {
+++    const existsSpy = jest.spyOn(fs, 'existsSync').mockReturnValue(false);
+++    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+++    delete process.env.VITE_MAP_ADDRESSES_PMTILES_URL;
+++    jest.resetModules();
+++
+++    const config = await import('../apps/web/src/config/map');
+++
+++    expect(config.MAP_ADDRESSES_PMTILES_URL).toBe('');
+++    expect(config.MAP_ADDRESSES_PMTILES_SOURCE).toBe('missing');
+++    expect(consoleSpy).toHaveBeenCalled();
+++
+++    existsSpy.mockRestore();
+++    consoleSpy.mockRestore();
+++  });
+++});
+diff --git a/tests/logistics.addressLayer.config.spec.ts b/tests/logistics.addressLayer.config.spec.ts
+new file mode 100644
+index 0000000..a5ce2db
+--- /dev/null
++++ b/tests/logistics.addressLayer.config.spec.ts
+@@ -0,0 +1,63 @@
++/**
++ * Назначение файла: проверка конфигурации адресных плиток и fallback значений.
++ * Основные модули: apps/web/src/config/map.
++ */
++import fs from 'node:fs';
++
++describe('config map: адресные плитки', () => {
++  const originalEnv = process.env.VITE_MAP_ADDRESSES_PMTILES_URL;
++  const resetImportMetaEnv = () => {
++    delete (globalThis as { __ERM_IMPORT_META_ENV__?: unknown })
++      .__ERM_IMPORT_META_ENV__;
++  };
++
++  afterEach(() => {
++    process.env.VITE_MAP_ADDRESSES_PMTILES_URL = originalEnv;
++    resetImportMetaEnv();
++    jest.resetModules();
++  });
++
++  it('возвращает локальный путь при отсутствии переменной окружения', async () => {
++    delete process.env.VITE_MAP_ADDRESSES_PMTILES_URL;
++    resetImportMetaEnv();
++    jest.resetModules();
++
++    const config = await import('../apps/web/src/config/map');
++
++    expect(config.MAP_ADDRESSES_PMTILES_URL).toBe(
++      'pmtiles://tiles/addresses.pmtiles',
++    );
++    expect(config.MAP_ADDRESSES_PMTILES_SOURCE).toBe('local');
++  });
++
++  it('использует значение из переменной окружения', async () => {
++    process.env.VITE_MAP_ADDRESSES_PMTILES_URL =
++      'pmtiles://custom/addresses.pmtiles';
++    resetImportMetaEnv();
++    jest.resetModules();
++
++    const config = await import('../apps/web/src/config/map');
++
++    expect(config.MAP_ADDRESSES_PMTILES_URL).toBe(
++      'pmtiles://custom/addresses.pmtiles',
++    );
++    expect(config.MAP_ADDRESSES_PMTILES_SOURCE).toBe('env');
++  });
++
++  it('логирует ошибку при отсутствии файла и переменной', async () => {
++    const existsSpy = jest.spyOn(fs, 'existsSync').mockReturnValue(false);
++    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
++    delete process.env.VITE_MAP_ADDRESSES_PMTILES_URL;
++    resetImportMetaEnv();
++    jest.resetModules();
++
++    const config = await import('../apps/web/src/config/map');
++
++    expect(config.MAP_ADDRESSES_PMTILES_URL).toBe('');
++    expect(config.MAP_ADDRESSES_PMTILES_SOURCE).toBe('missing');
++    expect(consoleSpy).toHaveBeenCalled();
++
++    existsSpy.mockRestore();
++    consoleSpy.mockRestore();
++  });
++});

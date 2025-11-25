@@ -41,6 +41,7 @@ import {
   MAP_STYLE_MODE,
   MAP_STYLE_IS_DEFAULT,
   MAP_ADDRESSES_PMTILES_URL,
+  MAP_ADDRESSES_PMTILES_SOURCE,
 } from '../config/map';
 import { insert3dBuildingsLayer } from '../utils/insert3dBuildingsLayer';
 import { customTheme } from '../utils/drawTheme';
@@ -906,6 +907,7 @@ const MAP_CENTER_LNG_LAT: [number, number] = [
 const UKRAINE_BOUNDS: LngLatBoundsLike = MAP_MAX_BOUNDS;
 const isRasterFallback = MAP_STYLE_MODE !== 'pmtiles';
 const shouldShowMapFallbackNotice = isRasterFallback && MAP_STYLE_IS_DEFAULT;
+const shouldWarnAddressConfig = MAP_ADDRESSES_PMTILES_SOURCE !== 'env';
 
 export default function LogisticsPage() {
   const { t, i18n } = useTranslation();
@@ -956,6 +958,32 @@ export default function LogisticsPage() {
       );
     }
   }, []);
+  const addressLayerNotice = React.useMemo(() => {
+    if (MAP_ADDRESSES_PMTILES_SOURCE === 'missing') {
+      return {
+        tone: 'error' as const,
+        text: t('logistics.addressLayerMissing', {
+          defaultValue:
+            'Слой номеров домов недоступен: добавьте файл public/tiles/addresses.pmtiles и установите VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles.',
+        }),
+      };
+    }
+    if (MAP_ADDRESSES_PMTILES_SOURCE === 'local') {
+      return {
+        tone: 'warning' as const,
+        text: t('logistics.addressLayerLocalFallback', {
+          defaultValue:
+            'Используется локальный файл адресов из public/tiles/addresses.pmtiles. Для продакшн-сборки обязательно установите VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles.',
+        }),
+      };
+    }
+    return null;
+  }, [t]);
+  const addressLayerNoticeClassName = addressLayerNotice
+    ? addressLayerNotice.tone === 'error'
+      ? 'rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900'
+      : 'rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900'
+    : '';
   const [mapViewMode, setMapViewMode] = React.useState<
     'planar' | 'perspective'
   >(persistedMapStateRef.current?.viewMode ?? 'planar');
@@ -2605,7 +2633,7 @@ export default function LogisticsPage() {
         const addressTilesUrl = MAP_ADDRESSES_PMTILES_URL;
         if (!addressTilesUrl) {
           console.warn(
-            'Адресные плитки не подключены: отсутствует URL источника (VITE_MAP_ADDRESSES_PMTILES_URL).',
+            'Адресные плитки не подключены: укажите VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles и разместите файл в public/tiles.',
           );
           return;
         }
@@ -3537,6 +3565,11 @@ export default function LogisticsPage() {
             defaultValue:
               'Карта использует временные растровые тайлы OpenStreetMap. Подключите локальные PMTiles в public/tiles, чтобы активировать детализированный стиль.',
           })}
+        </div>
+      ) : null}
+      {shouldWarnAddressConfig && addressLayerNotice ? (
+        <div className={addressLayerNoticeClassName}>
+          {addressLayerNotice.text}
         </div>
       ) : null}
       <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">

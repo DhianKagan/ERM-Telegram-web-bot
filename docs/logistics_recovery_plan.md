@@ -73,7 +73,7 @@
 - **Ручные проверки**:
   1. Запустить фронт: `pnpm -F web run dev`.
   2. Убедиться, что карта грузится без переключения на raster fallback (консоль без warn о стиле).
-  3. При наличии `VITE_MAP_ADDRESSES_PMTILES_URL` увидеть домовые номера на zoom ≥ 17; при пустой переменной — получить warn «Адресные плитки не подключены».
+  3. При установленном `VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles` или наличии файла `apps/web/public/tiles/addresses.pmtiles` увидеть домовые номера на zoom ≥ 17; отсутствие файла и переменной фиксируется как ошибка конфигурации.
   4. Проверить 3D-здания на zoom 15+ и что слой не пропадает при смене стиля.
   5. Проверить SSE: в консоли нет `ERR_HTTP2_PROTOCOL_ERROR`; при отключении SSE (`VITE_DISABLE_SSE=1`) включается поллинг с интервалом `VITE_LOGISTICS_POLL_INTERVAL_MS`.
 

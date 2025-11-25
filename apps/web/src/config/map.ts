@@ -17,6 +17,36 @@ type ImportMetaWithEnv = {
   };
 };
 
+type AddressTilesSource = 'env' | 'local' | 'missing';
+
+const readImportMetaEnv = (): ImportMetaWithEnv['env'] | undefined =>
+  (globalThis as { __ERM_IMPORT_META_ENV__?: ImportMetaWithEnv['env'] })
+    .__ERM_IMPORT_META_ENV__;
+
+const LOCAL_ADDRESS_PMTILES_PATH = 'pmtiles://tiles/addresses.pmtiles';
+
+const hasLocalAddressTiles = (() => {
+  if (typeof window !== 'undefined') {
+    return true;
+  }
+  if (typeof process !== 'undefined' && process.versions?.node) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const fs = require('node:fs') as typeof import('node:fs');
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const path = require('node:path') as typeof import('node:path');
+      const localPath = path.resolve(
+        process.cwd(),
+        'apps/web/public/tiles/addresses.pmtiles',
+      );
+      return fs.existsSync(localPath);
+    } catch {
+      return false;
+    }
+  }
+  return false;
+})();
+
 // Читаем URL стиля: сначала пытаемся взять из process.env (сервер), потом из import.meta.env (клиент), иначе используем DEFAULT_MAP_STYLE_URL
 const readMapStyle = (): { url: string; source: MapStyleSource } => {
   const processValue =
@@ -26,14 +56,10 @@ const readMapStyle = (): { url: string; source: MapStyleSource } => {
   if (typeof processValue === 'string' && processValue.trim() !== '') {
     return { url: processValue.trim(), source: 'env' };
   }
-  try {
-    const meta = import.meta as unknown as ImportMetaWithEnv;
-    const metaValue = meta?.env?.VITE_MAP_STYLE_URL;
-    if (typeof metaValue === 'string' && metaValue.trim() !== '') {
-      return { url: metaValue, source: 'env' };
-    }
-  } catch {
-    // Игнорируем отсутствие import.meta в окружении тестов
+  const meta = readImportMetaEnv();
+  const metaValue = meta?.VITE_MAP_STYLE_URL;
+  if (typeof metaValue === 'string' && metaValue.trim() !== '') {
+    return { url: metaValue, source: 'env' };
   }
   return { url: DEFAULT_MAP_STYLE_URL, source: 'default' };
 };
@@ -96,28 +122,35 @@ export const MAP_VECTOR_SOURCE_ID = 'basemap';
 export const MAP_ANIMATION_SPEED_KMH = 50;
 
 // Локальный путь к адресным PMTiles. Можно переопределить через VITE_MAP_ADDRESSES_PMTILES_URL
-const readAddressTilesUrl = (): string => {
+const readAddressTilesUrl = (): {
+  url: string | null;
+  source: AddressTilesSource;
+} => {
   const processValue =
     typeof process !== 'undefined' && typeof process.env === 'object'
       ? process.env.VITE_MAP_ADDRESSES_PMTILES_URL
       : undefined;
   if (typeof processValue === 'string' && processValue.trim() !== '') {
-    return processValue.trim();
+    return { url: processValue.trim(), source: 'env' };
   }
-  try {
-    const meta = import.meta as unknown as ImportMetaWithEnv;
-    const metaValue = meta?.env?.VITE_MAP_ADDRESSES_PMTILES_URL;
-    if (typeof metaValue === 'string' && metaValue.trim() !== '') {
-      return metaValue.trim();
-    }
-  } catch {
-    // Игнорируем окружения без import.meta
+  const meta = readImportMetaEnv();
+  const metaValue = meta?.VITE_MAP_ADDRESSES_PMTILES_URL;
+  if (typeof metaValue === 'string' && metaValue.trim() !== '') {
+    return { url: metaValue.trim(), source: 'env' };
   }
-  return '';
+  if (hasLocalAddressTiles) {
+    return { url: LOCAL_ADDRESS_PMTILES_PATH, source: 'local' };
+  }
+  console.error(
+    'Ошибка конфигурации: адресные плитки не найдены. Установите VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles и проверьте наличие файла apps/web/public/tiles/addresses.pmtiles.',
+  );
+  return { url: null, source: 'missing' };
 };
 
 // Экспортируем URL адресных плит (pmtiles://...), либо пустую строку
-export const MAP_ADDRESSES_PMTILES_URL = readAddressTilesUrl();
+const addressTilesConfig = readAddressTilesUrl();
+export const MAP_ADDRESSES_PMTILES_URL = addressTilesConfig.url ?? '';
+export const MAP_ADDRESSES_PMTILES_SOURCE = addressTilesConfig.source;
 
 // Дополнительные алиасы (если где-то использовались короткие имена)
 export const DEFAULT_CENTER = MAP_DEFAULT_CENTER;

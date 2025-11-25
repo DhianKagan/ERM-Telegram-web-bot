@@ -19,7 +19,7 @@ import mapLibrary, {
   attachMapStyleFallback,
   registerPmtilesProtocol,
 } from '../utils/mapLibrary';
-import { detectPrimaryVectorSourceId } from '../utils/vectorSource';
+import { findFirstVectorSourceId } from '../utils/vectorSource';
 import type * as GeoJSON from 'geojson';
 import MapLibreDraw from 'maplibre-gl-draw';
 import 'maplibre-gl-draw/dist/mapbox-gl-draw.css';
@@ -2604,11 +2604,12 @@ export default function LogisticsPage() {
             return;
           }
         }
-        const primaryVectorSourceId = detectPrimaryVectorSourceId(mapInstance);
-        if (!primaryVectorSourceId) {
+        const availableVectorSourceId = findFirstVectorSourceId(mapInstance);
+        if (!availableVectorSourceId) {
           console.warn(
-            'Не удалось определить основной векторный источник стиля — адресные подписи будут пропущены.',
+            'Не удалось найти векторные источники стиля — адресные подписи будут пропущены.',
           );
+          return;
         }
         mapInstance.addSource(ADDRESS_SOURCE_ID, {
           type: 'vector',

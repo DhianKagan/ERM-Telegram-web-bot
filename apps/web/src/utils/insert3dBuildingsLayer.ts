@@ -1,7 +1,10 @@
 // Назначение файла: добавление 3D-слоя зданий и обеспечение корректного порядка слоёв на карте
 // Основные модули: maplibre-gl
 import type { Map as MapInstance } from 'maplibre-gl';
-import { detectPrimaryVectorSourceId } from './vectorSource';
+import {
+  detectPrimaryVectorSourceId,
+  findFirstVectorSourceId,
+} from './vectorSource';
 
 export const BUILDINGS_LAYER_ID = 'logistics-3d-buildings';
 
@@ -16,9 +19,13 @@ type SymbolLayerSpecification = Extract<
 >;
 
 export const insert3dBuildingsLayer = (map: MapInstance): string | null => {
-  const vectorSourceId = detectPrimaryVectorSourceId(map);
+  const vectorSourceId =
+    detectPrimaryVectorSourceId(map) ?? findFirstVectorSourceId(map);
 
   if (!vectorSourceId) {
+    console.warn(
+      '3D-слой зданий пропущен: в стиле нет доступных векторных источников.',
+    );
     return null;
   }
 

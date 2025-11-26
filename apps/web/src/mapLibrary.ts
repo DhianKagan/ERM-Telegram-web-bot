@@ -17,6 +17,8 @@ import maplibregl, {
   type MapLayerMouseEvent,
   type MapMouseEvent,
   type Marker as MapMarker,
+  type RequestParameters,
+  type ResponseCallback,
   type ExpressionSpecification,
   type MapOptions,
 } from 'maplibre-gl';
@@ -60,7 +62,12 @@ const registerPmtilesProtocol = async (): Promise<boolean> => {
 
   try {
     // Динамически загружаем пакет pmtiles
-    type PmtilesProtocol = { tile: (request: unknown) => unknown };
+    type PmtilesProtocol = {
+      tile: (
+        request: RequestParameters,
+        callback: ResponseCallback<ArrayBuffer | null>,
+      ) => { cancel?: () => void };
+    };
     type PmtilesModule = {
       Protocol?: new () => PmtilesProtocol;
       default?: new () =>
@@ -105,14 +112,19 @@ const registerPmtilesProtocol = async (): Promise<boolean> => {
     type MaplibreWithProtocol = {
       addProtocol?: (
         name: string,
-        handler: (request: unknown) => unknown,
+        handler: (
+          request: RequestParameters,
+          callback: ResponseCallback<ArrayBuffer | null>,
+        ) => { cancel?: () => void } | void,
       ) => void;
     };
     const candidate = maplibregl as MaplibreWithProtocol;
+    const handler = (
+      request: RequestParameters,
+      callback: ResponseCallback<ArrayBuffer | null>,
+    ) => protocol.tile(request, callback);
     if (typeof candidate.addProtocol === 'function') {
-      candidate.addProtocol('pmtiles', (request: unknown) =>
-        protocol.tile(request),
-      );
+      candidate.addProtocol('pmtiles', handler);
       pmtilesProtocolRegistered = true;
       console.info('Протокол pmtiles зарегистрирован успешно');
       return true;

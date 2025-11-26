@@ -1,0 +1,16 @@
+diff --git a/apps/web/src/utils/vectorSource.ts b/apps/web/src/utils/vectorSource.ts
+index 69220c1..a1d794c 100644
+--- a/apps/web/src/utils/vectorSource.ts
++++ b/apps/web/src/utils/vectorSource.ts
+@@ -1,10 +1,7 @@
+ // Назначение файла: утилита для определения основного векторного источника в стиле карты
+ // Основные модули: maplibre-gl
+ import type { Map as MapInstance } from 'maplibre-gl';
+-import {
+-  MAP_VECTOR_SOURCE_ID,
+-  MAP_VECTOR_SOURCE_IDS,
+-} from '../config/map';
++import { MAP_VECTOR_SOURCE_IDS } from '../config/map';
+ 
+ type MapStyleSource = { type?: string };
+ 

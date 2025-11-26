@@ -12,7 +12,7 @@ type CSPConfig = NonNullable<
   Exclude<HelmetOptions['contentSecurityPolicy'], boolean>
 >;
 
-const DEFAULT_MAP_STYLE_URL = 'https://demotiles.maplibre.org/style.json';
+const DEFAULT_MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
 
 const ensureEntry = (bucket: string[], value: string) => {
   if (!bucket.includes(value)) bucket.push(value);
@@ -88,6 +88,9 @@ export default function applySecurity(app: express.Express): void {
   ];
 
   const fontSrc = ["'self'", ...parseList(process.env.CSP_FONT_SRC_ALLOWLIST)];
+  if (mapStyleOrigin) {
+    ensureEntry(fontSrc, mapStyleOrigin);
+  }
 
   const workerSrc = [
     "'self'",

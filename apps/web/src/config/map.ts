@@ -4,8 +4,8 @@ type MapStyleMode = 'pmtiles' | 'raster';
 
 declare const __ERM_MAP_STYLE_MODE__: MapStyleMode | undefined;
 
-// По умолчанию используем локальный векторный стиль, доступный из public/tiles
-const DEFAULT_MAP_STYLE_URL = '/tiles/maplibre-style.json';
+// По умолчанию используем векторный стиль OpenFreeMap
+const DEFAULT_MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
 const DEFAULT_RASTER_STYLE_URL =
   'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
@@ -103,9 +103,9 @@ export const MAP_STYLE_MODE: MapStyleMode = (() => {
 })();
 export const MAP_STYLE_IS_DEFAULT = mapStyle.source === 'default';
 
-// Атрибуция (демо-тайлы MapLibre + OpenStreetMap contributors)
+// Атрибуция (OpenFreeMap + участники OpenStreetMap)
 export const MAP_ATTRIBUTION =
-  '© <a href="https://demotiles.maplibre.org" target="_blank" rel="noopener">MapLibre demo</a> © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OSM contributors</a>';
+  '© <a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">участники OpenStreetMap</a>';
 
 // Центр/зум по умолчанию — Киев
 export const MAP_DEFAULT_CENTER: [number, number] = [30.5234, 50.4501];

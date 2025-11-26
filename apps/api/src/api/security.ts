@@ -27,6 +27,7 @@ const parseList = (env?: string): string[] =>
     : [];
 
 export default function applySecurity(app: express.Express): void {
+  const protomapsAssetsOrigin = 'https://protomaps.github.io';
   const reportOnly = process.env.CSP_REPORT_ONLY !== 'false';
   app.use((_, res, next) => {
     res.locals.cspNonce = crypto.randomBytes(16).toString('base64');
@@ -49,6 +50,7 @@ export default function applySecurity(app: express.Express): void {
     ...parseList(process.env.CSP_CONNECT_SRC_ALLOWLIST),
   ];
   const protomapsOrigin = 'https://api.protomaps.com';
+  ensureEntry(connectSrc, protomapsAssetsOrigin);
   ensureEntry(connectSrc, protomapsOrigin);
   try {
     connectSrc.push(new URL(config.routingUrl).origin);
@@ -68,6 +70,7 @@ export default function applySecurity(app: express.Express): void {
     ...parseList(process.env.CSP_IMG_SRC_ALLOWLIST),
   ];
   ensureEntry(imgSrc, protomapsOrigin);
+  ensureEntry(imgSrc, protomapsAssetsOrigin);
   if (mapStyleOrigin) {
     ensureEntry(imgSrc, mapStyleOrigin);
   }
@@ -88,6 +91,7 @@ export default function applySecurity(app: express.Express): void {
   ];
 
   const fontSrc = ["'self'", ...parseList(process.env.CSP_FONT_SRC_ALLOWLIST)];
+  ensureEntry(fontSrc, protomapsAssetsOrigin);
   if (mapStyleOrigin) {
     ensureEntry(fontSrc, mapStyleOrigin);
   }

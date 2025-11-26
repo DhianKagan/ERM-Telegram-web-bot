@@ -1,0 +1,87 @@
+diff --git a/apps/api/src/api/security.ts b/apps/api/src/api/security.ts
+index ee4afc4..99b4b96 100644
+--- a/apps/api/src/api/security.ts
++++ b/apps/api/src/api/security.ts
+@@ -27,6 +27,7 @@ const parseList = (env?: string): string[] =>
+     : [];
+ 
+ export default function applySecurity(app: express.Express): void {
++  const protomapsAssetsOrigin = 'https://protomaps.github.io';
+   const reportOnly = process.env.CSP_REPORT_ONLY !== 'false';
+   app.use((_, res, next) => {
+     res.locals.cspNonce = crypto.randomBytes(16).toString('base64');
+@@ -49,6 +50,7 @@ export default function applySecurity(app: express.Express): void {
+     ...parseList(process.env.CSP_CONNECT_SRC_ALLOWLIST),
+   ];
+   const protomapsOrigin = 'https://api.protomaps.com';
++  ensureEntry(connectSrc, protomapsAssetsOrigin);
+   ensureEntry(connectSrc, protomapsOrigin);
+   try {
+     connectSrc.push(new URL(config.routingUrl).origin);
+@@ -68,6 +70,7 @@ export default function applySecurity(app: express.Express): void {
+     ...parseList(process.env.CSP_IMG_SRC_ALLOWLIST),
+   ];
+   ensureEntry(imgSrc, protomapsOrigin);
++  ensureEntry(imgSrc, protomapsAssetsOrigin);
+   if (mapStyleOrigin) {
+     ensureEntry(imgSrc, mapStyleOrigin);
+   }
+@@ -88,6 +91,7 @@ export default function applySecurity(app: express.Express): void {
+   ];
+ 
+   const fontSrc = ["'self'", ...parseList(process.env.CSP_FONT_SRC_ALLOWLIST)];
++  ensureEntry(fontSrc, protomapsAssetsOrigin);
+   if (mapStyleOrigin) {
+     ensureEntry(fontSrc, mapStyleOrigin);
+   }
+diff --git a/apps/web/src/mapLibrary.ts b/apps/web/src/mapLibrary.ts
+index 2b6e505..74b1453 100644
+--- a/apps/web/src/mapLibrary.ts
++++ b/apps/web/src/mapLibrary.ts
+@@ -17,6 +17,8 @@ import maplibregl, {
+   type MapLayerMouseEvent,
+   type MapMouseEvent,
+   type Marker as MapMarker,
++  type RequestParameters,
++  type ResponseCallback,
+   type ExpressionSpecification,
+   type MapOptions,
+ } from 'maplibre-gl';
+@@ -60,7 +62,12 @@ const registerPmtilesProtocol = async (): Promise<boolean> => {
+ 
+   try {
+     // Динамически загружаем пакет pmtiles
+-    type PmtilesProtocol = { tile: (request: unknown) => unknown };
++    type PmtilesProtocol = {
++      tile: (
++        request: RequestParameters,
++        callback: ResponseCallback<ArrayBuffer | null>,
++      ) => { cancel?: () => void };
++    };
+     type PmtilesModule = {
+       Protocol?: new () => PmtilesProtocol;
+       default?: new () =>
+@@ -105,14 +112,19 @@ const registerPmtilesProtocol = async (): Promise<boolean> => {
+     type MaplibreWithProtocol = {
+       addProtocol?: (
+         name: string,
+-        handler: (request: unknown) => unknown,
++        handler: (
++          request: RequestParameters,
++          callback: ResponseCallback<ArrayBuffer | null>,
++        ) => { cancel?: () => void } | void,
+       ) => void;
+     };
+     const candidate = maplibregl as MaplibreWithProtocol;
++    const handler = (
++      request: RequestParameters,
++      callback: ResponseCallback<ArrayBuffer | null>,
++    ) => protocol.tile(request, callback);
+     if (typeof candidate.addProtocol === 'function') {
+-      candidate.addProtocol('pmtiles', (request: unknown) =>
+-        protocol.tile(request),
+-      );
++      candidate.addProtocol('pmtiles', handler);
+       pmtilesProtocolRegistered = true;
+       console.info('Протокол pmtiles зарегистрирован успешно');
+       return true;

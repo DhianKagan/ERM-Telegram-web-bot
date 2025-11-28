@@ -4,12 +4,12 @@ type MapStyleMode = 'pmtiles' | 'raster';
 
 declare const __ERM_MAP_STYLE_MODE__: MapStyleMode | undefined;
 
-// По умолчанию используем векторный стиль OpenFreeMap
+// По умолчанию используем векторный стиль OpenFreeMap, при наличии локального файла maplibre-style.json переключаемся на него
 const DEFAULT_MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
 const DEFAULT_RASTER_STYLE_URL =
   'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
-type MapStyleSource = 'default' | 'env';
+type MapStyleSource = 'default' | 'env' | 'local';
 
 type ImportMetaWithEnv = {
   readonly env?: {
@@ -24,6 +24,7 @@ const readImportMetaEnv = (): ImportMetaWithEnv['env'] | undefined =>
   (globalThis as { __ERM_IMPORT_META_ENV__?: ImportMetaWithEnv['env'] })
     .__ERM_IMPORT_META_ENV__;
 
+const LOCAL_MAP_STYLE_PATH = '/tiles/maplibre-style.json';
 const LOCAL_ADDRESS_PMTILES_PATH = 'pmtiles://tiles/addresses.pmtiles';
 
 const hasLocalAddressTiles = (() => {
@@ -48,6 +49,28 @@ const hasLocalAddressTiles = (() => {
   return false;
 })();
 
+const hasLocalMapStyle = (() => {
+  if (typeof window !== 'undefined') {
+    return true;
+  }
+  if (typeof process !== 'undefined' && process.versions?.node) {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const fs = require('node:fs') as typeof import('node:fs');
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const path = require('node:path') as typeof import('node:path');
+      const localPath = path.resolve(
+        process.cwd(),
+        'apps/web/public/tiles/maplibre-style.json',
+      );
+      return fs.existsSync(localPath);
+    } catch {
+      return false;
+    }
+  }
+  return false;
+})();
+
 // Читаем URL стиля: сначала пытаемся взять из process.env (сервер), потом из import.meta.env (клиент), иначе используем DEFAULT_MAP_STYLE_URL
 const readMapStyle = (): { url: string; source: MapStyleSource } => {
   const processValue =
@@ -61,6 +84,9 @@ const readMapStyle = (): { url: string; source: MapStyleSource } => {
   const metaValue = meta?.VITE_MAP_STYLE_URL;
   if (typeof metaValue === 'string' && metaValue.trim() !== '') {
     return { url: metaValue, source: 'env' };
+  }
+  if (hasLocalMapStyle) {
+    return { url: LOCAL_MAP_STYLE_PATH, source: 'local' };
   }
   return { url: DEFAULT_MAP_STYLE_URL, source: 'default' };
 };
@@ -87,7 +113,7 @@ const readRuntimeMapStyleMode = (): MapStyleMode | undefined => {
 const mapStyle = readMapStyle();
 export const MAP_STYLE_URL = mapStyle.url;
 const runtimeMode = readRuntimeMapStyleMode();
-const isCustomStyle = mapStyle.source === 'env';
+const isCustomStyle = mapStyle.source === 'env' || mapStyle.source === 'local';
 
 const autoModeFromUrl = (url: string): MapStyleMode =>
   url.includes('tile.openstreetmap.org') ? 'raster' : 'pmtiles';
@@ -117,8 +143,9 @@ export const MAP_MAX_BOUNDS: [[number, number], [number, number]] = [
   [180, 85],
 ];
 
-// Идентификатор векторного источника; для стиля Protomaps v5 чаще 'basemap'
-export const MAP_VECTOR_SOURCE_ID = 'basemap';
+// Идентификаторы векторных источников; используем первый доступный
+export const MAP_VECTOR_SOURCE_IDS = ['basemap', 'openmaptiles'] as const;
+export const MAP_VECTOR_SOURCE_ID = MAP_VECTOR_SOURCE_IDS[0];
 
 // Скорость анимации (если используется для пробегов транспорта)
 export const MAP_ANIMATION_SPEED_KMH = 50;

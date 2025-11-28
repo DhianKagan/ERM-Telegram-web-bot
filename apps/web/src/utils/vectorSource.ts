@@ -1,7 +1,7 @@
 // Назначение файла: утилита для определения основного векторного источника в стиле карты
 // Основные модули: maplibre-gl
 import type { Map as MapInstance } from 'maplibre-gl';
-import { MAP_VECTOR_SOURCE_ID } from '../config/map';
+import { MAP_VECTOR_SOURCE_IDS } from '../config/map';
 
 type MapStyleSource = { type?: string };
 
@@ -48,7 +48,11 @@ export const detectPrimaryVectorSourceId = (
     return null;
   }
 
-  return isVectorSource(sources[MAP_VECTOR_SOURCE_ID])
-    ? MAP_VECTOR_SOURCE_ID
-    : null;
+  for (const candidate of MAP_VECTOR_SOURCE_IDS) {
+    if (isVectorSource(sources[candidate])) {
+      return candidate;
+    }
+  }
+
+  return null;
 };

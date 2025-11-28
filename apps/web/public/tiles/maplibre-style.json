@@ -1,6 +1,11 @@
 {
   "version": 8,
-  "name": "ERM MapLibre",
+  "name": "ERM - OpenFreeMap based",
+  "metadata": {
+    "mapbox:autocomposite": false,
+    "elemVersion": "1"
+  },
+  "sprite": "https://tiles.openfreemap.org/styles/liberty/sprite",
   "glyphs": "https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf",
   "sources": {
     "openmaptiles": {
@@ -13,86 +18,396 @@
       "id": "background",
       "type": "background",
       "paint": {
-        "background-color": "#f8f9fb"
+        "background-color": "#eef3f6"
       }
     },
-    {
-      "id": "water",
-      "type": "fill",
-      "source": "openmaptiles",
-      "source-layer": "water",
-      "paint": {
-        "fill-color": "#a0c8f0"
-      }
-    },
+
+    /* --- Landcover / landuse --- */
     {
       "id": "landcover",
       "type": "fill",
       "source": "openmaptiles",
       "source-layer": "landcover",
       "paint": {
-        "fill-color": "#e0e9d3",
-        "fill-opacity": 0.6
+        "fill-color": [
+          "match",
+          ["get", "class"],
+          "wood", "#e6f2e6",
+          "grass", "#e9f0d9",
+          "scrub", "#edf3da",
+          "#e9eef0"
+        ],
+        "fill-opacity": 0.8
       }
     },
+
+    /* --- Water --- */
+    {
+      "id": "water",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "water",
+      "paint": {
+        "fill-color": "#a6d2e8"
+      }
+    },
+
+    /* --- Parks / green areas --- */
     {
       "id": "park",
       "type": "fill",
       "source": "openmaptiles",
       "source-layer": "park",
       "paint": {
-        "fill-color": "#cdebb0",
-        "fill-opacity": 0.5
+        "fill-color": "#cfecc7",
+        "fill-opacity": 0.9
       }
     },
+
+    /* --- Administrative boundaries (country / region) --- */
     {
       "id": "boundary",
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "boundary",
       "paint": {
-        "line-color": "#909090",
+        "line-color": "#80858a",
         "line-width": 1
       }
     },
+
+    /* --- Buildings (fill) --- */
     {
-      "id": "roads",
+      "id": "buildings-fill",
+      "type": "fill",
+      "source": "openmaptiles",
+      "source-layer": "building",
+      "minzoom": 14,
+      "paint": {
+        "fill-color": "#eaeaea",
+        "fill-outline-color": "#d7d7d7"
+      }
+    },
+
+    /* --- Buildings (3D extrusion) --- */
+    {
+      "id": "buildings-extrusion",
+      "type": "fill-extrusion",
+      "source": "openmaptiles",
+      "source-layer": "building",
+      "minzoom": 15,
+      "paint": {
+        "fill-extrusion-color": "#e8e8e8",
+        "fill-extrusion-height": [
+          "coalesce",
+          ["get", "height"],
+          ["get", "ele"],
+          ["get", "min_height"],
+          12
+        ],
+        "fill-extrusion-base": ["coalesce", ["get", "min_height"], 0],
+        "fill-extrusion-opacity": 0.95,
+        "fill-extrusion-vertical-gradient": true
+      }
+    },
+
+    /* --- Bridges (case, then line) --- */
+    {
+      "id": "bridge-case",
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
-      "layout": {
-        "line-join": "round"
-      },
+      "filter": ["==", ["get", "structure"], "bridge"],
       "paint": {
-        "line-color": "#c8c8c8",
+        "line-color": "#cfcfcf",
         "line-width": {
           "base": 1.2,
           "stops": [
-            [6, 0.2],
-            [12, 1.2],
-            [16, 2.4]
+            [6, 1],
+            [12, 4],
+            [16, 8]
           ]
         }
       }
     },
+    {
+      "id": "bridge",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "filter": ["==", ["get", "structure"], "bridge"],
+      "paint": {
+        "line-color": "#ffffff",
+        "line-width": {
+          "base": 1.2,
+          "stops": [
+            [6, 0.6],
+            [12, 3],
+            [16, 6]
+          ]
+        }
+      }
+    },
+
+    /* --- Roads: casing (wider dark) --- */
     {
       "id": "roads-case",
       "type": "line",
       "source": "openmaptiles",
       "source-layer": "transportation",
       "layout": {
-        "line-join": "round"
+        "line-join": "round",
+        "line-cap": "round"
       },
       "paint": {
-        "line-color": "#b0b0b0",
+        "line-color": "#d0d0d0",
         "line-width": {
           "base": 1.2,
           "stops": [
-            [6, 0.5],
-            [12, 1.6],
-            [16, 3]
+            [5, 0.8],
+            [10, 1.6],
+            [13, 2.8],
+            [16, 7]
           ]
         }
+      }
+    },
+
+    /* --- Roads: main stroke --- */
+    {
+      "id": "roads",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "layout": {
+        "line-join": "round",
+        "line-cap": "round"
+      },
+      "paint": {
+        "line-color": [
+          "match",
+          ["get", "class"],
+          "motorway", "#f3b0b0",
+          "trunk", "#f3d2a3",
+          "primary", "#f6e1a9",
+          "secondary", "#ffffff",
+          "tertiary", "#ffffff",
+          "#ffffff"
+        ],
+        "line-width": {
+          "base": 1.2,
+          "stops": [
+            [5, 0.7],
+            [10, 1.4],
+            [13, 2.6],
+            [16, 5]
+          ]
+        }
+      }
+    },
+
+    /* --- Road inner casing for more visual contrast (thin darker line) --- */
+    {
+      "id": "roads-inner",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "transportation",
+      "layout": {
+        "line-join": "round",
+        "line-cap": "round"
+      },
+      "paint": {
+        "line-color": "#bdbdbd",
+        "line-width": {
+          "base": 1.2,
+          "stops": [
+            [9, 0.6],
+            [12, 1.2],
+            [15, 2.6]
+          ]
+        },
+        "line-opacity": 0.9
+      }
+    },
+
+    /* --- Road labels (names) --- */
+    {
+      "id": "road-labels",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 10,
+      "layout": {
+        "text-field": ["coalesce", ["get", "name"], ["get", "ref"]],
+        "symbol-placement": "line",
+        "text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],
+        "text-size": [
+          "interpolate",
+          ["linear"],
+          ["zoom"],
+          10, 10,
+          14, 12,
+          18, 14
+        ],
+        "text-letter-spacing": 0.02
+      },
+      "paint": {
+        "text-color": "#2b2b2b",
+        "text-halo-color": "#f8fafc",
+        "text-halo-width": 1
+      }
+    },
+
+    /* --- Place labels (cities, towns) --- */
+    {
+      "id": "place-labels",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "place",
+      "layout": {
+        "text-field": ["get", "name"],
+        "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+        "text-size": [
+          "interpolate",
+          ["exponential", 1.2],
+          ["zoom"],
+          3, 10,
+          8, 12,
+          12, 16
+        ]
+      },
+      "paint": {
+        "text-color": "#0f172a",
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 1.5
+      }
+    },
+
+    /* --- POI labels --- */
+    {
+      "id": "poi-labels",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "poi",
+      "minzoom": 13,
+      "layout": {
+        "text-field": ["get", "name"],
+        "text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],
+        "text-size": 11,
+        "text-max-width": 8
+      },
+      "paint": {
+        "text-color": "#0f172a",
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 1
+      }
+    },
+
+    /* --- Road shields / small icons - use sprite if available --- */
+    {
+      "id": "road-shields",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "transportation_name",
+      "minzoom": 12,
+      "layout": {
+        "icon-image": ["coalesce", ["get", "shield"], ""],
+        "icon-size": 1,
+        "text-field": ["coalesce", ["get", "name"], ["get", "ref"]],
+        "text-font": ["Open Sans Semibold", "Arial Unicode MS Semibold"],
+        "text-size": 10,
+        "symbol-placement": "point",
+        "text-offset": [0, 1.2]
+      },
+      "paint": {
+        "text-color": "#0f172a",
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 1
+      }
+    },
+
+    /* --- Major road / city label fallback (smaller zoom) --- */
+    {
+      "id": "place-labels-small",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "place",
+      "minzoom": 6,
+      "maxzoom": 9,
+      "layout": {
+        "text-field": ["get", "name"],
+        "text-font": ["Open Sans Regular", "Arial Unicode MS Regular"],
+        "text-size": 11
+      },
+      "paint": {
+        "text-color": "#233548",
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 1
+      }
+    },
+
+    /* --- Contours / elevation lines (if present) --- */
+    {
+      "id": "contours",
+      "type": "line",
+      "source": "openmaptiles",
+      "source-layer": "contour",
+      "minzoom": 10,
+      "paint": {
+        "line-color": "#cfcfcf",
+        "line-width": 0.5
+      }
+    },
+
+    /* --- Language / country labels / admin boundaries --- */
+    {
+      "id": "admin-labels",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "boundary",
+      "layout": {
+        "text-field": ["get", "name"],
+        "text-font": ["Open Sans Italic", "Arial Unicode MS Italic"],
+        "text-size": 10
+      },
+      "paint": {
+        "text-color": "#6b7280",
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 1
+      }
+    },
+
+    /* --- Address labels (useful when you have local addresses layer put on top) ---
+       Note: real address labels come from pmtiles addresses.pmtiles; this generic
+       layer is kept here as fallback when that data is not available. */
+    {
+      "id": "address-fallback-labels",
+      "type": "symbol",
+      "source": "openmaptiles",
+      "source-layer": "place",
+      "minzoom": 16,
+      "layout": {
+        "text-field": ["get", "name"],
+        "text-font": ["Open Sans Regular"],
+        "text-size": 10
+      },
+      "paint": {
+        "text-color": "#0f172a",
+        "text-halo-color": "#ffffff",
+        "text-halo-width": 1
+      }
+    },
+
+    /* --- Attribution / debug: keep on top, but invisible --- */
+    {
+      "id": "attribution-placeholder",
+      "type": "symbol",
+      "layout": {
+        "text-field": " ",
+        "text-size": 1
+      },
+      "paint": {
+        "text-color": "#000000"
       }
     }
   ]

@@ -479,6 +479,7 @@
     },
     {
       "id": "attribution-placeholder",
+      "source": "openmaptiles",
       "type": "symbol",
       "layout": {
         "text-field": " ",

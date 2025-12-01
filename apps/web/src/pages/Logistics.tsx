@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import TaskTable from '../components/TaskTable';
 import { useTranslation } from 'react-i18next';
 import mapLibrary, {
+  type AttributionControl,
   type ExpressionSpecification,
   type GeoJSONSource,
   type Listener,
@@ -956,6 +957,8 @@ export default function LogisticsPage() {
   >('neutral');
   const [planLoading, setPlanLoading] = React.useState(false);
   const mapRef = React.useRef<MapInstance | null>(null);
+  const attributionControlRef = React.useRef<AttributionControl | null>(null);
+  const attributionAddedRef = React.useRef(false);
   const mapContainerRef = React.useRef<HTMLDivElement | null>(null);
   const drawRef = React.useRef<MapLibreDraw | null>(null);
   const persistedLayerVisibilityRef = React.useRef<LayerVisibilityState | null>(
@@ -2606,6 +2609,7 @@ export default function LogisticsPage() {
         minZoom: 5,
         maxZoom: 22,
         maxBounds: UKRAINE_BOUNDS,
+        attributionControl: false,
       });
       map = mapInstance;
       mapRef.current = mapInstance;
@@ -2624,11 +2628,16 @@ export default function LogisticsPage() {
         showCompass: false,
       });
       mapInstance.addControl(navigation, 'top-right');
-      const attribution = new mapLibrary.AttributionControl({
-        compact: true,
-        customAttribution: MAP_ATTRIBUTION,
-      });
-      mapInstance.addControl(attribution, 'bottom-right');
+      if (!attributionControlRef.current) {
+        attributionControlRef.current = new mapLibrary.AttributionControl({
+          compact: true,
+          customAttribution: MAP_ATTRIBUTION,
+        });
+      }
+      if (!attributionAddedRef.current && attributionControlRef.current) {
+        mapInstance.addControl(attributionControlRef.current, 'bottom-right');
+        attributionAddedRef.current = true;
+      }
       const draw = new MapLibreDraw({
         displayControlsDefault: false,
         controls: { polygon: true, trash: true },
@@ -2949,6 +2958,7 @@ export default function LogisticsPage() {
         map.remove();
       }
       mapRef.current = null;
+      attributionAddedRef.current = false;
     };
   }, [stopRouteAnimation]);
 

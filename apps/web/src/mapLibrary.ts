@@ -221,21 +221,23 @@ export const attachMapStyleFallback = (
       : (options.vectorFallbackUrl ?? MAP_STYLE_DEFAULT_URL);
   const fallbackCandidates: MapOptions['style'][] = [];
   const seenStringCandidates = new Set<string>();
-  for (const candidate of [fallbackStyle, vectorFallbackStyle]) {
+  const pushFallbackCandidate = (candidate?: MapOptions['style']) => {
     if (!candidate) {
-      continue;
+      return;
     }
     if (typeof candidate === 'string') {
       if (
         candidate === initialStyleAsString ||
         seenStringCandidates.has(candidate)
       ) {
-        continue;
+        return;
       }
       seenStringCandidates.add(candidate);
     }
     fallbackCandidates.push(candidate);
-  }
+  };
+  pushFallbackCandidate(vectorFallbackStyle);
+  pushFallbackCandidate(fallbackStyle);
   if (!initialStyle || fallbackCandidates.length === 0) {
     return noopDetach;
   }
@@ -243,28 +245,36 @@ export const attachMapStyleFallback = (
   let fallbackApplied = false;
   let styleLoaded = map.isStyleLoaded();
 
+  let fallbackIndex = 0;
   const applyFallback = (details?: unknown) => {
     if (fallbackApplied) {
       return;
     }
-    const selectedFallbackUrl = fallbackCandidates[0];
-    if (!selectedFallbackUrl) {
-      return;
-    }
-    fallbackApplied = true;
-    logger.warn(
-      'Не удалось загрузить кастомный стиль карты, используем стиль по умолчанию.',
-      {
-        details,
-        initialStyle,
-        fallbackUrl: selectedFallbackUrl,
-      },
-    );
-    try {
-      // force full replacement без diff — чтобы избежать проблем с несовместимыми стилями
-      map.setStyle(selectedFallbackUrl, { diff: false });
-    } catch (setStyleError) {
-      console.error('Не удалось применить стиль по умолчанию', setStyleError);
+    while (fallbackIndex < fallbackCandidates.length) {
+      const selectedFallback = fallbackCandidates[fallbackIndex];
+      fallbackIndex += 1;
+      if (!selectedFallback) {
+        continue;
+      }
+      logger.warn(
+        'Не удалось загрузить кастомный стиль карты, используем резервный.',
+        {
+          details,
+          initialStyle,
+          fallbackUrl: selectedFallback,
+        },
+      );
+      try {
+        // force full replacement без diff — чтобы избежать проблем с несовместимыми стилями
+        map.setStyle(selectedFallback, { diff: false });
+        fallbackApplied = true;
+        return;
+      } catch (setStyleError) {
+        console.error(
+          'Не удалось применить резервный стиль карты',
+          setStyleError,
+        );
+      }
     }
   };
 

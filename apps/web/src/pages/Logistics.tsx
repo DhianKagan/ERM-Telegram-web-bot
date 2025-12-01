@@ -995,6 +995,8 @@ export default function LogisticsPage() {
   const [vehicles, setVehicles] = React.useState(1);
   const [method, setMethod] = React.useState('angle');
   const [links, setLinks] = React.useState<string[]>([]);
+  const [showOnlyMissingCoords, setShowOnlyMissingCoords] =
+    React.useState(false);
   const [plan, setPlan] = React.useState<RoutePlan | null>(null);
   const [planDraft, setPlanDraft] = React.useState<RoutePlan | null>(null);
   const [planMessage, setPlanMessage] = React.useState('');
@@ -1317,6 +1319,13 @@ export default function LogisticsPage() {
       return startMissing || finishMissing;
     });
   }, [categoryFilteredTasks]);
+
+  React.useEffect(() => {
+    if (showOnlyMissingCoords && geocodingQueue.length === 0) {
+      setShowOnlyMissingCoords(false);
+      setPage(0);
+    }
+  }, [geocodingQueue.length, showOnlyMissingCoords]);
 
   const routeStatusMetadata = React.useMemo(() => {
     const entries = new Map<
@@ -1655,13 +1664,19 @@ export default function LogisticsPage() {
   }, [taskStatus]);
 
   const displayedTasks = React.useMemo(() => {
+    const source = showOnlyMissingCoords
+      ? geocodingQueue
+      : categoryFilteredTasks;
     if (!selectedTaskIdsSet.size) {
-      return categoryFilteredTasks;
+      return source;
     }
-    return categoryFilteredTasks.filter((task) =>
-      selectedTaskIdsSet.has(task._id),
-    );
-  }, [categoryFilteredTasks, selectedTaskIdsSet]);
+    return source.filter((task) => selectedTaskIdsSet.has(task._id));
+  }, [
+    categoryFilteredTasks,
+    geocodingQueue,
+    selectedTaskIdsSet,
+    showOnlyMissingCoords,
+  ]);
 
   const displayedSignature = React.useMemo(
     () =>
@@ -3745,6 +3760,31 @@ export default function LogisticsPage() {
                 +{geocodingQueue.length - 6}
               </span>
             ) : null}
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <span className="text-xs text-slate-600">
+              {t('logistics.noGeoPointFilterHint', {
+                defaultValue:
+                  'Эти задачи скрыты на карте — покажите их в списке для назначения координат.',
+              })}
+            </span>
+            <Button
+              type="button"
+              size="xs"
+              variant={showOnlyMissingCoords ? 'default' : 'outline'}
+              onClick={() => {
+                setShowOnlyMissingCoords((prev) => !prev);
+                setPage(0);
+              }}
+            >
+              {showOnlyMissingCoords
+                ? t('logistics.showAllTasks', {
+                    defaultValue: 'Показать все задачи',
+                  })
+                : t('logistics.showMissingCoordsOnly', {
+                    defaultValue: 'Только без координат',
+                  })}
+            </Button>
           </div>
         </div>
       ) : null}

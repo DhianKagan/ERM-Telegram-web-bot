@@ -3037,6 +3037,18 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
           assignedNumeric !== null ? assignedNumeric : assignedRaw;
         const resolvedTaskType =
           entityKind === 'request' ? DEFAULT_REQUEST_TYPE : taskType;
+        if (showLogistics) {
+          if (!startCoordinates) {
+            setAlertMsg(t('logisticsStartCoordinatesRequired'));
+            startInputRef.current?.focus();
+            return;
+          }
+          if (!finishCoordinates) {
+            setAlertMsg(t('logisticsFinishCoordinatesRequired'));
+            finishInputRef.current?.focus();
+            return;
+          }
+        }
         const payload: Record<string, unknown> = {
           title: formData.title,
           task_type: resolvedTaskType,
@@ -3647,7 +3659,12 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                             className="block text-sm font-medium"
                             htmlFor="task-start-address"
                           >
-                            {t('startPoint')}
+                            <span className="flex flex-wrap items-center gap-2">
+                              <span>{t('startPoint')}</span>
+                              <span className="text-xs font-normal text-amber-700">
+                                {t('logisticsCoordinatesHint')}
+                              </span>
+                            </span>
                           </label>
                           <div className="mt-1 space-y-2">
                             <div className="relative">
@@ -3834,7 +3851,12 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                             className="block text-sm font-medium"
                             htmlFor="task-finish-address"
                           >
-                            {t('endPoint')}
+                            <span className="flex flex-wrap items-center gap-2">
+                              <span>{t('endPoint')}</span>
+                              <span className="text-xs font-normal text-amber-700">
+                                {t('logisticsCoordinatesHint')}
+                              </span>
+                            </span>
                           </label>
                           <div className="mt-1 space-y-2">
                             <div className="relative">

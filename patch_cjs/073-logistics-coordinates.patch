@@ -1,0 +1,183 @@
+diff --git a/apps/web/src/components/TaskDialog.tsx b/apps/web/src/components/TaskDialog.tsx
+index 3fc28fc..15d983c 100644
+--- a/apps/web/src/components/TaskDialog.tsx
++++ b/apps/web/src/components/TaskDialog.tsx
+@@ -3037,6 +3037,18 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+           assignedNumeric !== null ? assignedNumeric : assignedRaw;
+         const resolvedTaskType =
+           entityKind === 'request' ? DEFAULT_REQUEST_TYPE : taskType;
++        if (showLogistics) {
++          if (!startCoordinates) {
++            setAlertMsg(t('logisticsStartCoordinatesRequired'));
++            startInputRef.current?.focus();
++            return;
++          }
++          if (!finishCoordinates) {
++            setAlertMsg(t('logisticsFinishCoordinatesRequired'));
++            finishInputRef.current?.focus();
++            return;
++          }
++        }
+         const payload: Record<string, unknown> = {
+           title: formData.title,
+           task_type: resolvedTaskType,
+@@ -3647,7 +3659,12 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+                             className="block text-sm font-medium"
+                             htmlFor="task-start-address"
+                           >
+-                            {t('startPoint')}
++                            <span className="flex flex-wrap items-center gap-2">
++                              <span>{t('startPoint')}</span>
++                              <span className="text-xs font-normal text-amber-700">
++                                {t('logisticsCoordinatesHint')}
++                              </span>
++                            </span>
+                           </label>
+                           <div className="mt-1 space-y-2">
+                             <div className="relative">
+@@ -3834,7 +3851,12 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+                             className="block text-sm font-medium"
+                             htmlFor="task-finish-address"
+                           >
+-                            {t('endPoint')}
++                            <span className="flex flex-wrap items-center gap-2">
++                              <span>{t('endPoint')}</span>
++                              <span className="text-xs font-normal text-amber-700">
++                                {t('logisticsCoordinatesHint')}
++                              </span>
++                            </span>
+                           </label>
+                           <div className="mt-1 space-y-2">
+                             <div className="relative">
+diff --git a/apps/web/src/locales/en/translation.json b/apps/web/src/locales/en/translation.json
+index c14c55d..cf1df26 100644
+--- a/apps/web/src/locales/en/translation.json
++++ b/apps/web/src/locales/en/translation.json
+@@ -208,6 +208,9 @@
+     "noGeoPointTitle": "Tasks without geotag",
+     "noGeoPointHint": "Address saved, waiting for geocoding.",
+     "noGeoPointLabel": "no geotag",
++    "noGeoPointFilterHint": "Эти задачи скрыты на карте — отфильтруйте их в списке, чтобы задать координаты.",
++    "showMissingCoordsOnly": "Только без координат",
++    "showAllTasks": "Показать все задачи",
+     "planRouteEmpty": "No tasks in this route",
+     "planDriver": "Driver",
+     "planVehicle": "Vehicle",
+@@ -339,6 +342,9 @@
+   "addressSearchFailed": "Failed to load suggestions",
+   "addressReverseNotFound": "Address not found for the selected point",
+   "addressReverseFailed": "Failed to resolve address for the selected point",
++  "logisticsCoordinatesHint": "Координаты обязательны: выберите адрес или точку на карте",
++  "logisticsStartCoordinatesRequired": "Укажите координаты точки отправления",
++  "logisticsFinishCoordinatesRequired": "Укажите координаты точки прибытия",
+   "status": "Status",
+   "task": "Task",
+   "taskCreated": "Task created",
+diff --git a/apps/web/src/locales/ru/translation.json b/apps/web/src/locales/ru/translation.json
+index d6e888c..37908af 100644
+--- a/apps/web/src/locales/ru/translation.json
++++ b/apps/web/src/locales/ru/translation.json
+@@ -234,6 +234,9 @@
+     "noGeoPointTitle": "Задачи без геоточки",
+     "noGeoPointHint": "Адрес сохранён, задача ожидает геокодирования.",
+     "noGeoPointLabel": "без геоточки",
++    "noGeoPointFilterHint": "Эти задачи скрыты на карте — отфильтруйте их в списке, чтобы задать координаты.",
++    "showMissingCoordsOnly": "Только без координат",
++    "showAllTasks": "Показать все задачи",
+     "planDriver": "Водитель",
+     "planVehicle": "Транспорт",
+     "planRouteNotes": "Заметки по маршруту",
+@@ -380,6 +383,9 @@
+   "addressSearchFailed": "Не удалось получить подсказки",
+   "addressReverseNotFound": "Не удалось найти адрес для выбранной точки",
+   "addressReverseFailed": "Не удалось определить адрес для выбранной точки",
++  "logisticsCoordinatesHint": "Координаты обязательны: выберите адрес или точку на карте",
++  "logisticsStartCoordinatesRequired": "Укажите координаты точки отправления",
++  "logisticsFinishCoordinatesRequired": "Укажите координаты точки прибытия",
+   "status": "Статус",
+   "task": "Задача",
+   "taskCreated": "Задача создана",
+diff --git a/apps/web/src/pages/Logistics.tsx b/apps/web/src/pages/Logistics.tsx
+index 7edc57c..18f0470 100644
+--- a/apps/web/src/pages/Logistics.tsx
++++ b/apps/web/src/pages/Logistics.tsx
+@@ -995,6 +995,8 @@ export default function LogisticsPage() {
+   const [vehicles, setVehicles] = React.useState(1);
+   const [method, setMethod] = React.useState('angle');
+   const [links, setLinks] = React.useState<string[]>([]);
++  const [showOnlyMissingCoords, setShowOnlyMissingCoords] =
++    React.useState(false);
+   const [plan, setPlan] = React.useState<RoutePlan | null>(null);
+   const [planDraft, setPlanDraft] = React.useState<RoutePlan | null>(null);
+   const [planMessage, setPlanMessage] = React.useState('');
+@@ -1318,6 +1320,13 @@ export default function LogisticsPage() {
+     });
+   }, [categoryFilteredTasks]);
+ 
++  React.useEffect(() => {
++    if (showOnlyMissingCoords && geocodingQueue.length === 0) {
++      setShowOnlyMissingCoords(false);
++      setPage(0);
++    }
++  }, [geocodingQueue.length, showOnlyMissingCoords]);
++
+   const routeStatusMetadata = React.useMemo(() => {
+     const entries = new Map<
+       RouteStatusFilterKey,
+@@ -1655,13 +1664,21 @@ export default function LogisticsPage() {
+   }, [taskStatus]);
+ 
+   const displayedTasks = React.useMemo(() => {
++    const source = showOnlyMissingCoords
++      ? geocodingQueue
++      : categoryFilteredTasks;
+     if (!selectedTaskIdsSet.size) {
+-      return categoryFilteredTasks;
++      return source;
+     }
+-    return categoryFilteredTasks.filter((task) =>
++    return source.filter((task) =>
+       selectedTaskIdsSet.has(task._id),
+     );
+-  }, [categoryFilteredTasks, selectedTaskIdsSet]);
++  }, [
++    categoryFilteredTasks,
++    geocodingQueue,
++    selectedTaskIdsSet,
++    showOnlyMissingCoords,
++  ]);
+ 
+   const displayedSignature = React.useMemo(
+     () =>
+@@ -3746,6 +3763,31 @@ export default function LogisticsPage() {
+               </span>
+             ) : null}
+           </div>
++          <div className="mt-3 flex flex-wrap items-center gap-2">
++            <span className="text-xs text-slate-600">
++              {t('logistics.noGeoPointFilterHint', {
++                defaultValue:
++                  'Эти задачи скрыты на карте — покажите их в списке для назначения координат.',
++              })}
++            </span>
++            <Button
++              type="button"
++              size="xs"
++              variant={showOnlyMissingCoords ? 'default' : 'outline'}
++              onClick={() => {
++                setShowOnlyMissingCoords((prev) => !prev);
++                setPage(0);
++              }}
++            >
++              {showOnlyMissingCoords
++                ? t('logistics.showAllTasks', {
++                    defaultValue: 'Показать все задачи',
++                  })
++                : t('logistics.showMissingCoordsOnly', {
++                    defaultValue: 'Только без координат',
++                  })}
++            </Button>
++          </div>
+         </div>
+       ) : null}
+       <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">

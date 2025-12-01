@@ -243,6 +243,7 @@ export const attachMapStyleFallback = (
   }
   const logger = options.logger ?? console;
   let fallbackApplied = false;
+  let fallbackPending = false;
   let styleLoaded = map.isStyleLoaded();
 
   let fallbackIndex = 0;
@@ -267,7 +268,7 @@ export const attachMapStyleFallback = (
       try {
         // force full replacement без diff — чтобы избежать проблем с несовместимыми стилями
         map.setStyle(selectedFallback, { diff: false });
-        fallbackApplied = true;
+        fallbackPending = true;
         return;
       } catch (setStyleError) {
         console.error(
@@ -324,6 +325,10 @@ export const attachMapStyleFallback = (
   const handleStyleData: Listener = () => {
     if (map.isStyleLoaded()) {
       styleLoaded = true;
+      if (fallbackPending && !fallbackApplied) {
+        fallbackApplied = true;
+      }
+      fallbackPending = false;
     }
   };
 

@@ -9,6 +9,7 @@
  */
 
 import maplibregl, {
+  type AttributionControl,
   type GeoJSONSource,
   type LngLatBoundsLike,
   type Listener,
@@ -356,4 +357,5 @@ export type {
   MapMouseEvent,
   MapMarker,
   ExpressionSpecification,
+  AttributionControl,
 };

@@ -8,6 +8,8 @@ declare global {
     readonly VITE_MAP_STYLE_MODE?: string;
     readonly VITE_MAP_ADDRESSES_PMTILES_URL?: string;
     readonly VITE_ROUTING_URL?: string;
+    readonly VITE_ROUTE_CACHE_ENABLED?: string;
+    readonly VITE_ROUTE_CACHE_TTL?: string;
     readonly VITE_ROUTE_CACHE_TTL_MS?: string;
     readonly VITE_USE_PMTILES?: string;
     readonly VITE_LOGISTICS_POLL_INTERVAL_MS?: string;

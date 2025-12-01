@@ -2,7 +2,7 @@
 // Основные модули: React, MapLibre GL, i18next
 import React from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import fetchRouteGeometry from '../services/osrm';
+import fetchRouteGeometry, { clearRouteCache } from '../services/osrm';
 import { fetchTasks } from '../services/tasks';
 import optimizeRoute from '../services/optimizer';
 import { Button } from '@/components/ui/button';
@@ -1008,6 +1008,7 @@ export default function LogisticsPage() {
   const mapContainerRef = React.useRef<HTMLDivElement | null>(null);
   const drawRef = React.useRef<MapLibreDraw | null>(null);
   const osrmWarningShownRef = React.useRef(false);
+  const routeCacheSignatureRef = React.useRef('');
   const persistedLayerVisibilityRef = React.useRef<LayerVisibilityState | null>(
     getPersistedLayerVisibility(),
   );
@@ -3340,6 +3341,18 @@ export default function LogisticsPage() {
         },
       ];
     });
+    const cacheSignature = JSON.stringify(
+      routeCandidates.map((candidate) => ({
+        id: candidate.task._id,
+        status: candidate.task.status,
+        start: candidate.start,
+        finish: candidate.finish,
+      })),
+    );
+    if (routeCacheSignatureRef.current !== cacheSignature) {
+      clearRouteCache();
+      routeCacheSignatureRef.current = cacheSignature;
+    }
     (async () => {
       const lineFeatures: GeoJSON.Feature<GeoJSON.LineString>[] = [];
       const animationRoutes: AnimatedRoute[] = [];

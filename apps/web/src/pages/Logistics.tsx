@@ -38,7 +38,7 @@ import {
   MAP_ANIMATION_SPEED_KMH,
   MAP_DEFAULT_CENTER,
   MAP_DEFAULT_ZOOM,
-  MAP_MAX_BOUNDS,
+  MAP_UKRAINE_BOUNDS,
   MAP_STYLE,
   MAP_STYLE_DEFAULT_URL,
   MAP_STYLE_MODE,
@@ -969,7 +969,7 @@ const MAP_CENTER_LNG_LAT: [number, number] = [
   MAP_DEFAULT_CENTER[0],
   MAP_DEFAULT_CENTER[1],
 ];
-const UKRAINE_BOUNDS: LngLatBoundsLike = MAP_MAX_BOUNDS;
+const UKRAINE_BOUNDS: LngLatBoundsLike = MAP_UKRAINE_BOUNDS;
 const isRasterFallback = MAP_STYLE_MODE !== 'pmtiles';
 const shouldShowMapFallbackNotice = isRasterFallback && MAP_STYLE_IS_DEFAULT;
 const shouldWarnAddressConfig = MAP_ADDRESSES_PMTILES_SOURCE !== 'env';

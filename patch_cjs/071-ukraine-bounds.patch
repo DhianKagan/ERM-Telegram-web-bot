@@ -1,0 +1,115 @@
+diff --git a/.husky/_/husky.sh b/.husky/_/husky.sh
+old mode 100755
+new mode 100644
+index d01186c..f9d0637
+--- a/.husky/_/husky.sh
++++ b/.husky/_/husky.sh
+@@ -1,23 +1,9 @@
+-#!/bin/sh
++echo "husky - DEPRECATED
+ 
+-if [ -z "$husky_skip_init" ]; then
+-  debug() {
+-    [ "$HUSKY_DEBUG" = "1" ] && echo "husky: $*"
+-  }
++Please remove the following two lines from $0:
+ 
+-  readonly hook_name="$(basename "$0")"
+-  debug "starting $hook_name..."
++#!/usr/bin/env sh
++. \"\$(dirname -- \"\$0\")/_/husky.sh\"
+ 
+-  if [ "$HUSKY" = "0" ]; then
+-    debug "HUSKY env variable is set to 0, skipping hook"
+-    exit 0
+-  fi
+-
+-  if [ -f ~/.huskyrc ]; then
+-    debug "~/.huskyrc found, sourcing..."
+-    . ~/.huskyrc
+-  fi
+-
+-  export husky_skip_init=1
+-  sh -e "$0" "$@"
+-fi
++They WILL FAIL in v10.0.0
++"
+\ No newline at end of file
+diff --git a/apps/web/src/components/TaskDialog.tsx b/apps/web/src/components/TaskDialog.tsx
+index 83806e5..3fc28fc 100644
+--- a/apps/web/src/components/TaskDialog.tsx
++++ b/apps/web/src/components/TaskDialog.tsx
+@@ -79,7 +79,7 @@ import {
+   MAP_ATTRIBUTION,
+   MAP_DEFAULT_CENTER,
+   MAP_DEFAULT_ZOOM,
+-  MAP_MAX_BOUNDS,
++  MAP_UKRAINE_BOUNDS,
+   MAP_STYLE,
+ } from '../config/map';
+ 
+@@ -570,7 +570,7 @@ const MapPickerDialog: React.FC<MapPickerDialogProps> = ({
+       style: MAP_STYLE,
+       center,
+       zoom: initialValue ? Math.max(MAP_DEFAULT_ZOOM, 12) : MAP_DEFAULT_ZOOM,
+-      maxBounds: MAP_MAX_BOUNDS,
++      maxBounds: MAP_UKRAINE_BOUNDS,
+       minZoom: 3,
+     });
+     mapRef.current = map;
+diff --git a/apps/web/src/config/map.ts b/apps/web/src/config/map.ts
+index 2bb78e1..1ec73a2 100644
+--- a/apps/web/src/config/map.ts
++++ b/apps/web/src/config/map.ts
+@@ -143,6 +143,12 @@ export const MAP_MAX_BOUNDS: [[number, number], [number, number]] = [
+   [180, 85],
+ ];
+ 
++// Прямоугольные границы Украины для ограничения области карты
++export const MAP_UKRAINE_BOUNDS: [[number, number], [number, number]] = [
++  [22.0, 44.0],
++  [41.5, 52.5],
++];
++
+ // Идентификаторы векторных источников; используем первый доступный
+ export const MAP_VECTOR_SOURCE_IDS = ['basemap', 'openmaptiles'] as const;
+ export const MAP_VECTOR_SOURCE_ID = MAP_VECTOR_SOURCE_IDS[0];
+diff --git a/apps/web/src/pages/Logistics.test.tsx b/apps/web/src/pages/Logistics.test.tsx
+index fefa693..86b31e7 100644
+--- a/apps/web/src/pages/Logistics.test.tsx
++++ b/apps/web/src/pages/Logistics.test.tsx
+@@ -37,9 +37,9 @@ jest.mock('../config/map', () => ({
+   MAP_ANIMATION_SPEED_KMH: 60,
+   MAP_DEFAULT_CENTER: [30, 50],
+   MAP_DEFAULT_ZOOM: 6,
+-  MAP_MAX_BOUNDS: [
+-    [15, 35],
+-    [40, 60],
++  MAP_UKRAINE_BOUNDS: [
++    [22, 44],
++    [41.5, 52.5],
+   ],
+   MAP_STYLE: 'pmtiles://style.pmtiles',
+   MAP_STYLE_MODE: 'pmtiles',
+diff --git a/apps/web/src/pages/Logistics.tsx b/apps/web/src/pages/Logistics.tsx
+index 148e3e8..541e002 100644
+--- a/apps/web/src/pages/Logistics.tsx
++++ b/apps/web/src/pages/Logistics.tsx
+@@ -38,7 +38,7 @@ import {
+   MAP_ANIMATION_SPEED_KMH,
+   MAP_DEFAULT_CENTER,
+   MAP_DEFAULT_ZOOM,
+-  MAP_MAX_BOUNDS,
++  MAP_UKRAINE_BOUNDS,
+   MAP_STYLE,
+   MAP_STYLE_DEFAULT_URL,
+   MAP_STYLE_MODE,
+@@ -969,7 +969,7 @@ const MAP_CENTER_LNG_LAT: [number, number] = [
+   MAP_DEFAULT_CENTER[0],
+   MAP_DEFAULT_CENTER[1],
+ ];
+-const UKRAINE_BOUNDS: LngLatBoundsLike = MAP_MAX_BOUNDS;
++const UKRAINE_BOUNDS: LngLatBoundsLike = MAP_UKRAINE_BOUNDS;
+ const isRasterFallback = MAP_STYLE_MODE !== 'pmtiles';
+ const shouldShowMapFallbackNotice = isRasterFallback && MAP_STYLE_IS_DEFAULT;
+ const shouldWarnAddressConfig = MAP_ADDRESSES_PMTILES_SOURCE !== 'env';

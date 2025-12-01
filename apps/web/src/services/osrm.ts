@@ -8,17 +8,38 @@ type CacheEntry = { value: Position[] | null; expiresAt: number };
 
 const DEFAULT_ROUTE_CACHE_TTL_MS = 10 * 60 * 1000;
 
+const parsePositiveInt = (value?: string): number => {
+  const parsed = value ? Number.parseInt(value, 10) : Number.NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : Number.NaN;
+};
+
+const isRouteCacheEnabled = (): boolean => {
+  const rawEnabled = import.meta.env.VITE_ROUTE_CACHE_ENABLED;
+  if (typeof rawEnabled === 'string' && rawEnabled.trim() === '0') {
+    return false;
+  }
+  return true;
+};
+
 const getRouteCacheTtl = (): number => {
-  const rawTtl = import.meta.env.VITE_ROUTE_CACHE_TTL_MS;
-  const parsed = rawTtl ? Number.parseInt(rawTtl, 10) : Number.NaN;
-  if (Number.isFinite(parsed) && parsed > 0) {
-    return parsed;
+  const ttlSeconds = parsePositiveInt(import.meta.env.VITE_ROUTE_CACHE_TTL);
+  if (Number.isFinite(ttlSeconds)) {
+    return ttlSeconds * 1000;
+  }
+  const ttlMs = parsePositiveInt(import.meta.env.VITE_ROUTE_CACHE_TTL_MS);
+  if (Number.isFinite(ttlMs)) {
+    return ttlMs;
   }
   return DEFAULT_ROUTE_CACHE_TTL_MS;
 };
 
 const routeCache = new Map<string, CacheEntry>();
 const inflightRoutes = new Map<string, Promise<Position[] | null>>();
+
+export const clearRouteCache = (): void => {
+  routeCache.clear();
+  inflightRoutes.clear();
+};
 
 const isValidPoint = (point?: Point) => {
   if (!point) return false;
@@ -36,15 +57,23 @@ export const fetchRouteGeometry = async (
   if (!isValidPoint(start) || !isValidPoint(end)) {
     return null;
   }
+  const cacheEnabled = isRouteCacheEnabled();
+  const ttlMs = getRouteCacheTtl();
+  const useCache = cacheEnabled && ttlMs > 0;
+  if (!useCache) {
+    clearRouteCache();
+  }
   const now = Date.now();
   const cacheKey = buildRouteKey(start, end);
-  const cached = routeCache.get(cacheKey);
-  if (cached && cached.expiresAt > now) {
-    return cached.value;
-  }
-  const inflight = inflightRoutes.get(cacheKey);
-  if (inflight) {
-    return inflight;
+  if (useCache) {
+    const cached = routeCache.get(cacheKey);
+    if (cached && cached.expiresAt > now) {
+      return cached.value;
+    }
+    const inflight = inflightRoutes.get(cacheKey);
+    if (inflight) {
+      return inflight;
+    }
   }
   const base =
     import.meta.env.VITE_ROUTING_URL ||
@@ -59,14 +88,18 @@ export const fetchRouteGeometry = async (
       const geometry =
         (data.routes?.[0]?.geometry?.coordinates as Position[] | undefined) ||
         null;
-      const expiresAt = now + getRouteCacheTtl();
-      routeCache.set(cacheKey, { value: geometry, expiresAt });
+      if (useCache) {
+        const expiresAt = now + ttlMs;
+        routeCache.set(cacheKey, { value: geometry, expiresAt });
+      }
       return geometry;
     })
     .finally(() => {
       inflightRoutes.delete(cacheKey);
     });
-  inflightRoutes.set(cacheKey, request);
+  if (useCache) {
+    inflightRoutes.set(cacheKey, request);
+  }
   return request;
 };
 

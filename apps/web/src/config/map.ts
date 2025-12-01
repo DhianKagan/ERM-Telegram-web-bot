@@ -143,6 +143,12 @@ export const MAP_MAX_BOUNDS: [[number, number], [number, number]] = [
   [180, 85],
 ];
 
+// Прямоугольные границы Украины для ограничения области карты
+export const MAP_UKRAINE_BOUNDS: [[number, number], [number, number]] = [
+  [22.0, 44.0],
+  [41.5, 52.5],
+];
+
 // Идентификаторы векторных источников; используем первый доступный
 export const MAP_VECTOR_SOURCE_IDS = ['basemap', 'openmaptiles'] as const;
 export const MAP_VECTOR_SOURCE_ID = MAP_VECTOR_SOURCE_IDS[0];

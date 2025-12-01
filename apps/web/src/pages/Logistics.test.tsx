@@ -37,9 +37,9 @@ jest.mock('../config/map', () => ({
   MAP_ANIMATION_SPEED_KMH: 60,
   MAP_DEFAULT_CENTER: [30, 50],
   MAP_DEFAULT_ZOOM: 6,
-  MAP_MAX_BOUNDS: [
-    [15, 35],
-    [40, 60],
+  MAP_UKRAINE_BOUNDS: [
+    [22, 44],
+    [41.5, 52.5],
   ],
   MAP_STYLE: 'pmtiles://style.pmtiles',
   MAP_STYLE_MODE: 'pmtiles',

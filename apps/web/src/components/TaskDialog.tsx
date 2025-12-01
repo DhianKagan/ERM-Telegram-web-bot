@@ -79,7 +79,7 @@ import {
   MAP_ATTRIBUTION,
   MAP_DEFAULT_CENTER,
   MAP_DEFAULT_ZOOM,
-  MAP_MAX_BOUNDS,
+  MAP_UKRAINE_BOUNDS,
   MAP_STYLE,
 } from '../config/map';
 
@@ -570,7 +570,7 @@ const MapPickerDialog: React.FC<MapPickerDialogProps> = ({
       style: MAP_STYLE,
       center,
       zoom: initialValue ? Math.max(MAP_DEFAULT_ZOOM, 12) : MAP_DEFAULT_ZOOM,
-      maxBounds: MAP_MAX_BOUNDS,
+      maxBounds: MAP_UKRAINE_BOUNDS,
       minZoom: 3,
     });
     mapRef.current = map;

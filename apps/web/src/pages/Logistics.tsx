@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import TaskTable from '../components/TaskTable';
 import { useTranslation } from 'react-i18next';
+import { useToast } from '../context/useToast';
 import mapLibrary, {
   type AttributionControl,
   type ExpressionSpecification,
@@ -108,6 +109,8 @@ const DEFAULT_LAYER_VISIBILITY: LayerVisibilityState = {
 const LOGISTICS_EVENT_DEBOUNCE_MS = getNodeEnv() === 'test' ? 0 : 400;
 
 export const LOGISTICS_FLEET_POLL_INTERVAL_MS = 15_000;
+
+const ROUTE_FETCH_CONCURRENCY = 4;
 
 type TaskRouteStatusKey = RoutePlanStatus | 'unassigned';
 type RouteStatusFilterKey = TaskRouteStatusKey | 'vehicle';
@@ -639,6 +642,48 @@ const toPosition = (coords?: Coords | null): [number, number] | null => {
 
 const hasCoords = (coords?: Coords | null) => Boolean(toPosition(coords));
 
+type Semaphore = {
+  run: <T>(task: () => Promise<T>) => Promise<T>;
+};
+
+const createSemaphore = (limit: number): Semaphore => {
+  const queue: Array<() => void> = [];
+  let active = 0;
+  const normalizedLimit = Number.isFinite(limit) && limit > 0 ? limit : 1;
+
+  const release = () => {
+    active -= 1;
+    const next = queue.shift();
+    if (next) {
+      next();
+    }
+  };
+
+  const acquire = () =>
+    new Promise<void>((resolve) => {
+      const tryAcquire = () => {
+        if (active < normalizedLimit) {
+          active += 1;
+          resolve();
+        } else {
+          queue.push(tryAcquire);
+        }
+      };
+      tryAcquire();
+    });
+
+  const run = async <T,>(task: () => Promise<T>): Promise<T> => {
+    await acquire();
+    try {
+      return await task();
+    } finally {
+      release();
+    }
+  };
+
+  return { run };
+};
+
 const normalizeLocation = (value: unknown): string => {
   if (typeof value !== 'string') {
     return '';
@@ -931,6 +976,7 @@ const shouldWarnAddressConfig = MAP_ADDRESSES_PMTILES_SOURCE !== 'env';
 
 export default function LogisticsPage() {
   const { t, i18n } = useTranslation();
+  const { addToast } = useToast();
   const collapseToggleLabels = React.useMemo(
     () => ({
       collapse: t('logistics.collapseSection', {
@@ -961,6 +1007,7 @@ export default function LogisticsPage() {
   const attributionAddedRef = React.useRef(false);
   const mapContainerRef = React.useRef<HTMLDivElement | null>(null);
   const drawRef = React.useRef<MapLibreDraw | null>(null);
+  const osrmWarningShownRef = React.useRef(false);
   const persistedLayerVisibilityRef = React.useRef<LayerVisibilityState | null>(
     getPersistedLayerVisibility(),
   );
@@ -3275,19 +3322,48 @@ export default function LogisticsPage() {
       return;
     }
     let cancelled = false;
+    const semaphore = createSemaphore(ROUTE_FETCH_CONCURRENCY);
+    const routeCandidates = sorted.flatMap((task) => {
+      if (!task.startCoordinates || !task.finishCoordinates) {
+        return [];
+      }
+      const startPosition = toPosition(task.startCoordinates);
+      const finishPosition = toPosition(task.finishCoordinates);
+      if (!startPosition || !finishPosition) {
+        return [];
+      }
+      return [
+        {
+          task,
+          start: task.startCoordinates,
+          finish: task.finishCoordinates,
+        },
+      ];
+    });
     (async () => {
       const lineFeatures: GeoJSON.Feature<GeoJSON.LineString>[] = [];
       const animationRoutes: AnimatedRoute[] = [];
-      for (const task of sorted) {
+      const results = await Promise.allSettled(
+        routeCandidates.map((candidate) =>
+          semaphore.run(async () => {
+            const geometry = await fetchRouteGeometry(
+              candidate.start,
+              candidate.finish,
+            );
+            return { task: candidate.task, geometry };
+          }),
+        ),
+      );
+      if (cancelled) return;
+      let osrmFailed = false;
+      for (const result of results) {
         if (cancelled) break;
-        const start = toPosition(task.startCoordinates);
-        const finish = toPosition(task.finishCoordinates);
-        if (!start || !finish) continue;
-        const geometry = await fetchRouteGeometry(
-          task.startCoordinates,
-          task.finishCoordinates,
-        );
-        if (!geometry || cancelled) continue;
+        if (result.status !== 'fulfilled') {
+          osrmFailed = true;
+          continue;
+        }
+        const { task, geometry } = result.value;
+        if (!geometry) continue;
         const statusKey =
           typeof task.status === 'string' ? task.status.trim() : '';
         const routeColor = TASK_STATUS_COLORS[statusKey] ?? '#2563eb';
@@ -3327,6 +3403,16 @@ export default function LogisticsPage() {
       } else {
         runRouteAnimation();
       }
+      if (osrmFailed && !osrmWarningShownRef.current) {
+        addToast(
+          'Сервис маршрутизации временно недоступен, показаны доступные данные.',
+          'error',
+        );
+        osrmWarningShownRef.current = true;
+      }
+      if (!osrmFailed) {
+        osrmWarningShownRef.current = false;
+      }
     })();
     return () => {
       cancelled = true;
@@ -3335,6 +3421,7 @@ export default function LogisticsPage() {
   }, [
     layerVisibility.tasks,
     mapReady,
+    addToast,
     runRouteAnimation,
     sorted,
     stopRouteAnimation,

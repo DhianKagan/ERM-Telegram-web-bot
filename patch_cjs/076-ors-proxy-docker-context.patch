@@ -1,0 +1,17 @@
+diff --git a/tools/ors-proxy/Dockerfile b/tools/ors-proxy/Dockerfile
+index 847bf8c..c9e0f0a 100644
+--- a/tools/ors-proxy/Dockerfile
++++ b/tools/ors-proxy/Dockerfile
+@@ -1,9 +1,9 @@
+ FROM python:3.12-slim
+ WORKDIR /app
+ RUN apt-get update && apt-get install -y --no-install-recommends build-essential \
+     && rm -rf /var/lib/apt/lists/*
+-COPY requirements.txt .
++COPY tools/ors-proxy/requirements.txt ./requirements.txt
+ RUN pip install --no-cache-dir -r requirements.txt
+-COPY . .
++COPY tools/ors-proxy/ .
+ ENV PYTHONUNBUFFERED=1
+ EXPOSE 5000
+ CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "proxy:app"]

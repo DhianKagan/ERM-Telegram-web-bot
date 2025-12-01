@@ -1,0 +1,32 @@
+diff --git a/apps/web/src/mapLibrary.ts b/apps/web/src/mapLibrary.ts
+index 9f98721..5396fac 100644
+--- a/apps/web/src/mapLibrary.ts
++++ b/apps/web/src/mapLibrary.ts
+@@ -243,6 +243,7 @@ export const attachMapStyleFallback = (
+   }
+   const logger = options.logger ?? console;
+   let fallbackApplied = false;
++  let fallbackPending = false;
+   let styleLoaded = map.isStyleLoaded();
+ 
+   let fallbackIndex = 0;
+@@ -267,7 +268,7 @@ export const attachMapStyleFallback = (
+       try {
+         // force full replacement без diff — чтобы избежать проблем с несовместимыми стилями
+         map.setStyle(selectedFallback, { diff: false });
+-        fallbackApplied = true;
++        fallbackPending = true;
+         return;
+       } catch (setStyleError) {
+         console.error(
+@@ -324,6 +325,10 @@ export const attachMapStyleFallback = (
+   const handleStyleData: Listener = () => {
+     if (map.isStyleLoaded()) {
+       styleLoaded = true;
++      if (fallbackPending && !fallbackApplied) {
++        fallbackApplied = true;
++      }
++      fallbackPending = false;
+     }
+   };
+ 

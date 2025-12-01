@@ -171,7 +171,7 @@ type MapStyleFallbackOptions = {
   logger?: Pick<typeof console, 'warn'>;
 };
 
-const RASTER_FALLBACK_STYLE: StyleSpecification = {
+export const RASTER_FALLBACK_STYLE: StyleSpecification = {
   version: 8,
   sources: {
     'osm-raster': {

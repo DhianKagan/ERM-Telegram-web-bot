@@ -16,8 +16,8 @@
    - `BOT_TOKEN` — токен от BotFather.
    - `MONGO_DATABASE_URL` — строка подключения к MongoDB. На Railway используйте значение из `DATABASE_URL` плагина MongoDB; в локальной проверке `scripts/pre_pr_check.sh` запускает MongoDB в памяти, а в CI проверка пропускается.
    - `APP_URL` — домен проекта вида `https://<имя>.up.railway.app`.
-   - `ROUTING_URL` — адрес сервиса маршрутов из следующего шага (например, `https://orsm-production.up.railway.app/route`).
-   - `VITE_ROUTING_URL` — тот же адрес для клиентской части.
+   - `ROUTING_URL` — адрес сервиса маршрутов из следующего шага (например, `https://router.project-osrm.org`).
+   - `VITE_ROUTING_URL` — конечная точка маршрутов `https://router.project-osrm.org/route/v1/driving` для клиентской части.
 3. Railway автоматически использует `Procfile`, который собирает клиент и запускает pm2.
 4. Приложение должно слушать `process.env.PORT` на `0.0.0.0`. Railway завершает TLS на Edge и автоматически перенаправляет HTTP на HTTPS.
 
@@ -25,8 +25,9 @@
 
 1. Создайте ещё один сервис через **Deploy from GitHub** и выберите репозиторий `AgroxOD/OSRM-Odessa-Region`.
 2. Railway установит зависимости и запустит приложение автоматически.
-3. После запуска сервис будет доступен, например, по `https://orsm-production.up.railway.app`.
-4. Укажите адрес `https://orsm-production.up.railway.app/route` в переменных `ROUTING_URL` и `VITE_ROUTING_URL` основного приложения.
+3. После запуска сервис будет доступен по выданному Railway домену, например `https://osrm-yourapp.up.railway.app`.
+4. Укажите адрес сервиса, например `https://osrm-yourapp.up.railway.app` в переменной `ROUTING_URL` и конечный endpoint
+   `https://router.project-osrm.org/route/v1/driving` (или маршрут вашего сервиса) в `VITE_ROUTING_URL` основного приложения.
 5. При необходимости задайте переменную `OSRM_ALGORITHM` со значением `ch` или `mld`.
 
 ## 4. Запуск и проверка

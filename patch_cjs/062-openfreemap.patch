@@ -3,9 +3,9 @@ index 3921c65..81df833 100644
 --- a/Railway/.env
 +++ b/Railway/.env
 @@ -28,7 +28,7 @@ RAILWAY_DOCKERFILE_PATH=Dockerfile
- ROUTING_URL=https://orsm-production.up.railway.app/route
+ ROUTING_URL=https://router.project-osrm.org
  # Веб-клиент должен использовать тот же endpoint, что и API
- VITE_ROUTING_URL=https://orsm-production.up.railway.app/route
+ VITE_ROUTING_URL=https://router.project-osrm.org/route/v1/driving
 -VITE_MAP_STYLE_URL=/tiles/maplibre-style.json
 +VITE_MAP_STYLE_URL=https://tiles.openfreemap.org/styles/liberty
  VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles

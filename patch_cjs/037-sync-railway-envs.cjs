@@ -48,7 +48,7 @@ APP_URL=https://agromarket.up.railway.app
 APP_ORIGIN=http://localhost:5173
 CORS_ORIGINS=https://agromarket.up.railway.app,http://localhost:5173
 COOKIE_DOMAIN=agromarket.up.railway.app
-ROUTING_URL=https://orsm-production.up.railway.app/route
+ROUTING_URL=https://router.project-osrm.org
 OSRM_ALGORITHM=mld
 PROTOMAPS_API_KEY=
 STORAGE_DIR=/storage
@@ -71,7 +71,7 @@ HOST_PORT=3000
 # --- Клиент (apps/web / Vite) ---
 VITE_BOT_USERNAME=ERP_AM_BOT
 VITE_CHAT_ID=-1002705661520
-VITE_ROUTING_URL=https://orsm-production.up.railway.app/route
+VITE_ROUTING_URL=https://router.project-osrm.org/route/v1/driving
 VITE_MAP_STYLE_URL=https://api.protomaps.com/styles/v5/light/uk.json?key=e2ee205f93bfd080
 VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles
 VITE_MAP_STYLE_MODE=pmtiles
@@ -110,8 +110,8 @@ COOKIE_DOMAIN=agromarket.up.railway.app
 RAILWAY_DOCKERFILE_PATH=Dockerfile
 
 # Карта и CSP
-ROUTING_URL=https://orsm-production.up.railway.app/route
-VITE_ROUTING_URL=https://orsm-production.up.railway.app/route
+ROUTING_URL=https://router.project-osrm.org
+VITE_ROUTING_URL=https://router.project-osrm.org/route/v1/driving
 VITE_MAP_STYLE_URL=https://api.protomaps.com/styles/v5/light/uk.json?key=e2ee205f93bfd080
 VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles
 VITE_MAP_STYLE_MODE=pmtiles
@@ -137,7 +137,7 @@ writeFile(
   path.resolve('apps/web/.env'),
   `VITE_BOT_USERNAME=ERP_AM_BOT
 VITE_CHAT_ID=-1002705661520
-VITE_ROUTING_URL=https://orsm-production.up.railway.app/route
+VITE_ROUTING_URL=https://router.project-osrm.org/route/v1/driving
 VITE_MAP_STYLE_URL=https://api.protomaps.com/styles/v5/light/uk.json?key=e2ee205f93bfd080
 VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles
 VITE_MAP_STYLE_MODE=pmtiles

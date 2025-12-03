@@ -18,7 +18,7 @@
 ## URL-адреса и карта
 
 - APP_URL и COOKIE_DOMAIN указывают на "https://agromarket.up.railway.app", CORS_ORIGINS включает домен клиента и протокольный источник Protomaps.
-- ROUTING_URL и VITE_ROUTING_URL направлены на OSRM "/route", карта использует стиль Protomaps и адресные плитки pmtiles://tiles/addresses.pmtiles.
+- ROUTING_URL направлен на базовый хост OSRM, VITE_ROUTING_URL — на конечную точку `/route/v1/driving`; карта использует стиль Protomaps и адресные плитки pmtiles://tiles/addresses.pmtiles.
 - CSP allowlist дополнен источниками "https://protomaps.github.io" и разрешением "blob:" для скриптов, поэтому загрузка стиля и шрифтов Protomaps не должна блокироваться.
 
 ## Порты

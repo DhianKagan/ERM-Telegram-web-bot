@@ -236,10 +236,12 @@ try {
   parsed.hash = '';
   const normalizedPath = parsed.pathname.replace(/\/+$/, '');
   osrmBaseUrlValue = `${parsed.origin}${normalizedPath}`;
-  const routeTail = normalizedPath.endsWith('/route')
-    ? '/v1/driving'
-    : '/route/v1/driving';
-  const routePath = `${normalizedPath}${routeTail}`.replace(/^\/+/, '/');
+  const hasRouteWithProfile = /\/route\/v\d+\//.test(normalizedPath);
+  const routePath = hasRouteWithProfile
+    ? normalizedPath
+    : normalizedPath.endsWith('/route')
+      ? `${normalizedPath}/v1/driving`
+      : `${normalizedPath}/route/v1/driving`;
   routingUrlEnv = new URL(routePath, `${parsed.origin}/`).toString();
 } catch (error) {
   const message = error instanceof Error ? error.message : String(error);

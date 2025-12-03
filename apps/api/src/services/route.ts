@@ -1,5 +1,6 @@
 // Назначение: запросы к сервису OSRM
 // Модули: fetch, config, prom-client
+import type { Position } from 'geojson';
 import { routingUrl } from '../config';
 import { osrmRequestDuration, osrmErrorsTotal } from '../metrics';
 import { getTrace } from '../utils/trace';
@@ -112,6 +113,10 @@ export interface RouteDistance {
   waypoints?: unknown;
 }
 
+export interface RouteGeometryResponse {
+  routes?: Array<{ geometry?: { coordinates?: Position[] } | null }>;
+}
+
 export async function getRouteDistance(
   start: Point,
   end: Point,
@@ -158,6 +163,23 @@ export async function getRouteDistance(
   } finally {
     clearTimeout(timeout);
   }
+}
+
+export async function routeGeometry(
+  points: string,
+  params: Record<string, string | number> = {},
+): Promise<Position[] | null> {
+  const safePoints = validateCoords(points);
+  const data = await call<RouteGeometryResponse>('route', safePoints, {
+    overview: 'full',
+    geometries: 'geojson',
+    ...params,
+  });
+  const geometry = data.routes?.[0]?.geometry;
+  if (!geometry || !Array.isArray(geometry.coordinates)) {
+    return null;
+  }
+  return geometry.coordinates;
 }
 
 export async function table<T = unknown>(

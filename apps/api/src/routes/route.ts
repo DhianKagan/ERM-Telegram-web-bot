@@ -9,6 +9,7 @@ import {
   nearest,
   match,
   trip,
+  routeGeometry,
 } from '../services/route';
 import { asyncHandler } from '../api/middleware';
 import authMiddleware from '../middleware/auth';
@@ -89,6 +90,25 @@ router.get(
 interface PointsQuery extends Record<string, string> {
   points: string;
 }
+
+interface RouteGeometryQuery extends Record<string, string> {
+  points: string;
+}
+
+router.get(
+  '/geometry',
+  authMiddleware(),
+  routeLimiter as unknown as RequestHandler,
+  validate([query('points').isString()]),
+  asyncHandler(async (req, res) => {
+    const { points, ...params } = req.query as RouteGeometryQuery;
+    const geometry = await routeGeometry(
+      points,
+      params as Record<string, string | number>,
+    );
+    res.json({ coordinates: geometry ?? [] });
+  }),
+);
 router.get(
   '/match',
   authMiddleware(),

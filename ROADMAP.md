@@ -175,8 +175,8 @@
     доступна сортировка по всем колонкам
 73. Эндпойнт `/api/v1/route` возвращает координаты и длину маршрута
 74. Инструкция по запуску OSRM на Railway в docs/osrm.md
-75. Пример переменной `ROUTING_URL` использует сервис `https://osrm-production.up.railway.app/route`
-76. Фронтенд использует переменную `VITE_ROUTING_URL` с тем же адресом
+75. Пример переменной `ROUTING_URL` использует сервис `https://router.project-osrm.org`
+76. Фронтенд использует переменную `VITE_ROUTING_URL` с маршрутом `https://router.project-osrm.org/route/v1/driving`
 77. README содержит пример JSON с координатами
 78. В мануале к боту описано разворачивание коротких ссылок Google Maps
 79. Документ `docs/railway_full_setup.md` описывает развёртывание всего проекта на Railway

@@ -28,6 +28,7 @@ curl "https://localhost:5000/route?start=30.7233,46.4825&end=30.7326,46.4775"
 
 1. Создайте новый сервис через **Deploy from GitHub** и выберите репозиторий `AgroxOD/OSRM-Odessa-Region`.
 2. Railway установит зависимости и запустит приложение автоматически.
-3. Используйте выдаваемый адрес, например `https://orsm-production.up.railway.app/route`,
-   в переменных `ROUTING_URL` и `VITE_ROUTING_URL` основного проекта.
+3. Используйте адрес своего сервиса OSRM, например `https://router.project-osrm.org`,
+   в переменной `ROUTING_URL` и конечную точку `https://router.project-osrm.org/route/v1/driving`
+   в переменной `VITE_ROUTING_URL` основного проекта.
 4. Переменная `OSRM_ALGORITHM` задаёт алгоритм (`ch` или `mld`), по умолчанию используется `mld`.

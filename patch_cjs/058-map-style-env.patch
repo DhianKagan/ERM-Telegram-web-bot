@@ -4,8 +4,8 @@ index c856243..0645842 100644
 +++ b/Railway/.env
 @@ -27,7 +27,7 @@ RAILWAY_DOCKERFILE_PATH=Dockerfile
  # Карта и CSP
- ROUTING_URL=https://orsm-production.up.railway.app/route
- VITE_ROUTING_URL=https://orsm-production.up.railway.app/route
+ ROUTING_URL=https://router.project-osrm.org
+ VITE_ROUTING_URL=https://router.project-osrm.org/route/v1/driving
 -VITE_MAP_STYLE_URL=https://api.protomaps.com/styles/v5/light/uk.json?key=e2ee205f93bfd080
 +VITE_MAP_STYLE_URL=/tiles/maplibre-style.json
  VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles

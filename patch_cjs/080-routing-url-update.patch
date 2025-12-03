@@ -1,0 +1,310 @@
+diff --git a/.env.example b/.env.example
+index 5b87e8b..184cd8c 100644
+--- a/.env.example
++++ b/.env.example
+@@ -33,7 +33,7 @@ APP_URL=https://agromarket.up.railway.app
+ APP_ORIGIN=http://localhost:5173
+ CORS_ORIGINS=https://agromarket.up.railway.app,http://localhost:5173
+ COOKIE_DOMAIN=agromarket.up.railway.app
+-ROUTING_URL=https://orsm-production.up.railway.app/route
++ROUTING_URL=https://router.project-osrm.org
+ OSRM_ALGORITHM=mld
+ PROTOMAPS_API_KEY=
+ STORAGE_DIR=/storage
+@@ -57,8 +57,8 @@ HOST_PORT=3000
+ # --- Клиент (apps/web / Vite) ---
+ VITE_BOT_USERNAME=ERP_AM_BOT
+ VITE_CHAT_ID=-1002705661520
+-# Должен совпадать с ROUTING_URL в продакшене
+-VITE_ROUTING_URL=https://orsm-production.up.railway.app/route
++# Используйте готовый маршрутный endpoint OSRM
++VITE_ROUTING_URL=https://router.project-osrm.org/route/v1/driving
+ VITE_MAP_STYLE_URL=/tiles/maplibre-style.json
+ # Для продакшн-сборки обязательно задайте путь к локальным адресным плиткам.
+ VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles
+diff --git a/CHANGELOG.md b/CHANGELOG.md
+index c9f23c7..262e78a 100644
+--- a/CHANGELOG.md
++++ b/CHANGELOG.md
+@@ -308,7 +308,7 @@
+ - Некоторые поля формы объединены в строки по два, чтобы сократить высоту формы
+ - Справочники задач загружаются одним запросом для предотвращения ошибки 429
+ - Таблица ответов бота в `docs/bot_responses.md` полностью на русском
+-- В примерах `.env` и документации `ROUTING_URL` указывает на `https://osrm-production.up.railway.app/route`
++- В примерах `.env` и документации `ROUTING_URL` указывает на `https://router.project-osrm.org`
+ - Добавлена переменная `VITE_ROUTING_URL` для веб-клиента
+ - Добавлена `docs/osrm.md` с инструкцией по запуску сервиса OSRM
+ - README обновлён ссылкой на документ `docs/osrm.md`
+diff --git a/ROADMAP.md b/ROADMAP.md
+index 3907b27..c7c023a 100644
+--- a/ROADMAP.md
++++ b/ROADMAP.md
+@@ -175,8 +175,8 @@
+     доступна сортировка по всем колонкам
+ 73. Эндпойнт `/api/v1/route` возвращает координаты и длину маршрута
+ 74. Инструкция по запуску OSRM на Railway в docs/osrm.md
+-75. Пример переменной `ROUTING_URL` использует сервис `https://osrm-production.up.railway.app/route`
+-76. Фронтенд использует переменную `VITE_ROUTING_URL` с тем же адресом
++75. Пример переменной `ROUTING_URL` использует сервис `https://router.project-osrm.org`
++76. Фронтенд использует переменную `VITE_ROUTING_URL` с маршрутом `https://router.project-osrm.org/route/v1/driving`
+ 77. README содержит пример JSON с координатами
+ 78. В мануале к боту описано разворачивание коротких ссылок Google Maps
+ 79. Документ `docs/railway_full_setup.md` описывает развёртывание всего проекта на Railway
+diff --git a/Railway/.env b/Railway/.env
+index 5f50ac4..7ca183f 100644
+--- a/Railway/.env
++++ b/Railway/.env
+@@ -25,9 +25,9 @@ COOKIE_DOMAIN=agromarket.up.railway.app
+ RAILWAY_DOCKERFILE_PATH=Dockerfile
+ 
+ # Карта и CSP
+-ROUTING_URL=https://orsm-production.up.railway.app/route
+-# Веб-клиент должен использовать тот же endpoint, что и API
+-VITE_ROUTING_URL=https://orsm-production.up.railway.app/route
++ROUTING_URL=https://router.project-osrm.org
++# Веб-клиент использует конечный маршрутный endpoint OSRM
++VITE_ROUTING_URL=https://router.project-osrm.org/route/v1/driving
+ VITE_MAP_STYLE_URL=/tiles/maplibre-style.json
+ VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles
+ VITE_MAP_STYLE_MODE=pmtiles
+diff --git a/docs/osrm.md b/docs/osrm.md
+index f0e8027..d144be8 100644
+--- a/docs/osrm.md
++++ b/docs/osrm.md
+@@ -28,6 +28,7 @@ curl "https://localhost:5000/route?start=30.7233,46.4825&end=30.7326,46.4775"
+ 
+ 1. Создайте новый сервис через **Deploy from GitHub** и выберите репозиторий `AgroxOD/OSRM-Odessa-Region`.
+ 2. Railway установит зависимости и запустит приложение автоматически.
+-3. Используйте выдаваемый адрес, например `https://orsm-production.up.railway.app/route`,
+-   в переменных `ROUTING_URL` и `VITE_ROUTING_URL` основного проекта.
++3. Используйте адрес своего сервиса OSRM, например `https://router.project-osrm.org`,
++   в переменной `ROUTING_URL` и конечную точку `https://router.project-osrm.org/route/v1/driving`
++   в переменной `VITE_ROUTING_URL` основного проекта.
+ 4. Переменная `OSRM_ALGORITHM` задаёт алгоритм (`ch` или `mld`), по умолчанию используется `mld`.
+diff --git a/docs/railway_env_review.md b/docs/railway_env_review.md
+index 24edb78..7de72f5 100644
+--- a/docs/railway_env_review.md
++++ b/docs/railway_env_review.md
+@@ -18,7 +18,7 @@
+ ## URL-адреса и карта
+ 
+ - APP_URL и COOKIE_DOMAIN указывают на "https://agromarket.up.railway.app", CORS_ORIGINS включает домен клиента и протокольный источник Protomaps.
+-- ROUTING_URL и VITE_ROUTING_URL направлены на OSRM "/route", карта использует стиль Protomaps и адресные плитки pmtiles://tiles/addresses.pmtiles.
++- ROUTING_URL направлен на базовый хост OSRM, VITE_ROUTING_URL — на конечную точку `/route/v1/driving`; карта использует стиль Protomaps и адресные плитки pmtiles://tiles/addresses.pmtiles.
+ - CSP allowlist дополнен источниками "https://protomaps.github.io" и разрешением "blob:" для скриптов, поэтому загрузка стиля и шрифтов Protomaps не должна блокироваться.
+ 
+ ## Порты
+diff --git a/docs/railway_full_setup.md b/docs/railway_full_setup.md
+index 906b940..35069e6 100644
+--- a/docs/railway_full_setup.md
++++ b/docs/railway_full_setup.md
+@@ -16,8 +16,8 @@
+    - `BOT_TOKEN` — токен от BotFather.
+    - `MONGO_DATABASE_URL` — строка подключения к MongoDB. На Railway используйте значение из `DATABASE_URL` плагина MongoDB; в локальной проверке `scripts/pre_pr_check.sh` запускает MongoDB в памяти, а в CI проверка пропускается.
+    - `APP_URL` — домен проекта вида `https://<имя>.up.railway.app`.
+-   - `ROUTING_URL` — адрес сервиса маршрутов из следующего шага (например, `https://orsm-production.up.railway.app/route`).
+-   - `VITE_ROUTING_URL` — тот же адрес для клиентской части.
++   - `ROUTING_URL` — адрес сервиса маршрутов из следующего шага (например, `https://router.project-osrm.org`).
++   - `VITE_ROUTING_URL` — конечная точка маршрутов `https://router.project-osrm.org/route/v1/driving` для клиентской части.
+ 3. Railway автоматически использует `Procfile`, который собирает клиент и запускает pm2.
+ 4. Приложение должно слушать `process.env.PORT` на `0.0.0.0`. Railway завершает TLS на Edge и автоматически перенаправляет HTTP на HTTPS.
+ 
+@@ -25,8 +25,9 @@
+ 
+ 1. Создайте ещё один сервис через **Deploy from GitHub** и выберите репозиторий `AgroxOD/OSRM-Odessa-Region`.
+ 2. Railway установит зависимости и запустит приложение автоматически.
+-3. После запуска сервис будет доступен, например, по `https://orsm-production.up.railway.app`.
+-4. Укажите адрес `https://orsm-production.up.railway.app/route` в переменных `ROUTING_URL` и `VITE_ROUTING_URL` основного приложения.
++3. После запуска сервис будет доступен по выданному Railway домену, например `https://osrm-yourapp.up.railway.app`.
++4. Укажите адрес сервиса, например `https://osrm-yourapp.up.railway.app` в переменной `ROUTING_URL` и конечный endpoint
++   `https://router.project-osrm.org/route/v1/driving` (или маршрут вашего сервиса) в `VITE_ROUTING_URL` основного приложения.
+ 5. При необходимости задайте переменную `OSRM_ALGORITHM` со значением `ch` или `mld`.
+ 
+ ## 4. Запуск и проверка
+diff --git a/docs/railway_minimal_setup.md b/docs/railway_minimal_setup.md
+index 41b65ce..18cfb9e 100644
+--- a/docs/railway_minimal_setup.md
++++ b/docs/railway_minimal_setup.md
+@@ -12,7 +12,8 @@
+    - `BOT_TOKEN` — токен вашего Telegram-бота от BotFather.
+    - `MONGO_DATABASE_URL` — строка подключения к MongoDB (можно взять из плагина Railway MongoDB или собственного кластера).
+    - `APP_URL` — домен Railway вида `https://<имя>.up.railway.app`.
+-   - `ROUTING_URL` и `VITE_ROUTING_URL` — адрес сервиса OSRM (например, `https://orsm-production.up.railway.app/route`).
++   - `ROUTING_URL` — базовый адрес сервиса OSRM (например, `https://router.project-osrm.org`).
++   - `VITE_ROUTING_URL` — конечная точка маршрутов `https://router.project-osrm.org/route/v1/driving` для клиентской части.
+    - `NODE_ENV=production`.
+ 4. Если используете отдельный сервис OSRM, разверните его аналогично и возьмите URL для переменных `ROUTING_URL` и `VITE_ROUTING_URL`.
+ 
+diff --git a/patch_cjs/037-sync-railway-envs.cjs b/patch_cjs/037-sync-railway-envs.cjs
+index 24f9adb..ad638e0 100644
+--- a/patch_cjs/037-sync-railway-envs.cjs
++++ b/patch_cjs/037-sync-railway-envs.cjs
+@@ -48,7 +48,7 @@ APP_URL=https://agromarket.up.railway.app
+ APP_ORIGIN=http://localhost:5173
+ CORS_ORIGINS=https://agromarket.up.railway.app,http://localhost:5173
+ COOKIE_DOMAIN=agromarket.up.railway.app
+-ROUTING_URL=https://orsm-production.up.railway.app/route
++ROUTING_URL=https://router.project-osrm.org
+ OSRM_ALGORITHM=mld
+ PROTOMAPS_API_KEY=
+ STORAGE_DIR=/storage
+@@ -71,7 +71,7 @@ HOST_PORT=3000
+ # --- Клиент (apps/web / Vite) ---
+ VITE_BOT_USERNAME=ERP_AM_BOT
+ VITE_CHAT_ID=-1002705661520
+-VITE_ROUTING_URL=https://orsm-production.up.railway.app/route
++VITE_ROUTING_URL=https://router.project-osrm.org/route/v1/driving
+ VITE_MAP_STYLE_URL=https://api.protomaps.com/styles/v5/light/uk.json?key=e2ee205f93bfd080
+ VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles
+ VITE_MAP_STYLE_MODE=pmtiles
+@@ -110,8 +110,8 @@ COOKIE_DOMAIN=agromarket.up.railway.app
+ RAILWAY_DOCKERFILE_PATH=Dockerfile
+ 
+ # Карта и CSP
+-ROUTING_URL=https://orsm-production.up.railway.app/route
+-VITE_ROUTING_URL=https://orsm-production.up.railway.app/route
++ROUTING_URL=https://router.project-osrm.org
++VITE_ROUTING_URL=https://router.project-osrm.org/route/v1/driving
+ VITE_MAP_STYLE_URL=https://api.protomaps.com/styles/v5/light/uk.json?key=e2ee205f93bfd080
+ VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles
+ VITE_MAP_STYLE_MODE=pmtiles
+@@ -137,7 +137,7 @@ writeFile(
+   path.resolve('apps/web/.env'),
+   `VITE_BOT_USERNAME=ERP_AM_BOT
+ VITE_CHAT_ID=-1002705661520
+-VITE_ROUTING_URL=https://orsm-production.up.railway.app/route
++VITE_ROUTING_URL=https://router.project-osrm.org/route/v1/driving
+ VITE_MAP_STYLE_URL=https://api.protomaps.com/styles/v5/light/uk.json?key=e2ee205f93bfd080
+ VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles
+ VITE_MAP_STYLE_MODE=pmtiles
+diff --git a/patch_cjs/055-map-address-config.patch b/patch_cjs/055-map-address-config.patch
+index 977a575..5b566eb 100644
+--- a/patch_cjs/055-map-address-config.patch
++++ b/patch_cjs/055-map-address-config.patch
+@@ -4,7 +4,7 @@ index 82cf067..0a1226c 100644
+ +++ b/.env.example
+ @@ -58,6 +58,7 @@ VITE_BOT_USERNAME=ERP_AM_BOT
+  VITE_CHAT_ID=-1002705661520
+- VITE_ROUTING_URL=https://orsm-production.up.railway.app/route
++ VITE_ROUTING_URL=https://router.project-osrm.org/route/v1/driving
+  VITE_MAP_STYLE_URL=https://api.protomaps.com/styles/v5/light/uk.json?key=e2ee205f93bfd080
+ +# Для продакшн-сборки обязательно задайте путь к локальным адресным плиткам.
+  VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles
+@@ -273,7 +273,7 @@ index 0000000..63f3962
+ ++++ b/.env.example
+ +@@ -58,6 +58,7 @@ VITE_BOT_USERNAME=ERP_AM_BOT
+ + VITE_CHAT_ID=-1002705661520
+-+ VITE_ROUTING_URL=https://orsm-production.up.railway.app/route
+++ VITE_ROUTING_URL=https://router.project-osrm.org/route/v1/driving
+ + VITE_MAP_STYLE_URL=https://api.protomaps.com/styles/v5/light/uk.json?key=e2ee205f93bfd080
+ ++# Для продакшн-сборки обязательно задайте путь к локальным адресным плиткам.
+ + VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles
+diff --git a/patch_cjs/058-map-style-env.patch b/patch_cjs/058-map-style-env.patch
+index 3538e68..b4d6390 100644
+--- a/patch_cjs/058-map-style-env.patch
++++ b/patch_cjs/058-map-style-env.patch
+@@ -4,8 +4,8 @@ index c856243..0645842 100644
+ +++ b/Railway/.env
+ @@ -27,7 +27,7 @@ RAILWAY_DOCKERFILE_PATH=Dockerfile
+  # Карта и CSP
+- ROUTING_URL=https://orsm-production.up.railway.app/route
+- VITE_ROUTING_URL=https://orsm-production.up.railway.app/route
++ ROUTING_URL=https://router.project-osrm.org
++ VITE_ROUTING_URL=https://router.project-osrm.org/route/v1/driving
+ -VITE_MAP_STYLE_URL=https://api.protomaps.com/styles/v5/light/uk.json?key=e2ee205f93bfd080
+ +VITE_MAP_STYLE_URL=/tiles/maplibre-style.json
+  VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles
+diff --git a/patch_cjs/061-update-routing-env.patch b/patch_cjs/061-update-routing-env.patch
+index 1351835..bd06af4 100644
+--- a/patch_cjs/061-update-routing-env.patch
++++ b/patch_cjs/061-update-routing-env.patch
+@@ -10,7 +10,7 @@ index 6b46c0e..54b17e6 100644
+  VITE_BOT_USERNAME=ERP_AM_BOT
+  VITE_CHAT_ID=-1002705661520
+ +# Должен совпадать с ROUTING_URL в продакшене
+- VITE_ROUTING_URL=https://orsm-production.up.railway.app/route
++ VITE_ROUTING_URL=https://router.project-osrm.org/route/v1/driving
+  VITE_MAP_STYLE_URL=https://api.protomaps.com/styles/v5/light/uk.json?key=e2ee205f93bfd080
+  # Для продакшн-сборки обязательно задайте путь к локальным адресным плиткам.
+  VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles
+@@ -26,9 +26,9 @@ index 0645842..427b9b2 100644
+  RAILWAY_DOCKERFILE_PATH=Dockerfile
+  
+  # Карта и CSP
+- ROUTING_URL=https://orsm-production.up.railway.app/route
++ ROUTING_URL=https://router.project-osrm.org
+ +# Веб-клиент должен использовать тот же endpoint, что и API
+- VITE_ROUTING_URL=https://orsm-production.up.railway.app/route
++ VITE_ROUTING_URL=https://router.project-osrm.org/route/v1/driving
+  VITE_MAP_STYLE_URL=/tiles/maplibre-style.json
+  VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles
+  VITE_MAP_STYLE_MODE=pmtiles
+@@ -44,7 +44,7 @@ index 4fa5923..dd6883b 100644
+  VITE_BOT_USERNAME=ERP_AM_BOT
+  VITE_CHAT_ID=-1002705661520
+ +# Используется боевой endpoint OSRM; должен совпадать с ROUTING_URL
+- VITE_ROUTING_URL=https://orsm-production.up.railway.app/route
++ VITE_ROUTING_URL=https://router.project-osrm.org/route/v1/driving
+  VITE_MAP_STYLE_URL=https://api.protomaps.com/styles/v5/light/uk.json?key=e2ee205f93bfd080
+  VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles
+  VITE_MAP_STYLE_MODE=pmtiles
+@@ -59,8 +59,9 @@ index 0e981a3..0a5f7f7 100644
+  2. Соберите дорожную сеть по инструкции из README OSRM.
+ -3. Используйте выдаваемый адрес, например `https://osrm-production.up.railway.app/route`,
+ -   в переменных `ROUTING_URL` и `VITE_ROUTING_URL` основного проекта.
+-+3. Используйте выдаваемый адрес, например `https://orsm-production.up.railway.app/route`,
+-+   в переменных `ROUTING_URL` и `VITE_ROUTING_URL` основного проекта.
+++3. Используйте адрес своего сервиса OSRM, например `https://router.project-osrm.org`,
+++   в переменной `ROUTING_URL` и конечный маршрут `https://router.project-osrm.org/route/v1/driving`
+++   в переменной `VITE_ROUTING_URL` основного проекта.
+  
+  ## Полезные ссылки
+  
+@@ -75,8 +76,8 @@ index d5f9304..68c7738 100644
+  3. Разверните приложение через **Deploy from GitHub**.
+ -   - `ROUTING_URL` — адрес OSRM. Если развернёте сервис, возьмите URL вида `https://osrm-production.up.railway.app/route`.
+ -   - `VITE_ROUTING_URL` — тот же адрес для клиентской части.
+-+   - `ROUTING_URL` — адрес OSRM. Если развернёте сервис, возьмите URL вида `https://orsm-production.up.railway.app/route`.
+-+   - `VITE_ROUTING_URL` — тот же адрес для клиентской части.
+++   - `ROUTING_URL` — адрес OSRM. Если развернёте сервис, возьмите URL вида `https://router.project-osrm.org`.
+++   - `VITE_ROUTING_URL` — маршрут `https://router.project-osrm.org/route/v1/driving` для клиентской части.
+  3. Railway автоматически использует `Procfile`, который собирает клиент и запускает pm2.
+  4. Приложение должно слушать `process.env.PORT` на `0.0.0.0`. Railway завершает TLS на Edge и автоматически перенаправляет HTTP на HTTPS.
+  
+@@ -87,8 +88,8 @@ index d5f9304..68c7738 100644
+  2. Railway установит зависимости и запустит приложение автоматически.
+ -3. После запуска сервис будет доступен, например, по `https://osrm-production.up.railway.app`.
+ -4. Укажите адрес `https://osrm-production.up.railway.app/route` в переменных `ROUTING_URL` и `VITE_ROUTING_URL` основного приложения.
+-+3. После запуска сервис будет доступен, например, по `https://orsm-production.up.railway.app`.
+-+4. Укажите адрес `https://orsm-production.up.railway.app/route` в переменных `ROUTING_URL` и `VITE_ROUTING_URL` основного приложения.
+++3. После запуска сервис будет доступен по выданному Railway домену, например `https://osrm-yourapp.up.railway.app`.
+++4. Укажите адрес сервиса в `ROUTING_URL` и конечный маршрут `https://router.project-osrm.org/route/v1/driving` (или endpoint вашего сервиса) в `VITE_ROUTING_URL` основного приложения.
+  5. При необходимости задайте переменную `OSRM_ALGORITHM` со значением `ch` или `mld`.
+  
+ ## 4. Запуск и проверка
+@@ -101,7 +102,8 @@ index c79f53a..eacde0c 100644
+  2. Задайте переменные:
+     - `BOT_TOKEN` и `CHAT_ID`
+ -   - `ROUTING_URL` и `VITE_ROUTING_URL` — адрес сервиса OSRM (например, `https://osrm-production.up.railway.app`).
+-+   - `ROUTING_URL` и `VITE_ROUTING_URL` — адрес сервиса OSRM (например, `https://orsm-production.up.railway.app/route`).
+++   - `ROUTING_URL` — базовый адрес сервиса OSRM (например, `https://router.project-osrm.org`).
+++   - `VITE_ROUTING_URL` — конечная точка маршрутов `https://router.project-osrm.org/route/v1/driving` для клиентской части.
+     - `MONGO_DATABASE_URL` — строка подключения к базе.
+  3. Railway автоматически стартует сервис; убедитесь, что он слушает `process.env.PORT`.
+  4. Если используете отдельный сервис OSRM, разверните его аналогично и возьмите URL для переменных `ROUTING_URL` и `VITE_ROUTING_URL`.
+diff --git a/patch_cjs/062-openfreemap.patch b/patch_cjs/062-openfreemap.patch
+index 182ab04..8da263d 100644
+--- a/patch_cjs/062-openfreemap.patch
++++ b/patch_cjs/062-openfreemap.patch
+@@ -3,9 +3,9 @@ index 3921c65..81df833 100644
+ --- a/Railway/.env
+ +++ b/Railway/.env
+ @@ -28,7 +28,7 @@ RAILWAY_DOCKERFILE_PATH=Dockerfile
+- ROUTING_URL=https://orsm-production.up.railway.app/route
++ ROUTING_URL=https://router.project-osrm.org
+  # Веб-клиент должен использовать тот же endpoint, что и API
+- VITE_ROUTING_URL=https://orsm-production.up.railway.app/route
++ VITE_ROUTING_URL=https://router.project-osrm.org/route/v1/driving
+ -VITE_MAP_STYLE_URL=/tiles/maplibre-style.json
+ +VITE_MAP_STYLE_URL=https://tiles.openfreemap.org/styles/liberty
+  VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles

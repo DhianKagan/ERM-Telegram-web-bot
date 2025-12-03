@@ -10,7 +10,7 @@ index 6b46c0e..54b17e6 100644
  VITE_BOT_USERNAME=ERP_AM_BOT
  VITE_CHAT_ID=-1002705661520
 +# Должен совпадать с ROUTING_URL в продакшене
- VITE_ROUTING_URL=https://orsm-production.up.railway.app/route
+ VITE_ROUTING_URL=https://router.project-osrm.org/route/v1/driving
  VITE_MAP_STYLE_URL=https://api.protomaps.com/styles/v5/light/uk.json?key=e2ee205f93bfd080
  # Для продакшн-сборки обязательно задайте путь к локальным адресным плиткам.
  VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles
@@ -26,9 +26,9 @@ index 0645842..427b9b2 100644
  RAILWAY_DOCKERFILE_PATH=Dockerfile
  
  # Карта и CSP
- ROUTING_URL=https://orsm-production.up.railway.app/route
+ ROUTING_URL=https://router.project-osrm.org
 +# Веб-клиент должен использовать тот же endpoint, что и API
- VITE_ROUTING_URL=https://orsm-production.up.railway.app/route
+ VITE_ROUTING_URL=https://router.project-osrm.org/route/v1/driving
  VITE_MAP_STYLE_URL=/tiles/maplibre-style.json
  VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles
  VITE_MAP_STYLE_MODE=pmtiles
@@ -44,7 +44,7 @@ index 4fa5923..dd6883b 100644
  VITE_BOT_USERNAME=ERP_AM_BOT
  VITE_CHAT_ID=-1002705661520
 +# Используется боевой endpoint OSRM; должен совпадать с ROUTING_URL
- VITE_ROUTING_URL=https://orsm-production.up.railway.app/route
+ VITE_ROUTING_URL=https://router.project-osrm.org/route/v1/driving
  VITE_MAP_STYLE_URL=https://api.protomaps.com/styles/v5/light/uk.json?key=e2ee205f93bfd080
  VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles
  VITE_MAP_STYLE_MODE=pmtiles
@@ -59,8 +59,9 @@ index 0e981a3..0a5f7f7 100644
  2. Соберите дорожную сеть по инструкции из README OSRM.
 -3. Используйте выдаваемый адрес, например `https://osrm-production.up.railway.app/route`,
 -   в переменных `ROUTING_URL` и `VITE_ROUTING_URL` основного проекта.
-+3. Используйте выдаваемый адрес, например `https://orsm-production.up.railway.app/route`,
-+   в переменных `ROUTING_URL` и `VITE_ROUTING_URL` основного проекта.
++3. Используйте адрес своего сервиса OSRM, например `https://router.project-osrm.org`,
++   в переменной `ROUTING_URL` и конечный маршрут `https://router.project-osrm.org/route/v1/driving`
++   в переменной `VITE_ROUTING_URL` основного проекта.
  
  ## Полезные ссылки
  
@@ -75,8 +76,8 @@ index d5f9304..68c7738 100644
  3. Разверните приложение через **Deploy from GitHub**.
 -   - `ROUTING_URL` — адрес OSRM. Если развернёте сервис, возьмите URL вида `https://osrm-production.up.railway.app/route`.
 -   - `VITE_ROUTING_URL` — тот же адрес для клиентской части.
-+   - `ROUTING_URL` — адрес OSRM. Если развернёте сервис, возьмите URL вида `https://orsm-production.up.railway.app/route`.
-+   - `VITE_ROUTING_URL` — тот же адрес для клиентской части.
++   - `ROUTING_URL` — адрес OSRM. Если развернёте сервис, возьмите URL вида `https://router.project-osrm.org`.
++   - `VITE_ROUTING_URL` — маршрут `https://router.project-osrm.org/route/v1/driving` для клиентской части.
  3. Railway автоматически использует `Procfile`, который собирает клиент и запускает pm2.
  4. Приложение должно слушать `process.env.PORT` на `0.0.0.0`. Railway завершает TLS на Edge и автоматически перенаправляет HTTP на HTTPS.
  
@@ -87,8 +88,8 @@ index d5f9304..68c7738 100644
  2. Railway установит зависимости и запустит приложение автоматически.
 -3. После запуска сервис будет доступен, например, по `https://osrm-production.up.railway.app`.
 -4. Укажите адрес `https://osrm-production.up.railway.app/route` в переменных `ROUTING_URL` и `VITE_ROUTING_URL` основного приложения.
-+3. После запуска сервис будет доступен, например, по `https://orsm-production.up.railway.app`.
-+4. Укажите адрес `https://orsm-production.up.railway.app/route` в переменных `ROUTING_URL` и `VITE_ROUTING_URL` основного приложения.
++3. После запуска сервис будет доступен по выданному Railway домену, например `https://osrm-yourapp.up.railway.app`.
++4. Укажите адрес сервиса в `ROUTING_URL` и конечный маршрут `https://router.project-osrm.org/route/v1/driving` (или endpoint вашего сервиса) в `VITE_ROUTING_URL` основного приложения.
  5. При необходимости задайте переменную `OSRM_ALGORITHM` со значением `ch` или `mld`.
  
 ## 4. Запуск и проверка
@@ -101,7 +102,8 @@ index c79f53a..eacde0c 100644
  2. Задайте переменные:
     - `BOT_TOKEN` и `CHAT_ID`
 -   - `ROUTING_URL` и `VITE_ROUTING_URL` — адрес сервиса OSRM (например, `https://osrm-production.up.railway.app`).
-+   - `ROUTING_URL` и `VITE_ROUTING_URL` — адрес сервиса OSRM (например, `https://orsm-production.up.railway.app/route`).
++   - `ROUTING_URL` — базовый адрес сервиса OSRM (например, `https://router.project-osrm.org`).
++   - `VITE_ROUTING_URL` — конечная точка маршрутов `https://router.project-osrm.org/route/v1/driving` для клиентской части.
     - `MONGO_DATABASE_URL` — строка подключения к базе.
  3. Railway автоматически стартует сервис; убедитесь, что он слушает `process.env.PORT`.
  4. Если используете отдельный сервис OSRM, разверните его аналогично и возьмите URL для переменных `ROUTING_URL` и `VITE_ROUTING_URL`.

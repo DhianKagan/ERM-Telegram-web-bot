@@ -18,4 +18,4 @@ if (!patch.trim()) {
   process.exit(0);
 }
 
-execSync('git apply -', { stdio: 'inherit', input: patch });
+execSync('git apply -', { stdio: ['pipe', 'inherit', 'inherit'], input: patch });

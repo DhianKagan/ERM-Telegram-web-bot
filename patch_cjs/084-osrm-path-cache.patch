@@ -1,0 +1,278 @@
+diff --git a/apps/api/tests/routeEndpoints.test.ts b/apps/api/tests/routeEndpoints.test.ts
+index df7e5ed..63187f6 100644
+--- a/apps/api/tests/routeEndpoints.test.ts
++++ b/apps/api/tests/routeEndpoints.test.ts
+@@ -1,9 +1,9 @@
+ process.env.APP_URL = 'https://localhost';
+ 
+ describe('маршруты OSRM', () => {
+-  beforeEach(() => {
++  beforeEach(async () => {
+     jest.resetModules();
+-    const promClient = require('prom-client');
++    const promClient = await import('prom-client');
+     const registryKey = Symbol.for('erm.metrics.register');
+     const globalSymbols = global as Record<symbol, unknown>;
+     const customRegistry =
+@@ -26,7 +26,7 @@ describe('маршруты OSRM', () => {
+   });
+ 
+   test('table использует профиль и координаты в пути', async () => {
+-    const { table } = require('../src/services/route');
++    const { table } = await import('../src/services/route');
+     await table('1,1;2,2', {});
+ 
+     const calledUrl = (fetch as jest.Mock).mock.calls[0][0] as URL;
+@@ -35,7 +35,7 @@ describe('маршруты OSRM', () => {
+   });
+ 
+   test('routeGeometry передает координаты в путь', async () => {
+-    const { routeGeometry } = require('../src/services/route');
++    const { routeGeometry } = await import('../src/services/route');
+     (fetch as jest.Mock).mockResolvedValueOnce({
+       ok: true,
+       status: 200,
+@@ -52,7 +52,7 @@ describe('маршруты OSRM', () => {
+   });
+ 
+   test('getRouteDistance добавляет координаты в путь', async () => {
+-    const { getRouteDistance } = require('../src/services/route');
++    const { getRouteDistance } = await import('../src/services/route');
+     (fetch as jest.Mock).mockResolvedValueOnce({
+       ok: true,
+       status: 200,
+diff --git a/patch_cjs/084-osrm-path-cache.patch b/patch_cjs/084-osrm-path-cache.patch
+index 62cdf69..e69de29 100644
+--- a/patch_cjs/084-osrm-path-cache.patch
++++ b/patch_cjs/084-osrm-path-cache.patch
+@@ -1,230 +0,0 @@
+-diff --git a/apps/api/src/config.ts b/apps/api/src/config.ts
+-index 5e6b465..c030044 100644
+---- a/apps/api/src/config.ts
+-+++ b/apps/api/src/config.ts
+-@@ -236,10 +236,12 @@ try {
+-   parsed.hash = '';
+-   const normalizedPath = parsed.pathname.replace(/\/+$/, '');
+-   osrmBaseUrlValue = `${parsed.origin}${normalizedPath}`;
+--  const routeTail = normalizedPath.endsWith('/route')
+--    ? '/v1/driving'
+--    : '/route/v1/driving';
+--  const routePath = `${normalizedPath}${routeTail}`.replace(/^\/+/, '/');
+-+  const hasRouteWithProfile = /\/route\/v\d+\//.test(normalizedPath);
+-+  const routePath = hasRouteWithProfile
+-+    ? normalizedPath
+-+    : normalizedPath.endsWith('/route')
+-+      ? `${normalizedPath}/v1/driving`
+-+      : `${normalizedPath}/route/v1/driving`;
+-   routingUrlEnv = new URL(routePath, `${parsed.origin}/`).toString();
+- } catch (error) {
+-   const message = error instanceof Error ? error.message : String(error);
+-diff --git a/apps/api/src/services/route.ts b/apps/api/src/services/route.ts
+-index cd3ac95..62723cb 100644
+---- a/apps/api/src/services/route.ts
+-+++ b/apps/api/src/services/route.ts
+-@@ -35,11 +35,22 @@ const routePathSegments = routingUrlObject.pathname
+-   .filter((segment) => segment.length > 0);
+- const routeSegmentIndex = routePathSegments.lastIndexOf('route');
+- 
+--const buildEndpointUrl = (endpoint: Endpoint): URL => {
+--  const parts =
+--    routeSegmentIndex === -1
+--      ? [...routePathSegments, endpoint]
+--      : [...routePathSegments.slice(0, routeSegmentIndex), endpoint];
+-+const routePrefixSegments =
+-+  routeSegmentIndex === -1
+-+    ? routePathSegments
+-+    : routePathSegments.slice(0, routeSegmentIndex);
+-+const routeProfileSegments =
+-+  routeSegmentIndex === -1
+-+    ? []
+-+    : routePathSegments.slice(routeSegmentIndex + 1);
+-+
+-+const buildEndpointUrl = (endpoint: Endpoint, coords?: string): URL => {
+-+  const parts = [
+-+    ...routePrefixSegments,
+-+    endpoint,
+-+    ...routeProfileSegments,
+-+    ...(coords ? [coords] : []),
+-+  ];
+-   const normalized = parts.filter((segment) => segment.length > 0);
+-   const pathname = normalized.length ? `/${normalized.join('/')}` : '/';
+-   return new URL(pathname, `${routingUrlObject.origin}/`);
+-@@ -64,11 +75,7 @@ async function call<T>(
+- ): Promise<T> {
+-   if (!allowed.includes(endpoint)) throw new Error('Неизвестный эндпойнт');
+-   const safeCoords = validateCoords(coords);
+--  const url = buildEndpointUrl(endpoint);
+--  url.searchParams.append(
+--    endpoint === 'nearest' ? 'point' : 'points',
+--    safeCoords,
+--  );
+-+  const url = buildEndpointUrl(endpoint, safeCoords);
+-   for (const [k, v] of Object.entries(params))
+-     url.searchParams.append(k, String(v));
+-   const key = buildCacheKey(endpoint, safeCoords, params);
+-@@ -125,10 +132,7 @@ export async function getRouteDistance(
+-   const key = buildCacheKey('route', coords, {});
+-   const cached = await cacheGet<RouteDistance>(key);
+-   if (cached) return cached;
+--  const routeBase = buildEndpointUrl('route');
+--  const routeUrl = new URL(routeBase.toString());
+--  const normalizedPath = routeUrl.pathname.replace(/\/+$/, '');
+--  routeUrl.pathname = `${normalizedPath}/${coords}`;
+-+  const routeUrl = buildEndpointUrl('route', coords);
+-   routeUrl.searchParams.set('overview', 'false');
+-   routeUrl.searchParams.set('annotations', 'distance');
+-   routeUrl.searchParams.set('steps', 'false');
+-diff --git a/apps/api/src/utils/cache.ts b/apps/api/src/utils/cache.ts
+-index 7c3f340..149c0d8 100644
+---- a/apps/api/src/utils/cache.ts
+-+++ b/apps/api/src/utils/cache.ts
+-@@ -5,25 +5,73 @@ import { createClient, RedisClientType } from 'redis';
+- const memory = new Map<string, { expire: number; value: unknown }>();
+- const enabled = process.env.ROUTE_CACHE_ENABLED !== '0';
+- const ttl = Number(process.env.ROUTE_CACHE_TTL || '600');
+--const redisUrl = process.env.ROUTE_CACHE_REDIS_URL;
+--let client: RedisClientType | undefined;
+-+const redisUrl = (process.env.ROUTE_CACHE_REDIS_URL || '').trim();
+-+
+-+let clientPromise: Promise<RedisClientType | undefined> | undefined;
+-+let redisDisabled = false;
+-+let redisReady = false;
+-+
+-+function validateRedisUrl(value: string): boolean {
+-+  if (!value) return false;
+-+  try {
+-+    const parsed = new URL(value);
+-+    return parsed.protocol === 'redis:' || parsed.protocol === 'rediss:';
+-+  } catch (error) {
+-+    const reason = error instanceof Error ? error.message : String(error);
+-+    console.warn(
+-+      'ROUTE_CACHE_REDIS_URL имеет неверный формат, используется память:',
+-+      reason,
+-+    );
+-+    return false;
+-+  }
+-+}
+- 
+- async function getClient(): Promise<RedisClientType | undefined> {
+--  if (!redisUrl) return undefined;
+--  if (!client) {
+--    client = createClient({ url: redisUrl });
+--    client.on('error', (e) => console.error('Redis error', e));
+--    await client.connect();
+-+  if (!redisUrl || redisDisabled) return undefined;
+-+  if (!validateRedisUrl(redisUrl)) {
+-+    redisDisabled = true;
+-+    return undefined;
+-   }
+--  return client;
+-+  if (!clientPromise) {
+-+    clientPromise = (async () => {
+-+      const client = createClient({ url: redisUrl });
+-+      client.on('error', (e) => {
+-+        redisReady = false;
+-+        console.error('Redis error', e);
+-+      });
+-+      try {
+-+        await client.connect();
+-+        await client.ping();
+-+        redisReady = true;
+-+        return client;
+-+      } catch (error) {
+-+        const reason = error instanceof Error ? error.message : String(error);
+-+        console.warn(
+-+          'Redis недоступен, используется кеш в памяти:',
+-+          reason,
+-+        );
+-+        redisDisabled = true;
+-+        return undefined;
+-+      }
+-+    })();
+-+  }
+-+  return clientPromise;
+- }
+- 
+- export async function cacheGet<T>(key: string): Promise<T | undefined> {
+-   if (!enabled) return undefined;
+-   if (redisUrl) {
+-     const c = await getClient();
+--    const val = await c!.get(key);
+--    return val ? (JSON.parse(val) as T) : undefined;
+-+    if (c && redisReady) {
+-+      try {
+-+        const val = await c.get(key);
+-+        return val ? (JSON.parse(val) as T) : undefined;
+-+      } catch (error) {
+-+        const reason = error instanceof Error ? error.message : String(error);
+-+        console.warn('Redis недоступен, используется память:', reason);
+-+        redisDisabled = true;
+-+      }
+-+    }
+-   }
+-   const entry = memory.get(key);
+-   if (entry && entry.expire > Date.now()) return entry.value as T;
+-@@ -39,26 +87,54 @@ export async function cacheSet<T>(
+-   if (!enabled) return;
+-   if (redisUrl) {
+-     const c = await getClient();
+--    await c!.setEx(key, ttlSec, JSON.stringify(val));
+--  } else {
+--    memory.set(key, { value: val, expire: Date.now() + ttlSec * 1000 });
+-+    if (c && redisReady) {
+-+      try {
+-+        await c.setEx(key, ttlSec, JSON.stringify(val));
+-+        return;
+-+      } catch (error) {
+-+        const reason = error instanceof Error ? error.message : String(error);
+-+        console.warn('Redis недоступен, используется память:', reason);
+-+        redisDisabled = true;
+-+      }
+-+    }
+-   }
+-+  memory.set(key, { value: val, expire: Date.now() + ttlSec * 1000 });
+- }
+- 
+- export async function cacheDel(key: string): Promise<void> {
+-   if (redisUrl) {
+-     const c = await getClient();
+--    await c!.del(key);
+--  } else {
+--    memory.delete(key);
+-+    if (c && redisReady) {
+-+      try {
+-+        await c.del(key);
+-+        return;
+-+      } catch (error) {
+-+        const reason = error instanceof Error ? error.message : String(error);
+-+        console.warn('Redis недоступен, используется память:', reason);
+-+        redisDisabled = true;
+-+      }
+-+    }
+-   }
+-+  memory.delete(key);
+- }
+- 
+- export async function cacheClear(): Promise<void> {
+-   if (redisUrl) {
+-     const c = await getClient();
+--    await c!.flushDb();
+--  } else {
+--    memory.clear();
+-+    if (c && redisReady) {
+-+      try {
+-+        await c.flushDb();
+-+        return;
+-+      } catch (error) {
+-+        const reason = error instanceof Error ? error.message : String(error);
+-+        console.warn('Redis недоступен, используется память:', reason);
+-+        redisDisabled = true;
+-+      }
+-+    }
+-   }
+-+  memory.clear();
+-+}
+-+
+-+export function getCacheBackend(): 'redis' | 'memory' {
+-+  return redisUrl && redisReady && !redisDisabled ? 'redis' : 'memory';
+- }

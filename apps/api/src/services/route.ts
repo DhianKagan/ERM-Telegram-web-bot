@@ -35,11 +35,22 @@ const routePathSegments = routingUrlObject.pathname
   .filter((segment) => segment.length > 0);
 const routeSegmentIndex = routePathSegments.lastIndexOf('route');
 
-const buildEndpointUrl = (endpoint: Endpoint): URL => {
-  const parts =
-    routeSegmentIndex === -1
-      ? [...routePathSegments, endpoint]
-      : [...routePathSegments.slice(0, routeSegmentIndex), endpoint];
+const routePrefixSegments =
+  routeSegmentIndex === -1
+    ? routePathSegments
+    : routePathSegments.slice(0, routeSegmentIndex);
+const routeProfileSegments =
+  routeSegmentIndex === -1
+    ? []
+    : routePathSegments.slice(routeSegmentIndex + 1);
+
+const buildEndpointUrl = (endpoint: Endpoint, coords?: string): URL => {
+  const parts = [
+    ...routePrefixSegments,
+    endpoint,
+    ...routeProfileSegments,
+    ...(coords ? [coords] : []),
+  ];
   const normalized = parts.filter((segment) => segment.length > 0);
   const pathname = normalized.length ? `/${normalized.join('/')}` : '/';
   return new URL(pathname, `${routingUrlObject.origin}/`);
@@ -64,11 +75,7 @@ async function call<T>(
 ): Promise<T> {
   if (!allowed.includes(endpoint)) throw new Error('Неизвестный эндпойнт');
   const safeCoords = validateCoords(coords);
-  const url = buildEndpointUrl(endpoint);
-  url.searchParams.append(
-    endpoint === 'nearest' ? 'point' : 'points',
-    safeCoords,
-  );
+  const url = buildEndpointUrl(endpoint, safeCoords);
   for (const [k, v] of Object.entries(params))
     url.searchParams.append(k, String(v));
   const key = buildCacheKey(endpoint, safeCoords, params);
@@ -125,10 +132,7 @@ export async function getRouteDistance(
   const key = buildCacheKey('route', coords, {});
   const cached = await cacheGet<RouteDistance>(key);
   if (cached) return cached;
-  const routeBase = buildEndpointUrl('route');
-  const routeUrl = new URL(routeBase.toString());
-  const normalizedPath = routeUrl.pathname.replace(/\/+$/, '');
-  routeUrl.pathname = `${normalizedPath}/${coords}`;
+  const routeUrl = buildEndpointUrl('route', coords);
   routeUrl.searchParams.set('overview', 'false');
   routeUrl.searchParams.set('annotations', 'distance');
   routeUrl.searchParams.set('steps', 'false');

@@ -1,0 +1,27 @@
+diff --git a/apps/web/src/pages/Logistics.tsx b/apps/web/src/pages/Logistics.tsx
+index 5d6da61..2edc6b0 100644
+--- a/apps/web/src/pages/Logistics.tsx
++++ b/apps/web/src/pages/Logistics.tsx
+@@ -2812,13 +2812,6 @@ export default function LogisticsPage() {
+       const feature = event.features?.[0];
+       if (!feature) return;
+       const entity = feature.properties?.entity;
+-      if (entity === 'vehicle') {
+-        const vehicleId = feature.properties?.vehicleId;
+-        if (typeof vehicleId === 'string' && vehicleId) {
+-          toggleSelectedVehicleId(vehicleId);
+-        }
+-        return;
+-      }
+       const taskId = feature.properties?.taskId;
+       if (typeof taskId === 'string' && taskId) {
+         openTask(taskId);
+@@ -2909,7 +2902,7 @@ export default function LogisticsPage() {
+       map.off('mouseenter', TASK_CLUSTER_LAYER_ID, handleEnter);
+       map.off('mouseleave', TASK_CLUSTER_LAYER_ID, handleLeave);
+     };
+-  }, [mapReady, openTask, toggleSelectedVehicleId]);
++    }, [mapReady, openTask]);
+ 
+   React.useEffect(() => {
+     if (!mapReady) return;

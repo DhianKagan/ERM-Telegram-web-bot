@@ -24,14 +24,10 @@ import mapLibrary, {
 } from '../utils/mapLibrary';
 import { findFirstVectorSourceId } from '../utils/vectorSource';
 import type * as GeoJSON from 'geojson';
-import MapLibreDraw from 'maplibre-gl-draw';
-import 'maplibre-gl-draw/dist/mapbox-gl-draw.css';
 import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/useAuth';
 import useTasks from '../context/useTasks';
-import useIntervalEffect from '../hooks/useIntervalEffect';
 import useI18nRef from '../hooks/useI18nRef';
-import { listFleetVehicles } from '../services/fleets';
 import { subscribeLogisticsEvents } from '../services/logisticsEvents';
 import {
   MAP_ATTRIBUTION,
@@ -47,11 +43,9 @@ import {
   MAP_ADDRESSES_PMTILES_SOURCE,
 } from '../config/map';
 import { insert3dBuildingsLayer } from '../utils/insert3dBuildingsLayer';
-import { customTheme } from '../utils/drawTheme';
 import {
   TASK_STATUSES,
   type Coords,
-  type FleetVehicleDto,
   type RoutePlan,
   type RoutePlanStatus,
 } from 'shared';
@@ -62,12 +56,6 @@ import {
   type RoutePlanUpdatePayload,
 } from '../services/routePlans';
 import type { TaskRow } from '../columns/taskColumns';
-import {
-  computeGeoZoneMetrics,
-  isPolygonGeometry,
-  pointWithinGeometry,
-  type GeoZoneFeature,
-} from '../utils/geozones';
 import haversine from '../utils/haversine';
 
 type RouteTask = TaskRow & {
@@ -87,8 +75,6 @@ type LayerVisibilityState = {
   optimized: boolean;
 };
 
-type DrawFeatureEvent = { features?: GeoJSON.Feature[] };
-type DrawModeChangeEvent = { mode?: string };
 type GlobalRuntime = {
   process?: { env?: Record<string, string | undefined> };
 };
@@ -107,8 +93,6 @@ const DEFAULT_LAYER_VISIBILITY: LayerVisibilityState = {
 };
 
 const LOGISTICS_EVENT_DEBOUNCE_MS = getNodeEnv() === 'test' ? 0 : 400;
-
-export const LOGISTICS_FLEET_POLL_INTERVAL_MS = 15_000;
 
 const ROUTE_FETCH_CONCURRENCY = 4;
 
@@ -189,22 +173,6 @@ const TASK_TYPE_COLOR_PALETTE = [
 
 const VEHICLE_TASK_TYPE_KEY = 'vehicle';
 const VEHICLE_TASK_TYPE_LABEL = 'Транспорт';
-
-type GeoZoneMetricsState = {
-  areaKm2: number | null;
-  perimeterKm: number | null;
-  bufferMeters: number;
-};
-
-type GeoZone = {
-  id: string;
-  drawId: string;
-  name: string;
-  feature: GeoZoneFeature;
-  bufferedFeature: GeoZoneFeature;
-  metrics: GeoZoneMetricsState;
-  createdAt: string;
-};
 
 type StoredMapState = {
   center: [number, number];
@@ -310,9 +278,6 @@ const saveMapState = (value: StoredMapState): void => {
   saveToStorage(MAP_STATE_STORAGE_KEY, value);
 };
 
-const GEO_SOURCE_ID = 'logistics-geozones';
-const GEO_FILL_LAYER_ID = 'logistics-geozones-fill';
-const GEO_OUTLINE_LAYER_ID = 'logistics-geozones-outline';
 const TASK_SOURCE_ID = 'logistics-task-routes';
 const TASK_LAYER_ID = 'logistics-task-routes-line';
 const TASK_CLUSTER_SOURCE_ID = 'logistics-task-markers';
@@ -749,77 +714,6 @@ const getTaskTypeInitial = (label: string): string => {
   return trimmed.charAt(0).toUpperCase();
 };
 
-const getVehicleCoordinates = (
-  vehicle: FleetVehicleDto,
-): [number, number] | null => {
-  const position = (vehicle as Record<string, unknown>).position as
-    | { lat?: number; lon?: number; lng?: number; long?: number }
-    | undefined;
-  if (!position) return null;
-  const latCandidate =
-    typeof position.lat === 'number'
-      ? position.lat
-      : typeof (position as Record<string, unknown>).latitude === 'number'
-        ? ((position as Record<string, unknown>).latitude as number)
-        : null;
-  const lonCandidate =
-    typeof position.lon === 'number'
-      ? position.lon
-      : typeof position.lng === 'number'
-        ? position.lng
-        : typeof position.long === 'number'
-          ? position.long
-          : typeof (position as Record<string, unknown>).longitude === 'number'
-            ? ((position as Record<string, unknown>).longitude as number)
-            : null;
-  if (
-    latCandidate === null ||
-    lonCandidate === null ||
-    !Number.isFinite(latCandidate) ||
-    !Number.isFinite(lonCandidate)
-  ) {
-    return null;
-  }
-  return [lonCandidate, latCandidate];
-};
-
-const filterTasksByGeoZones = (
-  tasks: RouteTask[],
-  zones: GeoZone[],
-  activeZoneIds: string[],
-): RouteTask[] => {
-  if (!zones.length || !activeZoneIds.length) {
-    return tasks;
-  }
-  const activeZones = zones.filter((zone) => activeZoneIds.includes(zone.id));
-  if (!activeZones.length) {
-    return tasks;
-  }
-  return tasks.filter((task) => {
-    const points: [number, number][] = [];
-    const start = toPosition(task.startCoordinates);
-    const finish = toPosition(task.finishCoordinates);
-    if (start) points.push(start);
-    if (finish) points.push(finish);
-    if (!points.length) {
-      return false;
-    }
-    return points.some((point) =>
-      activeZones.some((zone) => {
-        const geometry = isPolygonGeometry(zone.bufferedFeature.geometry)
-          ? zone.bufferedFeature.geometry
-          : isPolygonGeometry(zone.feature.geometry)
-            ? zone.feature.geometry
-            : null;
-        if (!geometry) {
-          return false;
-        }
-        return pointWithinGeometry(point, geometry);
-      }),
-    );
-  });
-};
-
 const toLatLng = (
   position: GeoJSON.Position,
 ): { lat: number; lng: number } => ({
@@ -902,69 +796,6 @@ const getAnimationPoint = (
   };
 };
 
-type BuildGeoZoneOptions = {
-  id: string;
-  drawId: string;
-  name: string;
-  createdAt: string;
-  geometry: GeoJSON.Polygon | GeoJSON.MultiPolygon;
-  properties?: GeoJSON.GeoJsonProperties;
-  active: boolean;
-  bufferMeters?: number;
-};
-
-const buildGeoZone = ({
-  id,
-  drawId,
-  name,
-  createdAt,
-  geometry,
-  properties = {},
-  active,
-  bufferMeters,
-}: BuildGeoZoneOptions): GeoZone => {
-  const baseProperties: GeoJSON.GeoJsonProperties = {
-    ...properties,
-    zoneId: id,
-    active,
-  };
-  const baseFeature: GeoZoneFeature = {
-    type: 'Feature',
-    geometry,
-    properties: baseProperties,
-  };
-  const metricsResult = computeGeoZoneMetrics(baseFeature, bufferMeters);
-  const metricsProperties: GeoJSON.GeoJsonProperties = {
-    ...baseProperties,
-    areaKm2: metricsResult.areaKm2 ?? undefined,
-    perimeterKm: metricsResult.perimeterKm ?? undefined,
-    bufferMeters: metricsResult.bufferMeters,
-  };
-  const feature: GeoZoneFeature = {
-    type: 'Feature',
-    geometry,
-    properties: metricsProperties,
-  };
-  const bufferedFeature: GeoZoneFeature = {
-    type: 'Feature',
-    geometry: metricsResult.bufferedGeometry,
-    properties: metricsProperties,
-  };
-  return {
-    id,
-    drawId,
-    name,
-    createdAt,
-    feature,
-    bufferedFeature,
-    metrics: {
-      areaKm2: metricsResult.areaKm2,
-      perimeterKm: metricsResult.perimeterKm,
-      bufferMeters: metricsResult.bufferMeters,
-    },
-  };
-};
-
 const MAP_CENTER_LNG_LAT: [number, number] = [
   MAP_DEFAULT_CENTER[0],
   MAP_DEFAULT_CENTER[1],
@@ -1008,7 +839,6 @@ export default function LogisticsPage() {
   const attributionControlRef = React.useRef<AttributionControl | null>(null);
   const attributionAddedRef = React.useRef(false);
   const mapContainerRef = React.useRef<HTMLDivElement | null>(null);
-  const drawRef = React.useRef<MapLibreDraw | null>(null);
   const osrmWarningShownRef = React.useRef(false);
   const routeCacheSignatureRef = React.useRef('');
   const persistedLayerVisibilityRef = React.useRef<LayerVisibilityState | null>(
@@ -1065,26 +895,6 @@ export default function LogisticsPage() {
     routes: AnimatedRoute[];
   }>({ frameId: null, lastTimestamp: null, routes: [] });
   const initialMapStateAppliedRef = React.useRef(false);
-  const [availableVehicles, setAvailableVehicles] = React.useState<
-    FleetVehicleDto[]
-  >([]);
-  const [fleetError, setFleetError] = React.useState('');
-  const [vehiclesHint, setVehiclesHint] = React.useState('');
-  const [vehiclesLoading, setVehiclesLoading] = React.useState(false);
-  const [selectedVehicleId, setSelectedVehicleIdState] = React.useState<
-    string | null
-  >(() => {
-    if (typeof window === 'undefined') {
-      return null;
-    }
-    try {
-      const params = new URLSearchParams(window.location.search);
-      const initial = params.get('selectedVehicleId');
-      return initial && initial.trim() ? initial.trim() : null;
-    } catch {
-      return null;
-    }
-  });
   const [layerVisibility, setLayerVisibility] =
     React.useState<LayerVisibilityState>(
       persistedLayerVisibilityRef.current ?? DEFAULT_LAYER_VISIBILITY,
@@ -1102,28 +912,14 @@ export default function LogisticsPage() {
     ids: string[];
     center: GeoJSON.Position | null;
   } | null>(null);
-  const [geoZones, setGeoZones] = React.useState<GeoZone[]>([]);
-  const [activeGeoZoneIds, setActiveGeoZoneIds] = React.useState<string[]>([]);
-  const [geoZonesEnabled, setGeoZonesEnabled] = React.useState(true);
-  const [isDrawing, setIsDrawing] = React.useState(false);
   const [optimizedRoutesGeoJSON, setOptimizedRoutesGeoJSON] = React.useState<
     GeoJSON.FeatureCollection<GeoJSON.LineString>
   >(createEmptyCollection<GeoJSON.LineString>());
   const [page, setPage] = React.useState(0);
-  const hasLoadedFleetRef = React.useRef(false);
   const markerIconCacheRef = React.useRef<Set<string>>(new Set());
   const navigate = useNavigate();
   const location = useLocation();
   const [params] = useSearchParams();
-  const withTrack = React.useMemo(() => {
-    try {
-      const searchParams = new URLSearchParams(location.search);
-      const raw = searchParams.get('withTrack');
-      return raw === 'true' || raw === '1';
-    } catch {
-      return false;
-    }
-  }, [location.search]);
   const hasDialog = params.has('task') || params.has('newTask');
   const { user } = useAuth();
   const { controller } = useTasks();
@@ -1131,85 +927,6 @@ export default function LogisticsPage() {
   React.useEffect(() => {
     saveLayerVisibility(layerVisibility);
   }, [layerVisibility]);
-  React.useEffect(() => {
-    try {
-      const searchParams = new URLSearchParams(location.search);
-      const raw = searchParams.get('selectedVehicleId');
-      const normalized = raw && raw.trim() ? raw.trim() : null;
-      setSelectedVehicleIdState((current) =>
-        current === normalized ? current : normalized,
-      );
-    } catch {
-      setSelectedVehicleIdState((current) => current);
-    }
-  }, [location.search]);
-  const syncSelectedVehicleId = React.useCallback(
-    (updater: (current: string | null) => string | null) => {
-      setSelectedVehicleIdState((current) => {
-        const nextRaw = updater(current);
-        const next = nextRaw && nextRaw.trim() ? nextRaw.trim() : null;
-        if (current === next) {
-          return current;
-        }
-        if (
-          typeof window !== 'undefined' &&
-          typeof window.history?.replaceState === 'function'
-        ) {
-          try {
-            const url = new URL(window.location.href);
-            if (next) {
-              url.searchParams.set('selectedVehicleId', next);
-            } else {
-              url.searchParams.delete('selectedVehicleId');
-            }
-            window.history.replaceState(
-              window.history.state,
-              '',
-              `${url.pathname}${url.search}${url.hash}`,
-            );
-          } catch {
-            /* игнорируем ошибки построения URL */
-          }
-        }
-        return next;
-      });
-    },
-    [],
-  );
-  const setSelectedVehicleId = React.useCallback(
-    (value: string | null) => {
-      syncSelectedVehicleId(() => value);
-    },
-    [syncSelectedVehicleId],
-  );
-  const toggleSelectedVehicleId = React.useCallback(
-    (value: string) => {
-      syncSelectedVehicleId((current) => (current === value ? null : value));
-    },
-    [syncSelectedVehicleId],
-  );
-  const vehiclesWithCoordinates = React.useMemo(
-    () =>
-      availableVehicles.filter(
-        (vehicle) => getVehicleCoordinates(vehicle) !== null,
-      ),
-    [availableVehicles],
-  );
-  const selectedVehicle = React.useMemo(
-    () =>
-      availableVehicles.find((vehicle) => vehicle.id === selectedVehicleId) ??
-      null,
-    [availableVehicles, selectedVehicleId],
-  );
-  React.useEffect(() => {
-    if (!selectedVehicleId) {
-      return;
-    }
-    if (availableVehicles.some((vehicle) => vehicle.id === selectedVehicleId)) {
-      return;
-    }
-    setSelectedVehicleId(null);
-  }, [availableVehicles, selectedVehicleId, setSelectedVehicleId]);
   const hiddenTaskTypesSet = React.useMemo(
     () => new Set(hiddenTaskTypes),
     [hiddenTaskTypes],
@@ -1228,11 +945,8 @@ export default function LogisticsPage() {
   );
 
   const filteredTasksByZone = React.useMemo(
-    () =>
-      geoZonesEnabled
-        ? filterTasksByGeoZones(allRouteTasks, geoZones, activeGeoZoneIds)
-        : allRouteTasks,
-    [activeGeoZoneIds, allRouteTasks, geoZones, geoZonesEnabled],
+    () => allRouteTasks,
+    [allRouteTasks],
   );
 
   const taskRouteStatusMap = React.useMemo(() => {
@@ -1348,19 +1062,8 @@ export default function LogisticsPage() {
         });
       }
     });
-    if (vehiclesWithCoordinates.length) {
-      const entry = entries.get('vehicle');
-      if (entry) {
-        entry.count += vehiclesWithCoordinates.length;
-      } else {
-        entries.set('vehicle', {
-          count: vehiclesWithCoordinates.length,
-          color: getRouteStatusColor('vehicle'),
-        });
-      }
-    }
     return entries;
-  }, [filteredTasksByZone, taskRouteStatusMap, vehiclesWithCoordinates]);
+  }, [filteredTasksByZone, taskRouteStatusMap]);
 
   const transportMetadata = React.useMemo(() => {
     const entries = new Map<
@@ -1379,19 +1082,8 @@ export default function LogisticsPage() {
         entries.set(key, { label: normalized, count: 1, color });
       }
     });
-    vehiclesWithCoordinates.forEach((vehicle) => {
-      const label = normalizeTransportType(vehicle.transportType ?? '');
-      const key = toKey(label);
-      const color = getTransportColor(label);
-      const entry = entries.get(key);
-      if (entry) {
-        entry.count += 1;
-      } else {
-        entries.set(key, { label, count: 1, color });
-      }
-    });
     return entries;
-  }, [filteredTasksByZone, vehiclesWithCoordinates]);
+  }, [filteredTasksByZone]);
 
   const taskTypeMetadata = React.useMemo(() => {
     const counts = new Map<string, { label: string; count: number }>();
@@ -1405,12 +1097,6 @@ export default function LogisticsPage() {
         counts.set(key, { label, count: 1 });
       }
     });
-    if (vehiclesWithCoordinates.length) {
-      counts.set(VEHICLE_TASK_TYPE_KEY, {
-        label: VEHICLE_TASK_TYPE_LABEL,
-        count: vehiclesWithCoordinates.length,
-      });
-    }
     const sortedKeys = Array.from(counts.keys()).sort();
     const entries = new Map<
       string,
@@ -1424,7 +1110,7 @@ export default function LogisticsPage() {
       entries.set(key, { label: meta.label, count: meta.count, color });
     });
     return entries;
-  }, [filteredTasksByZone, vehiclesWithCoordinates]);
+  }, [filteredTasksByZone]);
 
   const routeStatusEntries = React.useMemo(
     () =>
@@ -1534,48 +1220,6 @@ export default function LogisticsPage() {
         });
       }
     });
-    vehiclesWithCoordinates.forEach((vehicle) => {
-      const coordinates = getVehicleCoordinates(vehicle);
-      if (!coordinates) return;
-      const transportLabel = normalizeTransportType(
-        vehicle.transportType ?? '',
-      );
-      const transportKey = toKey(transportLabel);
-      const routeStatusKey: RouteStatusFilterKey = 'vehicle';
-      if (hiddenRouteStatusesSet.has(routeStatusKey)) return;
-      if (hiddenTransportTypesSet.has(transportKey)) return;
-      if (hiddenTaskTypesSet.has(VEHICLE_TASK_TYPE_KEY)) return;
-      const transportColor = getTransportColor(transportLabel);
-      const iconText = getTaskTypeInitial(VEHICLE_TASK_TYPE_LABEL);
-      const textColor = getContrastTextColor(transportColor);
-      const typeColor =
-        taskTypeMetadata.get(VEHICLE_TASK_TYPE_KEY)?.color ?? '#0f172a';
-      const iconId = buildMarkerIconId(
-        VEHICLE_TASK_TYPE_KEY,
-        routeStatusKey,
-        transportKey,
-        'vehicle',
-      );
-      const title = vehicle.name;
-      const label = title.length > 28 ? `${title.slice(0, 25)}…` : title;
-      appendFeature(coordinates, {
-        entity: 'vehicle',
-        vehicleId: vehicle.id,
-        title,
-        label,
-        routeStatus: routeStatusKey,
-        transportType: transportLabel,
-        taskType: VEHICLE_TASK_TYPE_LABEL,
-        pointRole: 'vehicle',
-        iconId,
-        iconFill: transportColor,
-        iconStroke: getRouteStatusColor(routeStatusKey),
-        iconText,
-        iconTextColor: textColor,
-        iconAccent: typeColor,
-        selected: selectedVehicleId === vehicle.id,
-      });
-    });
     return {
       type: 'FeatureCollection' as const,
       features,
@@ -1588,8 +1232,6 @@ export default function LogisticsPage() {
     selectedTaskIdsSet,
     taskRouteStatusMap,
     taskTypeMetadata,
-    vehiclesWithCoordinates,
-    selectedVehicleId,
   ]);
 
   React.useEffect(() => {
@@ -1968,30 +1610,6 @@ export default function LogisticsPage() {
     [],
   );
 
-  const handleStartDrawing = React.useCallback(() => {
-    if (!geoZonesEnabled) {
-      return;
-    }
-    const draw = drawRef.current;
-    if (!draw) return;
-    draw.changeMode('draw_polygon');
-  }, [geoZonesEnabled]);
-
-  const handleToggleZone = React.useCallback(
-    (zoneId: string, checked: boolean) => {
-      setActiveGeoZoneIds((prev) => {
-        const next = new Set(prev);
-        if (checked) {
-          next.add(zoneId);
-        } else {
-          next.delete(zoneId);
-        }
-        return Array.from(next);
-      });
-    },
-    [],
-  );
-
   const handleRouteStatusVisibilityChange = React.useCallback(
     (status: RouteStatusFilterKey, visible: boolean) => {
       setHiddenRouteStatuses((prev) => {
@@ -2039,31 +1657,6 @@ export default function LogisticsPage() {
 
   const handleClearClusterSelection = React.useCallback(() => {
     setClusterSelection(null);
-  }, []);
-
-  const handleRemoveZone = React.useCallback((zone: GeoZone) => {
-    const removeFromState = () => {
-      setGeoZones((prev) => prev.filter((item) => item.id !== zone.id));
-      setActiveGeoZoneIds((prev) => prev.filter((id) => id !== zone.id));
-    };
-
-    const draw = drawRef.current;
-    if (!draw) {
-      removeFromState();
-      return;
-    }
-
-    const hadFeature = Boolean(draw.get(zone.drawId));
-    const deleted = draw.delete(zone.drawId);
-
-    if (!hadFeature) {
-      removeFromState();
-      return;
-    }
-
-    if (Array.isArray(deleted) ? deleted.length === 0 : !deleted) {
-      removeFromState();
-    }
   }, []);
 
   const handleSavePlan = React.useCallback(async () => {
@@ -2287,62 +1880,14 @@ export default function LogisticsPage() {
     });
   }, [controller, filterRouteTasks, user]);
 
-  const loadFleetVehicles = React.useCallback(async () => {
-    if (role !== 'admin') return;
-    setVehiclesLoading(true);
-    setVehiclesHint('');
-    setFleetError('');
-    try {
-      const data = await listFleetVehicles('', 1, 100);
-      setAvailableVehicles(data.items);
-      if (!data.items.length) {
-        setVehiclesHint(tRef.current('logistics.noVehicles'));
-        return;
-      }
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : tRef.current('logistics.loadError');
-      setVehiclesHint(message);
-      setAvailableVehicles([]);
-      setFleetError(message);
-    } finally {
-      setVehiclesLoading(false);
-    }
-  }, [role, tRef]);
-
   const refreshAll = React.useCallback(() => {
     load();
-    if (role === 'admin') {
-      void loadFleetVehicles();
-    }
-  }, [load, loadFleetVehicles, role]);
-
-  const refreshFleet = React.useCallback(() => {
-    if (role === 'admin') {
-      void loadFleetVehicles();
-    }
-  }, [loadFleetVehicles, role]);
-
-  useIntervalEffect(
-    () => {
-      if (role === 'admin') {
-        void loadFleetVehicles();
-      }
-    },
-    LOGISTICS_FLEET_POLL_INTERVAL_MS,
-    {
-      enabled: role === 'admin' && withTrack,
-      deps: [loadFleetVehicles, role, withTrack],
-    },
-  );
+  }, [load]);
 
   React.useEffect(() => {
     const pending = {
       tasks: false,
       plan: false,
-      fleet: false,
     };
     let isActive = true;
     let timer: ReturnType<typeof setTimeout> | null = null;
@@ -2359,21 +1904,15 @@ export default function LogisticsPage() {
       if (!isActive) {
         pending.tasks = false;
         pending.plan = false;
-        pending.fleet = false;
         return;
       }
       const shouldRefreshTasks = pending.tasks;
       const shouldRefreshPlan = pending.plan;
-      const shouldRefreshFleet = pending.fleet;
       pending.tasks = false;
       pending.plan = false;
-      pending.fleet = false;
 
       if (shouldRefreshTasks) {
         load();
-      }
-      if (shouldRefreshFleet) {
-        refreshFleet();
       }
       if (shouldRefreshPlan) {
         void loadPlan();
@@ -2396,9 +1935,7 @@ export default function LogisticsPage() {
         case 'logistics.init':
           pending.tasks = false;
           pending.plan = false;
-          pending.fleet = false;
           load();
-          refreshFleet();
           void loadPlan();
           return;
         case 'tasks.changed':
@@ -2423,7 +1960,7 @@ export default function LogisticsPage() {
       clearTimer();
       unsubscribe();
     };
-  }, [load, loadPlan, refreshFleet]);
+  }, [load, loadPlan]);
 
   const calculate = React.useCallback(async () => {
     const ids = sorted.map((t) => t._id);
@@ -2592,34 +2129,6 @@ export default function LogisticsPage() {
   }, [displayedSignature]);
 
   React.useEffect(() => {
-    const translate = tRef.current;
-    if (role !== 'admin') {
-      hasLoadedFleetRef.current = false;
-      setAvailableVehicles([]);
-      setFleetError(role === 'manager' ? translate('logistics.adminOnly') : '');
-      setVehiclesHint(role ? translate('logistics.noAccess') : '');
-      setSelectedVehicleId(null);
-      return;
-    }
-    setVehiclesHint('');
-    setFleetError('');
-    if (!hasLoadedFleetRef.current) {
-      hasLoadedFleetRef.current = true;
-      void loadFleetVehicles();
-    }
-  }, [loadFleetVehicles, role]);
-
-  React.useEffect(() => {
-    const translate = tRef.current;
-    if (role !== 'admin') {
-      return;
-    }
-    if (!availableVehicles.length && !fleetError && !vehiclesLoading) {
-      setVehiclesHint(translate('logistics.noVehicles'));
-    }
-  }, [availableVehicles.length, fleetError, role, vehiclesLoading]);
-
-  React.useEffect(() => {
     if (mapRef.current) return;
 
     let cancelled = false;
@@ -2701,14 +2210,6 @@ export default function LogisticsPage() {
         mapInstance.addControl(attributionControlRef.current, 'bottom-right');
         attributionAddedRef.current = true;
       }
-      const draw = new MapLibreDraw({
-        displayControlsDefault: false,
-        controls: { polygon: true, trash: true },
-        defaultMode: 'simple_select',
-        styles: customTheme,
-      });
-      drawRef.current = draw;
-      mapInstance.addControl(draw, 'top-left');
       ensureBuildingsLayer = () => {
         if (
           typeof mapInstance.isStyleLoaded === 'function' &&
@@ -2788,48 +2289,6 @@ export default function LogisticsPage() {
       handleLoad = () => {
         ensureBuildingsLayer?.();
         void ensureAddressLayer?.();
-        mapInstance.addSource(GEO_SOURCE_ID, {
-          type: 'geojson',
-          data: createEmptyCollection(),
-        });
-        mapInstance.addLayer({
-          id: GEO_FILL_LAYER_ID,
-          type: 'fill',
-          source: GEO_SOURCE_ID,
-          paint: {
-            'fill-color': [
-              'case',
-              ['boolean', ['get', 'active'], false],
-              'rgba(37, 99, 235, 0.35)',
-              'rgba(148, 163, 184, 0.2)',
-            ],
-            'fill-opacity': [
-              'case',
-              ['boolean', ['get', 'active'], false],
-              0.4,
-              0.2,
-            ],
-          },
-        });
-        mapInstance.addLayer({
-          id: GEO_OUTLINE_LAYER_ID,
-          type: 'line',
-          source: GEO_SOURCE_ID,
-          paint: {
-            'line-color': [
-              'case',
-              ['boolean', ['get', 'active'], false],
-              '#2563eb',
-              '#94a3b8',
-            ],
-            'line-width': [
-              'case',
-              ['boolean', ['get', 'active'], false],
-              2.5,
-              1.5,
-            ],
-          },
-        });
         mapInstance.addSource(OPT_SOURCE_ID, {
           type: 'geojson',
           data: createEmptyCollection(),
@@ -3137,189 +2596,6 @@ export default function LogisticsPage() {
   React.useEffect(() => {
     if (!mapReady) return;
     const map = mapRef.current;
-    const draw = drawRef.current;
-    if (!map || !draw) return;
-    const createdZones: GeoZone[] = [];
-    const updatedZones = new Map<string, GeoZoneFeature>();
-
-    const handleCreate: Listener = (event) => {
-      const { features = [] } = event as DrawFeatureEvent;
-      createdZones.length = 0;
-      setGeoZones((prev) => {
-        const base = [...prev];
-        const baseLength = prev.length;
-        const now = new Date().toISOString();
-        for (const feature of features) {
-          if (!feature || !isPolygonGeometry(feature.geometry)) continue;
-          const drawId =
-            typeof feature.id === 'string'
-              ? feature.id
-              : feature.id != null
-                ? String(feature.id)
-                : `draw-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-          const zoneId =
-            typeof crypto !== 'undefined' &&
-            typeof crypto.randomUUID === 'function'
-              ? crypto.randomUUID()
-              : `zone-${Date.now()}-${Math.random().toString(16).slice(2)}`;
-          const name = tRef.current('logistics.geozoneDefaultName', {
-            index: baseLength + createdZones.length + 1,
-          });
-          const zone = buildGeoZone({
-            id: zoneId,
-            drawId,
-            name,
-            createdAt: now,
-            geometry: feature.geometry,
-            properties: feature.properties ?? {},
-            active: true,
-          });
-          createdZones.push(zone);
-          base.push(zone);
-        }
-        return base;
-      });
-      if (createdZones.length) {
-        setActiveGeoZoneIds((prev) => {
-          const next = new Set(prev);
-          createdZones.forEach((zone) => next.add(zone.id));
-          return Array.from(next);
-        });
-      }
-    };
-
-    const handleDelete: Listener = (event) => {
-      const { features = [] } = event as DrawFeatureEvent;
-      const removedDrawIds = new Set<string>();
-      for (const feature of features) {
-        if (!feature) continue;
-        const drawId =
-          typeof feature.id === 'string'
-            ? feature.id
-            : feature.id != null
-              ? String(feature.id)
-              : '';
-        if (drawId) {
-          removedDrawIds.add(drawId);
-        }
-      }
-      if (!removedDrawIds.size) {
-        return;
-      }
-      const removedZoneIds: string[] = [];
-      setGeoZones((prev) => {
-        const next = prev.filter((zone) => {
-          const shouldRemove = removedDrawIds.has(zone.drawId);
-          if (shouldRemove) {
-            removedZoneIds.push(zone.id);
-          }
-          return !shouldRemove;
-        });
-        return next;
-      });
-      if (removedZoneIds.length) {
-        setActiveGeoZoneIds((prev) =>
-          prev.filter((id) => !removedZoneIds.includes(id)),
-        );
-      }
-    };
-
-    const handleUpdate: Listener = (event) => {
-      const { features = [] } = event as DrawFeatureEvent;
-      updatedZones.clear();
-      for (const feature of features) {
-        if (!feature || !isPolygonGeometry(feature.geometry)) continue;
-        const drawId =
-          typeof feature.id === 'string'
-            ? feature.id
-            : feature.id != null
-              ? String(feature.id)
-              : '';
-        if (!drawId) continue;
-        updatedZones.set(drawId, {
-          type: 'Feature',
-          geometry: feature.geometry,
-          properties: { ...(feature.properties ?? {}) },
-        });
-      }
-      if (!updatedZones.size) return;
-      setGeoZones((prev) =>
-        prev.map((zone) => {
-          const updated = updatedZones.get(zone.drawId);
-          if (!updated) {
-            return zone;
-          }
-          if (!isPolygonGeometry(updated.geometry)) {
-            return zone;
-          }
-          return buildGeoZone({
-            id: zone.id,
-            drawId: zone.drawId,
-            name: zone.name,
-            createdAt: zone.createdAt,
-            geometry: updated.geometry,
-            properties: updated.properties ?? zone.feature.properties ?? {},
-            active: activeGeoZoneIds.includes(zone.id),
-            bufferMeters: zone.metrics.bufferMeters,
-          });
-        }),
-      );
-    };
-
-    const handleModeChange: Listener = (event) => {
-      const { mode } = event as DrawModeChangeEvent;
-      setIsDrawing(mode === 'draw_polygon');
-    };
-
-    map.on('draw.create', handleCreate);
-    map.on('draw.delete', handleDelete);
-    map.on('draw.update', handleUpdate);
-    map.on('draw.modechange', handleModeChange);
-
-    return () => {
-      map.off('draw.create', handleCreate);
-      map.off('draw.delete', handleDelete);
-      map.off('draw.update', handleUpdate);
-      map.off('draw.modechange', handleModeChange);
-    };
-  }, [activeGeoZoneIds, mapReady]);
-
-  React.useEffect(() => {
-    if (!mapReady) return;
-    const draw = drawRef.current;
-    if (!draw) return;
-    if (!geoZonesEnabled) {
-      draw.changeMode('simple_select');
-    }
-  }, [geoZonesEnabled, mapReady]);
-
-  React.useEffect(() => {
-    if (!mapReady) return;
-    const map = mapRef.current;
-    if (!map) return;
-    const source = map.getSource(GEO_SOURCE_ID) as GeoJSONSource | undefined;
-    if (!source) return;
-    const features = geoZonesEnabled
-      ? geoZones.map((zone) => ({
-          ...zone.feature,
-          id: zone.drawId,
-          properties: {
-            ...(zone.feature.properties ?? {}),
-            zoneId: zone.id,
-            name: zone.name,
-            active: activeGeoZoneIds.includes(zone.id),
-          },
-        }))
-      : [];
-    source.setData({
-      type: 'FeatureCollection',
-      features,
-    });
-  }, [activeGeoZoneIds, geoZones, geoZonesEnabled, mapReady]);
-
-  React.useEffect(() => {
-    if (!mapReady) return;
-    const map = mapRef.current;
     if (!map) return;
     const routesSource = map.getSource(TASK_SOURCE_ID) as
       | GeoJSONSource
@@ -3536,13 +2812,6 @@ export default function LogisticsPage() {
       const feature = event.features?.[0];
       if (!feature) return;
       const entity = feature.properties?.entity;
-      if (entity === 'vehicle') {
-        const vehicleId = feature.properties?.vehicleId;
-        if (typeof vehicleId === 'string' && vehicleId) {
-          toggleSelectedVehicleId(vehicleId);
-        }
-        return;
-      }
       const taskId = feature.properties?.taskId;
       if (typeof taskId === 'string' && taskId) {
         openTask(taskId);
@@ -3633,7 +2902,7 @@ export default function LogisticsPage() {
       map.off('mouseenter', TASK_CLUSTER_LAYER_ID, handleEnter);
       map.off('mouseleave', TASK_CLUSTER_LAYER_ID, handleLeave);
     };
-  }, [mapReady, openTask, toggleSelectedVehicleId]);
+    }, [mapReady, openTask]);
 
   React.useEffect(() => {
     if (!mapReady) return;
@@ -3680,7 +2949,7 @@ export default function LogisticsPage() {
           <p className="max-w-3xl text-sm text-muted-foreground">
             {t('logistics.pageLead', {
               defaultValue:
-                'Планируйте маршруты, управляйте автопарком и отслеживайте задачи на одной карте.',
+                'Планируйте маршруты между точками задач и контролируйте старт и финиш на одной карте.',
             })}
           </p>
         </div>
@@ -4296,288 +3565,6 @@ export default function LogisticsPage() {
           </div>
         </div>
         <aside className="space-y-4">
-          {role === 'admin' ? (
-            <CollapsibleCard
-              title={t('logistics.transport')}
-              description={t('logistics.transportHint', {
-                defaultValue: 'Автопарк с координатами транспорта и пробегом.',
-              })}
-              actions={
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={refreshFleet}
-                  disabled={vehiclesLoading}
-                >
-                  {vehiclesLoading
-                    ? t('loading')
-                    : t('logistics.refreshFleet', {
-                        defaultValue: 'Обновить автопарк',
-                      })}
-                </Button>
-              }
-              defaultOpen={availableVehicles.length > 0}
-              toggleLabels={collapseToggleLabels}
-            >
-              {fleetError ? (
-                <div className="text-sm text-red-600">{fleetError}</div>
-              ) : null}
-              {vehiclesHint && !availableVehicles.length ? (
-                <div className="text-sm text-muted-foreground">
-                  {vehiclesHint}
-                </div>
-              ) : null}
-              {availableVehicles.length ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[480px] table-fixed border-separate border-spacing-y-1 text-xs sm:text-sm">
-                    <thead>
-                      <tr className="text-left text-muted-foreground">
-                        <th className="rounded-l-md bg-slate-50 px-3 py-2 font-medium uppercase tracking-wide text-[0.7rem] dark:bg-slate-800/70">
-                          {t('logistics.vehicleColumnName', {
-                            defaultValue: 'Транспорт',
-                          })}
-                        </th>
-                        <th className="bg-slate-50 px-3 py-2 font-medium uppercase tracking-wide text-[0.7rem] dark:bg-slate-800/70">
-                          {t('logistics.vehicleColumnPlate', {
-                            defaultValue: 'Госномер',
-                          })}
-                        </th>
-                        <th className="bg-slate-50 px-3 py-2 font-medium uppercase tracking-wide text-[0.7rem] dark:bg-slate-800/70">
-                          {t('logistics.vehicleColumnType', {
-                            defaultValue: 'Тип',
-                          })}
-                        </th>
-                        <th className="bg-slate-50 px-3 py-2 font-medium uppercase tracking-wide text-[0.7rem] dark:bg-slate-800/70">
-                          {t('logistics.vehicleColumnTasks', {
-                            defaultValue: 'Задачи',
-                          })}
-                        </th>
-                        <th className="rounded-r-md bg-slate-50 px-3 py-2 font-medium uppercase tracking-wide text-[0.7rem] dark:bg-slate-800/70">
-                          {t('logistics.vehicleColumnMileage', {
-                            defaultValue: 'Пробег',
-                          })}
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {availableVehicles.map((vehicle) => {
-                        const isSelected = selectedVehicleId === vehicle.id;
-                        const tasksCount = Array.isArray(vehicle.currentTasks)
-                          ? vehicle.currentTasks.length
-                          : null;
-                        const mileageValue =
-                          typeof vehicle.odometerCurrent === 'number' &&
-                          Number.isFinite(vehicle.odometerCurrent)
-                            ? vehicle.odometerCurrent
-                            : null;
-                        return (
-                          <tr
-                            key={vehicle.id}
-                            onClick={() => toggleSelectedVehicleId(vehicle.id)}
-                            className={`bg-white/80 text-sm shadow-sm transition dark:bg-slate-900/60 ${
-                              isSelected
-                                ? 'cursor-pointer ring-2 ring-sky-500'
-                                : 'cursor-pointer hover:bg-slate-100/80'
-                            }`}
-                            data-state={isSelected ? 'selected' : undefined}
-                            aria-selected={isSelected}
-                          >
-                            <td className="rounded-l-md px-3 py-2 font-medium">
-                              {vehicle.name ||
-                                t('logistics.unselectedVehicle', {
-                                  defaultValue: 'Не выбран',
-                                })}
-                            </td>
-                            <td className="px-3 py-2 text-xs text-muted-foreground">
-                              {vehicle.registrationNumber ||
-                                t('logistics.assignDialogUnknown', {
-                                  defaultValue: 'нет данных',
-                                })}
-                            </td>
-                            <td className="px-3 py-2 text-xs text-muted-foreground">
-                              {vehicle.transportType ||
-                                t('logistics.assignDialogUnknown', {
-                                  defaultValue: 'нет данных',
-                                })}
-                            </td>
-                            <td className="px-3 py-2 text-xs text-muted-foreground">
-                              {typeof tasksCount === 'number'
-                                ? t('logistics.vehicleTasksShort', {
-                                    count: tasksCount,
-                                    defaultValue: `${tasksCount}`,
-                                  })
-                                : t('logistics.assignDialogUnknown', {
-                                    defaultValue: 'нет данных',
-                                  })}
-                            </td>
-                            <td className="rounded-r-md px-3 py-2 text-xs text-muted-foreground">
-                              {mileageValue !== null
-                                ? t('logistics.vehicleMileageShort', {
-                                    value: mileageValue,
-                                    defaultValue: `${mileageValue} км`,
-                                  })
-                                : t('logistics.assignDialogUnknown', {
-                                    defaultValue: 'нет данных',
-                                  })}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              ) : null}
-              {selectedVehicle ? (
-                <div className="rounded border border-sky-200 bg-sky-50 px-3 py-2 text-xs text-sky-700">
-                  {t('logistics.selectedVehicle', {
-                    name:
-                      selectedVehicle.name ||
-                      t('logistics.unselectedVehicle', {
-                        defaultValue: 'Не выбран',
-                      }),
-                  })}
-                </div>
-              ) : null}
-            </CollapsibleCard>
-          ) : fleetError ? (
-            <p className="rounded-lg border border-dashed bg-white/40 p-3 text-xs text-muted-foreground">
-              {fleetError}
-            </p>
-          ) : null}
-          <CollapsibleCard
-            title={t('logistics.geozonesTitle')}
-            description={t('logistics.geozonesDescription', {
-              defaultValue:
-                'Геозоны ограничивают задачи выбранными районами. Отключите, если нужно видеть все адреса.',
-            })}
-            actions={
-              <label className="flex items-center gap-2 text-xs font-semibold uppercase text-muted-foreground">
-                <input
-                  type="checkbox"
-                  className="size-4"
-                  checked={geoZonesEnabled}
-                  onChange={(event) => setGeoZonesEnabled(event.target.checked)}
-                />
-                <span>
-                  {t('logistics.geozonesToggleLabel', {
-                    defaultValue: 'Геозоны',
-                  })}
-                </span>
-              </label>
-            }
-            defaultOpen={geoZonesEnabled}
-            toggleLabels={collapseToggleLabels}
-          >
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <Button
-                type="button"
-                size="xs"
-                variant="outline"
-                onClick={handleStartDrawing}
-                disabled={!mapReady || !geoZonesEnabled}
-              >
-                {isDrawing
-                  ? t('logistics.geozonesDrawing')
-                  : t('logistics.geozonesDraw')}
-              </Button>
-              {!geoZonesEnabled ? (
-                <span className="text-xs text-muted-foreground">
-                  {t('logistics.geozonesDisabled', {
-                    defaultValue: 'Фильтрация по зонам выключена.',
-                  })}
-                </span>
-              ) : null}
-            </div>
-            {geoZonesEnabled ? (
-              <>
-                <p className="text-xs text-muted-foreground">
-                  {t('logistics.geozonesHint')}
-                </p>
-                {geoZones.length ? (
-                  <ul className="space-y-2 text-sm">
-                    {geoZones.map((zone, index) => {
-                      const isActive = activeGeoZoneIds.includes(zone.id);
-                      return (
-                        <li
-                          key={zone.id}
-                          className="space-y-2 rounded border bg-white/70 p-3 shadow-sm"
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <label className="flex items-center gap-2">
-                              <input
-                                type="checkbox"
-                                className="size-4"
-                                checked={isActive}
-                                disabled={!geoZonesEnabled}
-                                onChange={(event) =>
-                                  handleToggleZone(
-                                    zone.id,
-                                    event.target.checked,
-                                  )
-                                }
-                              />
-                              <span className="font-medium">
-                                {zone.name ||
-                                  t('logistics.geozoneDefaultName', {
-                                    index: index + 1,
-                                  })}
-                              </span>
-                            </label>
-                            <Button
-                              type="button"
-                              size="xs"
-                              variant="ghost"
-                              onClick={() => handleRemoveZone(zone)}
-                            >
-                              {t('logistics.geozoneRemove')}
-                            </Button>
-                          </div>
-                          <div className="text-xs text-muted-foreground">
-                            {isActive
-                              ? t('logistics.geozoneStatusActive')
-                              : t('logistics.geozoneStatusInactive')}
-                          </div>
-                          <div className="flex flex-wrap gap-2 text-[0.7rem] text-muted-foreground">
-                            <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-1">
-                              {t('logistics.geozoneArea', {
-                                value: formatAreaMetric(zone.metrics?.areaKm2),
-                              })}
-                            </span>
-                            <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-1">
-                              {t('logistics.geozonePerimeter', {
-                                value: formatPerimeterMetric(
-                                  zone.metrics?.perimeterKm,
-                                ),
-                              })}
-                            </span>
-                            <span className="inline-flex items-center rounded-full bg-slate-100 px-2 py-1">
-                              {t('logistics.geozoneBuffer', {
-                                value: formatBufferMetric(
-                                  zone.metrics?.bufferMeters,
-                                ),
-                              })}
-                            </span>
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    {t('logistics.geozonesEmpty')}
-                  </p>
-                )}
-              </>
-            ) : (
-              <p className="rounded border border-dashed px-3 py-2 text-xs text-muted-foreground">
-                {t('logistics.geozonesDisabledHint', {
-                  defaultValue:
-                    'Включите переключатель выше, чтобы снова показывать зоны.',
-                })}
-              </p>
-            )}
-          </CollapsibleCard>
           <CollapsibleCard
             title={t('logistics.layersTitle')}
             description={t('logistics.layersSummary', {

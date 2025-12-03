@@ -1,0 +1,81 @@
+diff --git a/apps/api/src/utils/cache.ts b/apps/api/src/utils/cache.ts
+index 63acb49..7c8d2e6 100644
+--- a/apps/api/src/utils/cache.ts
++++ b/apps/api/src/utils/cache.ts
+@@ -1,13 +1,15 @@
+ // Назначение: адаптер кеша в памяти или Redis
+ // Модули: redis
+-import { createClient, RedisClientType } from 'redis';
++import { createClient } from 'redis';
+ 
+ const memory = new Map<string, { expire: number; value: unknown }>();
+ const enabled = process.env.ROUTE_CACHE_ENABLED !== '0';
+ const ttl = Number(process.env.ROUTE_CACHE_TTL || '600');
+ const redisUrl = (process.env.ROUTE_CACHE_REDIS_URL || '').trim();
+ 
+-let clientPromise: Promise<RedisClientType | undefined> | undefined;
++type CacheRedisClient = ReturnType<typeof createClient>;
++
++let clientPromise: Promise<CacheRedisClient | undefined> | undefined;
+ let redisDisabled = false;
+ let redisReady = false;
+ 
+@@ -26,7 +28,7 @@ function validateRedisUrl(value: string): boolean {
+   }
+ }
+ 
+-async function getClient(): Promise<RedisClientType | undefined> {
++async function getClient(): Promise<CacheRedisClient | undefined> {
+   if (!redisUrl || redisDisabled) return undefined;
+   if (!validateRedisUrl(redisUrl)) {
+     redisDisabled = true;
+diff --git a/apps/web/src/layouts/Sidebar.tsx b/apps/web/src/layouts/Sidebar.tsx
+index 2d4a1d6..87d1359 100644
+--- a/apps/web/src/layouts/Sidebar.tsx
++++ b/apps/web/src/layouts/Sidebar.tsx
+@@ -14,7 +14,6 @@ import {
+   XMarkIcon,
+ } from '@heroicons/react/24/outline';
+ import { cn } from '@/lib/utils';
+-import { ARCHIVE_ACCESS, hasAccess } from '../utils/access';
+ 
+ type SidebarItem = {
+   to: string;
+@@ -29,7 +28,6 @@ export default function Sidebar() {
+   const { t } = useTranslation();
+   const role = user?.role || 'user';
+   const access = typeof user?.access === 'number' ? user.access : 0;
+-  const allowArchive = role === 'admin' && hasAccess(access, ARCHIVE_ACCESS);
+ 
+   const baseItems = React.useMemo<SidebarItem[]>(
+     () => [
+@@ -78,14 +76,11 @@ export default function Sidebar() {
+   const items = React.useMemo(() => {
+     if (role === 'admin') {
+       const [kanbanItem, logisticsItem, settingsItem] = adminItems;
+-      const settingsLink = allowArchive
+-        ? { ...settingsItem, to: '/cp/settings?module=archive' }
+-        : settingsItem;
+-      return [...baseItems, kanbanItem, logisticsItem, settingsLink];
++      return [...baseItems, kanbanItem, logisticsItem, settingsItem];
+     }
+     if (role === 'manager') return [...baseItems, ...managerItems];
+     return baseItems;
+-  }, [role, allowArchive, adminItems, baseItems, managerItems]);
++  }, [role, adminItems, baseItems, managerItems]);
+ 
+   return (
+     <aside
+diff --git a/docs/osrm.md b/docs/osrm.md
+index d144be8..a9e2df1 100644
+--- a/docs/osrm.md
++++ b/docs/osrm.md
+@@ -4,6 +4,8 @@
+ 
+ Репозиторий `OSRM-Odessa-Region` содержит обёртку Flask для OSRM и предоставляет HTTP‑интерфейс расчёта маршрутов. Сервис принимает координаты начала и конца и возвращает ответ OSRM.
+ 
++Сервис `router.project-osrm.org` развёрнут командой OSRM на данных OpenStreetMap. Он предоставляет публичную точку доступа к движку, не требуя собственного развёртывания, но остаётся ограниченным по SLA и рекомендует внедрять собственный инстанс для нагруженных систем.
++
+ ## Локальный запуск
+ 
+ ```bash

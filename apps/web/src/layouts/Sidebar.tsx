@@ -14,7 +14,6 @@ import {
   XMarkIcon,
 } from '@heroicons/react/24/outline';
 import { cn } from '@/lib/utils';
-import { ARCHIVE_ACCESS, hasAccess } from '../utils/access';
 
 type SidebarItem = {
   to: string;
@@ -29,7 +28,6 @@ export default function Sidebar() {
   const { t } = useTranslation();
   const role = user?.role || 'user';
   const access = typeof user?.access === 'number' ? user.access : 0;
-  const allowArchive = role === 'admin' && hasAccess(access, ARCHIVE_ACCESS);
 
   const baseItems = React.useMemo<SidebarItem[]>(
     () => [
@@ -78,14 +76,11 @@ export default function Sidebar() {
   const items = React.useMemo(() => {
     if (role === 'admin') {
       const [kanbanItem, logisticsItem, settingsItem] = adminItems;
-      const settingsLink = allowArchive
-        ? { ...settingsItem, to: '/cp/settings?module=archive' }
-        : settingsItem;
-      return [...baseItems, kanbanItem, logisticsItem, settingsLink];
+      return [...baseItems, kanbanItem, logisticsItem, settingsItem];
     }
     if (role === 'manager') return [...baseItems, ...managerItems];
     return baseItems;
-  }, [role, allowArchive, adminItems, baseItems, managerItems]);
+  }, [role, adminItems, baseItems, managerItems]);
 
   return (
     <aside

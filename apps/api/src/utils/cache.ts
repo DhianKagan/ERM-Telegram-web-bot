@@ -1,13 +1,15 @@
 // Назначение: адаптер кеша в памяти или Redis
 // Модули: redis
-import { createClient, RedisClientType } from 'redis';
+import { createClient } from 'redis';
 
 const memory = new Map<string, { expire: number; value: unknown }>();
 const enabled = process.env.ROUTE_CACHE_ENABLED !== '0';
 const ttl = Number(process.env.ROUTE_CACHE_TTL || '600');
 const redisUrl = (process.env.ROUTE_CACHE_REDIS_URL || '').trim();
 
-let clientPromise: Promise<RedisClientType | undefined> | undefined;
+type CacheRedisClient = ReturnType<typeof createClient>;
+
+let clientPromise: Promise<CacheRedisClient | undefined> | undefined;
 let redisDisabled = false;
 let redisReady = false;
 
@@ -26,7 +28,7 @@ function validateRedisUrl(value: string): boolean {
   }
 }
 
-async function getClient(): Promise<RedisClientType | undefined> {
+async function getClient(): Promise<CacheRedisClient | undefined> {
   if (!redisUrl || redisDisabled) return undefined;
   if (!validateRedisUrl(redisUrl)) {
     redisDisabled = true;

@@ -36,6 +36,9 @@ const getRouteCacheTtl = (): number => {
 const routeCache = new Map<string, CacheEntry>();
 const inflightRoutes = new Map<string, Promise<Position[] | null>>();
 
+const buildPointsParam = (start: Point, end: Point): string =>
+  `${start.lng},${start.lat};${end.lng},${end.lat}`;
+
 export const clearRouteCache = (): void => {
   routeCache.clear();
   inflightRoutes.clear();
@@ -57,6 +60,7 @@ export const fetchRouteGeometry = async (
   if (!isValidPoint(start) || !isValidPoint(end)) {
     return null;
   }
+  const pointsParam = buildPointsParam(start, end);
   const cacheEnabled = isRouteCacheEnabled();
   const ttlMs = getRouteCacheTtl();
   const useCache = cacheEnabled && ttlMs > 0;
@@ -75,28 +79,50 @@ export const fetchRouteGeometry = async (
       return inflight;
     }
   }
-  const base =
-    import.meta.env.VITE_ROUTING_URL ||
-    'https://router.project-osrm.org/route/v1/driving';
-  const url = `${base}/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`;
-  const request = fetch(url)
-    .then(async (res) => {
-      if (!res.ok) {
-        throw new Error('OSRM недоступен');
-      }
-      const data = await res.json();
-      const geometry =
-        (data.routes?.[0]?.geometry?.coordinates as Position[] | undefined) ||
-        null;
+  const request = (async () => {
+    const apiGeometry = await fetch(
+      `/api/v1/osrm/geometry?points=${encodeURIComponent(pointsParam)}`,
+      {
+        credentials: 'include',
+      },
+    )
+      .then(async (res) => {
+        if (!res.ok) {
+          throw new Error('OSRM недоступен');
+        }
+        const data = (await res.json()) as { coordinates?: Position[] };
+        return Array.isArray(data.coordinates) ? data.coordinates : null;
+      })
+      .catch(() => null);
+
+    if (apiGeometry) {
+      const expiresAt = now + ttlMs;
       if (useCache) {
-        const expiresAt = now + ttlMs;
-        routeCache.set(cacheKey, { value: geometry, expiresAt });
+        routeCache.set(cacheKey, { value: apiGeometry, expiresAt });
       }
-      return geometry;
-    })
-    .finally(() => {
-      inflightRoutes.delete(cacheKey);
-    });
+      return apiGeometry;
+    }
+
+    const base =
+      import.meta.env.VITE_ROUTING_URL ||
+      'https://router.project-osrm.org/route/v1/driving';
+    const url = `${base}/${pointsParam}?overview=full&geometries=geojson`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error('OSRM недоступен');
+    }
+    const data = await response.json();
+    const geometry =
+      (data.routes?.[0]?.geometry?.coordinates as Position[] | undefined) ||
+      null;
+    if (useCache) {
+      const expiresAt = now + ttlMs;
+      routeCache.set(cacheKey, { value: geometry, expiresAt });
+    }
+    return geometry;
+  })().finally(() => {
+    inflightRoutes.delete(cacheKey);
+  });
   if (useCache) {
     inflightRoutes.set(cacheKey, request);
   }

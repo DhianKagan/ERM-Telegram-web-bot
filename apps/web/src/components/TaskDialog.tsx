@@ -572,6 +572,7 @@ const MapPickerDialog: React.FC<MapPickerDialogProps> = ({
       zoom: initialValue ? Math.max(MAP_DEFAULT_ZOOM, 12) : MAP_DEFAULT_ZOOM,
       maxBounds: MAP_UKRAINE_BOUNDS,
       minZoom: 3,
+      attributionControl: false,
     });
     mapRef.current = map;
     const detachStyleFallback = attachMapStyleFallback(map, {

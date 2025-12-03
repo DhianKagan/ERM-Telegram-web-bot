@@ -17,7 +17,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
-import LogisticsPage, { LOGISTICS_FLEET_POLL_INTERVAL_MS } from './Logistics';
+import LogisticsPage from './Logistics';
 import { MAP_ADDRESSES_PMTILES_URL } from '../config/map';
 import { taskStateController } from '../controllers/taskStateController';
 import type { LogisticsEvent, RoutePlan } from 'shared';
@@ -532,32 +532,6 @@ jest.mock('../services/tasks', () => ({
   fetchTasks: (...args: unknown[]) => fetchTasksMock(...args),
 }));
 
-const baseVehicle = {
-  id: 'veh-1',
-  name: 'Погрузчик',
-  registrationNumber: 'AA 1234 BB',
-  odometerInitial: 1000,
-  odometerCurrent: 1200,
-  mileageTotal: 200,
-  fuelType: 'Бензин' as const,
-  fuelRefilled: 50,
-  fuelAverageConsumption: 0.1,
-  fuelSpentTotal: 20,
-  currentTasks: [] as string[],
-  position: {
-    lat: 10,
-    lon: 20,
-    speed: 12.5,
-    updatedAt: '2099-01-01T00:00:00.000Z',
-  },
-};
-
-const listFleetVehiclesMock = jest.fn();
-
-jest.mock('../services/fleets', () => ({
-  listFleetVehicles: (...args: unknown[]) => listFleetVehiclesMock(...args),
-}));
-
 jest.mock('../services/osrm', () =>
   jest.fn().mockResolvedValue([
     [30, 50],
@@ -915,156 +889,6 @@ describe('LogisticsPage', () => {
         status: 'approved',
       }),
     );
-    listFleetVehiclesMock.mockReset();
-    listFleetVehiclesMock.mockImplementation(() =>
-      resolveWithAct({
-        items: [{ ...baseVehicle }],
-        total: 1,
-        page: 1,
-        limit: 100,
-      }),
-    );
-  });
-
-  it('отображает список транспорта и позволяет вручную обновить', async () => {
-    await renderWithEffects(
-      <MemoryRouter future={{ v7_relativeSplatPath: true }}>
-        <LogisticsPage />
-      </MemoryRouter>,
-    );
-
-    await waitFor(() =>
-      expect(listRoutePlansMock).toHaveBeenCalledWith('draft', 1, 1),
-    );
-
-    await waitFor(() =>
-      expect(screen.getByDisplayValue('Черновик маршрута')).toBeInTheDocument(),
-    );
-
-    await waitFor(() => expect(listFleetVehiclesMock).toHaveBeenCalledTimes(1));
-
-    expect(listFleetVehiclesMock).toHaveBeenCalledWith('', 1, 100);
-
-    expect(screen.getByText('Погрузчик')).toBeInTheDocument();
-
-    await waitFor(() =>
-      expect(
-        taskStateController.getIndexSnapshot('logistics:all'),
-      ).toHaveLength(3),
-    );
-
-    const refreshButton = screen.getByRole('button', {
-      name: 'Обновить автопарк',
-    });
-
-    fireEvent.click(refreshButton);
-
-    await waitFor(() => expect(listFleetVehiclesMock).toHaveBeenCalledTimes(2));
-  });
-
-  it('фильтрует задачи по геозоне и учитывает статусы', async () => {
-    await renderWithEffects(
-      <MemoryRouter future={{ v7_relativeSplatPath: true }}>
-        <LogisticsPage />
-      </MemoryRouter>,
-    );
-
-    const mapModule = jest.requireMock('maplibre-gl');
-    await waitFor(() => expect(mapModule.Map).toHaveBeenCalled());
-    const mapInstance = mapModule.Map.mock.results[0]?.value as any;
-    expect(mapInstance).toBeTruthy();
-
-    await waitFor(() =>
-      expect(
-        taskStateController.getIndexSnapshot('logistics:all'),
-      ).toHaveLength(3),
-    );
-
-    await waitFor(() => {
-      const handlers: Set<(...args: unknown[]) => void> | undefined =
-        mapInstance.__handlers?.get('draw.create');
-      expect(handlers && handlers.size > 0).toBe(true);
-    });
-
-    const polygon = {
-      type: 'Feature' as const,
-      geometry: {
-        type: 'Polygon' as const,
-        coordinates: [
-          [
-            [29.5, 49.5],
-            [29.5, 51.5],
-            [31.5, 51.5],
-            [31.5, 49.5],
-            [29.5, 49.5],
-          ],
-        ],
-      },
-      properties: {},
-    };
-
-    act(() => {
-      mapInstance.__emit('draw.create', { features: [polygon] });
-    });
-
-    const zoneCheckbox = await screen.findByRole('checkbox', {
-      name: 'Зона 1',
-    });
-    expect(zoneCheckbox).not.toBeChecked();
-    expect(await screen.findByText('Неактивна')).toBeInTheDocument();
-    fireEvent.click(zoneCheckbox);
-    expect(zoneCheckbox).toBeChecked();
-    expect(await screen.findByText('Активна')).toBeInTheDocument();
-
-    const areaElement = await screen.findByText(/Площадь:/);
-    expect(areaElement).not.toHaveTextContent('—');
-    expect(screen.getByText(/Периметр:/)).not.toHaveTextContent('—');
-    expect(screen.getByText(/Буфер:/)).not.toHaveTextContent('—');
-
-    const legendHeading = screen.getByRole('heading', { name: 'Легенда' });
-    const legendSection = legendHeading.closest('section');
-    expect(legendSection).toBeTruthy();
-    const legendLists = within(legendSection as HTMLElement).getAllByRole(
-      'list',
-    );
-    const legendList = legendLists[legendLists.length - 1];
-    await waitFor(() =>
-      expect(taskStateController.getIndexSnapshot('logistics:all')).toEqual(
-        expect.arrayContaining([expect.objectContaining({ _id: 't1' })]),
-      ),
-    );
-    const novaLegendItem = within(legendList)
-      .getAllByRole('listitem')
-      .find((item) => item.textContent?.includes('Новая'));
-    expect(novaLegendItem).toBeTruthy();
-    await waitFor(() =>
-      expect(
-        within(novaLegendItem as HTMLElement).getByText('(1)'),
-      ).toBeInTheDocument(),
-    );
-    await waitFor(() => {
-      expect(
-        taskTableBatches.some((batch) =>
-          batch.some((task) => task._id === 't2'),
-        ),
-      ).toBe(true);
-    });
-    await waitFor(() =>
-      expect(
-        taskTableBatches.some((batch) =>
-          batch.some((task) => task._id === 't4'),
-        ),
-      ).toBe(true),
-    );
-
-    const optimizeButton = screen.getByRole('button', {
-      name: 'Просчёт логистики',
-    });
-    fireEvent.click(optimizeButton);
-
-    await waitFor(() =>
-      expect(optimizeRouteMock).toHaveBeenCalledWith(['t1'], 1, 'angle'),
-    );
   });
 
   it('подключает слой адресов поверх дорожных подписей и под крупными метками', async () => {
@@ -1133,12 +957,10 @@ describe('LogisticsPage', () => {
     await waitFor(() =>
       expect(listRoutePlansMock).toHaveBeenCalledWith('draft', 1, 1),
     );
-    await waitFor(() => expect(listFleetVehiclesMock).toHaveBeenCalled());
     expect(logisticsEventsMock.__count()).toBeGreaterThan(0);
 
     fetchTasksMock.mockClear();
     listRoutePlansMock.mockClear();
-    listFleetVehiclesMock.mockClear();
 
     act(() => {
       logisticsEventsMock.__emit({ type: 'logistics.init' } as LogisticsEvent);
@@ -1147,9 +969,6 @@ describe('LogisticsPage', () => {
     await waitFor(() => expect(fetchTasksMock).toHaveBeenCalled());
     await waitFor(() =>
       expect(listRoutePlansMock).toHaveBeenCalledWith('draft', 1, 1),
-    );
-    await waitFor(() =>
-      expect(listFleetVehiclesMock).toHaveBeenCalledWith('', 1, 100),
     );
   });
 
@@ -1213,7 +1032,6 @@ describe('LogisticsPage', () => {
     expect(logisticsEventsMock.__count()).toBeGreaterThan(0);
     fetchTasksMock.mockClear();
     listRoutePlansMock.mockClear();
-    listFleetVehiclesMock.mockClear();
 
     await act(async () => {
       logisticsEventsMock.__emit({ type: 'tasks.changed' } as LogisticsEvent);
@@ -1224,114 +1042,6 @@ describe('LogisticsPage', () => {
     await waitFor(() =>
       expect(listRoutePlansMock).toHaveBeenCalledWith('draft', 1, 1),
     );
-    expect(listFleetVehiclesMock).not.toHaveBeenCalled();
-  });
-
-  it('сохраняет выбор транспорта в history.replaceState', async () => {
-    const replaceStateSpy = jest.spyOn(window.history, 'replaceState');
-    try {
-      await renderWithEffects(
-        <MemoryRouter future={{ v7_relativeSplatPath: true }}>
-          <LogisticsPage />
-        </MemoryRouter>,
-      );
-
-      await waitFor(() => expect(listFleetVehiclesMock).toHaveBeenCalled());
-
-      const vehicleCell = await screen.findByText('Погрузчик', undefined, {
-        timeout: 5000,
-      });
-      const row = vehicleCell.closest('tr');
-      expect(row).toBeTruthy();
-      fireEvent.click(row!);
-
-      await waitFor(() =>
-        expect(
-          screen.getByText('Выбран транспорт: Погрузчик'),
-        ).toBeInTheDocument(),
-      );
-
-      const lastCall = replaceStateSpy.mock.calls.at(-1);
-      expect(lastCall?.[2]).toContain('selectedVehicleId=veh-1');
-
-      replaceStateSpy.mockClear();
-      fireEvent.click(row!);
-
-      await waitFor(() =>
-        expect(
-          screen.queryByText('Выбран транспорт: Погрузчик'),
-        ).not.toBeInTheDocument(),
-      );
-
-      const clearCall = replaceStateSpy.mock.calls.at(-1);
-      expect(clearCall?.[2] ?? '').not.toContain('selectedVehicleId=');
-    } finally {
-      replaceStateSpy.mockRestore();
-    }
-  });
-
-  it('останавливает polling транспорта в скрытой вкладке и возобновляет при возвращении', async () => {
-    jest.useFakeTimers();
-    const hiddenDescriptor = Object.getOwnPropertyDescriptor(
-      document,
-      'hidden',
-    );
-    let hidden = false;
-    Object.defineProperty(document, 'hidden', {
-      configurable: true,
-      get: () => hidden,
-    });
-
-    try {
-      await renderWithEffects(
-        <MemoryRouter
-          future={{ v7_relativeSplatPath: true }}
-          initialEntries={[`/logistics?withTrack=true`]}
-        >
-          <LogisticsPage />
-        </MemoryRouter>,
-      );
-
-      await waitFor(() =>
-        expect(listFleetVehiclesMock).toHaveBeenCalledTimes(1),
-      );
-
-      listFleetVehiclesMock.mockClear();
-      act(() => {
-        jest.advanceTimersByTime(LOGISTICS_FLEET_POLL_INTERVAL_MS);
-      });
-      expect(listFleetVehiclesMock).toHaveBeenCalledTimes(1);
-
-      listFleetVehiclesMock.mockClear();
-      act(() => {
-        hidden = true;
-        document.dispatchEvent(new Event('visibilitychange'));
-      });
-
-      act(() => {
-        jest.advanceTimersByTime(LOGISTICS_FLEET_POLL_INTERVAL_MS * 2);
-      });
-      expect(listFleetVehiclesMock).not.toHaveBeenCalled();
-
-      act(() => {
-        hidden = false;
-        document.dispatchEvent(new Event('visibilitychange'));
-      });
-      expect(listFleetVehiclesMock).toHaveBeenCalledTimes(1);
-
-      listFleetVehiclesMock.mockClear();
-      act(() => {
-        jest.advanceTimersByTime(LOGISTICS_FLEET_POLL_INTERVAL_MS);
-      });
-      expect(listFleetVehiclesMock).toHaveBeenCalledTimes(1);
-    } finally {
-      jest.useRealTimers();
-      if (hiddenDescriptor) {
-        Object.defineProperty(document, 'hidden', hiddenDescriptor);
-      } else {
-        delete (document as Partial<Document>).hidden;
-      }
-    }
   });
 
   it('сохраняет и восстанавливает состояние карты и слоёв', async () => {

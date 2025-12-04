@@ -9,11 +9,15 @@ import { asyncHandler } from '../api/middleware';
 import container from '../di';
 import { TOKENS } from '../di/tokens';
 import type StackOrchestratorController from '../system/stackOrchestrator.controller';
+import type StackHealthController from '../system/stackHealth.controller';
 
 const router: Router = Router();
 
 const orchestrator = container.resolve<StackOrchestratorController>(
   TOKENS.StackOrchestratorController,
+);
+const stackHealth = container.resolve<StackHealthController>(
+  TOKENS.StackHealthController,
 );
 
 router.get(
@@ -46,6 +50,14 @@ router.get(
   Roles(ACCESS_ADMIN) as unknown as RequestHandler,
   rolesGuard as unknown as RequestHandler,
   asyncHandler(orchestrator.codexBrief),
+);
+
+router.post(
+  '/health/run',
+  authMiddleware(),
+  Roles(ACCESS_ADMIN) as unknown as RequestHandler,
+  rolesGuard as unknown as RequestHandler,
+  asyncHandler(stackHealth.run),
 );
 
 export default router;

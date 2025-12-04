@@ -1,0 +1,779 @@
+diff --git a/apps/api/src/di/index.ts b/apps/api/src/di/index.ts
+index 8486aea..7e7b731 100644
+--- a/apps/api/src/di/index.ts
++++ b/apps/api/src/di/index.ts
+@@ -22,6 +22,8 @@ import { File, Task } from '../db/model';
+ import LogAnalysisService from '../system/logAnalysis.service';
+ import StackOrchestratorService from '../system/stackOrchestrator.service';
+ import StackOrchestratorController from '../system/stackOrchestrator.controller';
++import StackHealthService from '../system/stackHealth.service';
++import StackHealthController from '../system/stackHealth.controller';
+ import StorageDiagnosticsService from '../services/storageDiagnostics.service';
+ import StorageDiagnosticsController from '../controllers/storageDiagnostics.controller';
+ import TaskDraftsService from '../taskDrafts/taskDrafts.service';
+@@ -68,6 +70,11 @@ container.registerSingleton(
+   TOKENS.StackOrchestratorController,
+   StackOrchestratorController,
+ );
++container.registerSingleton(TOKENS.StackHealthService, StackHealthService);
++container.registerSingleton(
++  TOKENS.StackHealthController,
++  StackHealthController,
++);
+ container.registerSingleton(
+   TOKENS.StorageDiagnosticsService,
+   StorageDiagnosticsService,
+diff --git a/apps/api/src/di/tokens.ts b/apps/api/src/di/tokens.ts
+index 24a62ac..0c8c384 100644
+--- a/apps/api/src/di/tokens.ts
++++ b/apps/api/src/di/tokens.ts
+@@ -22,6 +22,8 @@ export const TOKENS = {
+   LogAnalysisService: Symbol('LogAnalysisService'),
+   StackOrchestratorService: Symbol('StackOrchestratorService'),
+   StackOrchestratorController: Symbol('StackOrchestratorController'),
++  StackHealthService: Symbol('StackHealthService'),
++  StackHealthController: Symbol('StackHealthController'),
+   StorageDiagnosticsService: Symbol('StorageDiagnosticsService'),
+   StorageDiagnosticsController: Symbol('StorageDiagnosticsController'),
+   TaskDraftsController: Symbol('TaskDraftsController'),
+diff --git a/apps/api/src/routes/system.ts b/apps/api/src/routes/system.ts
+index 7fde881..83bdd84 100644
+--- a/apps/api/src/routes/system.ts
++++ b/apps/api/src/routes/system.ts
+@@ -9,12 +9,16 @@ import { asyncHandler } from '../api/middleware';
+ import container from '../di';
+ import { TOKENS } from '../di/tokens';
+ import type StackOrchestratorController from '../system/stackOrchestrator.controller';
++import type StackHealthController from '../system/stackHealth.controller';
+ 
+ const router: Router = Router();
+ 
+ const orchestrator = container.resolve<StackOrchestratorController>(
+   TOKENS.StackOrchestratorController,
+ );
++const stackHealth = container.resolve<StackHealthController>(
++  TOKENS.StackHealthController,
++);
+ 
+ router.get(
+   '/overview',
+@@ -48,4 +52,12 @@ router.get(
+   asyncHandler(orchestrator.codexBrief),
+ );
+ 
++router.post(
++  '/health/run',
++  authMiddleware(),
++  Roles(ACCESS_ADMIN) as unknown as RequestHandler,
++  rolesGuard as unknown as RequestHandler,
++  asyncHandler(stackHealth.run),
++);
++
+ export default router;
+diff --git a/apps/api/src/system/stackHealth.controller.ts b/apps/api/src/system/stackHealth.controller.ts
+new file mode 100644
+index 0000000..4f557df
+--- /dev/null
++++ b/apps/api/src/system/stackHealth.controller.ts
+@@ -0,0 +1,53 @@
++// Назначение: контроллер админской проверки инфраструктуры
++// Основные модули: express, tsyringe, StackHealthService
++import { Request, Response } from 'express';
++import { inject, injectable } from 'tsyringe';
++import { QueueName } from 'shared';
++import StackHealthService, { type StackHealthReport } from './stackHealth.service';
++import { TOKENS } from '../di/tokens';
++
++const pickEnv = (keys: string[]): string | undefined => {
++  for (const key of keys) {
++    const value = process.env[key];
++    if (value && value.trim()) {
++      return value.trim();
++    }
++  }
++  return undefined;
++};
++
++@injectable()
++export default class StackHealthController {
++  constructor(
++    @inject(TOKENS.StackHealthService)
++    private readonly service: StackHealthService,
++  ) {}
++
++  run = async (_req: Request, res: Response): Promise<void> => {
++    const proxyUrl = pickEnv([
++      'PROXY_PRIVATE_URL',
++      'GEOCODER_PROXY_URL',
++      'GEOCODER_URL',
++    ]);
++    const proxyToken = pickEnv(['PROXY_TOKEN', 'GEOCODER_PROXY_TOKEN']);
++    const redisUrl = pickEnv(['QUEUE_REDIS_URL', 'REDIS_URL']);
++    const queuePrefix = pickEnv(['QUEUE_PREFIX']);
++    const queueNamesRaw = pickEnv(['HEALTH_QUEUE_NAMES']);
++    const knownQueueNames = new Set<string>(Object.values(QueueName));
++
++    const report: StackHealthReport = await this.service.run({
++      proxyUrl,
++      proxyToken,
++      redisUrl,
++      queuePrefix,
++      queueNames: queueNamesRaw
++        ? (queueNamesRaw
++            .split(',')
++            .map((value) => value.trim())
++            .filter((value) => knownQueueNames.has(value)) as QueueName[])
++        : undefined,
++    });
++
++    res.json(report);
++  };
++}
+diff --git a/apps/api/src/system/stackHealth.service.ts b/apps/api/src/system/stackHealth.service.ts
+new file mode 100644
+index 0000000..c0e1948
+--- /dev/null
++++ b/apps/api/src/system/stackHealth.service.ts
+@@ -0,0 +1,332 @@
++// Назначение: проверки доступности инфраструктурных компонентов (прокси, Redis, MongoDB)
++// Основные модули: undici/fetch, redis, mongoose, BullMQ конфигурация
++import { fetch } from 'undici';
++import { performance } from 'node:perf_hooks';
++import { createClient, type RedisClientType } from 'redis';
++import mongoose from 'mongoose';
++import { QueueName } from 'shared';
++import connect from '../db/connection';
++import { queueConfig } from '../config/queue';
++
++export type StackCheckStatus = 'ok' | 'warn' | 'error';
++
++export type StackCheckResult = {
++  name: string;
++  status: StackCheckStatus;
++  durationMs?: number;
++  message?: string;
++  meta?: Record<string, unknown>;
++};
++
++export type StackHealthReport = {
++  ok: boolean;
++  timestamp: string;
++  results: StackCheckResult[];
++};
++
++type StackHealthOptions = {
++  proxyUrl?: string;
++  proxyToken?: string;
++  redisUrl?: string;
++  queuePrefix?: string;
++  queueNames?: QueueName[];
++};
++
++const REQUEST_TIMEOUT_MS = 10_000;
++const SAMPLE_QUERY = 'ул Ленина 1 Киев';
++const ROUTE_START = '30.708021,46.3939888';
++const ROUTE_END = '30.7124526,46.4206201';
++
++const pickMessage = (error: unknown): string => {
++  if (error instanceof Error && error.message) {
++    return error.message;
++  }
++  if (typeof error === 'string') {
++    return error;
++  }
++  return 'Неизвестная ошибка';
++};
++
++const fetchWithTimeout = async (
++  url: string,
++  init: RequestInit,
++  timeoutMs: number,
++): Promise<Response> => {
++  const controller = new AbortController();
++  const timer = setTimeout(() => controller.abort(), timeoutMs);
++  try {
++    return await fetch(url, { ...init, signal: controller.signal });
++  } finally {
++    clearTimeout(timer);
++  }
++};
++
++const parseJsonSafe = (payload: string): unknown => {
++  try {
++    return JSON.parse(payload);
++  } catch {
++    return undefined;
++  }
++};
++
++const countKeys = async (
++  client: RedisClientType,
++  pattern: string,
++  count = 200,
++): Promise<number> => {
++  let cursor = 0;
++  let total = 0;
++  // eslint-disable-next-line no-constant-condition
++  while (true) {
++    const scanResult = await client.scan(cursor, {
++      MATCH: pattern,
++      COUNT: count,
++    });
++    total += scanResult.keys.length;
++    cursor = Number.parseInt(scanResult.cursor, 10);
++    if (!Number.isFinite(cursor) || cursor === 0) {
++      break;
++    }
++  }
++  return total;
++};
++
++const readListLength = async (
++  client: RedisClientType,
++  key: string,
++): Promise<number> => {
++  const keyType = await client.type(key);
++  if (keyType !== 'list' && keyType !== 'stream') {
++    return 0;
++  }
++  try {
++    return await client.llen(key);
++  } catch {
++    return 0;
++  }
++};
++
++export default class StackHealthService {
++  async checkProxy(options: {
++    proxyUrl?: string;
++    proxyToken?: string;
++  }): Promise<StackCheckResult> {
++    const startedAt = performance.now();
++    const { proxyUrl, proxyToken } = options;
++    if (!proxyUrl || !proxyToken) {
++      return {
++        name: 'proxy',
++        status: 'warn',
++        message: 'Прокси не настроен',
++      } satisfies StackCheckResult;
++    }
++
++    const headers = {
++      'X-Proxy-Token': proxyToken,
++      'User-Agent': 'ERM-healthcheck',
++    } as const;
++
++    try {
++      const healthResponse = await fetchWithTimeout(
++        `${proxyUrl}/health`,
++        { method: 'GET', headers },
++        REQUEST_TIMEOUT_MS,
++      );
++      if (healthResponse.status !== 200) {
++        return {
++          name: 'proxy',
++          status: 'error',
++          durationMs: Math.round(performance.now() - startedAt),
++          message: `Статус /health: ${healthResponse.status}`,
++        } satisfies StackCheckResult;
++      }
++
++      const searchResponse = await fetchWithTimeout(
++        `${proxyUrl}/search?q=${encodeURIComponent(SAMPLE_QUERY)}`,
++        { method: 'GET', headers },
++        REQUEST_TIMEOUT_MS,
++      );
++      const searchBody = await searchResponse.text();
++      if (searchResponse.status !== 200) {
++        return {
++          name: 'proxy',
++          status: 'error',
++          durationMs: Math.round(performance.now() - startedAt),
++          message: `Статус /search: ${searchResponse.status}`,
++        } satisfies StackCheckResult;
++      }
++
++      const parsed = parseJsonSafe(searchBody);
++      const looksValid = Array.isArray(parsed)
++        ? parsed.length > 0
++        : typeof parsed === 'object' && parsed !== null;
++      if (!looksValid) {
++        return {
++          name: 'proxy',
++          status: 'warn',
++          durationMs: Math.round(performance.now() - startedAt),
++          message: 'Ответ /search не похож на ожидаемый JSON',
++          meta: { sample: searchBody.slice(0, 200) },
++        } satisfies StackCheckResult;
++      }
++
++      const routeResponse = await fetchWithTimeout(
++        `${proxyUrl}/route?start=${ROUTE_START}&end=${ROUTE_END}`,
++        { method: 'GET', headers },
++        REQUEST_TIMEOUT_MS,
++      );
++      if (routeResponse.status !== 200) {
++        return {
++          name: 'proxy',
++          status: 'warn',
++          durationMs: Math.round(performance.now() - startedAt),
++          message: `Статус /route: ${routeResponse.status}`,
++        } satisfies StackCheckResult;
++      }
++
++      return {
++        name: 'proxy',
++        status: 'ok',
++        durationMs: Math.round(performance.now() - startedAt),
++        meta: { searchSample: searchBody.slice(0, 200) },
++      } satisfies StackCheckResult;
++    } catch (error: unknown) {
++      return {
++        name: 'proxy',
++        status: 'error',
++        durationMs: Math.round(performance.now() - startedAt),
++        message: pickMessage(error),
++      } satisfies StackCheckResult;
++    }
++  }
++
++  async checkRedis(options: {
++    redisUrl?: string;
++    queuePrefix?: string;
++    queueNames: QueueName[];
++  }): Promise<StackCheckResult> {
++    const startedAt = performance.now();
++    const { redisUrl, queuePrefix, queueNames } = options;
++    if (!redisUrl) {
++      return {
++        name: 'redis',
++        status: 'warn',
++        message: 'Redis не настроен',
++      } satisfies StackCheckResult;
++    }
++
++    const client = createClient({ url: redisUrl });
++    const prefix = queuePrefix?.trim() || 'erm';
++    try {
++      await client.connect();
++      const ping = await client.ping();
++      if (ping !== 'PONG') {
++        return {
++          name: 'redis',
++          status: 'error',
++          durationMs: Math.round(performance.now() - startedAt),
++          message: `Неожиданный ответ PING: ${ping}`,
++        } satisfies StackCheckResult;
++      }
++
++      const memoryInfo = await client.info('memory');
++      const keyspaceInfo = await client.info('keyspace');
++      const cacheCount = await countKeys(client, 'cache:*');
++      const lockCount = await countKeys(client, 'lock:*');
++
++      const queues: Record<string, unknown> = {};
++      for (const name of queueNames) {
++        const waitKey = `${prefix}:${name}:wait`;
++        const activeKey = `${prefix}:${name}:active`;
++        const failedKey = `${prefix}:${name}:failed`;
++        const waiting = await readListLength(client, waitKey);
++        const active = await readListLength(client, activeKey);
++        const failed = await readListLength(client, failedKey);
++        queues[name] = { waiting, active, failed };
++      }
++
++      return {
++        name: 'redis',
++        status: 'ok',
++        durationMs: Math.round(performance.now() - startedAt),
++        meta: {
++          cacheCount,
++          lockCount,
++          queues,
++          memoryInfo: memoryInfo.slice(0, 400),
++          keyspaceInfo,
++        },
++      } satisfies StackCheckResult;
++    } catch (error: unknown) {
++      return {
++        name: 'redis',
++        status: 'error',
++        durationMs: Math.round(performance.now() - startedAt),
++        message: pickMessage(error),
++      } satisfies StackCheckResult;
++    } finally {
++      try {
++        await client.disconnect();
++      } catch {
++        // игнорируем ошибки отключения
++      }
++    }
++  }
++
++  async checkMongo(): Promise<StackCheckResult> {
++    const startedAt = performance.now();
++    try {
++      const connection = await connect();
++      const db = connection.db;
++      const stats = await db.stats();
++      const collection = db.collection('healthcheck_tmp');
++      const inserted = await collection.insertOne({ createdAt: new Date() });
++      await collection.deleteOne({ _id: inserted.insertedId });
++
++      return {
++        name: 'mongo',
++        status: 'ok',
++        durationMs: Math.round(performance.now() - startedAt),
++        meta: {
++          collections: stats.collections,
++          dataSize: stats.dataSize,
++          readyState: mongoose.connection.readyState,
++        },
++      } satisfies StackCheckResult;
++    } catch (error: unknown) {
++      return {
++        name: 'mongo',
++        status: 'error',
++        durationMs: Math.round(performance.now() - startedAt),
++        message: pickMessage(error),
++      } satisfies StackCheckResult;
++    }
++  }
++
++  async run(options: StackHealthOptions): Promise<StackHealthReport> {
++    const proxyResult = await this.checkProxy({
++      proxyToken: options.proxyToken,
++      proxyUrl: options.proxyUrl,
++    });
++
++    const redisResult = await this.checkRedis({
++      redisUrl: options.redisUrl,
++      queuePrefix: options.queuePrefix ?? queueConfig.prefix,
++      queueNames: options.queueNames ?? [
++        QueueName.LogisticsGeocoding,
++        QueueName.LogisticsRouting,
++      ],
++    });
++
++    const mongoResult = await this.checkMongo();
++
++    const results = [proxyResult, redisResult, mongoResult];
++    const ok = results.every((item) => item.status !== 'error');
++
++    return {
++      ok,
++      timestamp: new Date().toISOString(),
++      results,
++    } satisfies StackHealthReport;
++  }
++}
+diff --git a/apps/web/src/pages/Settings/CollectionsPage.tsx b/apps/web/src/pages/Settings/CollectionsPage.tsx
+index 6c770da..e30abac 100644
+--- a/apps/web/src/pages/Settings/CollectionsPage.tsx
++++ b/apps/web/src/pages/Settings/CollectionsPage.tsx
+@@ -42,6 +42,7 @@ import AnalyticsDashboard from '../AnalyticsDashboard';
+ import ArchivePage from '../Archive';
+ import LogsPage from '../Logs';
+ import StoragePage from '../Storage';
++import HealthCheckTab from './HealthCheckTab';
+ import {
+   collectionColumns,
+   type CollectionTableRow,
+@@ -84,6 +85,7 @@ import {
+   ArchiveBoxIcon,
+   DocumentTextIcon,
+   RectangleStackIcon,
++  ShieldCheckIcon,
+ } from '@heroicons/react/24/outline';
+ 
+ const moduleTabs = [
+@@ -117,6 +119,12 @@ const moduleTabs = [
+     description: 'Управление вложениями',
+     icon: RectangleStackIcon,
+   },
++  {
++    key: 'health',
++    label: 'Мониторинг',
++    description: 'Проверка прокси, Redis и MongoDB',
++    icon: ShieldCheckIcon,
++  },
+ ] as const;
+ 
+ type SettingsModuleKey = (typeof moduleTabs)[number]['key'];
+@@ -2973,6 +2981,11 @@ export default function CollectionsPage() {
+             <StoragePage />
+           </div>
+         </TabsContent>
++        <TabsContent value="health" className="mt-0">
++          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
++            <HealthCheckTab />
++          </div>
++        </TabsContent>
+       </Tabs>
+     </div>
+   );
+diff --git a/apps/web/src/pages/Settings/HealthCheckTab.tsx b/apps/web/src/pages/Settings/HealthCheckTab.tsx
+new file mode 100644
+index 0000000..295c257
+--- /dev/null
++++ b/apps/web/src/pages/Settings/HealthCheckTab.tsx
+@@ -0,0 +1,164 @@
++// Назначение: панель проверки состояния сервисов стека
++// Основные модули: React, services/healthcheck, ui/button
++import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
++import { ArrowPathIcon, PauseIcon, PlayIcon } from '@heroicons/react/24/outline';
++import { Button } from '../../components/ui/button';
++import {
++  runStackHealthCheck,
++  type StackCheckResult,
++  type StackCheckStatus,
++} from '../../services/healthcheck';
++
++const statusColors: Record<StackCheckStatus, string> = {
++  ok: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-200 dark:ring-emerald-700',
++  warn: 'bg-amber-50 text-amber-700 ring-1 ring-amber-200 dark:bg-amber-900/30 dark:text-amber-200 dark:ring-amber-700',
++  error:
++    'bg-rose-50 text-rose-700 ring-1 ring-rose-200 dark:bg-rose-900/30 dark:text-rose-200 dark:ring-rose-700',
++};
++
++const statusLabels: Record<StackCheckStatus, string> = {
++  ok: 'OK',
++  warn: 'Предупреждение',
++  error: 'Ошибка',
++};
++
++const SHORT_INTERVAL_MS = 60_000;
++
++const formatDateTime = (value: string | null): string => {
++  if (!value) return 'ещё не запускалось';
++  const parsed = new Date(value);
++  if (Number.isNaN(parsed.getTime())) return value;
++  return parsed.toLocaleString('ru-RU');
++};
++
++export default function HealthCheckTab(): JSX.Element {
++  const [results, setResults] = useState<StackCheckResult[]>([]);
++  const [lastRun, setLastRun] = useState<string | null>(null);
++  const [auto, setAuto] = useState(false);
++  const [loading, setLoading] = useState(false);
++  const [error, setError] = useState<string | null>(null);
++  const timerRef = useRef<number | null>(null);
++
++  const sortedResults = useMemo(
++    () =>
++      [...results].sort((a, b) => a.name.localeCompare(b.name, 'ru-RU')),
++    [results],
++  );
++
++  const runCheck = useCallback(async () => {
++    setLoading(true);
++    setError(null);
++    try {
++      const report = await runStackHealthCheck();
++      setResults(report.results);
++      setLastRun(report.timestamp);
++    } catch (err: unknown) {
++      const message = err instanceof Error ? err.message : 'Неизвестная ошибка';
++      setError(message);
++    } finally {
++      setLoading(false);
++    }
++  }, []);
++
++  useEffect(() => {
++    if (auto) {
++      void runCheck();
++      timerRef.current = window.setInterval(() => {
++        void runCheck();
++      }, SHORT_INTERVAL_MS);
++    }
++    return () => {
++      if (timerRef.current) {
++        clearInterval(timerRef.current);
++        timerRef.current = null;
++      }
++    };
++  }, [auto, runCheck]);
++
++  return (
++    <div className="flex flex-col gap-4">
++      <div className="flex flex-wrap items-center gap-3">
++        <Button
++          type="button"
++          variant="success"
++          size="sm"
++          className="gap-2"
++          disabled={loading}
++          onClick={() => void runCheck()}
++        >
++          {loading ? (
++            <ArrowPathIcon className="h-4 w-4 animate-spin" />
++          ) : (
++            <PlayIcon className="h-4 w-4" />
++          )}
++          Запустить проверку
++        </Button>
++        <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
++          <input
++            type="checkbox"
++            className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 dark:border-slate-600"
++            checked={auto}
++            onChange={(event) => setAuto(event.target.checked)}
++          />
++          <span className="flex items-center gap-1">
++            {auto ? (
++              <PauseIcon className="h-4 w-4" />
++            ) : (
++              <PlayIcon className="h-4 w-4" />
++            )}
++            Автопрос раз в 60 секунд
++          </span>
++        </label>
++        <span className="text-sm text-slate-600 dark:text-slate-300">
++          Последний запуск: {formatDateTime(lastRun)}
++        </span>
++      </div>
++
++      {error ? (
++        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-700 dark:bg-rose-900/40 dark:text-rose-100">
++          {error}
++        </div>
++      ) : null}
++
++      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
++        <div className="grid grid-cols-[1fr_auto_auto_2fr] items-center gap-2 bg-slate-50 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
++          <span>Компонент</span>
++          <span>Статус</span>
++          <span>Время</span>
++          <span>Детали</span>
++        </div>
++        {sortedResults.length === 0 ? (
++          <div className="px-4 py-5 text-sm text-slate-600 dark:text-slate-300">
++            Результатов пока нет
++          </div>
++        ) : (
++          <ul className="divide-y divide-slate-200 dark:divide-slate-800">
++            {sortedResults.map((item) => (
++              <li key={item.name} className="grid grid-cols-[1fr_auto_auto_2fr] items-start gap-2 px-4 py-3 text-sm text-slate-800 dark:text-slate-100">
++                <div className="font-semibold capitalize">{item.name}</div>
++                <div>
++                  <span
++                    className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold ${statusColors[item.status]}`}
++                  >
++                    {statusLabels[item.status]}
++                  </span>
++                </div>
++                <div className="text-xs text-slate-500 dark:text-slate-300">
++                  {typeof item.durationMs === 'number' ? `${item.durationMs} мс` : '—'}
++                </div>
++                <div className="space-y-2 text-xs text-slate-700 dark:text-slate-200">
++                  {item.message ? <div className="font-medium text-rose-600 dark:text-rose-200">{item.message}</div> : null}
++                  {item.meta ? (
++                    <pre className="overflow-x-auto whitespace-pre-wrap rounded-xl bg-slate-50 p-3 text-[13px] leading-5 text-slate-800 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-700">
++                      {JSON.stringify(item.meta, null, 2)}
++                    </pre>
++                  ) : null}
++                </div>
++              </li>
++            ))}
++          </ul>
++        )}
++      </div>
++    </div>
++  );
++}
+diff --git a/apps/web/src/services/healthcheck.ts b/apps/web/src/services/healthcheck.ts
+new file mode 100644
+index 0000000..e901da7
+--- /dev/null
++++ b/apps/web/src/services/healthcheck.ts
+@@ -0,0 +1,62 @@
++// Назначение: вызовы админского healthcheck API
++// Основные модули: authFetch
++import authFetch from '../utils/authFetch';
++
++export type StackCheckStatus = 'ok' | 'warn' | 'error';
++
++export type StackCheckResult = {
++  name: string;
++  status: StackCheckStatus;
++  durationMs?: number;
++  message?: string;
++  meta?: Record<string, unknown>;
++};
++
++export type StackHealthResponse = {
++  ok: boolean;
++  timestamp: string;
++  results: StackCheckResult[];
++};
++
++const isStackCheckResult = (value: unknown): value is StackCheckResult => {
++  if (!value || typeof value !== 'object') return false;
++  const candidate = value as { name?: unknown; status?: unknown };
++  return (
++    typeof candidate.name === 'string' &&
++    (candidate.status === 'ok' ||
++      candidate.status === 'warn' ||
++      candidate.status === 'error')
++  );
++};
++
++export async function runStackHealthCheck(): Promise<StackHealthResponse> {
++  const response = await authFetch('/api/v1/system/health/run', {
++    method: 'POST',
++  });
++
++  if (!response.ok) {
++    const text = await response.text();
++    throw new Error(`Healthcheck недоступен: ${response.status} ${text}`);
++  }
++
++  const payload = (await response.json()) as unknown;
++  if (!payload || typeof payload !== 'object') {
++    throw new Error('Неверный ответ healthcheck');
++  }
++
++  const { ok, timestamp, results } = payload as Record<string, unknown>;
++  if (
++    typeof ok !== 'boolean' ||
++    typeof timestamp !== 'string' ||
++    !Array.isArray(results)
++  ) {
++    throw new Error('Неполный ответ healthcheck');
++  }
++
++  const parsedResults = results.filter(isStackCheckResult);
++  return {
++    ok,
++    timestamp,
++    results: parsedResults,
++  } satisfies StackHealthResponse;
++}
+diff --git a/patch_cjs/097-stack-health.cjs b/patch_cjs/097-stack-health.cjs
+new file mode 100644
+index 0000000..851aa31
+--- /dev/null
++++ b/patch_cjs/097-stack-health.cjs
+@@ -0,0 +1,21 @@
++#!/usr/bin/env node
++// patch: 097-stack-health.cjs
++// purpose: добавить админскую проверку стека (прокси, Redis, MongoDB) и UI вкладку
++const fs = require('node:fs');
++const path = require('node:path');
++const { execSync } = require('node:child_process');
++
++const patchPath = path.resolve(__dirname, '097-stack-health.patch');
++
++if (!fs.existsSync(patchPath)) {
++  throw new Error('Файл патча не найден: ' + patchPath);
++}
++
++const patch = fs.readFileSync(patchPath, 'utf8');
++
++if (!patch.trim()) {
++  console.log('Нет изменений для применения');
++  process.exit(0);
++}
++
++execSync(`git apply "${patchPath}"`, { stdio: 'inherit' });

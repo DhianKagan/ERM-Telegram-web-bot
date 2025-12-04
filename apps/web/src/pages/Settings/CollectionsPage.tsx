@@ -42,6 +42,7 @@ import AnalyticsDashboard from '../AnalyticsDashboard';
 import ArchivePage from '../Archive';
 import LogsPage from '../Logs';
 import StoragePage from '../Storage';
+import HealthCheckTab from './HealthCheckTab';
 import {
   collectionColumns,
   type CollectionTableRow,
@@ -84,6 +85,7 @@ import {
   ArchiveBoxIcon,
   DocumentTextIcon,
   RectangleStackIcon,
+  ShieldCheckIcon,
 } from '@heroicons/react/24/outline';
 
 const moduleTabs = [
@@ -116,6 +118,12 @@ const moduleTabs = [
     label: 'Файлы',
     description: 'Управление вложениями',
     icon: RectangleStackIcon,
+  },
+  {
+    key: 'health',
+    label: 'Мониторинг',
+    description: 'Проверка прокси, Redis и MongoDB',
+    icon: ShieldCheckIcon,
   },
 ] as const;
 
@@ -2971,6 +2979,11 @@ export default function CollectionsPage() {
         <TabsContent value="storage" className="mt-0">
           <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
             <StoragePage />
+          </div>
+        </TabsContent>
+        <TabsContent value="health" className="mt-0">
+          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+            <HealthCheckTab />
           </div>
         </TabsContent>
       </Tabs>

@@ -41,6 +41,12 @@ const formatDateTime = (value: string | null): string => {
   return parsed.toLocaleString('ru-RU');
 };
 
+const extractHint = (meta?: Record<string, unknown>): string | null => {
+  if (!meta) return null;
+  const hint = meta.hint;
+  return typeof hint === 'string' ? hint : null;
+};
+
 export default function HealthCheckTab(): JSX.Element {
   const [results, setResults] = useState<StackCheckResult[]>([]);
   const [lastRun, setLastRun] = useState<string | null>(null);
@@ -115,7 +121,7 @@ export default function HealthCheckTab(): JSX.Element {
             ) : (
               <PlayIcon className="h-4 w-4" />
             )}
-            Автопрос раз в 60 секунд
+            Автоопрос раз в 60 секунд
           </span>
         </label>
         <span className="text-sm text-slate-600 dark:text-slate-300">
@@ -164,6 +170,11 @@ export default function HealthCheckTab(): JSX.Element {
                   {item.message ? (
                     <div className="font-medium text-rose-600 dark:text-rose-200">
                       {item.message}
+                    </div>
+                  ) : null}
+                  {extractHint(item.meta) ? (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 font-medium text-amber-800 dark:border-amber-600 dark:bg-amber-900/40 dark:text-amber-100">
+                      Что делать: {extractHint(item.meta)}
                     </div>
                   ) : null}
                   {item.meta ? (

@@ -3,9 +3,9 @@ export type Coordinates = {
   lng: number;
 };
 export declare enum QueueName {
-  LogisticsGeocoding = 'logistics:geocoding',
-  LogisticsRouting = 'logistics:routing',
-  DeadLetter = 'logistics:dead-letter',
+  LogisticsGeocoding = 'logistics-geocoding',
+  LogisticsRouting = 'logistics-routing',
+  DeadLetter = 'logistics-dead-letter',
 }
 export declare enum QueueJobName {
   GeocodeAddress = 'geocode-address',

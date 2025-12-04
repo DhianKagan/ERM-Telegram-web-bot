@@ -5,9 +5,9 @@ Object.defineProperty(exports, '__esModule', { value: true });
 exports.QueueJobName = exports.QueueName = void 0;
 var QueueName;
 (function (QueueName) {
-  QueueName['LogisticsGeocoding'] = 'logistics:geocoding';
-  QueueName['LogisticsRouting'] = 'logistics:routing';
-  QueueName['DeadLetter'] = 'logistics:dead-letter';
+  QueueName['LogisticsGeocoding'] = 'logistics-geocoding';
+  QueueName['LogisticsRouting'] = 'logistics-routing';
+  QueueName['DeadLetter'] = 'logistics-dead-letter';
 })(QueueName || (exports.QueueName = QueueName = {}));
 var QueueJobName;
 (function (QueueJobName) {

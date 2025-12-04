@@ -22,6 +22,8 @@ export const TOKENS = {
   LogAnalysisService: Symbol('LogAnalysisService'),
   StackOrchestratorService: Symbol('StackOrchestratorService'),
   StackOrchestratorController: Symbol('StackOrchestratorController'),
+  StackHealthService: Symbol('StackHealthService'),
+  StackHealthController: Symbol('StackHealthController'),
   StorageDiagnosticsService: Symbol('StorageDiagnosticsService'),
   StorageDiagnosticsController: Symbol('StorageDiagnosticsController'),
   TaskDraftsController: Symbol('TaskDraftsController'),

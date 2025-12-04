@@ -37,6 +37,7 @@ web/
 - DTO и `class-validator` для валидации входных данных.
 - Декораторы `@Roles` и guard `rolesGuard` для проверки маски доступа.
 - Middleware для логирования и метрик Prometheus.
+- Фоновые задачи на BullMQ в отдельном сервисе `apps/worker` (очереди геокодирования, маршрутизации и DLQ на Redis) с мониторингом длины очередей через Prometheus.
 - Секреты загружаются через HashiCorp Vault или AWS Secrets Manager,
   ключи обновляются планировщиком `KEY_ROTATION_CRON`.
 
@@ -60,6 +61,13 @@ web/
 Модули связаны через сервисы и разделены по ответственности,
 что упрощает тестирование и расширение функциональности.
 Поле `access` модели пользователя хранит числовую маску для быстрой проверки прав.
+
+## Фоновые очереди BullMQ
+
+- Отдельный сервис `apps/worker` запускает воркеры BullMQ для очередей `logistics:geocoding` и `logistics:routing`; неуспешные задачи пишутся в DLQ `logistics:dead-letter`.
+- API добавляет задания через `apps/api/src/queues/taskQueue.ts` с ретраями и экспоненциальным backoff, а при недоступности Redis возвращается к прямым вызовам геокодера и OSRM.
+- Метрика `bullmq_jobs_total{queue,state}` обновляется планировщиком `startQueueMetricsPoller` и доступна на `/metrics` вместе с остальными Prometheus-сборками.
+- Конфигурация очередей выделена в `apps/api/src/config/queue.ts`, параметры подключения и префикс задаются переменными `QUEUE_REDIS_URL` и `QUEUE_PREFIX`.
 
 ## Оркестратор стека
 

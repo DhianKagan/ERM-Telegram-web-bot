@@ -1,0 +1,17 @@
+{
+  // Назначение: конфигурация TypeScript для сервиса воркеров BullMQ
+  // Основные модули: typescript
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "es2019",
+    "module": "commonjs",
+    "rootDir": "./src",
+    "outDir": "dist",
+    "resolveJsonModule": true,
+    "useUnknownInCatchVariables": false,
+    "composite": true,
+    "typeRoots": ["./node_modules/@types", "../../node_modules/@types"]
+  },
+  "include": ["src"],
+  "references": [{ "path": "../../packages/shared" }]
+}

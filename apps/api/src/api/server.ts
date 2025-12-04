@@ -13,6 +13,7 @@ import { promisify } from 'util';
 import applySecurity from './security';
 import registerRoutes from './routes';
 import { startDiskMonitor } from '../services/diskSpace';
+import { startQueueMetricsPoller } from '../queues/queueMetrics';
 import sanitizeError from '../utils/sanitizeError';
 
 process.on('unhandledRejection', (err) => {
@@ -148,6 +149,7 @@ export async function buildApp(): Promise<express.Express> {
 
   if (process.env.NODE_ENV !== 'test') {
     startDiskMonitor();
+    startQueueMetricsPoller();
   }
 
   return app;

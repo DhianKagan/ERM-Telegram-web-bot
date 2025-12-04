@@ -1,12 +1,14 @@
 // Сервис задач через репозиторий.
 // Основные модули: db/queries, services/route, shared
 import { clearRouteCache } from '../services/route';
-import { getOsrmDistance } from '../geo/osrm';
 import { notifyTasksChanged } from '../services/logisticsEvents';
 import { generateRouteLink } from 'shared';
 import { applyIntakeRules } from '../intake/rules';
 import type { TaskDocument } from '../db/model';
-import { geocodeAddress } from '../geo/geocoder';
+import {
+  requestGeocodingJob,
+  requestRouteDistanceJob,
+} from '../queues/taskQueue';
 import type {
   TaskFilters,
   SummaryFilters,
@@ -351,10 +353,10 @@ class TasksService {
     }
 
     const startPromise = shouldGeocodeStart
-      ? geocodeAddress(startLocation)
+      ? requestGeocodingJob(startLocation)
       : Promise.resolve<null>(null);
     const finishPromise = shouldGeocodeFinish
-      ? geocodeAddress(endLocation)
+      ? requestGeocodingJob(endLocation)
       : Promise.resolve<null>(null);
 
     const [startCoords, finishCoords] = await Promise.all([
@@ -390,15 +392,11 @@ class TasksService {
         data.finishCoordinates,
       );
       try {
-        const distanceKm = await getOsrmDistance({
+        const { distanceKm } = await requestRouteDistanceJob({
           start: data.startCoordinates,
           finish: data.finishCoordinates,
         });
-        if (typeof distanceKm === 'number') {
-          data.route_distance_km = distanceKm;
-        } else {
-          clearRouteDistance();
-        }
+        data.route_distance_km = distanceKm ?? null;
       } catch {
         clearRouteDistance();
       }

@@ -53,6 +53,40 @@ const pickMessage = (error: unknown): string => {
   return 'Неизвестная ошибка';
 };
 
+const cutSnippet = (payload: string, limit = 500): string => {
+  if (payload.length <= limit) {
+    return payload;
+  }
+  return `${payload.slice(0, limit)}… (обрезано)`;
+};
+
+const proxyHintByStatus = (status: number, endpoint: string): string => {
+  if (status === 401 || status === 403) {
+    return 'Токен прокси отклонён: сверните PROXY_TOKEN/GEOCODER_PROXY_TOKEN и заголовок X-Proxy-Token на стороне сервиса.';
+  }
+  if (status === 404) {
+    return `Маршрут ${endpoint} не найден: проверьте базовый URL прокси и префиксы публикации.`;
+  }
+  if (status === 502 || status === 503 || status === 504) {
+    return 'Прокси не добрался до бекенда: проверьте доступность OSRM/ORS и сетевые правила.';
+  }
+  if (status >= 500) {
+    return 'Прокси вернул 5xx: загляните в логи прокси и upsteam сервисов, проверьте переменные окружения.';
+  }
+  if (status >= 400) {
+    return 'Прокси отвечает 4xx: убедитесь в корректности запроса и валидности токена.';
+  }
+  return 'Неожиданный код ответа: проверьте сетевой путь до прокси и его конфигурацию.';
+};
+
+const readBodySafe = async (response: Response): Promise<string> => {
+  try {
+    return await response.text();
+  } catch (error: unknown) {
+    return `Не удалось прочитать тело: ${pickMessage(error)}`;
+  }
+};
+
 const fetchWithTimeout = async (
   url: string,
   init: RequestInit,
@@ -133,6 +167,9 @@ export default class StackHealthService {
         name: 'proxy',
         status: 'warn',
         message: 'Прокси не настроен',
+        meta: {
+          hint: 'Добавьте PROXY_PRIVATE_URL/GEOCODER_URL и PROXY_TOKEN (или GEOCODER_PROXY_URL/GEOCODER_PROXY_TOKEN) в переменные окружения.',
+        },
       } satisfies StackCheckResult;
     }
 
@@ -148,11 +185,20 @@ export default class StackHealthService {
         REQUEST_TIMEOUT_MS,
       );
       if (healthResponse.status !== 200) {
+        const body = await readBodySafe(healthResponse);
         return {
           name: 'proxy',
           status: 'error',
           durationMs: Math.round(performance.now() - startedAt),
           message: `Статус /health: ${healthResponse.status}`,
+          meta: {
+            endpoint: '/health',
+            status: healthResponse.status,
+            body: cutSnippet(body),
+            hint: proxyHintByStatus(healthResponse.status, '/health'),
+            tokenSent: Boolean(proxyToken),
+            proxyUrl,
+          },
         } satisfies StackCheckResult;
       }
 
@@ -161,13 +207,20 @@ export default class StackHealthService {
         { method: 'GET', headers },
         REQUEST_TIMEOUT_MS,
       );
-      const searchBody = await searchResponse.text();
+      const searchBody = await readBodySafe(searchResponse);
       if (searchResponse.status !== 200) {
         return {
           name: 'proxy',
           status: 'error',
           durationMs: Math.round(performance.now() - startedAt),
           message: `Статус /search: ${searchResponse.status}`,
+          meta: {
+            endpoint: '/search',
+            status: searchResponse.status,
+            body: cutSnippet(searchBody),
+            hint: proxyHintByStatus(searchResponse.status, '/search'),
+            sample: SAMPLE_QUERY,
+          },
         } satisfies StackCheckResult;
       }
 
@@ -181,7 +234,11 @@ export default class StackHealthService {
           status: 'warn',
           durationMs: Math.round(performance.now() - startedAt),
           message: 'Ответ /search не похож на ожидаемый JSON',
-          meta: { sample: searchBody.slice(0, 200) },
+          meta: {
+            sample: cutSnippet(searchBody),
+            endpoint: '/search',
+            hint: 'Геокодер возвращает неожиданный ответ: проверьте конфигурацию прокси и upstream-геокодера (часто мешают HTML-страницы ошибок).',
+          },
         } satisfies StackCheckResult;
       }
 
@@ -191,11 +248,20 @@ export default class StackHealthService {
         REQUEST_TIMEOUT_MS,
       );
       if (routeResponse.status !== 200) {
+        const routeBody = await readBodySafe(routeResponse);
         return {
           name: 'proxy',
           status: 'warn',
           durationMs: Math.round(performance.now() - startedAt),
           message: `Статус /route: ${routeResponse.status}`,
+          meta: {
+            endpoint: '/route',
+            status: routeResponse.status,
+            body: cutSnippet(routeBody),
+            hint: 'Маршрутизация недоступна: убедитесь, что OSRM/ORS принимает запросы и маршрутные данные загружены.',
+            start: ROUTE_START,
+            end: ROUTE_END,
+          },
         } satisfies StackCheckResult;
       }
 
@@ -203,7 +269,10 @@ export default class StackHealthService {
         name: 'proxy',
         status: 'ok',
         durationMs: Math.round(performance.now() - startedAt),
-        meta: { searchSample: searchBody.slice(0, 200) },
+        meta: {
+          searchSample: cutSnippet(searchBody, 200),
+          hint: 'Прокси отвечает корректно: проверьте маршрутизацию, если проблемы сохраняются на стороне клиентов.',
+        },
       } satisfies StackCheckResult;
     } catch (error: unknown) {
       return {
@@ -211,6 +280,9 @@ export default class StackHealthService {
         status: 'error',
         durationMs: Math.round(performance.now() - startedAt),
         message: pickMessage(error),
+        meta: {
+          hint: 'Проверка прокси не завершилась: убедитесь в доступности URL и отсутствии блокировок сети/файрвола.',
+        },
       } satisfies StackCheckResult;
     }
   }

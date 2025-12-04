@@ -15,6 +15,16 @@ type RedisConnection = {
   url: string;
 };
 
+type GeocoderProvider = 'nominatim' | 'openrouteservice';
+
+const detectGeocoderProvider = (url: string): GeocoderProvider => {
+  const normalized = url.toLowerCase();
+  if (normalized.includes('openrouteservice')) {
+    return 'openrouteservice';
+  }
+  return 'nominatim';
+};
+
 const parsePositiveInt = (
   value: string | undefined,
   fallback: number,
@@ -55,6 +65,7 @@ const geocoderEnabledFlag =
   (process.env.GEOCODER_ENABLED || '1').trim() !== '0';
 const geocoderUrlRaw = (process.env.GEOCODER_URL || '').trim();
 let geocoderBaseUrl = '';
+let geocoderProvider: GeocoderProvider = 'nominatim';
 if (geocoderEnabledFlag && geocoderUrlRaw) {
   try {
     const parsed = new URL(geocoderUrlRaw);
@@ -62,6 +73,7 @@ if (geocoderEnabledFlag && geocoderUrlRaw) {
       throw new Error('нужен http(s) URL для геокодера');
     }
     geocoderBaseUrl = parsed.toString();
+    geocoderProvider = detectGeocoderProvider(geocoderBaseUrl);
   } catch (error) {
     logger.warn(
       {
@@ -76,6 +88,18 @@ const geocoderUserAgentRaw = (process.env.GEOCODER_USER_AGENT || '').trim();
 const geocoderUserAgent = geocoderUserAgentRaw || 'ERM Logistics geocoder';
 const geocoderEmailRaw = (process.env.GEOCODER_EMAIL || '').trim();
 const geocoderEmail = geocoderEmailRaw || undefined;
+const geocoderApiKeyRaw = (
+  process.env.GEOCODER_API_KEY ||
+  process.env.ORS_API_KEY ||
+  ''
+).trim();
+const geocoderApiKey = geocoderApiKeyRaw || undefined;
+
+if (geocoderProvider === 'openrouteservice' && !geocoderApiKey) {
+  logger.warn(
+    'Геокодер отключён: отсутствует GEOCODER_API_KEY или ORS_API_KEY',
+  );
+}
 
 const routingUrlRaw = (process.env.ROUTING_URL || '').trim();
 if (!routingUrlRaw) {
@@ -103,10 +127,15 @@ export const workerConfig = {
   backoffMs: parsePositiveInt(process.env.QUEUE_BACKOFF_MS, 5000),
   concurrency: parsePositiveInt(process.env.QUEUE_CONCURRENCY, 4),
   geocoder: {
-    enabled: geocoderEnabledFlag && Boolean(geocoderBaseUrl),
+    enabled:
+      geocoderEnabledFlag &&
+      Boolean(geocoderBaseUrl) &&
+      (geocoderProvider !== 'openrouteservice' || Boolean(geocoderApiKey)),
     baseUrl: geocoderBaseUrl,
     userAgent: geocoderUserAgent,
     email: geocoderEmail,
+    apiKey: geocoderApiKey,
+    provider: geocoderProvider,
   },
   routing: {
     enabled: Boolean(routingBaseUrl),

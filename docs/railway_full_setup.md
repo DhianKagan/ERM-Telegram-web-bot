@@ -35,7 +35,7 @@
 1. Добавьте плагин **Redis** или подключите внешний инстанс, сохраните строку подключения в переменную `QUEUE_REDIS_URL` (поддерживаются схемы `redis://` и `rediss://`).
 2. При деплое основного приложения Procfile автоматически стартует `api`, `bot` и `worker` внутри одного сервиса через pm2 — отдельный билд не требуется, достаточно прокинуть переменные окружения очередей.
 3. Если хотите вынести очереди в отдельный процесс Railway, создайте дополнительный сервис из этого же репозитория и выберите команду `worker` из `Procfile.railway` (или задайте вручную `pnpm --filter worker run start`).
-4. Установите переменные окружения для воркера: `QUEUE_REDIS_URL`, `QUEUE_PREFIX` (опционально), `GEOCODER_URL`/`GEOCODER_USER_AGENT`/`GEOCODER_EMAIL`, `ROUTING_URL` и при необходимости `QUEUE_CONCURRENCY`.
+4. Установите переменные окружения для воркера: `QUEUE_REDIS_URL`, `QUEUE_PREFIX` (опционально), `GEOCODER_URL`/`GEOCODER_USER_AGENT`/`GEOCODER_EMAIL`/`GEOCODER_API_KEY`, `ROUTING_URL` и при необходимости `QUEUE_CONCURRENCY`. Для OpenRouteService Proxy используйте `GEOCODER_URL=https://api.openrouteservice.org/geocode/search` и ключ в `GEOCODER_API_KEY` или `ORS_API_KEY`.
 5. После деплоя убедитесь, что на эндпоинте `/metrics` основного API появились метрики `bullmq_jobs_total` с состояниями `waiting`, `active`, `delayed`, `failed`, `completed`.
 
 ## 5. Запуск и проверка

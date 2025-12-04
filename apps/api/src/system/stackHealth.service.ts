@@ -1,8 +1,14 @@
 // Назначение: проверки доступности инфраструктурных компонентов (прокси, Redis, MongoDB)
 // Основные модули: undici/fetch, redis, mongoose, BullMQ конфигурация
-import { fetch } from 'undici';
+import { fetch, type RequestInit, type Response } from 'undici';
 import { performance } from 'node:perf_hooks';
-import { createClient, type RedisClientType } from 'redis';
+import {
+  createClient,
+  type RedisClientType,
+  type RedisFunctions,
+  type RedisModules,
+  type RedisScripts,
+} from 'redis';
 import mongoose from 'mongoose';
 import { QueueName } from 'shared';
 import connect from '../db/connection';
@@ -55,7 +61,8 @@ const fetchWithTimeout = async (
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetch(url, { ...init, signal: controller.signal });
+    const initWithSignal: RequestInit = { ...init, signal: controller.signal };
+    return await fetch(url, initWithSignal);
   } finally {
     clearTimeout(timer);
   }
@@ -69,21 +76,25 @@ const parseJsonSafe = (payload: string): unknown => {
   }
 };
 
-const countKeys = async (
-  client: RedisClientType,
+const countKeys = async <
+  M extends RedisModules,
+  F extends RedisFunctions,
+  S extends RedisScripts,
+>(
+  client: RedisClientType<M, F, S>,
   pattern: string,
   count = 200,
 ): Promise<number> => {
   let cursor = 0;
   let total = 0;
-   
+
   while (true) {
     const scanResult = await client.scan(cursor, {
       MATCH: pattern,
       COUNT: count,
     });
     total += scanResult.keys.length;
-    cursor = Number.parseInt(scanResult.cursor, 10);
+    cursor = scanResult.cursor;
     if (!Number.isFinite(cursor) || cursor === 0) {
       break;
     }
@@ -91,8 +102,12 @@ const countKeys = async (
   return total;
 };
 
-const readListLength = async (
-  client: RedisClientType,
+const readListLength = async <
+  M extends RedisModules,
+  F extends RedisFunctions,
+  S extends RedisScripts,
+>(
+  client: RedisClientType<M, F, S>,
   key: string,
 ): Promise<number> => {
   const keyType = await client.type(key);
@@ -100,7 +115,7 @@ const readListLength = async (
     return 0;
   }
   try {
-    return await client.llen(key);
+    return await client.lLen(key);
   } catch {
     return 0;
   }
@@ -278,6 +293,14 @@ export default class StackHealthService {
     try {
       const connection = await connect();
       const db = connection.db;
+      if (!db) {
+        return {
+          name: 'mongo',
+          status: 'error',
+          durationMs: Math.round(performance.now() - startedAt),
+          message: 'Соединение с MongoDB не готово',
+        } satisfies StackCheckResult;
+      }
       const stats = await db.stats();
       const collection = db.collection('healthcheck_tmp');
       const inserted = await collection.insertOne({ createdAt: new Date() });

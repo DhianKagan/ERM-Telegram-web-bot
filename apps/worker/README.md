@@ -17,7 +17,7 @@
 - `QUEUE_REDIS_URL` — обязательная строка подключения к Redis.
 - `QUEUE_PREFIX` — общий префикс ключей BullMQ.
 - `QUEUE_ATTEMPTS`, `QUEUE_BACKOFF_MS`, `QUEUE_CONCURRENCY` — параметры повторов и параллелизма воркеров.
-- `GEOCODER_ENABLED`, `GEOCODER_URL`, `GEOCODER_USER_AGENT`, `GEOCODER_EMAIL`, `GEOCODER_API_KEY` — управление вызовами геокодера (поддерживаются Nominatim и OpenRouteService `/geocode/search`).
+- `GEOCODER_ENABLED`, `GEOCODER_URL`, `GEOCODER_USER_AGENT`, `GEOCODER_EMAIL`, `GEOCODER_API_KEY`, `GEOCODER_PROXY_TOKEN` — управление вызовами геокодера (поддерживаются Nominatim и OpenRouteService `/geocode/search`, в том числе через наш прокси с токеном).
 - `ROUTING_URL`, `OSRM_ALGORITHM` — настройки OSRM для расчёта расстояний.
 - `LOG_LEVEL` — уровень логирования Pino.
 
@@ -37,5 +37,6 @@
 
 - Геокодер можно временно отключить через `GEOCODER_ENABLED=0`, тогда маршрутизация продолжит работать.
 - Для OpenRouteService укажите `GEOCODER_URL=https://api.openrouteservice.org/geocode/search` и ключ `GEOCODER_API_KEY` (или `ORS_API_KEY`).
+- Для работы через наш ORS Proxy задайте `GEOCODER_URL=http://<private_host_proxy>:5000/search` и `GEOCODER_PROXY_TOKEN=<PROXY_TOKEN>`, ключ `GEOCODER_API_KEY` не нужен: прокси сам ходит в ORS по `ORS_API_KEY`.
 - Для продакшна используйте собственный Nominatim и OSRM, либо OpenRouteService Proxy с ключом, чтобы избежать лимитов публичных сервисов.
 - При развёртывании на Railway Procfile уже включает процесс `worker`, достаточно передать переменные окружения очередей.

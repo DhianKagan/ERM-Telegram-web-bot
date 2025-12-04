@@ -240,6 +240,78 @@ def table() -> Response:
     return _forward_response(resp)
 
 
+@app.route("/search", methods=["GET"])
+def search() -> Response:
+    """
+    Проксирование геокодирования через OpenRouteService.
+    Требует заголовок X-Proxy-Token (проверяется _require_token).
+    Кеширует ответ в Redis и возвращает Nominatim-подобный массив,
+    содержащий lat/lon/display_name в случае успешного парсинга.
+    """
+    auth_error = _require_token()
+    if auth_error:
+        return auth_error
+
+    q = request.args.get("q") or request.args.get("text")
+    if not q:
+        return _error("Параметр q (или text) обязателен", status=400)
+
+    cache_key = _cache_key("geocode", {"q": q})
+    cached = _get_cached(cache_key)
+    if cached:
+        return Response(cached, mimetype="application/json")
+
+    lock_acquired = _acquire_lock(cache_key)
+    if not lock_acquired:
+        waited = _wait_for_cache(cache_key)
+        if waited:
+            return Response(waited, mimetype="application/json")
+
+    url = f"{ORS_BASE_URL}/geocode/search"
+    try:
+        resp = requests_session.get(
+            url,
+            params={"text": q, "size": 1},
+            headers={"Authorization": ORS_API_KEY},
+            timeout=30,
+        )
+    except requests.RequestException:
+        logger.exception("Ошибка запроса к OpenRouteService (geocode)")
+        _release_lock(cache_key)
+        return _error("Сервис геокодирования недоступен", status=502)
+
+    result_body = None
+    if resp.ok:
+        try:
+            payload = resp.json()
+            features = payload.get("features") or []
+            if features and isinstance(features, list):
+                feat = features[0]
+                coords = feat.get("geometry", {}).get("coordinates", [])
+                props = feat.get("properties", {}) or {}
+                if coords and len(coords) >= 2:
+                    lon = coords[0]
+                    lat = coords[1]
+                    display = props.get("label") or props.get("name") or props.get("locality") or props.get("region") or ""
+                    nominatim_like = [{
+                        "lat": str(lat),
+                        "lon": str(lon),
+                        "display_name": display,
+                        "properties": props
+                    }]
+                    result_body = json.dumps(nominatim_like)
+            # Если не удалось сделать Nominatim-like ответ, отдадим оригинальный ORS-ответ
+            if result_body is None:
+                result_body = resp.text
+            _store_cache(cache_key, result_body)
+        except Exception:
+            logger.exception("Не удалось распарсить ответ геокодера")
+            result_body = resp.text
+            _store_cache(cache_key, result_body)
+    _release_lock(cache_key)
+    return Response(result_body or json.dumps([]), mimetype="application/json")
+
+
 if __name__ == "__main__":
     port = int(os.getenv("PORT", "5000"))
     app.run(host="0.0.0.0", port=port)

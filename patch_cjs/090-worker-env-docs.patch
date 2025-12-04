@@ -1,0 +1,119 @@
+diff --git a/.env.example b/.env.example
+index 184cd8c..886dcba 100644
+--- a/.env.example
++++ b/.env.example
+@@ -48,6 +48,32 @@ CSP_STYLE_SRC_ALLOWLIST=
+ CSP_FONT_SRC_ALLOWLIST=https://tiles.openfreemap.org
+ CSP_WORKER_SRC_ALLOWLIST=
+ 
++# --- Воркеры BullMQ ---
++# Подключение к Redis для очередей; обязателен и совпадает с API.
++QUEUE_REDIS_URL=redis://localhost:6379
++# Префикс ключей и очередей (используется API и воркером одновременно).
++QUEUE_PREFIX=erm
++# Количество попыток и задержка между ними для задач геокодера/маршрутизатора.
++QUEUE_ATTEMPTS=3
++QUEUE_BACKOFF_MS=5000
++# Параллельные задания на одном процессе воркера (и API при отправке задач).
++QUEUE_CONCURRENCY=4
++# Таймаут задач в API (оставьте по умолчанию, если используете общий .env).
++QUEUE_JOB_TIMEOUT_MS=30000
++# Интервал отправки метрик очередей (нужен только для API, но оставляем для полноты блока).
++QUEUE_METRICS_INTERVAL_MS=15000
++# Включение геокодера (0 — выключить, например, если используете только маршрутизацию).
++GEOCODER_ENABLED=1
++# Endpoint Nominatim совместимый; для production используйте собственный экземпляр.
++GEOCODER_URL=https://nominatim.openstreetmap.org/search
++# User-Agent и почта для этичного доступа к геокодеру.
++GEOCODER_USER_AGENT=ERM Logistics geocoder
++GEOCODER_EMAIL=
++# URL сервиса OSRM; совпадает с API и клиентом.
++ROUTING_URL=https://router.project-osrm.org
++# Алгоритм OSRM (mld/ch/etc.), опционально.
++OSRM_ALGORITHM=mld
++
+ 
+ # --- Порты (локальная разработка) ---
+ PORT=3000
+diff --git a/apps/worker/README.md b/apps/worker/README.md
+new file mode 100644
+index 0000000..f982db7
+--- /dev/null
++++ b/apps/worker/README.md
+@@ -0,0 +1,40 @@
++<!-- Назначение: инструкции по запуску и настройке воркера BullMQ -->
++
++# Воркеры BullMQ
++
++Сервис `apps/worker` обрабатывает фоновые задачи геокодирования и расчёта маршрутов, которые создаёт API. Воркеры используют Redis через BullMQ, поэтому переменные окружения должны совпадать с настройками `apps/api` и клиента.
++
++## Требования
++
++- Node.js и pnpm, установленные в корне монорепозитория.
++- Redis, доступный по `QUEUE_REDIS_URL` (поддерживаются `redis://` и `rediss://`).
++- Общий префикс очередей `QUEUE_PREFIX`, чтобы API и воркер работали с одинаковыми задачами.
++
++## Переменные окружения
++
++Полный пример находится в [`apps/worker/env.example`](./env.example). Ключевые параметры:
++
++- `QUEUE_REDIS_URL` — обязательная строка подключения к Redis.
++- `QUEUE_PREFIX` — общий префикс ключей BullMQ.
++- `QUEUE_ATTEMPTS`, `QUEUE_BACKOFF_MS`, `QUEUE_CONCURRENCY` — параметры повторов и параллелизма воркеров.
++- `GEOCODER_ENABLED`, `GEOCODER_URL`, `GEOCODER_USER_AGENT`, `GEOCODER_EMAIL` — управление вызовами Nominatim.
++- `ROUTING_URL`, `OSRM_ALGORITHM` — настройки OSRM для расчёта расстояний.
++- `LOG_LEVEL` — уровень логирования Pino.
++
++## Локальный запуск только воркера
++
++1. Скопируйте пример окружения: `cp apps/worker/env.example apps/worker/.env` и укажите корректный `QUEUE_REDIS_URL`.
++2. Соберите зависимости из корня: `pnpm install`.
++3. Запустите воркер: `pnpm --filter worker dev` для режима разработки или `pnpm --filter worker run start` после сборки (`pnpm --filter worker build`).
++
++## Запуск вместе с API и вебом
++
++1. Используйте общий `.env` в корне (`cp .env.example .env`) и заполните блок «Воркеры BullMQ» — эти же переменные подхватят API и воркер.
++2. Поднимите API и клиент обычными командами (например, `pnpm dev` или через `docker-compose`), дополнительно стартуйте воркер: `pnpm --filter worker dev`.
++3. Убедитесь, что API и воркер смотрят на один и тот же `QUEUE_REDIS_URL` и одинаковый `QUEUE_PREFIX`; иначе задачи не будут попадать в обработку.
++
++## Эксплуатационные заметки
++
++- Геокодер можно временно отключить через `GEOCODER_ENABLED=0`, тогда маршрутизация продолжит работать.
++- Для продакшна используйте собственный Nominatim и OSRM, чтобы избежать лимитов публичных сервисов.
++- При развёртывании на Railway Procfile уже включает процесс `worker`, достаточно передать переменные окружения очередей.
+diff --git a/apps/worker/env.example b/apps/worker/env.example
+new file mode 100644
+index 0000000..d88dad9
+--- /dev/null
++++ b/apps/worker/env.example
+@@ -0,0 +1,30 @@
++# Назначение: пример переменных окружения для воркера BullMQ.
++# Используйте его для автономного запуска воркера или сверяйте значения с корневым `.env`,
++# если запускаете API и веб одновременно — параметры очередей должны совпадать.
++
++# --- Очереди BullMQ ---
++QUEUE_REDIS_URL=redis://localhost:6379
++QUEUE_PREFIX=erm
++QUEUE_ATTEMPTS=3
++QUEUE_BACKOFF_MS=5000
++QUEUE_CONCURRENCY=4
++
++# --- Геокодер ---
++GEOCODER_ENABLED=1
++GEOCODER_URL=https://nominatim.openstreetmap.org/search
++GEOCODER_USER_AGENT=ERM Logistics geocoder (local)
++GEOCODER_EMAIL=
++
++# --- Маршрутизация ---
++ROUTING_URL=https://router.project-osrm.org
++OSRM_ALGORITHM=mld
++
++# --- Логирование и время ---
++LOG_LEVEL=info
++TZ=Europe/Kyiv
++
++# --- Подсказки по запуску ---
++# 1) Для совместной работы с API и вебом используйте общий Redis и одинаковые значения
++#    QUEUE_PREFIX/QUEUE_REDIS_URL — API ставит задачи, воркер их обрабатывает.
++# 2) При docker-compose укажите в QUEUE_REDIS_URL адрес контейнера Redis (например, redis://redis:6379).
++# 3) Для изолированного теста воркера достаточно Redis и заполненных переменных выше; API и веб можно не поднимать.

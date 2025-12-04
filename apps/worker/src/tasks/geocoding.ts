@@ -5,7 +5,7 @@ import type { WorkerConfig } from '../config';
 import { logger } from '../logger';
 
 const REQUEST_TIMEOUT_MS = 8000;
-const MAPS_RESOLVE_TIMEOUT_MS = 3000;
+const MAPS_RESOLVE_TIMEOUT_MS = 5000;
 
 const normalizeAddress = (value: string): string => {
   const trimmed = value.trim();
@@ -80,7 +80,10 @@ const extractPlaceNameFromGoogleUrl = (value: string): string | null => {
   return null;
 };
 
-const resolveGoogleMapsUrl = async (value: string): Promise<string | null> => {
+const resolveGoogleMapsUrl = async (
+  value: string,
+  userAgent: string,
+): Promise<string | null> => {
   const parsed = parseUrlSafe(value);
   if (!parsed) {
     return null;
@@ -101,6 +104,9 @@ const resolveGoogleMapsUrl = async (value: string): Promise<string | null> => {
       method: 'GET',
       redirect: 'follow',
       signal: controller.signal,
+      headers: {
+        'User-Agent': userAgent,
+      },
     });
     return response.url;
   } catch (error) {
@@ -231,7 +237,7 @@ export const geocodeAddress = async (
   let searchQuery =
     extractPlaceNameFromGoogleUrl(normalized) || normalizeAddress(address);
 
-  const resolvedUrl = await resolveGoogleMapsUrl(normalized);
+  const resolvedUrl = await resolveGoogleMapsUrl(normalized, config.userAgent);
   if (resolvedUrl) {
     const resolvedCoordinates = extractCoordinatesFromText(resolvedUrl);
     if (resolvedCoordinates) {

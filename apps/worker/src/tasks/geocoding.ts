@@ -77,6 +77,10 @@ const prepareRequest = (
     'User-Agent': config.userAgent,
   };
 
+  if (config.proxyToken) {
+    headers['X-Proxy-Token'] = config.proxyToken;
+  }
+
   if (config.provider === 'openrouteservice') {
     if (!url.searchParams.has('size')) {
       url.searchParams.set('size', '1');

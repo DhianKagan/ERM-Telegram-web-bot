@@ -94,6 +94,12 @@ const geocoderApiKeyRaw = (
   ''
 ).trim();
 const geocoderApiKey = geocoderApiKeyRaw || undefined;
+const geocoderProxyTokenRaw = (
+  process.env.GEOCODER_PROXY_TOKEN ||
+  process.env.PROXY_TOKEN ||
+  ''
+).trim();
+const geocoderProxyToken = geocoderProxyTokenRaw || undefined;
 
 if (geocoderProvider === 'openrouteservice' && !geocoderApiKey) {
   logger.warn(
@@ -135,6 +141,7 @@ export const workerConfig = {
     userAgent: geocoderUserAgent,
     email: geocoderEmail,
     apiKey: geocoderApiKey,
+    proxyToken: geocoderProxyToken,
     provider: geocoderProvider,
   },
   routing: {

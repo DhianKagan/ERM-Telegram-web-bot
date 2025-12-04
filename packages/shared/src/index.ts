@@ -9,6 +9,16 @@ export {
   generateMultiRouteLink,
   type Coords,
 } from './mapUtils';
+export {
+  QueueName,
+  QueueJobName,
+  type Coordinates,
+  type GeocodingJobData,
+  type GeocodingJobResult,
+  type RouteDistanceJobData,
+  type RouteDistanceJobResult,
+  type DeadLetterJobData,
+} from './queues';
 export type {
   Task,
   User,

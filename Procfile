@@ -4,3 +4,4 @@
 web: pnpm build \
   && ./scripts/set_bot_commands.sh \
   && pnpm --filter telegram-task-bot run start:pm2
+worker: pnpm --filter worker run start

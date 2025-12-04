@@ -2,3 +2,4 @@
 release: pnpm build && node dist/scripts/cleanup/cleanupDetachedFiles.js
 api: node apps/api/dist/server.js
 bot: ./scripts/set_bot_commands.sh && node apps/api/dist/bot/runtime.js
+worker: node apps/worker/dist/index.js

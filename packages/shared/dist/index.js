@@ -38,6 +38,8 @@ var __importDefault =
   };
 Object.defineProperty(exports, '__esModule', { value: true });
 exports.taskFormSchema =
+  exports.QueueJobName =
+  exports.QueueName =
   exports.generateMultiRouteLink =
   exports.generateRouteLink =
   exports.extractCoords =
@@ -68,6 +70,19 @@ Object.defineProperty(exports, 'generateMultiRouteLink', {
   enumerable: true,
   get: function () {
     return mapUtils_1.generateMultiRouteLink;
+  },
+});
+var queues_1 = require('./queues');
+Object.defineProperty(exports, 'QueueName', {
+  enumerable: true,
+  get: function () {
+    return queues_1.QueueName;
+  },
+});
+Object.defineProperty(exports, 'QueueJobName', {
+  enumerable: true,
+  get: function () {
+    return queues_1.QueueJobName;
   },
 });
 var taskForm_schema_json_1 = require('./taskForm.schema.json');

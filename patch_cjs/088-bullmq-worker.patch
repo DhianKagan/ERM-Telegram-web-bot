@@ -1,0 +1,14 @@
+diff --git a/eslint.config.ts b/eslint.config.ts
+index a9d3a94..5d6ac31 100644
+--- a/eslint.config.ts
++++ b/eslint.config.ts
+@@ -9,6 +9,9 @@ import tsParser from '@typescript-eslint/parser';
+ import tsPlugin from '@typescript-eslint/eslint-plugin';
+ 
+ const config = [
++  {
++    ignores: ['packages/shared/dist/**'],
++  },
+   js.configs.recommended,
+   {
+     files: ['**/*.js'],

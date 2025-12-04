@@ -1,0 +1,24 @@
+{
+  "name": "worker",
+  "version": "0.0.0",
+  "private": true,
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "pnpm exec ts-node src/index.ts",
+    "build": "pnpm exec tsc -b",
+    "start": "node dist/index.js",
+    "lint": "pnpm exec eslint -c ../../eslint.config.ts src",
+    "typecheck": "pnpm exec tsc --noEmit"
+  },
+  "dependencies": {
+    "bullmq": "^5.31.1",
+    "dotenv": "^16.6.1",
+    "ioredis": "^5.4.1",
+    "pino": "^9.9.4",
+    "shared": "workspace:*"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.2",
+    "typescript": "5.9.3"
+  }
+}

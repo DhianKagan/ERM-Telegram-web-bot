@@ -1,0 +1,51 @@
+diff --git a/apps/api/src/system/stackHealth.controller.ts b/apps/api/src/system/stackHealth.controller.ts
+index b9f6a0a..d94b289 100644
+--- a/apps/api/src/system/stackHealth.controller.ts
++++ b/apps/api/src/system/stackHealth.controller.ts
+@@ -31,10 +31,11 @@ const normalizeBaseUrl = (value: string | undefined): string | undefined => {
+   }
+ };
+ 
+-const deriveProxyFromRouting = (
+-  routingUrlRaw: string | undefined,
++const deriveProxyFromEnv = (
++  raw: string | undefined,
++  source: string,
+ ): { url?: string; source?: string } => {
+-  const normalized = normalizeBaseUrl(routingUrlRaw);
++  const normalized = normalizeBaseUrl(raw);
+   if (!normalized) {
+     return {};
+   }
+@@ -43,7 +44,7 @@ const deriveProxyFromRouting = (
+     const parsed = new URL(normalized);
+     const segments = parsed.pathname.split('/').filter(Boolean);
+     if (segments.length === 0) {
+-      return { url: parsed.origin, source: 'ROUTING_URL' };
++      return { url: parsed.origin, source };
+     }
+ 
+     segments.pop();
+@@ -51,7 +52,7 @@ const deriveProxyFromRouting = (
+     const base = parsed.toString();
+     return {
+       url: base.endsWith('/') ? base.slice(0, -1) : base,
+-      source: 'ROUTING_URL',
++      source,
+     };
+   } catch {
+     return {};
+@@ -71,7 +72,12 @@ const selectProxyUrl = (): { url?: string; source?: string } => {
+     }
+   }
+ 
+-  return deriveProxyFromRouting(process.env.ROUTING_URL);
++  const geocoder = deriveProxyFromEnv(process.env.GEOCODER_URL, 'GEOCODER_URL');
++  if (geocoder.url) {
++    return geocoder;
++  }
++
++  return deriveProxyFromEnv(process.env.ROUTING_URL, 'ROUTING_URL');
+ };
+ 
+ @injectable()

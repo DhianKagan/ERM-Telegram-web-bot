@@ -1,0 +1,30 @@
+diff --git a/apps/worker/src/tasks/geocoding.ts b/apps/worker/src/tasks/geocoding.ts
+index cfc8dff..2461744 100644
+--- a/apps/worker/src/tasks/geocoding.ts
++++ b/apps/worker/src/tasks/geocoding.ts
+@@ -17,18 +17,19 @@ const parseCoordinate = (value: unknown): number | null => {
+   return Number.isFinite(num) ? num : null;
+ };
+ 
+-const isCoordinatePairValid = (
+-  lat: number | null,
+-  lng: number | null,
+-): boolean =>
+-  lat !== null && lng !== null && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
++const isCoordinatePairValid = (lat: number, lng: number): boolean =>
++  Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
+ 
+ const extractCoordinatesFromText = (value: string): Coordinates | null => {
+   const coordinatePattern = /(-?\d{1,3}(?:\.\d+)?)[,\s]+(-?\d{1,3}(?:\.\d+)?)/g;
+   for (const match of value.matchAll(coordinatePattern)) {
+     const lat = parseCoordinate(match[1]);
+     const lng = parseCoordinate(match[2]);
+-    if (isCoordinatePairValid(lat, lng)) {
++    if (
++      lat !== null &&
++      lng !== null &&
++      isCoordinatePairValid(lat, lng)
++    ) {
+       return { lat, lng } satisfies Coordinates;
+     }
+   }

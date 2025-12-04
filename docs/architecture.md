@@ -64,7 +64,7 @@ web/
 
 ## Фоновые очереди BullMQ
 
-- Отдельный сервис `apps/worker` запускает воркеры BullMQ для очередей `logistics:geocoding` и `logistics:routing`; неуспешные задачи пишутся в DLQ `logistics:dead-letter`.
+- Отдельный сервис `apps/worker` запускает воркеры BullMQ для очередей `logistics-geocoding` и `logistics-routing`; неуспешные задачи пишутся в DLQ `logistics-dead-letter`.
 - API добавляет задания через `apps/api/src/queues/taskQueue.ts` с ретраями и экспоненциальным backoff, а при недоступности Redis возвращается к прямым вызовам геокодера и OSRM.
 - Метрика `bullmq_jobs_total{queue,state}` обновляется планировщиком `startQueueMetricsPoller` и доступна на `/metrics` вместе с остальными Prometheus-сборками.
 - Конфигурация очередей выделена в `apps/api/src/config/queue.ts`, параметры подключения и префикс задаются переменными `QUEUE_REDIS_URL` и `QUEUE_PREFIX`.

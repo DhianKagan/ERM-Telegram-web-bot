@@ -18,6 +18,62 @@ const pickEnv = (keys: string[]): string | undefined => {
   return undefined;
 };
 
+const normalizeBaseUrl = (value: string | undefined): string | undefined => {
+  if (!value) return undefined;
+  try {
+    const parsed = new URL(value);
+    parsed.search = '';
+    parsed.hash = '';
+    const cleaned = parsed.toString();
+    return cleaned.endsWith('/') ? cleaned.slice(0, -1) : cleaned;
+  } catch {
+    return undefined;
+  }
+};
+
+const deriveProxyFromRouting = (
+  routingUrlRaw: string | undefined,
+): { url?: string; source?: string } => {
+  const normalized = normalizeBaseUrl(routingUrlRaw);
+  if (!normalized) {
+    return {};
+  }
+
+  try {
+    const parsed = new URL(normalized);
+    const segments = parsed.pathname.split('/').filter(Boolean);
+    if (segments.length === 0) {
+      return { url: parsed.origin, source: 'ROUTING_URL' };
+    }
+
+    segments.pop();
+    parsed.pathname = segments.length ? `/${segments.join('/')}` : '/';
+    const base = parsed.toString();
+    return {
+      url: base.endsWith('/') ? base.slice(0, -1) : base,
+      source: 'ROUTING_URL',
+    };
+  } catch {
+    return {};
+  }
+};
+
+const selectProxyUrl = (): { url?: string; source?: string } => {
+  const directCandidates: Array<{ value?: string; source: string }> = [
+    { value: process.env.PROXY_PRIVATE_URL, source: 'PROXY_PRIVATE_URL' },
+    { value: process.env.GEOCODER_PROXY_URL, source: 'GEOCODER_PROXY_URL' },
+  ];
+
+  for (const candidate of directCandidates) {
+    const normalized = normalizeBaseUrl(candidate.value?.trim());
+    if (normalized) {
+      return { url: normalized, source: candidate.source };
+    }
+  }
+
+  return deriveProxyFromRouting(process.env.ROUTING_URL);
+};
+
 @injectable()
 export default class StackHealthController {
   constructor(
@@ -26,11 +82,7 @@ export default class StackHealthController {
   ) {}
 
   run = async (_req: Request, res: Response): Promise<void> => {
-    const proxyUrl = pickEnv([
-      'PROXY_PRIVATE_URL',
-      'GEOCODER_PROXY_URL',
-      'GEOCODER_URL',
-    ]);
+    const proxy = selectProxyUrl();
     const proxyToken = pickEnv(['PROXY_TOKEN', 'GEOCODER_PROXY_TOKEN']);
     const redisUrl = pickEnv(['QUEUE_REDIS_URL', 'REDIS_URL']);
     const queuePrefix = pickEnv(['QUEUE_PREFIX']);
@@ -38,7 +90,8 @@ export default class StackHealthController {
     const knownQueueNames = new Set<string>(Object.values(QueueName));
 
     const report: StackHealthReport = await this.service.run({
-      proxyUrl,
+      proxyUrl: proxy.url,
+      proxySource: proxy.source,
       proxyToken,
       redisUrl,
       queuePrefix,

@@ -32,6 +32,7 @@ export type StackHealthReport = {
 
 type StackHealthOptions = {
   proxyUrl?: string;
+  proxySource?: string;
   proxyToken?: string;
   redisUrl?: string;
   queuePrefix?: string;
@@ -158,10 +159,11 @@ const readListLength = async <
 export default class StackHealthService {
   async checkProxy(options: {
     proxyUrl?: string;
+    proxySource?: string;
     proxyToken?: string;
   }): Promise<StackCheckResult> {
     const startedAt = performance.now();
-    const { proxyUrl, proxyToken } = options;
+    const { proxyUrl, proxyToken, proxySource } = options;
     if (!proxyUrl || !proxyToken) {
       return {
         name: 'proxy',
@@ -169,6 +171,7 @@ export default class StackHealthService {
         message: 'Прокси не настроен',
         meta: {
           hint: 'Добавьте PROXY_PRIVATE_URL/GEOCODER_URL и PROXY_TOKEN (или GEOCODER_PROXY_URL/GEOCODER_PROXY_TOKEN) в переменные окружения.',
+          source: proxySource ?? 'не задан',
         },
       } satisfies StackCheckResult;
     }
@@ -198,6 +201,7 @@ export default class StackHealthService {
             hint: proxyHintByStatus(healthResponse.status, '/health'),
             tokenSent: Boolean(proxyToken),
             proxyUrl,
+            source: proxySource,
           },
         } satisfies StackCheckResult;
       }
@@ -220,6 +224,7 @@ export default class StackHealthService {
             body: cutSnippet(searchBody),
             hint: proxyHintByStatus(searchResponse.status, '/search'),
             sample: SAMPLE_QUERY,
+            source: proxySource,
           },
         } satisfies StackCheckResult;
       }
@@ -238,6 +243,7 @@ export default class StackHealthService {
             sample: cutSnippet(searchBody),
             endpoint: '/search',
             hint: 'Геокодер возвращает неожиданный ответ: проверьте конфигурацию прокси и upstream-геокодера (часто мешают HTML-страницы ошибок).',
+            source: proxySource,
           },
         } satisfies StackCheckResult;
       }
@@ -261,6 +267,7 @@ export default class StackHealthService {
             hint: 'Маршрутизация недоступна: убедитесь, что OSRM/ORS принимает запросы и маршрутные данные загружены.',
             start: ROUTE_START,
             end: ROUTE_END,
+            source: proxySource,
           },
         } satisfies StackCheckResult;
       }
@@ -272,6 +279,7 @@ export default class StackHealthService {
         meta: {
           searchSample: cutSnippet(searchBody, 200),
           hint: 'Прокси отвечает корректно: проверьте маршрутизацию, если проблемы сохраняются на стороне клиентов.',
+          source: proxySource,
         },
       } satisfies StackCheckResult;
     } catch (error: unknown) {
@@ -282,6 +290,7 @@ export default class StackHealthService {
         message: pickMessage(error),
         meta: {
           hint: 'Проверка прокси не завершилась: убедитесь в доступности URL и отсутствии блокировок сети/файрвола.',
+          source: proxySource,
         },
       } satisfies StackCheckResult;
     }
@@ -402,6 +411,7 @@ export default class StackHealthService {
     const proxyResult = await this.checkProxy({
       proxyToken: options.proxyToken,
       proxyUrl: options.proxyUrl,
+      proxySource: options.proxySource,
     });
 
     const redisResult = await this.checkRedis({

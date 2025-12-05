@@ -1,11 +1,10 @@
 // apps/api/src/services/route.ts
-// Назначение: запросы к сервису OSRM
-// Модули: fetch, config, prom-client
 import type { Position } from 'geojson';
 import { routingUrl } from '../config';
 import { osrmRequestDuration, osrmErrorsTotal } from '../metrics';
 import { getTrace } from '../utils/trace';
 import { cacheGet, cacheSet, cacheClear } from '../utils/cache';
+import { logger } from '../logger';
 
 const tableGuard = process.env.ROUTE_TABLE_GUARD !== '0';
 const defaultTableMaxPoints = 100;
@@ -37,9 +36,13 @@ const routePathSegments = routingUrlObject.pathname
 const routeSegmentIndex = routePathSegments.lastIndexOf('route');
 
 const routePrefixSegments =
-  routeSegmentIndex === -1 ? routePathSegments : routePathSegments.slice(0, routeSegmentIndex);
+  routeSegmentIndex === -1
+    ? routePathSegments
+    : routePathSegments.slice(0, routeSegmentIndex);
 const routeProfileSegments =
-  routeSegmentIndex === -1 ? [] : routePathSegments.slice(routeSegmentIndex + 1);
+  routeSegmentIndex === -1
+    ? []
+    : routePathSegments.slice(routeSegmentIndex + 1);
 
 const buildEndpointUrl = (endpoint: Endpoint, coords?: string): URL => {
   const parts = [
@@ -57,7 +60,6 @@ const allowed = ['table', 'nearest', 'match', 'trip', 'route'] as const;
 
 type Endpoint = (typeof allowed)[number];
 
-/** Проверка формата координат */
 export function validateCoords(value: string): string {
   const coordRx =
     /^-?\d+(\.\d+)?,-?\d+(\.\d+)?(;-?\d+(\.\d+)?,-?\d+(\.\d+)?)*$/;
@@ -65,10 +67,6 @@ export function validateCoords(value: string): string {
   return value;
 }
 
-/**
- * Возвращает значение токена прокси (если задано в окружении).
- * Поддерживаются оба имени переменной: GEOCODER_PROXY_TOKEN и PROXY_TOKEN.
- */
 function getProxyToken(): string | undefined {
   const t1 = process.env.GEOCODER_PROXY_TOKEN;
   if (t1 && t1.trim()) return t1.trim();
@@ -94,22 +92,28 @@ async function call<T>(
   const headers: Record<string, string> = {};
   if (trace) headers.traceparent = trace.traceparent;
 
-  // ======= Добавляем X-Proxy-Token, если он задан в окружении =======
   const proxyToken = getProxyToken();
   if (proxyToken) {
     headers['X-Proxy-Token'] = proxyToken;
   }
-  // ==================================================================
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);
   const timer = osrmRequestDuration.startTimer({ endpoint });
   try {
-    const res = await fetch(url, { headers, signal: controller.signal });
-    const data = await res.json();
+    const res = await fetch(url.toString(), { headers, signal: controller.signal });
+    const raw = await res.text();
+    let data: any = null;
+    try {
+      data = raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      logger.error("Non-JSON response from routing service", { url: url.toString(), status: res.status, body: raw });
+      throw new Error("Routing service returned non-JSON response");
+    }
     if (!res.ok) {
+      logger.error("Routing service error", { url: url.toString(), status: res.status, body: data });
       osrmErrorsTotal.inc({ endpoint, reason: String(res.status) });
-      throw new Error(data.message || data.code || 'Route error');
+      throw new Error(data?.message || data?.code || `Route error status ${res.status}`);
     }
     timer({ endpoint, status: res.status });
     await cacheSet(key, data);
@@ -157,22 +161,28 @@ export async function getRouteDistance(
   const headers: Record<string, string> = {};
   if (trace) headers.traceparent = trace.traceparent;
 
-  // ======= Добавляем X-Proxy-Token и/или другие серверные заголовки =======
   const proxyToken = getProxyToken();
   if (proxyToken) {
     headers['X-Proxy-Token'] = proxyToken;
   }
-  // ===================================================================
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);
   const timer = osrmRequestDuration.startTimer({ endpoint: 'route' });
   try {
-    const res = await fetch(routeUrl, { headers, signal: controller.signal });
-    const data = await res.json();
-    if (!res.ok || data.code !== 'Ok') {
+    const res = await fetch(routeUrl.toString(), { headers, signal: controller.signal });
+    const raw = await res.text();
+    let data: any = null;
+    try {
+      data = raw ? JSON.parse(raw) : null;
+    } catch (e) {
+      logger.error("Non-JSON response from routing service (route)", { url: routeUrl.toString(), status: res.status, body: raw });
+      throw new Error("Routing service returned non-JSON response");
+    }
+    if (!res.ok || data?.code !== 'Ok') {
+      logger.error("Routing service returned error for routeDistance", { url: routeUrl.toString(), status: res.status, body: data });
       osrmErrorsTotal.inc({ endpoint: 'route', reason: String(res.status) });
-      throw new Error(data.message || data.code || 'Route error');
+      throw new Error(data?.message || data?.code || `Route error status ${res.status}`);
     }
     timer({ endpoint: 'route', status: res.status });
     const result = {
@@ -248,7 +258,6 @@ export async function trip<T = unknown>(
   return call('trip', points, params);
 }
 
-/** Сборка ключа кеша */
 export function buildCacheKey(
   endpoint: string,
   coords: string,
@@ -260,5 +269,4 @@ export function buildCacheKey(
   return `${endpoint}:${coords}:${search.toString()}`;
 }
 
-/** Очистка кеша маршрутов */
 export const clearRouteCache = cacheClear;

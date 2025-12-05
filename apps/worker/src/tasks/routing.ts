@@ -93,17 +93,12 @@ export const calculateRouteDistance = async (
     const headers: Record<string, string> = {};
     if (config.proxyToken) headers['X-Proxy-Token'] = config.proxyToken;
 
-    // Optional: try to import trace getter (may not exist in worker env)
+    // Optional: try to import trace getter from api utils (may not exist)
     try {
-      // dynamic import so bundlers don't force-load server-only modules
-      // we don't fail if not present
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
-      const traceModule = await import('../utils/trace').catch(() => null);
-      const getTrace = traceModule && (traceModule.getTrace ?? traceModule.default ?? null);
-      if (typeof getTrace === 'function') {
-        // call safely
-        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
-        const traceResult = getTrace();
+      // dynamic import of API trace util
+      const traceModule = await import('../../api/src/utils/trace').catch(() => null);
+      if (traceModule && typeof traceModule.getTrace === 'function') {
+        const traceResult = traceModule.getTrace();
         if (traceResult && typeof traceResult.traceparent === 'string') {
           headers['traceparent'] = traceResult.traceparent;
         }

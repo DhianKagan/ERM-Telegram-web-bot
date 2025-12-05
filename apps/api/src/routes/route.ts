@@ -1,6 +1,5 @@
 // apps/api/src/routes/route.ts
-// Роут расчёта расстояния
-// Модули: express, express-validator, services/route, middleware/auth
+// Роут расчёта расстояния и геометрии маршрута
 import { Router, RequestHandler } from 'express';
 import { body, query } from 'express-validator';
 import validate from '../utils/validate';
@@ -119,7 +118,13 @@ router.get(
     } catch (err) {
       // Log with context and return empty coordinates rather than 500
       try {
-        logger.warn({ err: err instanceof Error ? { name: err.name, message: err.message } : err, points }, 'routeGeometry failed - returning empty coordinates');
+        logger.warn(
+          {
+            err: err instanceof Error ? { name: err.name, message: err.message } : err,
+            points,
+          },
+          'routeGeometry failed - returning empty coordinates',
+        );
       } catch {
         // swallow logging errors
         // eslint-disable-next-line no-console

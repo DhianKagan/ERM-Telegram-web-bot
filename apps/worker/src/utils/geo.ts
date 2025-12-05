@@ -1,8 +1,6 @@
 // apps/worker/src/utils/geo.ts
 /**
  * Общая небольшая библиотека гео-утилит для нормализации координат и проверки.
- * Используется воркером и API-сервисом (на время пока не вынесено в packages/shared).
- *
  * Экспортируем:
  *  - normalizePointsString(raw: string): [lon, lat][]
  *  - haversineDistanceMeters(a, b)

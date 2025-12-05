@@ -57,6 +57,9 @@ function isOrsRoute(obj: unknown): obj is OrsRoute {
 /**
  * Calculates route distance between two coordinates using the worker routing service.
  * Returns { distanceKm: number | null }.
+ *
+ * Important: this implementation DOES NOT import API-only utilities (like api trace)
+ * to remain buildable in worker-only context.
  */
 export const calculateRouteDistance = async (
   start: Coordinates,
@@ -93,18 +96,10 @@ export const calculateRouteDistance = async (
     const headers: Record<string, string> = {};
     if (config.proxyToken) headers['X-Proxy-Token'] = config.proxyToken;
 
-    // Optional: try to import trace getter from api utils (may not exist)
-    try {
-      // dynamic import of API trace util
-      const traceModule = await import('../../api/src/utils/trace').catch(() => null);
-      if (traceModule && typeof traceModule.getTrace === 'function') {
-        const traceResult = traceModule.getTrace();
-        if (traceResult && typeof traceResult.traceparent === 'string') {
-          headers['traceparent'] = traceResult.traceparent;
-        }
-      }
-    } catch {
-      // ignore tracing errors
+    // If caller stored a traceparent in config (optional), propagate it.
+    // This avoids importing API-only trace utilities inside worker.
+    if (typeof (config as any).traceparent === 'string') {
+      headers['traceparent'] = (config as any).traceparent as string;
     }
 
     const startTime = Date.now();

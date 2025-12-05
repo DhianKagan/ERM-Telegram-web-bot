@@ -1,3 +1,4 @@
+// apps/worker/src/tasks/routing.ts
 // Назначение: фоновые задачи расчёта расстояний OSRM
 // Основные модули: fetch, logger
 import type { Coordinates, RouteDistanceJobResult } from 'shared';
@@ -48,7 +49,27 @@ export const calculateRouteDistance = async (
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
-    const response = await fetch(url, { signal: controller.signal });
+    // Формируем заголовки — добавляем токен прокси (если есть) и traceparent (если доступен)
+    const headers: Record<string, string> = {};
+    // Если в конфиге передан прокси-токен, добавляем его в заголовок
+    if (config.proxyToken) {
+      headers['X-Proxy-Token'] = config.proxyToken;
+    }
+    // Если есть trace (в рамках вашего воркера может быть подключение к tracing — здесь просто пример)
+    // Обратите внимание: если у вас есть trace, передавайте traceparent аналогично API
+    // (если нет — эту часть можно опустить)
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const { getTrace } = require('../utils/trace');
+      const trace = getTrace && getTrace();
+      if (trace && trace.traceparent) {
+        headers['traceparent'] = trace.traceparent;
+      }
+    } catch {
+      // ignore, возможно отсутствует модуль trace в рантайме воркера
+    }
+
+    const response = await fetch(url, { signal: controller.signal, headers });
     const payload = await response.json();
     if (!response.ok || payload.code !== 'Ok') {
       logger.warn(

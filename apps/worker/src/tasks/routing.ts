@@ -30,6 +30,34 @@ const buildRouteUrl = (
   return base;
 };
 
+/**
+ * Minimal typed representation of the ORS/OSRM-like response we expect.
+ * We model the parts we read (routes[0].distance, code) and leave the rest unknown.
+ */
+type OrsRoute = {
+  code?: string;
+  routes?: Array<{
+    distance?: number;
+    duration?: number;
+    geometry?: { coordinates?: Array<[number, number]> } | string | null;
+    segments?: unknown;
+    summary?: unknown;
+  }>;
+  waypoints?: unknown;
+  [k: string]: unknown;
+};
+
+function isOrsRoute(obj: unknown): obj is OrsRoute {
+  if (!obj || typeof obj !== 'object') return false;
+  const o = obj as OrsRoute;
+  // If it has either code or routes array it's probably the expected shape
+  return 'code' in o || Array.isArray(o.routes);
+}
+
+/**
+ * Calculates route distance between two coordinates using the worker routing service.
+ * Returns { distanceKm: number | null }.
+ */
 export const calculateRouteDistance = async (
   start: Coordinates,
   finish: Coordinates,
@@ -65,50 +93,73 @@ export const calculateRouteDistance = async (
     const headers: Record<string, string> = {};
     if (config.proxyToken) headers['X-Proxy-Token'] = config.proxyToken;
 
-    // optional tracing
+    // Optional: try to import trace getter (may not exist in worker env)
     try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { getTrace } = require('../utils/trace');
-      const trace = getTrace && getTrace();
-      if (trace && trace.traceparent) {
-        headers['traceparent'] = trace.traceparent;
+      // dynamic import so bundlers don't force-load server-only modules
+      // we don't fail if not present
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+      const traceModule = await import('../utils/trace').catch(() => null);
+      const getTrace = traceModule && (traceModule.getTrace ?? traceModule.default ?? null);
+      if (typeof getTrace === 'function') {
+        // call safely
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+        const traceResult = getTrace();
+        if (traceResult && typeof traceResult.traceparent === 'string') {
+          headers['traceparent'] = traceResult.traceparent;
+        }
       }
     } catch {
-      // ignore if tracing not available
+      // ignore tracing errors
     }
 
     const startTime = Date.now();
     const response = await fetch(url, { signal: controller.signal, headers });
     const raw = await response.text();
-    let payload: any = null;
+
+    // Attempt to parse JSON safely as unknown
+    let parsed: unknown;
     try {
-      payload = raw ? JSON.parse(raw) : null;
+      parsed = raw ? JSON.parse(raw) : null;
     } catch {
+      // non-JSON response — log truncated raw and return null (we can't interpret)
       logger.warn(
-        { url: url.toString(), status: response.status, raw: raw && raw.slice(0, 2000) + '...[truncated]' },
+        { url: url.toString(), status: response.status, raw: raw ? raw.slice(0, 2000) + '...[truncated]' : '' },
         'Worker: non-json response from routing service',
       );
+      return { distanceKm: null };
+    }
+
+    // Ensure parsed object matches expected shape
+    if (!isOrsRoute(parsed)) {
+      logger.warn({ url: url.toString(), status: response.status, parsed }, 'Worker: unexpected response shape from routing service');
       return { distanceKm: null };
     }
 
     const durationMs = Date.now() - startTime;
     logger.info({ url: url.toString(), durationMs, status: response.status }, 'Worker: route call');
 
-    if (!response.ok || payload?.code !== 'Ok') {
-      logger.warn({ status: response.status, payload }, 'OSRM returned error in worker');
+    // If upstream returned non-ok or code not Ok — treat as no-route
+    const ors = parsed as OrsRoute;
+    if (!response.ok || (ors.code && ors.code !== 'Ok')) {
+      logger.warn({ status: response.status, ors }, 'OSRM/ORS returned error in worker');
       return { distanceKm: null };
     }
 
-    const distanceMeters = payload.routes?.[0]?.distance;
+    // Get distance safely
+    const firstRoute = Array.isArray(ors.routes) ? ors.routes[0] : undefined;
+    const distanceMeters = firstRoute && typeof firstRoute.distance === 'number' ? firstRoute.distance : undefined;
     if (typeof distanceMeters !== 'number') {
+      logger.warn({ ors }, 'Worker: distance not present in ORS response');
       return { distanceKm: null };
     }
+
     const distanceKm = Number((distanceMeters / 1000).toFixed(1));
-    return { distanceKm } as RouteDistanceJobResult;
-  } catch (error) {
-    const isAbort = error instanceof Error && error.name === 'AbortError';
+    return { distanceKm };
+  } catch (err) {
+    // err is unknown — treat safely
+    const isAbort = err instanceof Error && err.name === 'AbortError';
     const level = isAbort ? 'warn' : 'error';
-    logger[level]({ start, finish, error }, 'Unable to fetch route (worker)');
+    logger[level]({ start, finish, error: err instanceof Error ? { name: err.name, message: err.message } : String(err) }, 'Unable to fetch route (worker)');
     return { distanceKm: null };
   } finally {
     clearTimeout(timeout);

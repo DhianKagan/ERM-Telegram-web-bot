@@ -1,5 +1,8 @@
 // apps/worker/src/utils/debugLogger.ts
-import { logger } from '../../api/services/wgLogEngine';
+// Worker-side debug logger for outbound route calls.
+// Uses the worker's local pino logger to avoid cross-package imports.
+
+import { logger } from '../logger';
 
 export function logOutboundRouteCall(opts: {
   url: string;
@@ -23,9 +26,13 @@ export function logOutboundRouteCall(opts: {
       reqHeaders: maskHeaders(opts.headers),
       resStatus: opts.resStatus,
       resBody: safeBody,
-      err: opts.error ? (opts.error instanceof Error ? { name: opts.error.name, message: (opts.error as any).message } : opts.error) : undefined,
+      err: opts.error
+        ? opts.error instanceof Error
+          ? { name: (opts.error as Error).name, message: (opts.error as Error).message }
+          : opts.error
+        : undefined,
     },
-    'Worker outbound route call'
+    'Worker outbound route call',
   );
 }
 

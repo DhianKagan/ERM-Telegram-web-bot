@@ -1,3 +1,4 @@
+// apps/web/src/services/osrm.ts
 // Назначение: получение маршрута через OSRM
 // Основные модули: fetch
 import type { Position } from 'geojson';
@@ -80,15 +81,16 @@ export const fetchRouteGeometry = async (
     }
   }
   const request = (async () => {
+    // --- ПЕРВОЕ: пытаемся через наш API ---
     const apiGeometry = await fetch(
-      `/api/v1/osrm/geometry?points=${encodeURIComponent(pointsParam)}`,
+      `/api/v1/route/geometry?points=${encodeURIComponent(pointsParam)}`,
       {
         credentials: 'include',
       },
     )
       .then(async (res) => {
         if (!res.ok) {
-          throw new Error('OSRM недоступен');
+          throw new Error('OSRM недоступен (API)');
         }
         const data = (await res.json()) as { coordinates?: Position[] };
         return Array.isArray(data.coordinates) ? data.coordinates : null;
@@ -103,13 +105,14 @@ export const fetchRouteGeometry = async (
       return apiGeometry;
     }
 
+    // --- Резерв: если API не отработал, пробуем внешнее напрямую (устаревшее) ---
     const base =
       import.meta.env.VITE_ROUTING_URL ||
       'https://router.project-osrm.org/route/v1/driving';
     const url = `${base}/${pointsParam}?overview=full&geometries=geojson`;
     const response = await fetch(url);
     if (!response.ok) {
-      throw new Error('OSRM недоступен');
+      throw new Error('OSRM недоступен (fallback)');
     }
     const data = await response.json();
     const geometry =

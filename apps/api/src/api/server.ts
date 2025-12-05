@@ -93,9 +93,19 @@ export async function buildApp(): Promise<express.Express> {
   const metrics = (metricsModule.default ||
     metricsModule) as express.RequestHandler;
 
+  // Try to import our diagnostic requestLogger if present; allow it to be optional
+  const requestLoggerModule = await import('../middleware/requestLogger' + ext).catch(() => null);
+  const requestLogger = requestLoggerModule ? (requestLoggerModule.default || requestLoggerModule) as express.RequestHandler : null;
+
   applySecurity(app);
   app.use(trace);
   app.use(pinoLogger);
+
+  // Register our request logger (detailed reqId + timing) after pino logger and before metrics
+  if (requestLogger) {
+    app.use(requestLogger);
+  }
+
   app.use(metrics);
 
   const root = path.join(__dirname, '../..');

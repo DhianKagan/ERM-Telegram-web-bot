@@ -1,3 +1,4 @@
+// apps/worker/src/config.ts
 // Назначение: загрузка конфигурации воркера BullMQ
 // Основные модули: dotenv, process
 import path from 'node:path';
@@ -126,6 +127,16 @@ try {
 
 const osrmAlgorithmRaw = (process.env.OSRM_ALGORITHM || '').trim();
 
+// ---- НОВОЕ: token для маршрутизации (если нужно аутентифицировать вызовы маршрутизации) ----
+// Читаем либо GEOCODER_PROXY_TOKEN (часто используют для прокси), либо PROXY_TOKEN
+const routingProxyTokenRaw = (
+  process.env.GEOCODER_PROXY_TOKEN ||
+  process.env.PROXY_TOKEN ||
+  ''
+).trim();
+const routingProxyToken = routingProxyTokenRaw || undefined;
+// -------------------------------------------------------------------------------------------
+
 export const workerConfig = {
   connection: { url: redisUrl } satisfies RedisConnection,
   prefix: (process.env.QUEUE_PREFIX || 'erm').trim() || 'erm',
@@ -148,6 +159,9 @@ export const workerConfig = {
     enabled: Boolean(routingBaseUrl),
     baseUrl: routingBaseUrl,
     algorithm: osrmAlgorithmRaw || undefined,
+    // ==== прокс-токен, который будет использоваться при вызовах маршрутизации ====
+    proxyToken: routingProxyToken,
+    // ===========================================================================
   },
 } as const;
 

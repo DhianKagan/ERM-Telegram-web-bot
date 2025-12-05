@@ -37,13 +37,9 @@ const routePathSegments = routingUrlObject.pathname
 const routeSegmentIndex = routePathSegments.lastIndexOf('route');
 
 const routePrefixSegments =
-  routeSegmentIndex === -1
-    ? routePathSegments
-    : routePathSegments.slice(0, routeSegmentIndex);
+  routeSegmentIndex === -1 ? routePathSegments : routePathSegments.slice(0, routeSegmentIndex);
 const routeProfileSegments =
-  routeSegmentIndex === -1
-    ? []
-    : routePathSegments.slice(routeSegmentIndex + 1);
+  routeSegmentIndex === -1 ? [] : routePathSegments.slice(routeSegmentIndex + 1);
 
 const buildEndpointUrl = (endpoint: Endpoint, coords?: string): URL => {
   const parts = [

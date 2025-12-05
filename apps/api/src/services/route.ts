@@ -75,6 +75,19 @@ function getProxyToken(): string | undefined {
   return undefined;
 }
 
+/**
+ * Helper to mask headers for logs.
+ */
+function maskHeaders(headers?: Record<string, unknown>): Record<string, unknown> | undefined {
+  if (!headers) return undefined;
+  const out: Record<string, unknown> = {};
+  for (const k of Object.keys(headers)) {
+    if (k.toLowerCase() === 'authorization') out[k] = '<REDACTED>';
+    else out[k] = headers[k];
+  }
+  return out;
+}
+
 async function call<T>(
   endpoint: Endpoint,
   coords: string,
@@ -97,21 +110,42 @@ async function call<T>(
     headers['X-Proxy-Token'] = proxyToken;
   }
 
+  // If debug enabled, log upstream call details (reqId from trace)
+  const routeDebug = process.env.ROUTE_DEBUG === '1';
+
+  if (routeDebug) {
+    logger.info(
+      { reqId: trace?.traceId, url: url.toString(), headers: maskHeaders(headers) },
+      'Route: Calling routing upstream (debug)',
+    );
+  }
+
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10000);
+  // Increased timeout to 30s to avoid premature client aborts leading to 499
+  const timeout = setTimeout(() => controller.abort(), 30_000);
   const timer = osrmRequestDuration.startTimer({ endpoint });
   try {
     const res = await fetch(url.toString(), { headers, signal: controller.signal });
     const raw = await res.text();
+
+    // Optional debug log of upstream response (body truncated)
+    if (routeDebug) {
+      const bodyPreview = typeof raw === 'string' && raw.length > 2000 ? raw.slice(0, 2000) + '...[truncated]' : raw;
+      logger.info(
+        { reqId: trace?.traceId, url: url.toString(), status: res.status, body: bodyPreview },
+        'Route upstream response (debug)',
+      );
+    }
+
     let data: any = null;
     try {
       data = raw ? JSON.parse(raw) : null;
     } catch (e) {
-      logger.error({ url: url.toString(), status: res.status, body: raw }, 'Non-JSON response from routing service');
+      logger.error({ reqId: trace?.traceId, url: url.toString(), status: res.status, body: raw }, 'Non-JSON response from routing service');
       throw new Error('Routing service returned non-JSON response');
     }
     if (!res.ok) {
-      logger.error({ url: url.toString(), status: res.status, body: data }, 'Routing service error');
+      logger.error({ reqId: trace?.traceId, url: url.toString(), status: res.status, body: data }, 'Routing service error');
       osrmErrorsTotal.inc({ endpoint, reason: String(res.status) });
       throw new Error(data?.message || data?.code || `Route error status ${res.status}`);
     }
@@ -119,6 +153,8 @@ async function call<T>(
     await cacheSet(key, data);
     return data as T;
   } catch (e) {
+    // log with reqId for easy correlation
+    logger.error({ reqId: trace?.traceId, url: url.toString(), err: e instanceof Error ? { name: e.name, message: e.message } : e }, 'Call to routing failed');
     osrmErrorsTotal.inc({
       endpoint,
       reason:
@@ -166,21 +202,32 @@ export async function getRouteDistance(
     headers['X-Proxy-Token'] = proxyToken;
   }
 
+  const routeDebug = process.env.ROUTE_DEBUG === '1';
+  if (routeDebug) {
+    logger.info({ reqId: trace?.traceId, url: routeUrl.toString(), headers: maskHeaders(headers) }, 'RouteDistance: calling upstream (debug)');
+  }
+
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10000);
+  const timeout = setTimeout(() => controller.abort(), 30_000);
   const timer = osrmRequestDuration.startTimer({ endpoint: 'route' });
   try {
     const res = await fetch(routeUrl.toString(), { headers, signal: controller.signal });
     const raw = await res.text();
+
+    if (routeDebug) {
+      const bodyPreview = typeof raw === 'string' && raw.length > 2000 ? raw.slice(0, 2000) + '...[truncated]' : raw;
+      logger.info({ reqId: trace?.traceId, url: routeUrl.toString(), status: res.status, body: bodyPreview }, 'RouteDistance upstream response (debug)');
+    }
+
     let data: any = null;
     try {
       data = raw ? JSON.parse(raw) : null;
     } catch (e) {
-      logger.error({ url: routeUrl.toString(), status: res.status, body: raw }, 'Non-JSON response from routing service (route)');
+      logger.error({ reqId: trace?.traceId, url: routeUrl.toString(), status: res.status, body: raw }, 'Non-JSON response from routing service (route)');
       throw new Error('Routing service returned non-JSON response');
     }
     if (!res.ok || data?.code !== 'Ok') {
-      logger.error({ url: routeUrl.toString(), status: res.status, body: data }, 'Routing service returned error for routeDistance');
+      logger.error({ reqId: trace?.traceId, url: routeUrl.toString(), status: res.status, body: data }, 'Routing service returned error for routeDistance');
       osrmErrorsTotal.inc({ endpoint: 'route', reason: String(res.status) });
       throw new Error(data?.message || data?.code || `Route error status ${res.status}`);
     }
@@ -192,6 +239,7 @@ export async function getRouteDistance(
     await cacheSet(key, result);
     return result;
   } catch (e) {
+    logger.error({ reqId: trace?.traceId, err: e instanceof Error ? { name: e.name, message: e.message } : e }, 'getRouteDistance failed');
     osrmErrorsTotal.inc({
       endpoint: 'route',
       reason:

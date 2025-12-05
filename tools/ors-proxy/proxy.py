@@ -1,4 +1,8 @@
-"""Прокси OpenRouteService с кешированием в Redis и проверкой токена."""
+# tools/ors-proxy/proxy.py
+"""Прокси OpenRouteService с кешированием в Redis и проверкой токена.
+Добавлена поддержка OSRM-style endpoint /route/v1/<profile>/<coords>
+(например: /route/v1/driving/30.708021,46.3939888;30.7124526,46.4206201)
+"""
 from __future__ import annotations
 
 import hashlib
@@ -35,6 +39,17 @@ ORS_BASE_URL = os.getenv("ORS_BASE_URL", "https://api.openrouteservice.org")
 LOCK_TTL_SEC = 30
 LOCK_SLEEP_SEC = 0.25
 LOCK_MAX_WAIT_SEC = 5
+
+# Маппинг OSRM профилей в ORS профили
+OSRM_TO_ORS_PROFILE = {
+    "driving": "driving-car",
+    "driving-car": "driving-car",
+    "cycling": "cycling-regular",
+    "cycling-regular": "cycling-regular",
+    "walking": "foot-walking",
+    "foot": "foot-walking",
+    "foot-walking": "foot-walking",
+}
 
 
 def _error(message: str, status: int = 400) -> Response:
@@ -181,6 +196,133 @@ def route() -> Response:
         _store_cache(cache_key, resp.text)
     _release_lock(lock_key)
     return _forward_response(resp)
+
+
+@app.route("/route/v1/<profile>/<coords>", methods=["GET"])
+def route_osrm_style(profile: str, coords: str) -> Response:
+    """
+    Поддержка OSRM-style пути:
+    /route/v1/<profile>/<lon,lat;lon2,lat2;...>
+    Преобразует в вызов ORS /v2/directions/{ors_profile} и возвращает OSRM-like ответ.
+    """
+    auth_error = _require_token()
+    if auth_error:
+        return auth_error
+
+    # парсим координаты в формате lon,lat;lon2,lat2;...
+    locations = _parse_locations(coords)
+    if not locations:
+        return _error("Координаты должны быть в формате lon,lat;lon2,lat2;...", status=400)
+
+    # сопоставляем профиль
+    ors_profile = OSRM_TO_ORS_PROFILE.get(profile, None)
+    if not ors_profile:
+        # если неизвестен профиль, пробуем использовать как есть
+        ors_profile = profile
+
+    # кешируем запрос по профилю и координатам
+    cache_key = _cache_key("route_v1", {"profile": ors_profile, "locations": locations})
+    cached = _get_cached(cache_key)
+    if cached:
+        return Response(cached, mimetype="application/json")
+
+    lock_key = f"lock:{cache_key}"
+    lock_acquired = _acquire_lock(cache_key)
+    if not lock_acquired:
+        waited = _wait_for_cache(cache_key)
+        if waited:
+            return Response(waited, mimetype="application/json")
+
+    # Постим запрос в ORS (POST /v2/directions/{profile})
+    url = f"{ORS_BASE_URL}/v2/directions/{ors_profile}"
+    payload = {
+        "coordinates": locations,
+        # включаем инструкции и просим geometry (подберите geometry_format по желанию)
+        "instructions": True,
+        "units": "m",
+        # При желании можно явно указать format геометрии,
+        # ORS поддерживает geometry_format: "polyline" / "encodedpolyline" в зависимости от версии.
+        # Оставим дефолт, и вернём geometry как оно есть.
+    }
+    headers = {"Authorization": ORS_API_KEY, "Content-Type": "application/json"}
+
+    try:
+        resp = requests_session.post(url, json=payload, headers=headers, timeout=60)
+    except requests.RequestException:
+        _release_lock(lock_key)
+        logger.exception("Ошибка запроса к OpenRouteService (directions)")
+        return _error("Сервис маршрутизации недоступен", status=502)
+
+    if not resp.ok:
+        _release_lock(lock_key)
+        # пробрасываем ошибку ORS дальше (меняя формат)
+        return _forward_response(resp)
+
+    try:
+        ors_json = resp.json()
+    except Exception:
+        _release_lock(lock_key)
+        logger.exception("Не удалось распарсить ответ от ORS")
+        return _error("Не удалось распарсить ответ от OpenRouteService", status=502)
+
+    # Берём основной маршрут
+    route = None
+    if "routes" in ors_json and isinstance(ors_json["routes"], list) and len(ors_json["routes"]) > 0:
+        route = ors_json["routes"][0]
+
+    if not route:
+        _release_lock(lock_key)
+        # кешируем пустой ответ
+        result_body = json.dumps({"code": "NoRoute", "routes": []})
+        _store_cache(cache_key, result_body)
+        return Response(result_body, mimetype="application/json")
+
+    # Попробуем извлечь distance и duration
+    # В ORS v2 обычно summary есть в route['summary'] либо суммируем по segments
+    distance = None
+    duration = None
+    try:
+        summary = route.get("summary", {})
+        distance = summary.get("distance")
+        duration = summary.get("duration")
+        # Если summary пуст, суммируем сегменты
+        if distance is None or duration is None:
+            segments = route.get("segments", []) or []
+            if segments:
+                distance = sum(seg.get("distance", 0) for seg in segments)
+                duration = sum(seg.get("duration", 0) for seg in segments)
+    except Exception:
+        distance = None
+        duration = None
+
+    geometry = route.get("geometry")
+
+    # Формируем waypoints (минимально)
+    waypoints = []
+    for idx, loc in enumerate(locations):
+        # loc = [lon, lat]
+        waypoints.append({"location": loc, "name": ""})
+
+    # Строим минимально OSRM-like ответ
+    osrm_like: Dict[str, Any] = {
+        "code": "Ok",
+        "routes": [
+            {
+                "distance": distance,
+                "duration": duration,
+                "geometry": geometry,
+                # при необходимости можно вложить legs/steps, но для большинства клиентов
+                # достаточно distance/duration/geometry
+            }
+        ],
+        "waypoints": waypoints,
+    }
+
+    result_body = json.dumps(osrm_like)
+    if resp.ok:
+        _store_cache(cache_key, result_body)
+    _release_lock(lock_key)
+    return Response(result_body, mimetype="application/json")
 
 
 @app.route("/table", methods=["GET", "POST"])

@@ -4,7 +4,7 @@ import { routingUrl } from '../config';
 import { osrmRequestDuration, osrmErrorsTotal } from '../metrics';
 import { getTrace } from '../utils/trace';
 import { cacheGet, cacheSet, cacheClear } from '../utils/cache';
-import { logger } from '../logger';
+import { logger } from '../services/wgLogEngine';
 
 const tableGuard = process.env.ROUTE_TABLE_GUARD !== '0';
 const defaultTableMaxPoints = 100;

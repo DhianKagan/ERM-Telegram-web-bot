@@ -1,3 +1,4 @@
+// apps/api/src/routes/route.ts
 // Роут расчёта расстояния
 // Модули: express, express-validator, services/route, middleware/auth
 import { Router, RequestHandler } from 'express';
@@ -109,6 +110,7 @@ router.get(
     res.json({ coordinates: geometry ?? [] });
   }),
 );
+
 router.get(
   '/match',
   authMiddleware(),

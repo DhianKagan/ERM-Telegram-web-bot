@@ -16,6 +16,7 @@ import { asyncHandler } from '../api/middleware';
 import authMiddleware from '../middleware/auth';
 import createRateLimiter from '../utils/rateLimiter';
 import { rateLimits } from '../rateLimits';
+import { logger } from '../services/wgLogEngine';
 
 export interface Point {
   lat: number;
@@ -96,6 +97,12 @@ interface RouteGeometryQuery extends Record<string, string> {
   points: string;
 }
 
+/**
+ * GET /geometry
+ * Returns { coordinates: Position[] } (or [] if no geometry).
+ * We wrap routeGeometry in try/catch so that upstream 400/404 or other issues
+ * don't propagate as 500 to the client — instead we log and return empty coordinates.
+ */
 router.get(
   '/geometry',
   authMiddleware(),
@@ -103,11 +110,23 @@ router.get(
   validate([query('points').isString()]),
   asyncHandler(async (req, res) => {
     const { points, ...params } = req.query as RouteGeometryQuery;
-    const geometry = await routeGeometry(
-      points,
-      params as Record<string, string | number>,
-    );
-    res.json({ coordinates: geometry ?? [] });
+    try {
+      const geometry = await routeGeometry(
+        points,
+        params as Record<string, string | number>,
+      );
+      res.json({ coordinates: geometry ?? [] });
+    } catch (err) {
+      // Log with context and return empty coordinates rather than 500
+      try {
+        logger.warn({ err: err instanceof Error ? { name: err.name, message: err.message } : err, points }, 'routeGeometry failed - returning empty coordinates');
+      } catch {
+        // swallow logging errors
+        // eslint-disable-next-line no-console
+        console.warn('routeGeometry failed', err);
+      }
+      res.json({ coordinates: [] });
+    }
   }),
 );
 

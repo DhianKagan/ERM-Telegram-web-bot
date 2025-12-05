@@ -1,7 +1,9 @@
 # tools/ors-proxy/proxy.py
 """Прокси OpenRouteService с кешированием в Redis и проверкой токена.
-Добавлена поддержка OSRM-style endpoint /route/v1/<profile>/<coords>
-(например: /route/v1/driving/30.708021,46.3939888;30.7124526,46.4206201)
+Добавлено:
+ - CORS (для тестирования фронтенда)
+ - Логирование входящих заголовков и координат
+ - Логирование тела ответа ORS при ошибках (чтобы понять 400/404)
 """
 from __future__ import annotations
 
@@ -15,6 +17,7 @@ from typing import Any, Dict, List, Optional
 import redis
 import requests
 from flask import Flask, Response, jsonify, request
+from flask_cors import CORS
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -32,6 +35,14 @@ if not PROXY_TOKEN:
     raise RuntimeError("Требуется переменная окружения PROXY_TOKEN")
 
 app = Flask(__name__)
+
+# Для отладки фронтенда разрешаем CORS только с домена фронтенда
+CORS(
+    app,
+    origins=[os.getenv("FRONTEND_ORIGIN", "https://agromarket.up.railway.app")],
+    allow_headers=["X-Proxy-Token", "Content-Type", "Authorization"],
+    expose_headers=["Content-Type"],
+)
 
 redis_client = redis.from_url(REDIS_URL, decode_responses=True)
 requests_session = requests.Session()
@@ -132,6 +143,7 @@ def _wait_for_cache(cache_key: str) -> Optional[str]:
 def _require_token() -> Optional[Response]:
     token = request.headers.get("X-Proxy-Token")
     if token != PROXY_TOKEN:
+        logger.warning("Запрос без/с неверным X-Proxy-Token: headers=%s", dict(request.headers))
         return _error("Требуется корректный токен", status=401)
     return None
 
@@ -141,13 +153,16 @@ def _forward_response(resp: requests.Response) -> Response:
     return Response(resp.content, status=resp.status_code, mimetype=content_type)
 
 
-@app.route("/health", methods=["GET"])
+@app.route("/health", methods=["GET", "OPTIONS"])
 def health() -> Response:
     return jsonify({"status": "ok"})
 
 
-@app.route("/route", methods=["GET"])
+@app.route("/route", methods=["GET", "OPTIONS"])
 def route() -> Response:
+    if request.method == "OPTIONS":
+        return Response(status=204)
+
     auth_error = _require_token()
     if auth_error:
         return auth_error
@@ -194,20 +209,32 @@ def route() -> Response:
 
     if resp.ok:
         _store_cache(cache_key, resp.text)
+    else:
+        # Логируем тело ответа ORS для диагностики
+        try:
+            logger.error("ORS returned non-ok for /route: status=%s body=%s", resp.status_code, resp.text)
+        except Exception:
+            logger.exception("Не удалось логировать тело ответа ORS для /route")
     _release_lock(lock_key)
     return _forward_response(resp)
 
 
-@app.route("/route/v1/<profile>/<coords>", methods=["GET"])
+@app.route("/route/v1/<profile>/<coords>", methods=["GET", "OPTIONS"])
 def route_osrm_style(profile: str, coords: str) -> Response:
     """
     Поддержка OSRM-style пути:
     /route/v1/<profile>/<lon,lat;lon2,lat2;...>
     Преобразует в вызов ORS /v2/directions/{ors_profile} и возвращает OSRM-like ответ.
     """
+    if request.method == "OPTIONS":
+        return Response(status=204)
+
     auth_error = _require_token()
     if auth_error:
         return auth_error
+
+    # лог входящих заголовков и пути (диагностика)
+    logger.info("Incoming OSRM route req: path=%s headers=%s", request.path, dict(request.headers))
 
     # парсим координаты в формате lon,lat;lon2,lat2;...
     locations = _parse_locations(coords)
@@ -237,12 +264,8 @@ def route_osrm_style(profile: str, coords: str) -> Response:
     url = f"{ORS_BASE_URL}/v2/directions/{ors_profile}"
     payload = {
         "coordinates": locations,
-        # включаем инструкции и просим geometry (подберите geometry_format по желанию)
         "instructions": True,
         "units": "m",
-        # При желании можно явно указать format геометрии,
-        # ORS поддерживает geometry_format: "polyline" / "encodedpolyline" в зависимости от версии.
-        # Оставим дефолт, и вернём geometry как оно есть.
     }
     headers = {"Authorization": ORS_API_KEY, "Content-Type": "application/json"}
 
@@ -253,9 +276,13 @@ def route_osrm_style(profile: str, coords: str) -> Response:
         logger.exception("Ошибка запроса к OpenRouteService (directions)")
         return _error("Сервис маршрутизации недоступен", status=502)
 
+    # Если upstream вернул ошибку, логируем тело — это критично для диагностики
     if not resp.ok:
+        try:
+            logger.error("ORS directions returned status=%s body=%s for profile=%s coords=%s", resp.status_code, resp.text, ors_profile, locations)
+        except Exception:
+            logger.exception("Не удалось логировать тело ответа ORS (directions)")
         _release_lock(lock_key)
-        # пробрасываем ошибку ORS дальше (меняя формат)
         return _forward_response(resp)
 
     try:
@@ -272,20 +299,17 @@ def route_osrm_style(profile: str, coords: str) -> Response:
 
     if not route:
         _release_lock(lock_key)
-        # кешируем пустой ответ
         result_body = json.dumps({"code": "NoRoute", "routes": []})
         _store_cache(cache_key, result_body)
         return Response(result_body, mimetype="application/json")
 
     # Попробуем извлечь distance и duration
-    # В ORS v2 обычно summary есть в route['summary'] либо суммируем по segments
     distance = None
     duration = None
     try:
         summary = route.get("summary", {})
         distance = summary.get("distance")
         duration = summary.get("duration")
-        # Если summary пуст, суммируем сегменты
         if distance is None or duration is None:
             segments = route.get("segments", []) or []
             if segments:
@@ -297,13 +321,10 @@ def route_osrm_style(profile: str, coords: str) -> Response:
 
     geometry = route.get("geometry")
 
-    # Формируем waypoints (минимально)
     waypoints = []
     for idx, loc in enumerate(locations):
-        # loc = [lon, lat]
         waypoints.append({"location": loc, "name": ""})
 
-    # Строим минимально OSRM-like ответ
     osrm_like: Dict[str, Any] = {
         "code": "Ok",
         "routes": [
@@ -311,22 +332,22 @@ def route_osrm_style(profile: str, coords: str) -> Response:
                 "distance": distance,
                 "duration": duration,
                 "geometry": geometry,
-                # при необходимости можно вложить legs/steps, но для большинства клиентов
-                # достаточно distance/duration/geometry
             }
         ],
         "waypoints": waypoints,
     }
 
     result_body = json.dumps(osrm_like)
-    if resp.ok:
-        _store_cache(cache_key, result_body)
+    _store_cache(cache_key, result_body)
     _release_lock(lock_key)
     return Response(result_body, mimetype="application/json")
 
 
-@app.route("/table", methods=["GET", "POST"])
+@app.route("/table", methods=["GET", "POST", "OPTIONS"])
 def table() -> Response:
+    if request.method == "OPTIONS":
+        return Response(status=204)
+
     auth_error = _require_token()
     if auth_error:
         return auth_error
@@ -376,20 +397,22 @@ def table() -> Response:
         logger.exception("Ошибка запроса матрицы в OpenRouteService")
         return _error("Сервис построения матрицы недоступен", status=502)
 
+    if not resp.ok:
+        try:
+            logger.error("ORS matrix returned status=%s body=%s", resp.status_code, resp.text)
+        except Exception:
+            logger.exception("Не удалось логировать тело ответа ORS (matrix)")
     if resp.ok:
         _store_cache(cache_key, resp.text)
     _release_lock(lock_key)
     return _forward_response(resp)
 
 
-@app.route("/search", methods=["GET"])
+@app.route("/search", methods=["GET", "OPTIONS"])
 def search() -> Response:
-    """
-    Проксирование геокодирования через OpenRouteService.
-    Требует заголовок X-Proxy-Token (проверяется _require_token).
-    Кеширует ответ в Redis и возвращает Nominatim-подобный массив,
-    содержащий lat/lon/display_name в случае успешного парсинга.
-    """
+    if request.method == "OPTIONS":
+        return Response(status=204)
+
     auth_error = _require_token()
     if auth_error:
         return auth_error
@@ -442,7 +465,6 @@ def search() -> Response:
                         "properties": props
                     }]
                     result_body = json.dumps(nominatim_like)
-            # Если не удалось сделать Nominatim-like ответ, отдадим оригинальный ORS-ответ
             if result_body is None:
                 result_body = resp.text
             _store_cache(cache_key, result_body)
@@ -450,6 +472,12 @@ def search() -> Response:
             logger.exception("Не удалось распарсить ответ геокодера")
             result_body = resp.text
             _store_cache(cache_key, result_body)
+    else:
+        try:
+            logger.error("ORS geocode returned status=%s body=%s", resp.status_code, resp.text)
+        except Exception:
+            logger.exception("Не удалось логировать тело ответа ORS (geocode)")
+
     _release_lock(cache_key)
     return Response(result_body or json.dumps([]), mimetype="application/json")
 

@@ -1,11 +1,17 @@
 // apps/api/src/middleware/requestLogger.ts
 import type { Request, Response, NextFunction } from 'express';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { logger } from '../services/wgLogEngine';
 
 /**
- * Simple request logger that attaches requestId and logs request start/finish.
- * Compatible with existing pino logger in repo. Does NOT log sensitive Authorization header.
+ * Request logger middleware.
+ * - Generates a requestId (uses X-Request-Id header if present)
+ * - Logs incoming request with sanitized headers
+ * - Logs finish event with status and duration
+ * - Logs aborted requests
+ *
+ * This implementation uses Node's built-in crypto.randomUUID() to avoid
+ * adding the 'uuid' package as a dependency.
  */
 
 function sanitizeHeaders(h: Record<string, unknown> | undefined) {
@@ -16,37 +22,60 @@ function sanitizeHeaders(h: Record<string, unknown> | undefined) {
     if (low === 'authorization') {
       out[key] = '<REDACTED>';
     } else {
-      out[key] = (h as any)[key];
+      try {
+        out[key] = (h as any)[key];
+      } catch {
+        out[key] = '<UNSERIALIZABLE>';
+      }
     }
   }
   return out;
 }
 
 export default function requestLogger(req: Request, res: Response, next: NextFunction) {
-  const requestId = (req.headers['x-request-id'] as string) || uuidv4();
-  // attach for downstream usage
+  const headerReqId = typeof req.headers['x-request-id'] === 'string' ? req.headers['x-request-id'] as string : undefined;
+  const requestId = headerReqId || randomUUID();
+
+  // attach requestId for downstream usage
   (req as any).requestId = requestId;
 
   const start = Date.now();
-  // short info when request comes in
-  logger.info(
-    { reqId: requestId, method: req.method, url: req.originalUrl, headers: sanitizeHeaders(req.headers as any) },
-    'Incoming HTTP request'
-  );
 
-  // when finished, log status and duration
+  // log incoming request
+  try {
+    logger.info(
+      { reqId: requestId, method: req.method, url: req.originalUrl, headers: sanitizeHeaders(req.headers as any) },
+      'Incoming HTTP request'
+    );
+  } catch (err) {
+    // avoid breaking request on logging error
+    // eslint-disable-next-line no-console
+    console.error('Failed to log incoming request', err);
+  }
+
+  // when response finishes, log status and duration
   res.on('finish', () => {
     const duration = Date.now() - start;
-    logger.info(
-      { reqId: requestId, method: req.method, url: req.originalUrl, status: res.statusCode, durationMs: duration },
-      'Request finished'
-    );
+    try {
+      logger.info(
+        { reqId: requestId, method: req.method, url: req.originalUrl, status: res.statusCode, durationMs: duration },
+        'Request finished'
+      );
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to log finished request', err);
+    }
   });
 
-  // if aborted by client, log as warn
+  // if request aborted by client (connection closed), log warn
   req.on('aborted', () => {
     const duration = Date.now() - start;
-    logger.warn({ reqId: requestId, method: req.method, url: req.originalUrl, durationMs: duration }, 'Request aborted by client');
+    try {
+      logger.warn({ reqId: requestId, method: req.method, url: req.originalUrl, durationMs: duration }, 'Request aborted by client');
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error('Failed to log aborted request', err);
+    }
   });
 
   next();

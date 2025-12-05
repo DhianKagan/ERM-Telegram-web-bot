@@ -40,7 +40,7 @@ app = Flask(__name__)
 CORS(
     app,
     origins=[os.getenv("FRONTEND_ORIGIN", "https://agromarket.up.railway.app")],
-    allow_headers=["X-Proxy-Token", "Content-Type", "Authorization"],
+    allow_headers=["X-Proxy-Token", "Content-Type", "Authorization", "X-XSRF-TOKEN"],
     expose_headers=["Content-Type"],
 )
 
@@ -51,7 +51,6 @@ LOCK_TTL_SEC = 30
 LOCK_SLEEP_SEC = 0.25
 LOCK_MAX_WAIT_SEC = 5
 
-# Маппинг OSRM профилей в ORS профили
 OSRM_TO_ORS_PROFILE = {
     "driving": "driving-car",
     "driving-car": "driving-car",
@@ -200,7 +199,7 @@ def route() -> Response:
             url,
             params={"start": start_raw, "end": end_raw},
             headers={"Authorization": ORS_API_KEY},
-            timeout=30,
+            timeout=60,
         )
     except requests.RequestException:
         _release_lock(lock_key)
@@ -210,9 +209,8 @@ def route() -> Response:
     if resp.ok:
         _store_cache(cache_key, resp.text)
     else:
-        # Логируем тело ответа ORS для диагностики
         try:
-            logger.error("ORS returned non-ok for /route: status=%s body=%s", resp.status_code, resp.text)
+            logger.error("ORS returned non-ok for /route", {"status": resp.status_code, "body": resp.text})
         except Exception:
             logger.exception("Не удалось логировать тело ответа ORS для /route")
     _release_lock(lock_key)
@@ -221,11 +219,6 @@ def route() -> Response:
 
 @app.route("/route/v1/<profile>/<coords>", methods=["GET", "OPTIONS"])
 def route_osrm_style(profile: str, coords: str) -> Response:
-    """
-    Поддержка OSRM-style пути:
-    /route/v1/<profile>/<lon,lat;lon2,lat2;...>
-    Преобразует в вызов ORS /v2/directions/{ors_profile} и возвращает OSRM-like ответ.
-    """
     if request.method == "OPTIONS":
         return Response(status=204)
 
@@ -233,21 +226,16 @@ def route_osrm_style(profile: str, coords: str) -> Response:
     if auth_error:
         return auth_error
 
-    # лог входящих заголовков и пути (диагностика)
     logger.info("Incoming OSRM route req: path=%s headers=%s", request.path, dict(request.headers))
 
-    # парсим координаты в формате lon,lat;lon2,lat2;...
     locations = _parse_locations(coords)
     if not locations:
         return _error("Координаты должны быть в формате lon,lat;lon2,lat2;...", status=400)
 
-    # сопоставляем профиль
     ors_profile = OSRM_TO_ORS_PROFILE.get(profile, None)
     if not ors_profile:
-        # если неизвестен профиль, пробуем использовать как есть
         ors_profile = profile
 
-    # кешируем запрос по профилю и координатам
     cache_key = _cache_key("route_v1", {"profile": ors_profile, "locations": locations})
     cached = _get_cached(cache_key)
     if cached:
@@ -260,7 +248,6 @@ def route_osrm_style(profile: str, coords: str) -> Response:
         if waited:
             return Response(waited, mimetype="application/json")
 
-    # Постим запрос в ORS (POST /v2/directions/{profile})
     url = f"{ORS_BASE_URL}/v2/directions/{ors_profile}"
     payload = {
         "coordinates": locations,
@@ -276,10 +263,9 @@ def route_osrm_style(profile: str, coords: str) -> Response:
         logger.exception("Ошибка запроса к OpenRouteService (directions)")
         return _error("Сервис маршрутизации недоступен", status=502)
 
-    # Если upstream вернул ошибку, логируем тело — это критично для диагностики
     if not resp.ok:
         try:
-            logger.error("ORS directions returned status=%s body=%s for profile=%s coords=%s", resp.status_code, resp.text, ors_profile, locations)
+            logger.error("ORS directions returned status", {"status": resp.status_code, "body": resp.text, "profile": ors_profile, "locations": locations})
         except Exception:
             logger.exception("Не удалось логировать тело ответа ORS (directions)")
         _release_lock(lock_key)
@@ -292,7 +278,6 @@ def route_osrm_style(profile: str, coords: str) -> Response:
         logger.exception("Не удалось распарсить ответ от ORS")
         return _error("Не удалось распарсить ответ от OpenRouteService", status=502)
 
-    # Берём основной маршрут
     route = None
     if "routes" in ors_json and isinstance(ors_json["routes"], list) and len(ors_json["routes"]) > 0:
         route = ors_json["routes"][0]
@@ -303,7 +288,6 @@ def route_osrm_style(profile: str, coords: str) -> Response:
         _store_cache(cache_key, result_body)
         return Response(result_body, mimetype="application/json")
 
-    # Попробуем извлечь distance и duration
     distance = None
     duration = None
     try:
@@ -399,7 +383,7 @@ def table() -> Response:
 
     if not resp.ok:
         try:
-            logger.error("ORS matrix returned status=%s body=%s", resp.status_code, resp.text)
+            logger.error("ORS matrix returned status", {"status": resp.status_code, "body": resp.text})
         except Exception:
             logger.exception("Не удалось логировать тело ответа ORS (matrix)")
     if resp.ok:
@@ -474,7 +458,7 @@ def search() -> Response:
             _store_cache(cache_key, result_body)
     else:
         try:
-            logger.error("ORS geocode returned status=%s body=%s", resp.status_code, resp.text)
+            logger.error("ORS geocode returned status", {"status": resp.status_code, "body": resp.text})
         except Exception:
             logger.exception("Не удалось логировать тело ответа ORS (geocode)")
 

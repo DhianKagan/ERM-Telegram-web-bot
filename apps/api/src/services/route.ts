@@ -107,11 +107,11 @@ async function call<T>(
     try {
       data = raw ? JSON.parse(raw) : null;
     } catch (e) {
-      logger.error("Non-JSON response from routing service", { url: url.toString(), status: res.status, body: raw });
-      throw new Error("Routing service returned non-JSON response");
+      logger.error({ url: url.toString(), status: res.status, body: raw }, 'Non-JSON response from routing service');
+      throw new Error('Routing service returned non-JSON response');
     }
     if (!res.ok) {
-      logger.error("Routing service error", { url: url.toString(), status: res.status, body: data });
+      logger.error({ url: url.toString(), status: res.status, body: data }, 'Routing service error');
       osrmErrorsTotal.inc({ endpoint, reason: String(res.status) });
       throw new Error(data?.message || data?.code || `Route error status ${res.status}`);
     }
@@ -176,11 +176,11 @@ export async function getRouteDistance(
     try {
       data = raw ? JSON.parse(raw) : null;
     } catch (e) {
-      logger.error("Non-JSON response from routing service (route)", { url: routeUrl.toString(), status: res.status, body: raw });
-      throw new Error("Routing service returned non-JSON response");
+      logger.error({ url: routeUrl.toString(), status: res.status, body: raw }, 'Non-JSON response from routing service (route)');
+      throw new Error('Routing service returned non-JSON response');
     }
     if (!res.ok || data?.code !== 'Ok') {
-      logger.error("Routing service returned error for routeDistance", { url: routeUrl.toString(), status: res.status, body: data });
+      logger.error({ url: routeUrl.toString(), status: res.status, body: data }, 'Routing service returned error for routeDistance');
       osrmErrorsTotal.inc({ endpoint: 'route', reason: String(res.status) });
       throw new Error(data?.message || data?.code || `Route error status ${res.status}`);
     }

@@ -1,3 +1,4 @@
+// apps/api/src/services/route.ts
 // Назначение: запросы к сервису OSRM
 // Модули: fetch, config, prom-client
 import type { Position } from 'geojson';
@@ -68,6 +69,18 @@ export function validateCoords(value: string): string {
   return value;
 }
 
+/**
+ * Возвращает значение токена прокси (если задано в окружении).
+ * Поддерживаются оба имени переменной: GEOCODER_PROXY_TOKEN и PROXY_TOKEN.
+ */
+function getProxyToken(): string | undefined {
+  const t1 = process.env.GEOCODER_PROXY_TOKEN;
+  if (t1 && t1.trim()) return t1.trim();
+  const t2 = process.env.PROXY_TOKEN;
+  if (t2 && t2.trim()) return t2.trim();
+  return undefined;
+}
+
 async function call<T>(
   endpoint: Endpoint,
   coords: string,
@@ -84,6 +97,14 @@ async function call<T>(
   const trace = getTrace();
   const headers: Record<string, string> = {};
   if (trace) headers.traceparent = trace.traceparent;
+
+  // ======= Добавляем X-Proxy-Token, если он задан в окружении =======
+  const proxyToken = getProxyToken();
+  if (proxyToken) {
+    headers['X-Proxy-Token'] = proxyToken;
+  }
+  // ==================================================================
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);
   const timer = osrmRequestDuration.startTimer({ endpoint });
@@ -139,6 +160,14 @@ export async function getRouteDistance(
   const trace = getTrace();
   const headers: Record<string, string> = {};
   if (trace) headers.traceparent = trace.traceparent;
+
+  // ======= Добавляем X-Proxy-Token и/или другие серверные заголовки =======
+  const proxyToken = getProxyToken();
+  if (proxyToken) {
+    headers['X-Proxy-Token'] = proxyToken;
+  }
+  // ===================================================================
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);
   const timer = osrmRequestDuration.startTimer({ endpoint: 'route' });

@@ -1,3 +1,4 @@
+// apps/worker/src/index.ts
 // Назначение: запуск воркеров BullMQ для геокодирования и маршрутизации
 // Основные модули: BullMQ, config, tasks
 import { Queue, Worker, type Job } from 'bullmq';
@@ -68,12 +69,24 @@ const geocodingWorker = new Worker<GeocodingJobData, GeocodingJobResult>(
 
 const routingWorker = new Worker<RouteDistanceJobData, RouteDistanceJobResult>(
   QueueName.LogisticsRouting,
-  async (job) =>
-    calculateRouteDistance(
+  async (job) => {
+    // job.data may include traceparent propagated from API enqueue
+    const traceparent = typeof job.data === 'object' && job.data !== null && 'traceparent' in job.data
+      ? (job.data as { traceparent?: unknown }).traceparent
+      : undefined;
+
+    // preserve workerConfig.routing type, but include traceparent when calling
+    const routingConfigWithTrace = {
+      ...workerConfig.routing,
+      ...(typeof traceparent === 'string' ? { traceparent } : {}),
+    } as typeof workerConfig.routing & { traceparent?: string };
+
+    return calculateRouteDistance(
       job.data.start,
       job.data.finish,
-      workerConfig.routing,
-    ),
+      routingConfigWithTrace,
+    );
+  },
   {
     ...baseQueueOptions,
     concurrency: workerConfig.concurrency,

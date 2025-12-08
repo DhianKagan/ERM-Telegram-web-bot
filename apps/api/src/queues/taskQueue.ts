@@ -1,5 +1,5 @@
+// apps/api/src/queues/taskQueue.ts
 // Назначение: постановка задач в очереди BullMQ и ожидание результатов
-// Основные модули: BullMQ, geo/geocoder, geo/osrm, config/queue
 import { Queue, QueueEvents, type JobsOptions, type Job } from 'bullmq';
 import {
   QueueJobName,
@@ -67,10 +67,7 @@ const waitForResult = async <T>(
   fallback: () => Promise<T>,
 ): Promise<T> => {
   try {
-    const result = await job.waitUntilFinished(
-      events,
-      queueConfig.jobTimeoutMs,
-    );
+    const result = await job.waitUntilFinished(events, queueConfig.jobTimeoutMs);
     return result as T;
   } catch (error) {
     console.error('Не удалось дождаться результата задачи BullMQ', error);
@@ -102,18 +99,30 @@ export const requestGeocodingJob = async (
   }
 };
 
-export const requestRouteDistanceJob = async (params: {
+export type RequestRouteDistanceParams = {
   start: Coordinates;
   finish: Coordinates;
-}): Promise<RouteDistanceJobResult> => {
+};
+
+export type RequestRouteDistanceContext = {
+  traceparent?: string;
+};
+
+export const requestRouteDistanceJob = async (
+  params: RequestRouteDistanceParams,
+  context?: RequestRouteDistanceContext,
+): Promise<RouteDistanceJobResult> => {
   const bundle = getQueueBundle(QueueName.LogisticsRouting);
   if (!bundle) {
+    // synchronous fallback to local OSRM/ORS call
     const distanceKm = await getOsrmDistance(params);
     return { distanceKm } satisfies RouteDistanceJobResult;
   }
 
   try {
-    const job = await bundle.queue.add(QueueJobName.RouteDistance, params);
+    // include traceparent in job data so worker can propagate it
+    const jobPayload = { ...params, ...(context?.traceparent ? { traceparent: context.traceparent } : {}) };
+    const job = await bundle.queue.add(QueueJobName.RouteDistance, jobPayload);
     return waitForResult<RouteDistanceJobResult>(
       job,
       bundle.events,

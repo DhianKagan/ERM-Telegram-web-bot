@@ -30,10 +30,6 @@ const buildRouteUrl = (
   return base;
 };
 
-/**
- * Minimal typed representation of the ORS/OSRM-like response we expect.
- * We model the parts we read (routes[0].distance, code) and leave the rest unknown.
- */
 type OrsRoute = {
   code?: string;
   routes?: Array<{
@@ -50,30 +46,24 @@ type OrsRoute = {
 function isOrsRoute(obj: unknown): obj is OrsRoute {
   if (!obj || typeof obj !== 'object') return false;
   const o = obj as OrsRoute;
-  // If it has either code or routes array it's probably the expected shape
   return 'code' in o || Array.isArray(o.routes);
 }
 
 /**
- * Calculates route distance between two coordinates using the worker routing service.
- * Returns { distanceKm: number | null }.
- *
- * Important: this implementation DOES NOT import API-only utilities (like api trace)
- * to remain buildable in worker-only context.
+ * routingConfig may include optional traceparent string that we should propagate
  */
 export const calculateRouteDistance = async (
   start: Coordinates,
   finish: Coordinates,
-  config: WorkerConfig['routing'],
+  routingConfig: WorkerConfig['routing'] & { traceparent?: string | undefined },
 ): Promise<RouteDistanceJobResult> => {
-  if (!config.enabled) {
+  if (!routingConfig.enabled) {
     return { distanceKm: null };
   }
   if (!isValidPoint(start) || !isValidPoint(finish)) {
     return { distanceKm: null };
   }
 
-  // Normalize and precheck
   const rawPoints = `${start.lng},${start.lat};${finish.lng},${finish.lat}`;
   const locations = normalizePointsString(rawPoints);
   if (locations.length < 2) {
@@ -87,31 +77,26 @@ export const calculateRouteDistance = async (
   }
 
   const normalizedCoords = locations.map((p) => `${p[0]},${p[1]}`).join(';');
-  const url = buildRouteUrl(config, normalizedCoords);
+  const url = buildRouteUrl(routingConfig, normalizedCoords);
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
     const headers: Record<string, string> = {};
-    if (config.proxyToken) headers['X-Proxy-Token'] = config.proxyToken;
-
-    // If caller stored a traceparent in config (optional), propagate it.
-    // This avoids importing API-only trace utilities inside worker.
-    if (typeof (config as any).traceparent === 'string') {
-      headers['traceparent'] = (config as any).traceparent as string;
+    if (routingConfig.proxyToken) headers['X-Proxy-Token'] = routingConfig.proxyToken;
+    if (typeof routingConfig.traceparent === 'string' && routingConfig.traceparent) {
+      headers['traceparent'] = routingConfig.traceparent;
     }
 
     const startTime = Date.now();
     const response = await fetch(url, { signal: controller.signal, headers });
     const raw = await response.text();
 
-    // Attempt to parse JSON safely as unknown
     let parsed: unknown;
     try {
       parsed = raw ? JSON.parse(raw) : null;
     } catch {
-      // non-JSON response — log truncated raw and return null (we can't interpret)
       logger.warn(
         { url: url.toString(), status: response.status, raw: raw ? raw.slice(0, 2000) + '...[truncated]' : '' },
         'Worker: non-json response from routing service',
@@ -119,23 +104,19 @@ export const calculateRouteDistance = async (
       return { distanceKm: null };
     }
 
-    // Ensure parsed object matches expected shape
     if (!isOrsRoute(parsed)) {
       logger.warn({ url: url.toString(), status: response.status, parsed }, 'Worker: unexpected response shape from routing service');
       return { distanceKm: null };
     }
-
     const durationMs = Date.now() - startTime;
     logger.info({ url: url.toString(), durationMs, status: response.status }, 'Worker: route call');
 
-    // If upstream returned non-ok or code not Ok — treat as no-route
     const ors = parsed as OrsRoute;
     if (!response.ok || (ors.code && ors.code !== 'Ok')) {
       logger.warn({ status: response.status, ors }, 'OSRM/ORS returned error in worker');
       return { distanceKm: null };
     }
 
-    // Get distance safely
     const firstRoute = Array.isArray(ors.routes) ? ors.routes[0] : undefined;
     const distanceMeters = firstRoute && typeof firstRoute.distance === 'number' ? firstRoute.distance : undefined;
     if (typeof distanceMeters !== 'number') {
@@ -146,7 +127,6 @@ export const calculateRouteDistance = async (
     const distanceKm = Number((distanceMeters / 1000).toFixed(1));
     return { distanceKm };
   } catch (err) {
-    // err is unknown — treat safely
     const isAbort = err instanceof Error && err.name === 'AbortError';
     const level = isAbort ? 'warn' : 'error';
     logger[level]({ start, finish, error: err instanceof Error ? { name: err.name, message: err.message } : String(err) }, 'Unable to fetch route (worker)');

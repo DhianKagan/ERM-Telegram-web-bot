@@ -11,8 +11,6 @@ const PROXY_TOKEN = process.env.GEOCODER_PROXY_TOKEN || process.env.PROXY_TOKEN;
 
 type JsonObject = Record<string, unknown>;
 
-/* ---------------- Helper utilities ---------------- */
-
 function isJsonObject(v: unknown): v is JsonObject {
   return Boolean(v) && typeof v === 'object' && !Array.isArray(v);
 }
@@ -51,8 +49,6 @@ function normalizeToLatLng(value: unknown): LatLng | null {
   return parsed ?? null;
 }
 
-/* ---------------- Geocoder proxy ---------------- */
-
 async function fetchGeocodeFromProxy(text: string): Promise<LatLng | null> {
   if (!GEO_URL) {
     logger.warn('GEOCODER_URL not configured');
@@ -79,7 +75,6 @@ async function fetchGeocodeFromProxy(text: string): Promise<LatLng | null> {
 
     if (!body) return null;
 
-    // GeoJSON features -> geometry.coordinates [lon, lat]
     if (isJsonObject(body) && Array.isArray((body as JsonObject).features)) {
       const features = (body as JsonObject).features as unknown;
       if (Array.isArray(features) && features.length > 0) {
@@ -92,7 +87,6 @@ async function fetchGeocodeFromProxy(text: string): Promise<LatLng | null> {
       }
     }
 
-    // OSRM-like: waypoints
     if (isJsonObject(body) && Array.isArray((body as JsonObject).waypoints)) {
       const waypoints = (body as JsonObject).waypoints as unknown;
       if (Array.isArray(waypoints) && waypoints.length > 0) {
@@ -108,7 +102,6 @@ async function fetchGeocodeFromProxy(text: string): Promise<LatLng | null> {
       }
     }
 
-    // Generic results[]
     if (isJsonObject(body) && Array.isArray((body as JsonObject).results)) {
       const results = (body as JsonObject).results as unknown;
       if (Array.isArray(results) && results.length > 0) {
@@ -119,7 +112,6 @@ async function fetchGeocodeFromProxy(text: string): Promise<LatLng | null> {
       }
     }
 
-    // root lat/lng
     if (isJsonObject(body)) {
       const latVal = safeGetNumber(body, ['lat']);
       const lngVal = safeGetNumber(body, ['lng']) ?? safeGetNumber(body, ['lon']);
@@ -133,8 +125,6 @@ async function fetchGeocodeFromProxy(text: string): Promise<LatLng | null> {
   }
 }
 
-/* ---------------- Find coords in task ---------------- */
-
 function findCoordsInTask(task: JsonObject): { start: LatLng | null; finish: LatLng | null } {
   const result: { start: LatLng | null; finish: LatLng | null } = { start: null, finish: null };
 
@@ -147,13 +137,15 @@ function findCoordsInTask(task: JsonObject): { start: LatLng | null; finish: Lat
     const hist = task.history as unknown[];
     for (let i = hist.length - 1; i >= 0; i -= 1) {
       const entry = hist[i] as JsonObject | undefined;
-      const chTo = entry?.changes?.to as JsonObject | undefined;
-      if (!result.start && chTo && 'startCoordinates' in chTo) {
-        const maybe = normalizeToLatLng(chTo.startCoordinates);
+      // FIX: safe access to changes.to — ensure types
+      const changes = isJsonObject(entry?.changes) ? (entry!.changes as JsonObject) : undefined;
+      const to = isJsonObject(changes?.to) ? (changes!.to as JsonObject) : undefined; // FIX
+      if (!result.start && to && 'startCoordinates' in to) {
+        const maybe = normalizeToLatLng(to.startCoordinates);
         if (maybe) result.start = maybe;
       }
-      if (!result.finish && chTo && 'finishCoordinates' in chTo) {
-        const maybe = normalizeToLatLng(chTo.finishCoordinates);
+      if (!result.finish && to && 'finishCoordinates' in to) {
+        const maybe = normalizeToLatLng(to.finishCoordinates);
         if (maybe) result.finish = maybe;
       }
       if (result.start && result.finish) break;
@@ -162,8 +154,6 @@ function findCoordsInTask(task: JsonObject): { start: LatLng | null; finish: Lat
 
   return result;
 }
-
-/* ---------------- Persist & enqueue ---------------- */
 
 async function persistCoords(db: unknown, taskId: string, start: LatLng | null, finish: LatLng | null): Promise<boolean> {
   if (!db || typeof taskId !== 'string') return false;
@@ -200,31 +190,22 @@ async function enqueueRouting(taskId: string): Promise<void> {
   }
 }
 
-/* ---------------- Main exported function ---------------- */
-
 /**
- * Overloads:
- * - geocodeAddress(job: Job): Promise<GeocodingJobResult>
- * - geocodeAddress(address?: string, geocoderConfig?: unknown): Promise<GeocodingJobResult>
+ * geocodeAddress: accepts Job or (address, config)
+ * returns GeocodingJobResult
  */
 export async function geocodeAddress(jobOrAddress: Job | string | undefined, maybeConfig?: unknown): Promise<GeocodingJobResult> {
-  // normalize inputs
   let addressFromJob: string | undefined;
   let taskIdFromJob: string | undefined;
 
   if (typeof jobOrAddress === 'string' || jobOrAddress === undefined) {
     addressFromJob = jobOrAddress;
   } else {
-    // it's a Job
     const job = jobOrAddress as Job;
-    // job.data may be any shape; try to extract taskId or address
     const d = job.data as Record<string, unknown>;
     taskIdFromJob = typeof d.taskId === 'string' ? d.taskId : (typeof d.id === 'string' ? d.id : (typeof d._id === 'string' ? d._id : undefined));
     addressFromJob = typeof d.address === 'string' ? d.address : undefined;
   }
-
-  // if called with (address, config)
-  const geocoderConfig = maybeConfig;
 
   if (!taskIdFromJob && !addressFromJob) {
     throw new Error('geocodeAddress: missing both taskId and address');
@@ -236,19 +217,16 @@ export async function geocodeAddress(jobOrAddress: Job | string | undefined, may
     throw new Error('MONGO_DATABASE_URL not configured');
   }
 
-  // dynamic mongodb import (suppress TS module resolution error if needed)
-  // @ts-ignore: dynamic import of mongodb (types may be unavailable in this environment)
+  // @ts-ignore dynamic import to avoid build-type dependency
   const mongodb = await import('mongodb');
-  const MongoClient = (mongodb as unknown as { MongoClient: unknown }).MongoClient as unknown;
-  const ObjectId = (mongodb as unknown as { ObjectId: unknown }).ObjectId as unknown;
+  const MongoClient = (mongodb as any).MongoClient;
+  const ObjectId = (mongodb as any).ObjectId;
 
-  // Create client (we treat types at runtime)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const client = new (MongoClient as any)(mongoUrl, { connectTimeoutMS: 10000 });
   try {
     await client.connect();
     const db = client.db();
-    // If we have a job->taskId, fetch task
     let task: JsonObject | null = null;
     if (taskIdFromJob) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -261,7 +239,6 @@ export async function geocodeAddress(jobOrAddress: Job | string | undefined, may
       }
     }
 
-    // If address provided and no task, try geocode the address and return
     let start: LatLng | null = null;
     let finish: LatLng | null = null;
 
@@ -278,10 +255,10 @@ export async function geocodeAddress(jobOrAddress: Job | string | undefined, may
 
     if (task && (!start || !finish)) {
       if (!start && typeof task.start_location === 'string') {
-        start = await fetchGeocodeFromProxy(task.start_location);
+        start = await fetchGeocodeFromProxy(task.start_location as string);
       }
       if (!finish && typeof task.end_location === 'string') {
-        finish = await fetchGeocodeFromProxy(task.end_location);
+        finish = await fetchGeocodeFromProxy(task.end_location as string);
       }
     }
 
@@ -295,11 +272,10 @@ export async function geocodeAddress(jobOrAddress: Job | string | undefined, may
           logger.info({ taskId: taskIdFromJob }, 'geocodeAddress: nothing persisted');
         }
       }
-      // Return a GeocodingJobResult compatible object
-      return { start: start ?? null, finish: finish ?? null };
+      // FIX: cast to GeocodingJobResult to satisfy TS definitions
+      return { start: start ?? null, finish: finish ?? null } as unknown as GeocodingJobResult;
     }
 
-    // nothing found
     logger.warn({ taskId: taskIdFromJob }, 'geocodeAddress: no coords found');
     throw new Error('No coordinates obtained');
   } catch (err: unknown) {

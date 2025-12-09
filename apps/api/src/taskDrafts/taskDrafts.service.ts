@@ -1,5 +1,4 @@
-// Сервис черновиков задач
-// Основные модули: mongoose модели, утилиты вложений, сервис хранилища
+// apps/api/src/taskDrafts/taskDrafts.service.ts
 import { Types } from 'mongoose';
 import {
   TaskDraft,
@@ -10,22 +9,14 @@ import {
 import { coerceAttachments, extractAttachmentIds } from '../utils/attachments';
 import { deleteFile } from '../services/dataStorage';
 import { writeLog } from '../services/wgLogEngine';
-import { roundCoord } from '../services/route'; // если roundCoord экспортирован, иначе скопируем локально
-
-// Если roundCoord не экспортируется из services/route, раскомментируйте локальную реализацию ниже:
-// const PRECISION_DECIMALS = Number(process.env.ROUTE_PRECISION_DECIMALS || '6');
-// function roundCoord(value: number, decimals = PRECISION_DECIMALS): number {
-//   const factor = Math.pow(10, decimals);
-//   return Math.round(value * factor) / factor;
-// }
 
 const PRECISION_DECIMALS = Number(process.env.ROUTE_PRECISION_DECIMALS || '6');
 
 /**
- * Безопасное округление координаты (совместимо с services/route)
+ * Безопасное округление координаты (локальная реализация).
  */
 function safeRoundCoord(value: unknown, decimals = PRECISION_DECIMALS): number | null {
-  const num = typeof value === 'number' ? value : Number(value);
+  const num = typeof value === 'number' ? value : Number(value as unknown);
   if (!Number.isFinite(num)) return null;
   const factor = Math.pow(10, decimals);
   return Math.round(num * factor) / factor;
@@ -46,32 +37,34 @@ type MaybePoint = { lat?: unknown; lng?: unknown } | [unknown, unknown] | string
 
 /**
  * Try to coerce various input forms into a canonical { lat: number, lng: number } or null.
- * Accepted inputs:
- *  - Object { lat: number|str, lng: number|str }
- *  - Stringified JSON '{"lat":..,"lng":..}'
- *  - String "lat,lng" or "lng,lat" (we expect lat,lng but we'll try both orders)
- *  - Array [lat,lng] or [lng,lat] (we try to guess)
- *
- * Returns null if coordinate cannot be interpreted.
+ * Accepts inputs of unknown type (we're defensive).
  */
-function coercePoint(input: MaybePoint | undefined | null): { lat: number; lng: number } | null {
+function coercePoint(input: unknown): { lat: number; lng: number } | null {
   if (input == null) return null;
 
-  // If it's already an object with lat/lng
+  // If it's an object with lat/lng-like fields
   if (typeof input === 'object' && !Array.isArray(input)) {
     const obj = input as Record<string, unknown>;
-    // accept both lat/lng or latitude/longitude keys
     const latCandidate = obj.lat ?? obj.latitude ?? obj.lat_deg ?? obj.y;
     const lngCandidate = obj.lng ?? obj.longitude ?? obj.lon ?? obj.x;
     const lat = safeRoundCoord(latCandidate);
     const lng = safeRoundCoord(lngCandidate);
     if (lat !== null && lng !== null) {
-      // sanity checks: ranges
       if (lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180) {
         return { lat, lng };
       }
       return null;
     }
+
+    // Try swapped keys (lng, lat)
+    const lat2 = safeRoundCoord(obj.lng);
+    const lng2 = safeRoundCoord(obj.lat);
+    if (lat2 !== null && lng2 !== null) {
+      if (lat2 >= -90 && lat2 <= 90 && lng2 >= -180 && lng2 <= 180) {
+        return { lat: lat2, lng: lng2 };
+      }
+    }
+    return null;
   }
 
   // If it's an array [a,b]
@@ -79,11 +72,11 @@ function coercePoint(input: MaybePoint | undefined | null): { lat: number; lng: 
     const a = safeRoundCoord(input[0]);
     const b = safeRoundCoord(input[1]);
     if (a !== null && b !== null) {
-      // try interpret as [lat,lng] first
+      // prefer lat,lng
       if (a >= -90 && a <= 90 && b >= -180 && b <= 180) {
         return { lat: a, lng: b };
       }
-      // else try [lng,lat]
+      // try lng,lat
       if (b >= -90 && b <= 90 && a >= -180 && a <= 180) {
         return { lat: b, lng: a };
       }
@@ -98,9 +91,9 @@ function coercePoint(input: MaybePoint | undefined | null): { lat: number; lng: 
     if (s.startsWith('{') && s.endsWith('}')) {
       try {
         const parsed = JSON.parse(s);
-        return coercePoint(parsed as MaybePoint);
+        return coercePoint(parsed);
       } catch {
-        // ignore
+        // pass through to comma-case
       }
     }
     // try "lat,lng" or "lng,lat"
@@ -111,12 +104,11 @@ function coercePoint(input: MaybePoint | undefined | null): { lat: number; lng: 
         const a = safeRoundCoord(parts[0]);
         const b = safeRoundCoord(parts[1]);
         if (a !== null && b !== null) {
-          // prefer lat,lng interpretation (common in forms)
           if (a >= -90 && a <= 90 && b >= -180 && b <= 180) {
-            return { lat: a, lng: b };
+            return { lat: a, lng: b }; // lat,lng
           }
           if (b >= -90 && b <= 90 && a >= -180 && a <= 180) {
-            return { lat: b, lng: a };
+            return { lat: b, lng: a }; // lng,lat
           }
         }
       }
@@ -125,7 +117,7 @@ function coercePoint(input: MaybePoint | undefined | null): { lat: number; lng: 
   }
 
   return null;
-};
+}
 
 export default class TaskDraftsService {
   async getDraft(
@@ -146,23 +138,22 @@ export default class TaskDraftsService {
     if (!isPlainObject(payload)) {
       return {};
     }
-    const copy = { ...(payload as Record<string, unknown>) };
+    const copy: Record<string, unknown> = { ...(payload as Record<string, unknown>) };
 
     // attachments
     const attachments = normalizeAttachments(copy.attachments);
     copy.attachments = attachments;
 
-    // Coordinates normalization
+    // Coordinates normalization (input can be unknown)
     const scRaw = copy.startCoordinates as unknown;
     const fcRaw = copy.finishCoordinates as unknown;
 
-    const sc = coercePoint(scRaw);
+    const sc = coercePoint(scRaw); // now accepts unknown
     const fc = coercePoint(fcRaw);
 
     if (sc !== null) {
       copy.startCoordinates = { lat: sc.lat, lng: sc.lng };
     } else {
-      // remove ambiguous/invalid representation to avoid later errors
       if ('startCoordinates' in copy) copy.startCoordinates = undefined;
     }
 
@@ -175,11 +166,10 @@ export default class TaskDraftsService {
     // route_distance_km: ensure numeric or null
     if (Object.prototype.hasOwnProperty.call(copy, 'route_distance_km')) {
       const raw = copy.route_distance_km;
-      const val = typeof raw === 'number' ? raw : Number(raw as any);
+      const val = typeof raw === 'number' ? raw : Number(raw as unknown);
       copy.route_distance_km = Number.isFinite(val) ? val : null;
     }
 
-    // Leave other fields untouched
     return copy;
   }
 

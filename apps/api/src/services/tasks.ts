@@ -1,3 +1,4 @@
+// apps/api/src/services/tasks.ts
 // Сервисные функции задач используют общие запросы к MongoDB
 // Модули: db/queries, services/route, shared
 import * as q from '../db/queries';
@@ -6,11 +7,13 @@ import { generateRouteLink, type Task } from 'shared';
 import { getOsrmDistance, type OsrmPoint } from '../geo/osrm';
 import { resolveTaskTypeTopicId } from './taskTypeSettings';
 import { ensureTaskLinksShort } from './taskLinks';
+import { parsePointInput, LatLng } from '../utils/geo';
+import { logger } from '../services/wgLogEngine';
 
 export type TaskData = Partial<Omit<Task, 'completed_at'>> & {
   completed_at?: string | Date | null;
-  startCoordinates?: OsrmPoint;
-  finishCoordinates?: OsrmPoint;
+  startCoordinates?: OsrmPoint | string | null;
+  finishCoordinates?: OsrmPoint | string | null;
   google_route_url?: string;
   route_distance_km?: number | null;
   due_date?: Date;
@@ -56,29 +59,73 @@ const applyTaskTypeTopic = async (data: TaskData = {}): Promise<void> => {
   }
 };
 
+/**
+ * Ensure startCoordinates/finishCoordinates are proper objects {lat,lng}
+ * Accepts that input might be string/json or already object with various shapes.
+ * Mutates data in place.
+ */
+function normalizeTaskCoordinates(data: TaskData): void {
+  try {
+    if (data.startCoordinates) {
+      const parsed = parsePointInput(data.startCoordinates);
+      if (parsed) {
+        data.startCoordinates = parsed as unknown as OsrmPoint;
+      } else {
+        logger.warn({ val: data.startCoordinates }, 'normalizeTaskCoordinates: unable to parse startCoordinates');
+        data.startCoordinates = undefined;
+      }
+    }
+    if (data.finishCoordinates) {
+      const parsed = parsePointInput(data.finishCoordinates);
+      if (parsed) {
+        data.finishCoordinates = parsed as unknown as OsrmPoint;
+      } else {
+        logger.warn({ val: data.finishCoordinates }, 'normalizeTaskCoordinates: unable to parse finishCoordinates');
+        data.finishCoordinates = undefined;
+      }
+    }
+  } catch (e) {
+    logger.error({ err: e }, 'normalizeTaskCoordinates: unexpected error');
+    // Don't throw — we want higher-level logic to handle missing coords
+    data.startCoordinates = undefined;
+    data.finishCoordinates = undefined;
+  }
+};
+
 async function applyRouteInfo(data: TaskData = {}): Promise<void> {
+  // Normalize coordinates before using
+  normalizeTaskCoordinates(data);
+
   if (data.startCoordinates && data.finishCoordinates) {
-    data.google_route_url = generateRouteLink(
-      data.startCoordinates,
-      data.finishCoordinates,
-    );
+    // ensure types
+    const start = data.startCoordinates as unknown as LatLng;
+    const finish = data.finishCoordinates as unknown as LatLng;
+    data.google_route_url = generateRouteLink(start, finish);
     try {
       const distanceKm = await getOsrmDistance({
-        start: data.startCoordinates,
-        finish: data.finishCoordinates,
+        start: data.startCoordinates as OsrmPoint,
+        finish: data.finishCoordinates as OsrmPoint,
       });
       data.route_distance_km = distanceKm;
-    } catch {
+    } catch (e) {
+      logger.warn({ err: e }, 'applyRouteInfo: getOsrmDistance failed');
       data.route_distance_km = null;
     }
+  } else {
+    // If coordinates missing, clear route fields
+    data.google_route_url = data.google_route_url ?? undefined;
+    data.route_distance_km = data.route_distance_km ?? null;
   }
 }
+
+// ... остальной код без изменений (create, update, etc.)
 
 export const create = async (
   data: TaskData = {},
   userId?: number,
 ): Promise<unknown> => {
   if (data.due_date && !data.remind_at) data.remind_at = data.due_date;
+  // normalize coords inside applyRouteInfo
   await applyRouteInfo(data);
   await ensureTaskLinksShort(data as Partial<TaskDocument>);
   await applyTaskTypeTopic(data);

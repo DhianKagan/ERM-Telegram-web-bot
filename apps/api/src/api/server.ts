@@ -1,5 +1,4 @@
-// Назначение файла: сборка HTTP API.
-// Основные модули: express, security, routes
+// apps/api/src/api/server.ts
 import config from '../config';
 import express from 'express';
 import compression from 'compression';
@@ -93,19 +92,9 @@ export async function buildApp(): Promise<express.Express> {
   const metrics = (metricsModule.default ||
     metricsModule) as express.RequestHandler;
 
-  // Try to import our diagnostic requestLogger if present; allow it to be optional
-  const requestLoggerModule = await import('../middleware/requestLogger' + ext).catch(() => null);
-  const requestLogger = requestLoggerModule ? (requestLoggerModule.default || requestLoggerModule) as express.RequestHandler : null;
-
   applySecurity(app);
   app.use(trace);
   app.use(pinoLogger);
-
-  // Register our request logger (detailed reqId + timing) after pino logger and before metrics
-  if (requestLogger) {
-    app.use(requestLogger);
-  }
-
   app.use(metrics);
 
   const root = path.join(__dirname, '../..');
@@ -128,6 +117,23 @@ export async function buildApp(): Promise<express.Express> {
   app.use(cookieParser());
   app.use(compression());
 
+  // --- START: static tiles and map style handling ---
+  // Serve /tiles from public/tiles if it exists (pmtiles, maplibre-style.json, sprites, etc.)
+  try {
+    const tilesDir = path.join(pub, 'tiles');
+    const st = await fs.stat(tilesDir);
+    if (st && st.isDirectory()) {
+      console.log('Serving /tiles from', tilesDir);
+      // cache for 1 day; change if needed
+      app.use('/tiles', express.static(tilesDir, { maxAge: '1d' }));
+    } else {
+      console.warn('No /tiles directory found at', tilesDir);
+    }
+  } catch (e) {
+    console.warn('No /tiles directory (public/tiles) to serve:', (e as Error).message);
+  }
+  // --- END static tiles handling ---
+
   const domain =
     process.env.NODE_ENV === 'production'
       ? config.cookieDomain || new URL(config.appUrl).hostname
@@ -135,8 +141,6 @@ export async function buildApp(): Promise<express.Express> {
   const secureCookie = process.env.COOKIE_SECURE !== 'false';
   const cookieFlags: session.CookieOptions = {
     httpOnly: true,
-    // По умолчанию cookie передаются только по HTTPS;
-    // переменная COOKIE_SECURE=false включает HTTP для локальной отладки.
     secure: secureCookie,
     sameSite: secureCookie ? 'none' : 'lax',
     ...(domain ? { domain } : {}),

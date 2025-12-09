@@ -1,46 +1,32 @@
 // apps/worker/src/utils/geo.ts
-/**
- * Общая небольшая библиотека гео-утилит для нормализации координат и проверки.
- * Экспортируем:
- *  - normalizePointsString(raw: string): [lon, lat][]
- *  - haversineDistanceMeters(a, b)
- *  - precheckLocations(locations)
- *
- * Параметры поведения управляются через env:
- *  - ROUTE_PRECISION_DECIMALS (default 6)
- *  - ROUTE_MAX_SEGMENT_M (default 200000) — максимальная длина сегмента в метрах
- */
+// Geo utilities for worker — mirror of apps/api/src/utils/geo.ts
+export type LatLng = { lat: number; lng: number };
+export type LonLatPair = [number, number]; // [lon, lat]
 
 const PRECISION_DECIMALS = Number(process.env.ROUTE_PRECISION_DECIMALS || '6');
-const DEFAULT_MAX_SEGMENT_M = Number(process.env.ROUTE_MAX_SEGMENT_M || '200000'); // 200 km
+export const MAX_SEGMENT_M = Number(process.env.ROUTE_MAX_SEGMENT_M || '200000'); // default 200km
 
-export type PointTuple = [number, number];
-
-export function roundCoord(value: number, decimals = PRECISION_DECIMALS): number {
+function roundCoord(value: number, decimals = PRECISION_DECIMALS): number {
   const factor = Math.pow(10, decimals);
   return Math.round(value * factor) / factor;
 }
 
-export function isValidLat(lat: number) {
+function isValidLat(lat: number): boolean {
   return Number.isFinite(lat) && lat >= -90 && lat <= 90;
 }
-export function isValidLon(lon: number) {
+function isValidLon(lon: number): boolean {
   return Number.isFinite(lon) && lon >= -180 && lon <= 180;
 }
 
 /**
- * Normalize string like "lon,lat;lon2,lat2;..."
- * - trims whitespace
- * - splits on ';' or '|' (default ';')
- * - rounds coords to PRECISION_DECIMALS
- * - drops consecutive duplicate points
- * - drops invalid coords
+ * Normalize points string "lon,lat;lon2,lat2;..." or with '|' separator.
+ * Returns array of [lon, lat].
  */
-export function normalizePointsString(raw: string): PointTuple[] {
+export function normalizePointsString(raw: string): LonLatPair[] {
   if (!raw || typeof raw !== 'string') return [];
   const sep = raw.indexOf(';') >= 0 ? ';' : raw.indexOf('|') >= 0 ? '|' : ';';
   const parts = raw.split(sep);
-  const out: PointTuple[] = [];
+  const out: LonLatPair[] = [];
   for (let p of parts) {
     p = p.trim();
     if (!p) continue;
@@ -61,12 +47,10 @@ export function normalizePointsString(raw: string): PointTuple[] {
   return out;
 }
 
-/**
- * Haversine distance between two points [lon, lat] in meters
- */
-export function haversineDistanceMeters(a: PointTuple, b: PointTuple): number {
+/** Haversine — meters */
+export function haversineDistanceMeters(a: LonLatPair, b: LonLatPair): number {
   const toRad = (v: number) => (v * Math.PI) / 180;
-  const R = 6371000; // m
+  const R = 6371000;
   const dLat = toRad(b[1] - a[1]);
   const dLon = toRad(b[0] - a[0]);
   const lat1 = toRad(a[1]);
@@ -78,24 +62,122 @@ export function haversineDistanceMeters(a: PointTuple, b: PointTuple): number {
   return R * c;
 }
 
-/**
- * Precheck locations
- * - ensure >=2 points
- * - ensure each segment length <= maxSegmentM (env ROUTE_MAX_SEGMENT_M or default)
- *
- * Returns { ok: true } or { ok: false, reason: string, ...details }
- */
-export function precheckLocations(locations: PointTuple[]) {
-  if (!locations || locations.length < 2) return { ok: false, reason: 'too_few_points' };
-  const maxSegmentM = Number(process.env.ROUTE_MAX_SEGMENT_M || DEFAULT_MAX_SEGMENT_M);
+export function precheckLocations(locations: LonLatPair[]) {
+  if (!locations || locations.length < 2) {
+    return { ok: false, reason: 'too_few_points' };
+  }
   for (let i = 0; i < locations.length - 1; i++) {
     const a = locations[i];
     const b = locations[i + 1];
     const d = haversineDistanceMeters(a, b);
-    if (!Number.isFinite(d)) return { ok: false, reason: 'invalid_segment', index: i };
-    if (d > maxSegmentM) {
-      return { ok: false, reason: 'segment_too_long', index: i, distanceMeters: d, maxSegmentM };
+    if (!Number.isFinite(d)) {
+      return { ok: false, reason: 'invalid_segment', index: i };
+    }
+    if (d > MAX_SEGMENT_M) {
+      return {
+        ok: false,
+        reason: 'segment_too_long',
+        index: i,
+        distanceMeters: d,
+        maxSegmentM: MAX_SEGMENT_M,
+      };
     }
   }
   return { ok: true };
+}
+
+/**
+ * Parse an incoming point value to a LatLng object or null.
+ * Accepts:
+ *  - object { lat:number, lng:number } or { lng, lat }
+ *  - JSON strings like '{"lat":..,"lng":..}'
+ *  - strings "lon,lat" or "lat,lng" (tries to detect)
+ *  - array [lat,lng] or [lng,lat]
+ *
+ * Returns: {lat, lng} with numbers (rounded), or null if invalid.
+ */
+export function parsePointInput(input: unknown): LatLng | null {
+  if (input == null) return null;
+
+  // If it's an object
+  if (typeof input === 'object' && !Array.isArray(input)) {
+    const maybeLat = (input as any).lat;
+    const maybeLng = (input as any).lng;
+    const maybeLatitude = (input as any).latitude ?? maybeLat;
+    const maybeLongitude = (input as any).longitude ?? (input as any).lon ?? maybeLng ?? (input as any).lng;
+    const latN = Number(maybeLatitude);
+    const lngN = Number(maybeLongitude);
+    if (Number.isFinite(latN) && Number.isFinite(lngN) && isValidLat(latN) && isValidLon(lngN)) {
+      return { lat: roundCoord(latN), lng: roundCoord(lngN) };
+    }
+    // Try swapped keys (lng, lat)
+    const maybeLat2 = (input as any).lng;
+    const maybeLng2 = (input as any).lat;
+    const lat2 = Number(maybeLat2);
+    const lng2 = Number(maybeLng2);
+    if (Number.isFinite(lat2) && Number.isFinite(lng2) && isValidLat(lat2) && isValidLon(lng2)) {
+      return { lat: roundCoord(lat2), lng: roundCoord(lng2) };
+    }
+    return null;
+  }
+
+  // If it's a string
+  if (typeof input === 'string') {
+    const s = input.trim();
+    // Try JSON
+    if (s.startsWith('{') && s.endsWith('}')) {
+      try {
+        const parsed = JSON.parse(s);
+        return parsePointInput(parsed);
+      } catch {
+        // fallthrough
+      }
+    }
+    // Try "lon,lat" or "lat,lng"
+    const parts = s.split(',').map((x) => x.trim());
+    if (parts.length === 2) {
+      const a = Number(parts[0]);
+      const b = Number(parts[1]);
+      if (Number.isFinite(a) && Number.isFinite(b)) {
+        // prefer treat as lon,lat if valid
+        if (isValidLon(a) && isValidLat(b)) {
+          return { lat: roundCoord(b), lng: roundCoord(a) };
+        }
+        // maybe it is lat,lng
+        if (isValidLat(a) && isValidLon(b)) {
+          return { lat: roundCoord(a), lng: roundCoord(b) };
+        }
+      }
+    }
+    // Not parseable
+    return null;
+  }
+
+  // If it's an array like [a,b]
+  if (Array.isArray(input) && input.length >= 2) {
+    const a = Number(input[0]);
+    const b = Number(input[1]);
+    if (Number.isFinite(a) && Number.isFinite(b)) {
+      // try interpret as lat,lng first
+      if (isValidLat(a) && isValidLon(b)) {
+        return { lat: roundCoord(a), lng: roundCoord(b) };
+      }
+      if (isValidLon(a) && isValidLat(b)) {
+        return { lat: roundCoord(b), lng: roundCoord(a) };
+      }
+    }
+    return null;
+  }
+
+  return null;
+}
+
+/**
+ * Convert lat/lng object to [lon, lat] array
+ */
+export function latLngToLonLat(input: LatLng | [number, number]): [number, number] {
+  if (Array.isArray(input)) {
+    return [Number(input[0]), Number(input[1])];
+  }
+  return [Number(input.lng), Number(input.lat)];
 }

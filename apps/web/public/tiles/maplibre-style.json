@@ -1,68 +1,41 @@
 {
   "version": 8,
-  "name": "ERM Minimal Raster + Vector",
+  "name": "ERM Raster OSM",
   "metadata": {
-    "mapbox:autocomposite": true
+    "mapbox:autocomposite": true,
+    "mapbox:type": "template"
   },
   "sources": {
-    "osm-raster": {
+    "raster-tiles": {
       "type": "raster",
       "tiles": [
         "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
       ],
       "tileSize": 256,
       "attribution": "© OpenStreetMap contributors"
-    },
-    "openfreemap-raster": {
-      "type": "raster",
-      "tiles": [
-        "https://tiles.openfreemap.org/tiles/osm/{z}/{x}/{y}.png"
-      ],
-      "tileSize": 256,
-      "attribution": "© OpenStreetMap / OpenFreeMap"
-    },
-    "openmaptiles": {
-      "type": "vector",
-      "tiles": [
-        "https://tiles.openfreemap.org/planet/{z}/{x}/{y}.pbf"
-      ],
-      "maxzoom": 14
     }
   },
-  "glyphs": "/fonts/{fontstack}/{range}.pbf",
   "layers": [
     {
       "id": "background",
       "type": "background",
       "paint": {
-        "background-color": "#f2efe9"
+        "background-color": "#eaeaea"
       }
     },
     {
-      "id": "osm-raster-base",
+      "id": "osm-raster",
       "type": "raster",
-      "source": "openfreemap-raster",
+      "source": "raster-tiles",
       "minzoom": 0,
-      "maxzoom": 22,
+      "maxzoom": 19,
       "paint": {
         "raster-opacity": 1
       }
     }
-
-    /*
-      NOTE:
-      - Сейчас мы добавляем растр OpenFreeMap как основной визуальный слой.
-      - Vector source `openmaptiles` объявлен (MapLibre увидит его и не будет
-        выдавать ошибку "missing required property 'source'"). В текущей версии
-        стиля к нему не привязаны слои с символами/иконками, чтобы избежать
-        потребности в sprite/glyph (и ошибок 404).
-      - Если нужно — ниже можно добавить векторные слои (road, water, buildings)
-        и/или символы. Я могу подготовить расширенный стиль с наложением
-        векторных слоёв, если захотите.
-    */
   ],
-  "created": "2025-12-09T00:00:00.000Z",
-  "id": "erm-minimal-style",
   "center": [30.66, 46.34],
-  "zoom": 11
+  "zoom": 10,
+  "bearing": 0,
+  "pitch": 0
 }

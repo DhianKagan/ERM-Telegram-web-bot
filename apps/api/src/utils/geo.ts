@@ -1,11 +1,11 @@
 // apps/api/src/utils/geo.ts
-// Общие гео-функции для API и воркера: парсинг входных координат, нормализация,
-// пред-проверки сегментов, дистанция (haversine).
+import { extractCoords as sharedExtractCoords } from 'shared';
+
 export type LatLng = { lat: number; lng: number };
 export type LonLatPair = [number, number]; // [lon, lat]
 
 const PRECISION_DECIMALS = Number(process.env.ROUTE_PRECISION_DECIMALS || '6');
-export const MAX_SEGMENT_M = Number(process.env.ROUTE_MAX_SEGMENT_M || '200000'); // 200km default
+export const MAX_SEGMENT_M = Number(process.env.ROUTE_MAX_SEGMENT_M || '200000'); // default 200km
 
 function roundCoord(value: number, decimals = PRECISION_DECIMALS): number {
   const factor = Math.pow(10, decimals);
@@ -89,71 +89,96 @@ export function precheckLocations(locations: LonLatPair[]) {
 
 /**
  * Parse an incoming point value to a LatLng object or null.
- * Accepts:
- *  - object { lat:number, lng:number } or { lng, lat }
- *  - JSON strings like '{"lat":..,"lng":..}'
- *  - strings "lon,lat" or "lat,lng" (we will try to detect)
- *
- * Returns: {lat, lng} with numbers (rounded), or null if invalid.
+ * Delegates to shared.extractCoords for strings first (covers Google links).
  */
 export function parsePointInput(input: unknown): LatLng | null {
   if (input == null) return null;
 
-  // If it's an object
+  // If it's an object like { lat, lng } or { latitude, longitude }
   if (typeof input === 'object' && !Array.isArray(input)) {
-    // @ts-ignore - index access
-    const maybeLat = (input as any).lat;
-    const maybeLng = (input as any).lng;
-    // Sometimes object might have {latitude,longitude} or {lat,lon}
-    const maybeLatitude = (input as any).latitude ?? maybeLat;
-    const maybeLongitude = (input as any).longitude ?? (input as any).lon ?? maybeLng ?? (input as any).lng;
-    const latN = Number(maybeLatitude);
-    const lngN = Number(maybeLongitude);
+    const obj = input as Record<string, unknown>;
+    const maybeLatitude = obj.latitude ?? obj.lat;
+    const maybeLongitude = obj.longitude ?? obj.lon ?? obj.lng;
+    const latN = Number(maybeLatitude as unknown);
+    const lngN = Number(maybeLongitude as unknown);
     if (Number.isFinite(latN) && Number.isFinite(lngN) && isValidLat(latN) && isValidLon(lngN)) {
       return { lat: roundCoord(latN), lng: roundCoord(lngN) };
     }
     // Try swapped keys (lng, lat)
-    const maybeLat2 = (input as any).lng;
-    const maybeLng2 = (input as any).lat;
-    const lat2 = Number(maybeLat2);
-    const lng2 = Number(maybeLng2);
+    const maybeLatitude2 = obj.lng;
+    const maybeLongitude2 = obj.lat;
+    const lat2 = Number(maybeLatitude2 as unknown);
+    const lng2 = Number(maybeLongitude2 as unknown);
     if (Number.isFinite(lat2) && Number.isFinite(lng2) && isValidLat(lat2) && isValidLon(lng2)) {
       return { lat: roundCoord(lat2), lng: roundCoord(lng2) };
     }
     return null;
   }
 
-  // If it's a string
+  // If string — try shared.extractCoords first (Google links etc.)
   if (typeof input === 'string') {
     const s = input.trim();
-    // Try JSON
+    try {
+      const maybe = sharedExtractCoords(s);
+      if (maybe && Number.isFinite(maybe.lat) && Number.isFinite(maybe.lng)) {
+        return { lat: roundCoord(maybe.lat), lng: roundCoord(maybe.lng) };
+      }
+    } catch {
+      // fallthrough to legacy parsing
+    }
+
+    // Try JSON string
     if (s.startsWith('{') && s.endsWith('}')) {
       try {
         const parsed = JSON.parse(s);
         return parsePointInput(parsed);
       } catch {
-        // fallthrough
+        // continue
       }
     }
+
     // Try "lon,lat" or "lat,lng"
     const parts = s.split(',').map((x) => x.trim());
     if (parts.length === 2) {
       const a = Number(parts[0]);
       const b = Number(parts[1]);
       if (Number.isFinite(a) && Number.isFinite(b)) {
-        // prefer treat as lon,lat if valid
         if (isValidLon(a) && isValidLat(b)) {
           return { lat: roundCoord(b), lng: roundCoord(a) };
         }
-        // maybe it is lat,lng
         if (isValidLat(a) && isValidLon(b)) {
           return { lat: roundCoord(a), lng: roundCoord(b) };
         }
       }
     }
-    // Not parseable
+
+    return null;
+  }
+
+  // If it's an array [a,b]
+  if (Array.isArray(input) && input.length >= 2) {
+    const a = Number(input[0]);
+    const b = Number(input[1]);
+    if (Number.isFinite(a) && Number.isFinite(b)) {
+      if (isValidLat(a) && isValidLon(b)) {
+        return { lat: roundCoord(a), lng: roundCoord(b) };
+      }
+      if (isValidLon(a) && isValidLat(b)) {
+        return { lat: roundCoord(b), lng: roundCoord(a) };
+      }
+    }
     return null;
   }
 
   return null;
+}
+
+/**
+ * Convert lat/lng object to [lon, lat] array
+ */
+export function latLngToLonLat(input: LatLng | [number, number]): [number, number] {
+  if (Array.isArray(input)) {
+    return [Number(input[0]), Number(input[1])];
+  }
+  return [Number(input.lng), Number(input.lat)];
 }

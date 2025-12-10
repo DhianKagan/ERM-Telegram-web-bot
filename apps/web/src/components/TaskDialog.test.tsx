@@ -106,12 +106,6 @@ const defaultAuthFetch = (url: string, _options?: any) => {
   if (url === '/api/v1/tasks/report/summary') {
     return Promise.resolve({ ok: true, json: async () => ({ count: 0 }) });
   }
-  if (url.startsWith('/api/v1/maps/search')) {
-    return Promise.resolve({ ok: true, json: async () => ({ items: [] }) });
-  }
-  if (url.startsWith('/api/v1/maps/reverse')) {
-    return Promise.resolve({ ok: true, json: async () => ({ place: null }) });
-  }
   if (url.startsWith('/api/v1/task-drafts/')) {
     return Promise.resolve({
       ok: false,
@@ -128,56 +122,6 @@ jest.mock('../utils/authFetch', () => ({
   __esModule: true,
   default: (url: string, options?: any) => authFetchMock(url, options),
 }));
-
-jest.mock('maplibre-gl/dist/maplibre-gl.css', () => '');
-jest.mock('pmtiles', () => ({
-  Protocol: jest.fn(() => ({ tile: jest.fn() })),
-}));
-
-function mapInstanceMock() {
-  return {
-    on: jest.fn(),
-    off: jest.fn(),
-    remove: jest.fn(),
-    addControl: jest.fn(),
-    easeTo: jest.fn(),
-    getZoom: jest.fn().mockReturnValue(10),
-  };
-}
-
-function markerMockFactory() {
-  return {
-    setLngLat: jest.fn().mockReturnThis(),
-    addTo: jest.fn().mockReturnThis(),
-    on: jest.fn(),
-    remove: jest.fn(),
-  };
-}
-
-jest.mock('maplibre-gl', () => {
-  const mapMock = mapInstanceMock();
-  const markerMock = markerMockFactory();
-  const NavigationControl = jest.fn();
-  const AttributionControl = jest.fn();
-  const Map = jest.fn(() => mapMock);
-  const Marker = jest.fn(() => markerMock);
-  const addProtocol = jest.fn();
-  return {
-    __esModule: true,
-    default: {
-      Map,
-      Marker,
-      NavigationControl,
-      AttributionControl,
-      addProtocol,
-    },
-    Map,
-    Marker,
-    NavigationControl,
-    AttributionControl,
-    addProtocol,
-  };
-});
 
 const createTaskMock = jest.fn();
 const updateTaskMock = jest.fn().mockResolvedValue({
@@ -534,8 +478,7 @@ describe('TaskDialog', () => {
     );
   });
 
-  it('запрашивает подсказки адреса с текущим языком', async () => {
-    jest.useFakeTimers();
+  it('отображает ссылку Google Maps при включённой логистике', async () => {
     render(
       <MemoryRouter>
         <TaskDialog onClose={() => {}} id="1" />
@@ -547,23 +490,9 @@ describe('TaskDialog', () => {
     act(() => {
       fireEvent.click(logisticsToggle);
     });
-    const input = await screen.findByLabelText('startPoint');
-    act(() => {
-      fireEvent.change(input, { target: { value: 'Киев' } });
-      jest.advanceTimersByTime(400);
+    const mapsLink = await screen.findByRole('link', {
+      name: 'Google Maps',
     });
-    await waitFor(() => {
-      const searchCall = authFetchMock.mock.calls.find(
-        ([url]) =>
-          typeof url === 'string' && url.startsWith('/api/v1/maps/search'),
-      );
-      expect(searchCall).toBeTruthy();
-      expect(searchCall?.[1]).toEqual(
-        expect.objectContaining({
-          headers: expect.objectContaining({ 'Accept-Language': 'ru' }),
-        }),
-      );
-    });
-    jest.useRealTimers();
+    expect(mapsLink).toHaveAttribute('href', 'https://www.google.com/maps');
   });
 });

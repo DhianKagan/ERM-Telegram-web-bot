@@ -96,7 +96,6 @@
   "endPoint": "End point",
   "errorFallback": "Something went wrong. Reload the page (Ctrl+R or ⌘+R).",
   "expand": "Expand",
-  "googleMapsLink": "Link from Google Maps",
   "history": "Change history",
   "historyEmpty": "No change history yet",
   "km": "km",
@@ -104,13 +103,6 @@
   "link": "link",
   "loading": "Loading...",
   "map": "Map",
-  "selectOnMap": "Select on map",
-  "selectStartPoint": "Choose start point",
-  "selectFinishPoint": "Choose finish point",
-  "mapSelectionHint": "Click on the map to place a marker.",
-  "mapSelectionConfirm": "Use point",
-  "startCoordinatesRequired": "Select a start point on the map",
-  "finishCoordinatesRequired": "Select a finish point on the map",
   "mb": "MB",
   "menu": "Menu",
   "nav": {
@@ -334,15 +326,6 @@
   "deliveryWindowStart": "Delivery window — from",
   "deliveryWindowEnd": "Delivery window — to",
   "deliveryWindowInvalidRange": "Delivery window end cannot be earlier than start",
-  "startPoint": "Start point",
-  "addressPlaceholder": "Start typing an address ({{count}}+ characters)",
-  "addressSearchHint": "Enter at least {{count}} characters",
-  "addressSearchNoResults": "No suggestions found",
-  "addressSearchLoading": "Searching…",
-  "addressSearchFailed": "Failed to load suggestions",
-  "addressReverseNotFound": "Address not found for the selected point",
-  "addressReverseFailed": "Failed to resolve address for the selected point",
-  "logisticsCoordinatesHint": "Координаты обязательны: выберите адрес или точку на карте",
   "logisticsStartCoordinatesRequired": "Укажите координаты точки отправления",
   "logisticsFinishCoordinatesRequired": "Укажите координаты точки прибытия",
   "status": "Status",
@@ -503,5 +486,7 @@
       "snapshot": "Total: {{total}}, linked: {{linked}}, detached: {{detached}}.",
       "placeholder": "Run the first check to see the report here."
     }
-  }
+  },
+  "googleMapsButton": "Google Maps",
+  "googleMapsHint": "Open Google Maps to find a place or route"
 }

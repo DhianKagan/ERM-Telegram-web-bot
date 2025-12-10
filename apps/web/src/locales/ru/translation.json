@@ -96,7 +96,6 @@
   "endPoint": "Финальная точка",
   "errorFallback": "Что-то пошло не так. Перезагрузите страницу (Ctrl+R или ⌘+R).",
   "expand": "Развернуть",
-  "googleMapsLink": "Ссылка из Google Maps",
   "history": "История изменений",
   "historyEmpty": "История изменений отсутствует",
   "km": "км",
@@ -104,13 +103,6 @@
   "link": "ссылка",
   "loading": "Загрузка...",
   "map": "Карта",
-  "selectOnMap": "Выбрать на карте",
-  "selectStartPoint": "Выбор начальной точки",
-  "selectFinishPoint": "Выбор конечной точки",
-  "mapSelectionHint": "Кликните по карте, чтобы поставить точку.",
-  "mapSelectionConfirm": "Использовать точку",
-  "startCoordinatesRequired": "Укажите начальную точку на карте",
-  "finishCoordinatesRequired": "Укажите конечную точку на карте",
   "mb": "МБ",
   "menu": "Меню",
   "nav": {
@@ -375,15 +367,6 @@
   "deliveryWindowStart": "Окно доставки — с",
   "deliveryWindowEnd": "Окно доставки — до",
   "deliveryWindowInvalidRange": "Окончание окна доставки не может быть раньше начала",
-  "startPoint": "Старт точка",
-  "addressPlaceholder": "Начните вводить адрес (от {{count}} символов)",
-  "addressSearchHint": "Введите минимум {{count}} символов",
-  "addressSearchNoResults": "Подсказки не найдены",
-  "addressSearchLoading": "Идёт поиск…",
-  "addressSearchFailed": "Не удалось получить подсказки",
-  "addressReverseNotFound": "Не удалось найти адрес для выбранной точки",
-  "addressReverseFailed": "Не удалось определить адрес для выбранной точки",
-  "logisticsCoordinatesHint": "Координаты обязательны: выберите адрес или точку на карте",
   "logisticsStartCoordinatesRequired": "Укажите координаты точки отправления",
   "logisticsFinishCoordinatesRequired": "Укажите координаты точки прибытия",
   "status": "Статус",
@@ -537,5 +520,7 @@
       "snapshot": "Всего: {{total}}, привязано: {{linked}}, без задачи: {{detached}}.",
       "placeholder": "Отчёт появится после первой проверки."
     }
-  }
+  },
+  "googleMapsButton": "Google Maps",
+  "googleMapsHint": "Откройте Google Maps для поиска точки или маршрута"
 }

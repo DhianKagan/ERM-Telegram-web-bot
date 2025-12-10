@@ -1,8 +1,50 @@
 // Назначение: HTTP-запросы для работы с маршрутными планами.
 // Основные модули: authFetch, shared
 
-import type { RoutePlan, RoutePlanStatus } from 'shared';
+import type { RoutePlan, RoutePlanRoute, RoutePlanStatus } from 'shared';
 import authFetch from '../utils/authFetch';
+
+const normalizeRoutes = (routes?: RoutePlanRoute[]): RoutePlanRoute[] => {
+  if (!Array.isArray(routes)) return [];
+  return routes.map((route) => ({
+    ...route,
+    tasks: Array.isArray(route.tasks) ? route.tasks : [],
+    stops: Array.isArray(route.stops) ? route.stops : [],
+    metrics: route.metrics ?? {},
+  }));
+};
+
+const normalizePlan = (plan: RoutePlan): RoutePlan => {
+  const routes = normalizeRoutes(plan.routes);
+  const tasks = Array.isArray(plan.tasks) ? plan.tasks : [];
+  const totalStops = routes.reduce(
+    (sum, route) => sum + (route.stops?.length ?? 0),
+    0,
+  );
+  const totalTasks =
+    plan.metrics?.totalTasks ??
+    (tasks.length ||
+      routes.reduce((sum, route) => sum + route.tasks.length, 0));
+
+  return {
+    ...plan,
+    routes,
+    tasks,
+    metrics: plan.metrics ?? {
+      totalDistanceKm: null,
+      totalRoutes: routes.length,
+      totalTasks,
+      totalStops,
+      totalEtaMinutes: null,
+      totalLoad: null,
+    },
+  };
+};
+
+type RoutePlanListResponsePayload = {
+  items?: RoutePlan[];
+  total?: number;
+};
 
 export interface RoutePlanUpdatePayload {
   title?: string;
@@ -37,7 +79,13 @@ export async function listRoutePlans(
   if (!response.ok) {
     throw new Error('Не удалось загрузить маршрутные планы');
   }
-  return (await response.json()) as RoutePlanListResponse;
+  const payload = (await response.json()) as RoutePlanListResponsePayload;
+  const items = Array.isArray(payload.items)
+    ? payload.items.map(normalizePlan)
+    : [];
+  const total =
+    typeof payload.total === 'number' ? payload.total : items.length;
+  return { items, total };
 }
 
 export async function getRoutePlan(id: string): Promise<RoutePlan> {
@@ -46,7 +94,7 @@ export async function getRoutePlan(id: string): Promise<RoutePlan> {
     throw new Error('Маршрутный план не найден');
   }
   const data = await response.json();
-  return data.plan as RoutePlan;
+  return normalizePlan(data.plan as RoutePlan);
 }
 
 export async function updateRoutePlan(
@@ -62,7 +110,7 @@ export async function updateRoutePlan(
     throw new Error('Не удалось сохранить маршрутный план');
   }
   const data = await response.json();
-  return data.plan as RoutePlan;
+  return normalizePlan(data.plan as RoutePlan);
 }
 
 export async function changeRoutePlanStatus(
@@ -78,7 +126,7 @@ export async function changeRoutePlanStatus(
     throw new Error('Не удалось обновить статус маршрутного плана');
   }
   const data = await response.json();
-  return data.plan as RoutePlan;
+  return normalizePlan(data.plan as RoutePlan);
 }
 
 export async function deleteRoutePlan(id: string): Promise<void> {

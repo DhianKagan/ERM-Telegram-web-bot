@@ -1,1180 +1,147 @@
 /** @jest-environment jsdom */
-// Назначение: тесты страницы логистики с отображением техники и треков
-// Основные модули: React, @testing-library/react, MapLibre GL-моки
+// Назначение: тесты карточек маршрутных планов без карты и геометрии
+// Основные модули: React, @testing-library/react
 
 import '@testing-library/jest-dom';
 import React from 'react';
-import {
-  MemoryRouter,
-  RouterProvider,
-  createMemoryRouter,
-} from 'react-router-dom';
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react';
-import LogisticsPage from './Logistics';
-import { MAP_ADDRESSES_PMTILES_URL } from '../config/map';
-import { taskStateController } from '../controllers/taskStateController';
-import type { LogisticsEvent, RoutePlan } from 'shared';
+import { MemoryRouter } from 'react-router-dom';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import type { RoutePlan } from 'shared';
 
-const runtime = globalThis as typeof globalThis & { Request?: typeof Request };
-if (typeof runtime.Request === 'undefined') {
-  class StubRequest {
-    url: string;
-    constructor(input: string, _init?: unknown) {
-      this.url = String(input);
-    }
-  }
-  runtime.Request = StubRequest as unknown as typeof Request;
-}
-jest.mock('../config/map', () => ({
-  MAP_ATTRIBUTION: 'test attribution',
-  MAP_ANIMATION_SPEED_KMH: 60,
-  MAP_DEFAULT_CENTER: [30, 50],
-  MAP_DEFAULT_ZOOM: 6,
-  MAP_UKRAINE_BOUNDS: [
-    [22, 44],
-    [41.5, 52.5],
-  ],
-  MAP_STYLE: 'pmtiles://style.pmtiles',
-  MAP_STYLE_MODE: 'pmtiles',
-  MAP_STYLE_IS_DEFAULT: false,
-  MAP_ADDRESSES_PMTILES_URL: 'pmtiles://test.pmtiles',
-}));
-jest.mock('react-i18next', () => {
-  const translate = (key: string, options?: Record<string, unknown>) => {
-    if (key === 'logistics.selectedVehicle') {
-      return `Выбран транспорт: ${options?.name ?? ''}`.trim();
-    }
-    if (key === 'logistics.linksLabel') {
-      return `Маршрут ${options?.index ?? ''}`.trim();
-    }
-    if (key === 'logistics.planRouteTitle') {
-      return `Маршрут ${options?.index ?? ''}`.trim();
-    }
-    if (key === 'logistics.planRouteSummary') {
-      return `Задач: ${options?.tasks ?? ''}, остановок: ${options?.stops ?? ''}`.trim();
-    }
-    if (key === 'logistics.planRouteDistance') {
-      return `Расстояние: ${options?.distance ?? ''}`.trim();
-    }
-    if (key === 'logistics.planRouteDuration') {
-      return `Время: ${options?.duration ?? ''}`.trim();
-    }
-    const dictionary: Record<string, string> = {
-      loading: 'Загрузка...',
-      reset: 'Сбросить',
-      refresh: 'Обновить',
-      'logistics.title': 'Логистика',
-      'logistics.pageLead':
-        'Планируйте маршруты, управляйте автопарком и отслеживайте задачи на одной карте.',
-      'logistics.transport': 'Транспорт',
-      'logistics.unselectedVehicle': 'Не выбран',
-      'logistics.refreshFleet': 'Обновить автопарк',
-      'logistics.noVehicles': 'Транспорт не найден',
-      'logistics.loadError': 'Не удалось загрузить транспорт автопарка',
-      'logistics.adminOnly': 'Автопарк доступен только администраторам',
-      'logistics.noAccess': 'Нет доступа к автопарку',
-      'logistics.optimize': 'Просчёт логистики',
-      'logistics.mapPanelTitle': 'Карта маршрутов',
-      'logistics.mapPanelSummary':
-        'Включайте нужные слои, выбирайте алгоритм и запускайте оптимизацию прямо на карте.',
-      'logistics.planSectionTitle': 'Маршрутный план',
-      'logistics.planSummary': 'Итоги плана',
-      'logistics.planStatus': 'Статус',
-      'logistics.planStatusValue.draft': 'Черновик',
-      'logistics.planStatusValue.approved': 'Утверждён',
-      'logistics.planStatusValue.completed': 'Завершён',
-      'logistics.planReload': 'Обновить план',
-      'logistics.planClear': 'Сбросить план',
-      'logistics.planApprove': 'Опубликовать',
-      'logistics.planComplete': 'Завершить',
-      'logistics.planTitleLabel': 'Название маршрутного плана',
-      'logistics.planNotesLabel': 'Примечания',
-      'logistics.planTotalDistance': 'Общее расстояние',
-      'logistics.planTotalRoutes': 'Маршрутов',
-      'logistics.planTotalTasks': 'Задач',
-      'logistics.planTotalStops': 'Остановок',
-      'logistics.planRouteEmpty': 'Нет задач',
-      'logistics.planDriver': 'Водитель',
-      'logistics.planVehicle': 'Транспорт',
-      'logistics.planRouteNotes': 'Заметки по маршруту',
-      'logistics.planTaskUp': 'Вверх',
-      'logistics.planTaskDown': 'Вниз',
-      'logistics.planSaved': 'Сохранено',
-      'logistics.planSaveError': 'Ошибка сохранения',
-      'logistics.planPublished': 'Опубликовано',
-      'logistics.planCompleted': 'Завершено',
-      'logistics.planStatusError': 'Ошибка статуса',
-      'logistics.planLoadError': 'Ошибка загрузки',
-      'logistics.planDraftCreated': 'Черновик создан',
-      'logistics.planEmpty': 'Нет плана',
-      'logistics.planNoDistance': 'нет данных',
-      'logistics.planOptimizeError': 'Ошибка оптимизации',
-      'logistics.tasksHeading': 'Задачи',
-      'logistics.metaTitle': 'Логистика — ERM',
-      'logistics.metaDescription':
-        'Планирование маршрутов, управление автопарком и анализ доставок по агрегированным данным.',
-      'logistics.geozonesTitle': 'Геозоны',
-      'logistics.geozonesDraw': 'Нарисовать зону',
-      'logistics.geozonesDrawing': 'Рисуем…',
-      'logistics.geozonesHint':
-        'Выберите геозоны, чтобы ограничить задачи на карте.',
-      'logistics.geozonesDescription':
-        'Геозоны ограничивают задачи выбранными районами. Отключите, если нужно видеть все адреса.',
-      'logistics.geozonesToggleLabel': 'Геозоны',
-      'logistics.geozonesDisabled': 'Фильтрация по зонам выключена.',
-      'logistics.geozonesDisabledHint':
-        'Включите переключатель выше, чтобы снова показывать зоны.',
-      'logistics.geozonesEmpty': 'Геозоны пока не созданы',
-      'logistics.geozoneDefaultName': 'Зона {{index}}',
-      'logistics.geozoneRemove': 'Удалить',
-      'logistics.geozoneStatusActive': 'Активна',
-      'logistics.geozoneStatusInactive': 'Неактивна',
-      'logistics.geozoneArea': 'Площадь: {{value}}',
-      'logistics.geozonePerimeter': 'Периметр: {{value}}',
-      'logistics.geozoneBuffer': 'Буфер: {{value}}',
-      'logistics.viewModeLabel': 'Режим карты',
-      'logistics.layersTitle': 'Слои карты',
-      'logistics.layersSummary':
-        'Настройте легенду карты по статусам, транспорту и типам задач.',
-      'logistics.layerTasks': 'Задачи',
-      'logistics.layerOptimization': 'Оптимизация',
-      'logistics.viewModePlanar': '2D',
-      'logistics.viewModeTilted': 'Перспектива',
-      'logistics.legendTitle': 'Легенда',
-      'logistics.legendCount': '({{count}})',
-      'logistics.legendStart': 'Старт задачи',
-      'logistics.legendFinish': 'Финиш задачи',
-      'logistics.legendMovement': 'Движение по маршруту',
-      'logistics.vehicleTasksCount': 'Задач: {{count}}',
-      'logistics.vehicleMileage': 'Пробег: {{value}} км',
-      'logistics.vehicleCountLabel': 'Машины',
-      'logistics.vehicleCountAria': 'Количество машин',
-      'logistics.optimizeMethodLabel': 'Метод',
-      'logistics.optimizeMethodAria': 'Метод оптимизации',
-    };
-    if (dictionary[key]) {
-      let template = dictionary[key];
-      if (options) {
-        template = template.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, token) => {
-          if (Object.prototype.hasOwnProperty.call(options, token)) {
-            const value = options[token];
-            return value === undefined || value === null ? '' : String(value);
-          }
-          return `{{${token}}}`;
-        });
-      }
-      return template;
-    }
-    if (options && typeof options.defaultValue === 'string') {
-      return options.defaultValue;
-    }
-    return key;
-  };
-  const i18n = { language: 'ru' };
-  return {
-    useTranslation: () => ({ t: translate, i18n }),
-  };
-});
-jest.mock('maplibre-gl/dist/maplibre-gl.css', () => ({}), { virtual: true });
-jest.mock('maplibre-gl-draw/dist/maplibre-gl-draw.css', () => ({}), {
-  virtual: true,
-});
-jest.mock('pmtiles', () => ({
-  Protocol: jest.fn(() => ({ tile: jest.fn() })),
-}));
-
-function buildMapInstance(options?: {
-  center?: [number, number];
-  zoom?: number;
-  pitch?: number;
-  bearing?: number;
-}) {
-  const sources = new Map<string, { setData: jest.Mock }>();
-  const layers = new Map<string, any>();
-  const handlers = new Map<string, Set<(...args: any[]) => void>>();
-  const styleLayers: Array<{ id: string }> = [
-    { id: 'road-label' },
-    { id: 'settlement-major-label' },
-  ];
-  const viewState = {
-    center: Array.isArray(options?.center)
-      ? [options.center[0], options.center[1]]
-      : [0, 0],
-    zoom: typeof options?.zoom === 'number' ? options.zoom : 6,
-    pitch: typeof options?.pitch === 'number' ? options.pitch : 0,
-    bearing: typeof options?.bearing === 'number' ? options.bearing : 0,
-  };
-  const getKey = (event: string, layerId?: string) =>
-    layerId ? `${event}:${layerId}` : event;
-  const getHandlers = (event: string, layerId?: string) => {
-    const key = getKey(event, layerId);
-    let bucket = handlers.get(key);
-    if (!bucket) {
-      bucket = new Set();
-      handlers.set(key, bucket);
-    }
-    return bucket;
-  };
-  const instance: any = {
-    on: jest.fn(
-      (
-        event: string,
-        layerOrHandler: string | ((...args: any[]) => void),
-        maybeHandler?: (...args: any[]) => void,
-      ) => {
-        let layerId: string | undefined;
-        let handler: (...args: any[]) => void;
-        if (typeof layerOrHandler === 'string') {
-          layerId = layerOrHandler;
-          handler = maybeHandler as (...args: any[]) => void;
-        } else {
-          handler = layerOrHandler;
-        }
-        getHandlers(event, layerId).add(handler);
-        if (event === 'load') {
-          act(() => {
-            handler({});
-          });
-        }
-        return instance;
-      },
-    ),
-    off: jest.fn(
-      (
-        event: string,
-        layerOrHandler: string | ((...args: any[]) => void),
-        maybeHandler?: (...args: any[]) => void,
-      ) => {
-        let layerId: string | undefined;
-        let handler: (...args: any[]) => void;
-        if (typeof layerOrHandler === 'string') {
-          layerId = layerOrHandler;
-          handler = maybeHandler as (...args: any[]) => void;
-        } else {
-          handler = layerOrHandler;
-        }
-        getHandlers(event, layerId).delete(handler);
-        return instance;
-      },
-    ),
-    addControl: jest.fn(),
-    addSource: jest.fn((id: string) => {
-      const source = { setData: jest.fn() };
-      sources.set(id, source);
-      return source;
-    }),
-    addLayer: jest.fn((layer: { id: string }, beforeId?: string) => {
-      layers.set(layer.id, layer);
-      const existingIndex = styleLayers.findIndex(
-        (entry) => entry.id === layer.id,
-      );
-      if (existingIndex !== -1) {
-        styleLayers.splice(existingIndex, 1);
-      }
-      const beforeIndex = beforeId
-        ? styleLayers.findIndex((entry) => entry.id === beforeId)
-        : -1;
-      const layerEntry = { id: layer.id };
-      if (beforeIndex >= 0) {
-        styleLayers.splice(beforeIndex, 0, layerEntry);
-      } else {
-        styleLayers.push(layerEntry);
-      }
-    }),
-    addImage: jest.fn(),
-    getSource: jest.fn((id: string) => sources.get(id)),
-    getLayer: jest.fn((id: string) => layers.get(id)),
-    hasImage: jest.fn(() => false),
-    setLayoutProperty: jest.fn(),
-    getStyle: jest.fn(() => ({
-      layers: styleLayers.map((entry) => ({ id: entry.id })),
-    })),
-    moveLayer: jest.fn((layerId: string, beforeId?: string) => {
-      const currentIndex = styleLayers.findIndex(
-        (entry) => entry.id === layerId,
-      );
-      if (currentIndex === -1) {
-        return;
-      }
-      const [entry] = styleLayers.splice(currentIndex, 1);
-      if (!beforeId) {
-        styleLayers.push(entry);
-        return;
-      }
-      const targetIndex = styleLayers.findIndex((item) => item.id === beforeId);
-      if (targetIndex === -1) {
-        styleLayers.push(entry);
-        return;
-      }
-      styleLayers.splice(targetIndex, 0, entry);
-    }),
-    remove: jest.fn(),
-    resize: jest.fn(),
-    easeTo: jest.fn(
-      (params?: {
-        center?: [number, number];
-        zoom?: number;
-        pitch?: number;
-        bearing?: number;
-      }) => {
-        if (params?.center) {
-          viewState.center = [params.center[0], params.center[1]];
-        }
-        if (typeof params?.zoom === 'number') {
-          viewState.zoom = params.zoom;
-        }
-        if (typeof params?.pitch === 'number') {
-          viewState.pitch = params.pitch;
-        }
-        if (typeof params?.bearing === 'number') {
-          viewState.bearing = params.bearing;
-        }
-      },
-    ),
-    setPitch: jest.fn((value: number) => {
-      viewState.pitch = value;
-    }),
-    setBearing: jest.fn((value: number) => {
-      viewState.bearing = value;
-    }),
-    getZoom: jest.fn(() => viewState.zoom),
-    getCenter: jest.fn(() => ({
-      lng: viewState.center[0],
-      lat: viewState.center[1],
-    })),
-    getPitch: jest.fn(() => viewState.pitch),
-    getBearing: jest.fn(() => viewState.bearing),
-    getCanvas: jest.fn(() => ({ style: { cursor: '' } })),
-    dragRotate: { enable: jest.fn(), disable: jest.fn() },
-    touchZoomRotate: {
-      enableRotation: jest.fn(),
-      disableRotation: jest.fn(),
-    },
-  };
-  instance.__handlers = handlers;
-  instance.__emit = (event: string, payload: any, layerId?: string) => {
-    for (const handler of getHandlers(event, layerId)) {
-      handler(payload);
-    }
-  };
-  return instance;
-}
-
-jest.mock(
-  'maplibre-gl',
-  () => {
-    const Marker = jest.fn(() => ({
-      setLngLat: jest.fn().mockReturnThis(),
-      addTo: jest.fn().mockReturnThis(),
-      remove: jest.fn(),
-    }));
-    const NavigationControl = jest.fn();
-    const AttributionControl = jest.fn();
-    const Map = jest.fn((options?: Record<string, unknown>) =>
-      buildMapInstance(
-        options as {
-          center?: [number, number];
-          zoom?: number;
-          pitch?: number;
-          bearing?: number;
-        },
-      ),
-    );
-    const addProtocol = jest.fn();
-    const module = {
-      __esModule: true,
-      default: {
-        Map,
-        Marker,
-        NavigationControl,
-        AttributionControl,
-        addProtocol,
-      },
-      Map,
-      Marker,
-      NavigationControl,
-      AttributionControl,
-      addProtocol,
-    };
-    return module;
-  },
-  { virtual: true },
-);
-
-const drawChangeMode = jest.fn();
-const drawDelete = jest.fn();
-const optimizeRouteMock = jest.fn().mockResolvedValue(null);
-const resolveWithAct = <T,>(value: T) =>
-  new Promise<T>((resolve) => {
-    act(() => resolve(value));
-  });
-
-jest.mock(
-  'maplibre-gl-draw',
-  () => {
-    const constructor = jest.fn(
-      (options?: { styles?: Array<{ paint?: Record<string, unknown> }> }) => {
-        if (!options?.styles) {
-          console.error(
-            'line-dasharray выражение должно использовать literal для совместимости с MapLibre.',
-          );
-        } else {
-          for (const style of options.styles) {
-            const paint = style?.paint as Record<string, unknown> | undefined;
-            const dashArray = paint?.['line-dasharray'];
-            if (
-              Array.isArray(dashArray) &&
-              dashArray.some(
-                (entry) =>
-                  Array.isArray(entry) &&
-                  entry.length > 0 &&
-                  typeof entry[0] === 'number',
-              )
-            ) {
-              console.error(
-                'line-dasharray выражение должно использовать literal для совместимости с MapLibre.',
-              );
-              break;
-            }
-          }
-        }
-        return {
-          changeMode: drawChangeMode,
-          delete: drawDelete,
-          get: jest.fn(() => null),
-        };
-      },
-    );
-    return constructor;
-  },
-  { virtual: true },
-);
-
-const taskTableBatches: any[][] = [];
-
-const mockTasks = [
-  {
-    _id: 't1',
-    id: 't1',
-    title: 'Задача 1',
-    status: 'Новая',
-    startCoordinates: { lat: 50, lng: 30 },
-    finishCoordinates: { lat: 51, lng: 31 },
-    logistics_details: {
-      transport_type: 'Легковой',
-      start_location: 'Київ',
-      end_location: 'Львів',
-    },
-  },
-  {
-    _id: 't2',
-    id: 't2',
-    title: 'Задача 2',
-    status: 'В работе',
-    startCoordinates: { lat: 55, lng: 35 },
-    finishCoordinates: { lat: 55.5, lng: 35.5 },
-    logistics_details: {
-      transport_type: '',
-    },
-    transport_type: 'Грузовой',
-    start_location: 'Дніпро',
-    end_location: 'Харків',
-  },
-  {
-    _id: 't4',
-    id: 't4',
-    title: 'Задача 4',
-    status: 'Новая',
-    startCoordinates: { lat: 49.5, lng: 25.6 },
-    finishCoordinates: { lat: 49.9, lng: 26.1 },
-    logistics_details: {
-      transport_type: 'Без транспорта',
-      start_location: 'Тернопіль',
-      end_location: 'Хмельницький',
-    },
-  },
-  {
-    _id: 't3',
-    id: 't3',
-    title: 'Задача 3',
-    status: 'Отменена',
-    logistics_details: {
-      transport_type: 'Легковой',
-    },
-  },
-];
-
-jest.mock('../components/TaskTable', () => {
-  function MockTaskTable({ tasks, onDataChange }: any) {
-    const signatureRef = React.useRef<string | null>(null);
-    React.useEffect(() => {
-      const signature = JSON.stringify(tasks);
-      if (signatureRef.current === signature) return;
-      signatureRef.current = signature;
-      taskTableBatches.push(tasks);
-      onDataChange(tasks);
-    }, [tasks, onDataChange]);
-    return React.createElement('div', { 'data-testid': 'task-table' });
-  }
-  return { __esModule: true, default: MockTaskTable };
-});
-
-const fetchTasksMock = jest.fn(() => resolveWithAct(mockTasks));
-
-jest.mock('../services/tasks', () => ({
-  fetchTasks: (...args: unknown[]) => fetchTasksMock(...args),
-}));
-
-jest.mock('../services/osrm', () =>
-  jest.fn().mockResolvedValue([
-    [30, 50],
-    [31, 51],
-  ]),
-);
-
-jest.mock('../services/optimizer', () => ({
-  __esModule: true,
-  default: (...args: unknown[]) => optimizeRouteMock(...args),
-}));
-
-jest.mock('../services/logisticsEvents', () => {
-  const listeners = new Set<(event: unknown) => void>();
-  return {
-    __esModule: true,
-    subscribeLogisticsEvents: jest.fn((listener: (event: unknown) => void) => {
-      listeners.add(listener);
-      return () => {
-        listeners.delete(listener);
-      };
-    }),
-    __count() {
-      return listeners.size;
-    },
-    __emit(event: unknown) {
-      listeners.forEach((listener) => listener(event));
-    },
-    __clear() {
-      listeners.clear();
-    },
-  };
-});
-
-const logisticsEventsMock = jest.requireMock('../services/logisticsEvents') as {
-  subscribeLogisticsEvents: jest.Mock<
-    () => void,
-    [(event: LogisticsEvent) => void]
-  >;
-  __emit: (event: LogisticsEvent) => void;
-  __count: () => number;
-  __clear: () => void;
-};
+import Logistics from './Logistics';
 
 const listRoutePlansMock = jest.fn();
-const updateRoutePlanMock = jest.fn();
-const changeRoutePlanStatusMock = jest.fn();
+const addToastMock = jest.fn();
 
 jest.mock('../services/routePlans', () => ({
   listRoutePlans: (...args: unknown[]) => listRoutePlansMock(...args),
-  updateRoutePlan: (...args: unknown[]) => updateRoutePlanMock(...args),
-  changeRoutePlanStatus: (...args: unknown[]) =>
-    changeRoutePlanStatusMock(...args),
 }));
 
-const draftPlan: RoutePlan = {
+jest.mock('../context/useToast', () => ({
+  useToast: () => ({ addToast: addToastMock }),
+}));
+
+jest.mock('../context/useAuth', () => ({
+  useAuth: () => ({ user: { role: 'user' } }),
+}));
+
+jest.mock(
+  '../components/Breadcrumbs',
+  () => (props: { items: Array<{ label: string }> }) => (
+    <nav aria-label="breadcrumbs">
+      {props.items.map((item) => item.label).join(' / ')}
+    </nav>
+  ),
+);
+
+jest.mock('../components/SkeletonCard', () => () => (
+  <div data-testid="skeleton">Загрузка…</div>
+));
+
+jest.mock('@/components/ui/button', () => ({
+  Button: ({
+    children,
+    ...rest
+  }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
+    <button type="button" {...rest}>
+      {children}
+    </button>
+  ),
+}));
+
+const basePlan: RoutePlan = {
   id: 'plan-1',
-  title: 'Черновик маршрута',
+  title: 'Маршрут 1',
   status: 'draft',
-  suggestedBy: null,
-  method: 'angle',
-  count: 1,
-  notes: null,
+  notes: 'Доставка оборудования',
   metrics: {
-    totalDistanceKm: 24.5,
+    totalDistanceKm: null,
     totalRoutes: 1,
-    totalTasks: 1,
+    totalTasks: 2,
     totalStops: 2,
+    totalEtaMinutes: null,
+    totalLoad: null,
   },
   routes: [
     {
       id: 'route-1',
-      order: 0,
-      vehicleId: null,
-      vehicleName: null,
-      driverId: null,
-      driverName: null,
+      order: 1,
+      vehicleId: 'v-1',
+      vehicleName: 'Фургон',
+      driverId: 1,
+      driverName: 'Иван',
       tasks: [
-        {
-          taskId: 't1',
-          order: 0,
-          title: 'Задача 1',
-          start: { lat: 50, lng: 30 },
-          finish: { lat: 51, lng: 31 },
-          startAddress: 'Старт',
-          finishAddress: 'Финиш',
-          distanceKm: 12.3,
-        },
+        { taskId: 't-1', order: 1, title: 'Забрать посылку' },
+        { taskId: 't-2', order: 2, title: 'Доставить клиенту' },
       ],
-      stops: [
-        {
-          order: 0,
-          kind: 'start',
-          taskId: 't1',
-          coordinates: { lat: 50, lng: 30 },
-          address: 'Старт',
-        },
-        {
-          order: 1,
-          kind: 'finish',
-          taskId: 't1',
-          coordinates: { lat: 51, lng: 31 },
-          address: 'Финиш',
-        },
-      ],
-      metrics: { distanceKm: 12.3, tasks: 1, stops: 2 },
-      routeLink: 'https://example.com',
-      notes: null,
+      stops: [],
     },
   ],
-  tasks: ['t1'],
-  createdAt: '2024-01-01T00:00:00.000Z',
-  updatedAt: '2024-01-01T00:00:00.000Z',
+  tasks: ['t-1', 't-2'],
+  createdAt: '2024-01-10T10:00:00.000Z',
+  updatedAt: '2024-01-10T10:00:00.000Z',
 };
 
-jest.mock('../context/useAuth', () => ({
-  useAuth: () => ({ user: { telegram_id: 42, role: 'admin' } }),
-}));
-
-jest.mock('../controllers/taskStateController', () => {
-  const ReactActual = jest.requireActual<typeof import('react')>('react');
-  const listeners = new Set<() => void>();
-  const defaultKey = 'logistics:all';
-  const resolveKey = (value?: string) => value ?? defaultKey;
-  let snapshot: any[] = [];
-  let meta = {
-    key: defaultKey,
-    pageSize: 0,
-    total: 0,
-    sort: 'desc' as const,
-    updatedAt: Date.now(),
-  };
-  const notify = () => {
-    listeners.forEach((listener) => listener());
-  };
-  const updateSnapshot = (rows: any[], key: string) => {
-    snapshot = rows.map((task) => ({ ...task }));
-    meta = {
-      ...meta,
-      key,
-      pageSize: snapshot.length,
-      total: snapshot.length,
-      updatedAt: Date.now(),
-    };
-    notify();
-  };
-  const taskStateController = {
-    subscribe(listener: () => void) {
-      listeners.add(listener);
-      return () => {
-        listeners.delete(listener);
-      };
-    },
-    clear() {
-      snapshot = [];
-      meta = {
-        ...meta,
-        pageSize: 0,
-        total: 0,
-        updatedAt: Date.now(),
-      };
-      notify();
-    },
-    setIndex(_key: string, list: any[]) {
-      const key = resolveKey(_key);
-      updateSnapshot(Array.isArray(list) ? list : [], key);
-    },
-    getIndexSnapshot(_key: string) {
-      const key = resolveKey(_key);
-      if (meta.key !== key) {
-        return [];
-      }
-      return snapshot;
-    },
-    getIndexMetaSnapshot(_key: string) {
-      const key = resolveKey(_key);
-      if (meta.key !== key) {
-        return {
-          ...meta,
-          key,
-        };
-      }
-      return { ...meta };
-    },
-  };
-  const useTaskIndex = (_key = defaultKey) => {
-    const key = resolveKey(_key);
-    const [value, setValue] = ReactActual.useState(() =>
-      taskStateController.getIndexSnapshot(key),
-    );
-    ReactActual.useEffect(() => {
-      const listener = () => {
-        setValue([...taskStateController.getIndexSnapshot(key)]);
-      };
-      const unsubscribe = taskStateController.subscribe(listener);
-      listener();
-      return unsubscribe;
-    }, [key]);
-    return value;
-  };
-  const useTaskIndexMeta = (_key = defaultKey) => {
-    const key = resolveKey(_key);
-    const [value, setValue] = ReactActual.useState(() =>
-      taskStateController.getIndexMetaSnapshot(key),
-    );
-    ReactActual.useEffect(() => {
-      const listener = () => {
-        setValue(taskStateController.getIndexMetaSnapshot(key));
-      };
-      const unsubscribe = taskStateController.subscribe(listener);
-      listener();
-      return unsubscribe;
-    }, [key]);
-    return value;
-  };
-  return {
-    __esModule: true,
-    taskStateController,
-    useTaskIndex,
-    useTaskIndexMeta,
-  };
-});
-
-jest.mock('../context/useTasks', () => {
-  const { taskStateController } = jest.requireMock(
-    '../controllers/taskStateController',
+const renderPage = async () => {
+  render(
+    <MemoryRouter>
+      <Logistics />
+    </MemoryRouter>,
   );
-  return {
-    __esModule: true,
-    default: () => ({
-      controller: taskStateController,
-      version: 0,
-      refresh: jest.fn(),
-      query: '',
-      setQuery: jest.fn(),
-      filters: {
-        status: [],
-        priority: [],
-        from: '',
-        to: '',
-        taskTypes: [],
-        assignees: [],
-      },
-      setFilters: jest.fn(),
-      filterUsers: [],
-      setFilterUsers: jest.fn(),
-    }),
-  };
-});
-
-const renderWithEffects = async (element: React.ReactElement) => {
-  let view: ReturnType<typeof render> | null = null;
-  await act(async () => {
-    view = render(element);
-  });
-  await act(async () => {
-    await Promise.resolve();
-  });
-  return view as ReturnType<typeof render>;
+  await waitFor(() => expect(listRoutePlansMock).toHaveBeenCalled());
 };
 
-beforeAll(() => {
-  if (!globalThis.crypto) {
-    Object.defineProperty(globalThis, 'crypto', {
-      value: { randomUUID: () => 'test-uuid' },
-      configurable: true,
-    });
-  } else if (typeof globalThis.crypto.randomUUID !== 'function') {
-    (globalThis.crypto as Crypto).randomUUID = () => 'test-uuid';
-  }
-  const mockContext = {
-    scale: jest.fn(),
-    clearRect: jest.fn(),
-    beginPath: jest.fn(),
-    arc: jest.fn(),
-    fill: jest.fn(),
-    stroke: jest.fn(),
-    fillStyle: '',
-    strokeStyle: '',
-    lineWidth: 0,
-    font: '',
-    textAlign: 'center',
-    textBaseline: 'middle',
-    fillText: jest.fn(),
-    getImageData: jest.fn(() => ({
-      data: new Uint8ClampedArray(4),
-      width: 1,
-      height: 1,
-    })),
-  } as unknown as CanvasRenderingContext2D;
-  const canvasPrototype = HTMLCanvasElement.prototype as any;
-  if (typeof canvasPrototype.getContext !== 'function') {
-    canvasPrototype.getContext = () => mockContext;
-  } else {
-    jest
-      .spyOn(canvasPrototype, 'getContext')
-      .mockImplementation(() => mockContext);
-  }
-});
-
-describe('LogisticsPage', () => {
-  jest.setTimeout(20000);
-  const originalConsoleError = console.error;
-  let consoleErrorSpy: jest.SpyInstance;
-
-  beforeAll(() => {
-    consoleErrorSpy = jest
-      .spyOn(console, 'error')
-      .mockImplementation((...args) => {
-        const [message] = args;
-        if (
-          typeof message === 'string' &&
-          message.includes('not wrapped in act')
-        ) {
-          return;
-        }
-        originalConsoleError(...args);
-      });
-  });
-
-  afterAll(() => {
-    consoleErrorSpy.mockRestore();
-  });
-
+describe('Logistics page (карточки)', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    window.localStorage.clear();
-    logisticsEventsMock.__clear();
-    fetchTasksMock.mockImplementation(() => resolveWithAct(mockTasks));
-    taskStateController.clear();
-    taskTableBatches.length = 0;
     listRoutePlansMock.mockReset();
-    listRoutePlansMock.mockImplementation(
-      (status?: string, page?: number, limit?: number) => {
-        const payload =
-          status === 'draft'
-            ? {
-                items: [draftPlan],
-                total: 1,
-                page: page ?? 1,
-                limit: limit ?? 1,
-              }
-            : { items: [], total: 0, page: page ?? 1, limit: limit ?? 1 };
-        return resolveWithAct(payload);
-      },
-    );
-    updateRoutePlanMock.mockReset();
-    changeRoutePlanStatusMock.mockReset();
-    optimizeRouteMock.mockReset();
-    optimizeRouteMock.mockImplementation(() => resolveWithAct(null));
-    updateRoutePlanMock.mockImplementation(() => resolveWithAct(draftPlan));
-    changeRoutePlanStatusMock.mockImplementation(() =>
-      resolveWithAct({
-        ...draftPlan,
-        status: 'approved',
-      }),
-    );
+    addToastMock.mockReset();
   });
 
-  it('подключает слой адресов поверх дорожных подписей и под крупными метками', async () => {
-    await renderWithEffects(
-      <MemoryRouter future={{ v7_relativeSplatPath: true }}>
-        <LogisticsPage />
-      </MemoryRouter>,
-    );
+  it('отображает карточки с основными данными маршрутного плана', async () => {
+    listRoutePlansMock.mockResolvedValue({ items: [basePlan], total: 1 });
 
-    const mapModule = jest.requireMock('maplibre-gl');
-    const mapCreation = mapModule.Map.mock.results.at(-1);
-    const mapInstance = (mapCreation?.value ?? null) as any;
-    expect(mapInstance).toBeTruthy();
+    await renderPage();
 
-    await waitFor(() => {
-      expect(mapInstance.addSource).toHaveBeenCalledWith(
-        'logistics-addresses',
-        expect.objectContaining({
-          type: 'vector',
-          url: MAP_ADDRESSES_PMTILES_URL,
-        }),
-      );
-    });
-
-    const addressLayerCall = mapInstance.addLayer.mock.calls.find(
-      (call: any[]) => call[0]?.id === 'logistics-addresses-labels',
-    );
-    expect(addressLayerCall).toBeTruthy();
-    const [layerSpec, beforeId] = addressLayerCall!;
-    expect(beforeId).toBe('settlement-major-label');
-    expect(layerSpec).toMatchObject({
-      type: 'symbol',
-      minzoom: 17,
-      layout: {
-        'text-field': ['get', 'housenumber'],
-        'text-size': 13,
-        'text-ignore-placement': false,
-      },
-      paint: {
-        'text-halo-width': 1.2,
-        'text-halo-blur': 0.6,
-      },
-    });
-
-    const finalOrder = mapInstance
-      .getStyle()
-      .layers.map((layer: { id: string }) => layer.id);
-    const roadIndex = finalOrder.indexOf('road-label');
-    const addressIndex = finalOrder.indexOf('logistics-addresses-labels');
-    const majorIndex = finalOrder.indexOf('settlement-major-label');
-
-    expect(roadIndex).toBeGreaterThanOrEqual(0);
-    expect(majorIndex).toBeGreaterThanOrEqual(0);
-    expect(roadIndex).toBeLessThan(addressIndex);
-    expect(addressIndex).toBeLessThan(majorIndex);
+    expect(await screen.findByText('Маршрутные планы')).toBeInTheDocument();
+    expect(screen.getByText('Маршрут 1')).toBeInTheDocument();
+    expect(screen.getByText('Новый')).toBeInTheDocument();
+    expect(screen.getByText('Иван')).toBeInTheDocument();
+    expect(screen.getByText('Фургон')).toBeInTheDocument();
+    expect(screen.getByText('Забрать посылку')).toBeInTheDocument();
+    expect(screen.getByText('Доставить клиенту')).toBeInTheDocument();
   });
 
-  it('перезагружает данные при событии logistics.init', async () => {
-    await renderWithEffects(
-      <MemoryRouter future={{ v7_relativeSplatPath: true }}>
-        <LogisticsPage />
-      </MemoryRouter>,
-    );
-
-    await waitFor(() => expect(fetchTasksMock).toHaveBeenCalled());
-    await waitFor(() =>
-      expect(listRoutePlansMock).toHaveBeenCalledWith('draft', 1, 1),
-    );
-    expect(logisticsEventsMock.__count()).toBeGreaterThan(0);
-
-    fetchTasksMock.mockClear();
-    listRoutePlansMock.mockClear();
-
-    act(() => {
-      logisticsEventsMock.__emit({ type: 'logistics.init' } as LogisticsEvent);
-    });
-
-    await waitFor(() => expect(fetchTasksMock).toHaveBeenCalled());
-    await waitFor(() =>
-      expect(listRoutePlansMock).toHaveBeenCalledWith('draft', 1, 1),
-    );
-  });
-
-  it('сохраняет карту и слои при открытом диалоге задачи', async () => {
-    const router = createMemoryRouter(
-      [{ path: '/logistics', element: <LogisticsPage /> }],
-      { initialEntries: ['/logistics?task=t1'] },
-    );
-
-    await renderWithEffects(<RouterProvider router={router} />);
-
-    const mapModule = jest.requireMock('maplibre-gl');
-    const mapCreation = mapModule.Map.mock.results.at(-1);
-    const mapInstance = (mapCreation?.value ?? null) as any;
-    expect(mapInstance).toBeTruthy();
-
-    await waitFor(() => {
-      expect(mapModule.Map).toHaveBeenCalledTimes(1);
-      expect(mapInstance.addSource).toHaveBeenCalled();
-    });
-
-    const initialSources = {
-      routes: mapInstance.getSource('logistics-task-routes'),
-      clusters: mapInstance.getSource('logistics-task-markers'),
+  it('фильтрует карточки по статусу', async () => {
+    const approvedPlan: RoutePlan = {
+      ...basePlan,
+      id: 'plan-2',
+      title: 'Маршрут 2',
+      status: 'approved',
     };
-    const initialLayers = mapInstance
-      .getStyle()
-      .layers.map((layer: { id: string }) => layer.id);
-
-    await act(async () => {
-      await router.navigate('/logistics');
+    listRoutePlansMock.mockResolvedValue({
+      items: [basePlan, approvedPlan],
+      total: 2,
     });
 
-    await waitFor(() => expect(mapModule.Map).toHaveBeenCalledTimes(1));
-    expect(mapInstance.remove).not.toHaveBeenCalled();
-    expect(mapInstance.getSource('logistics-task-routes')).toBe(
-      initialSources.routes,
-    );
-    expect(mapInstance.getSource('logistics-task-markers')).toBe(
-      initialSources.clusters,
-    );
-    expect(
-      mapInstance.getStyle().layers.map((layer: { id: string }) => layer.id),
-    ).toEqual(initialLayers);
-  });
+    await renderPage();
 
-  it('перезагружает задачи и план при событии tasks.changed', async () => {
-    await renderWithEffects(
-      <MemoryRouter future={{ v7_relativeSplatPath: true }}>
-        <LogisticsPage />
-      </MemoryRouter>,
-    );
-
-    await waitFor(() => expect(fetchTasksMock).toHaveBeenCalled());
-    await waitFor(() =>
-      expect(listRoutePlansMock).toHaveBeenCalledWith('draft', 1, 1),
-    );
-    await waitFor(() =>
-      expect(logisticsEventsMock.subscribeLogisticsEvents).toHaveBeenCalled(),
-    );
-    expect(logisticsEventsMock.__count()).toBeGreaterThan(0);
-    fetchTasksMock.mockClear();
-    listRoutePlansMock.mockClear();
-
-    await act(async () => {
-      logisticsEventsMock.__emit({ type: 'tasks.changed' } as LogisticsEvent);
-      await Promise.resolve();
+    fireEvent.change(screen.getByLabelText('Статус'), {
+      target: { value: 'approved' },
     });
-
-    await waitFor(() => expect(fetchTasksMock).toHaveBeenCalled());
-    await waitFor(() =>
-      expect(listRoutePlansMock).toHaveBeenCalledWith('draft', 1, 1),
-    );
-  });
-
-  it('сохраняет и восстанавливает состояние карты и слоёв', async () => {
-    const router = createMemoryRouter(
-      [
-        { path: '/logistics', element: <LogisticsPage /> },
-        { path: '*', element: <LogisticsPage /> },
-      ],
-      {
-        initialEntries: ['/logistics'],
-        future: { v7_relativeSplatPath: true },
-      },
-    );
-
-    const mapModule = jest.requireMock('maplibre-gl');
-    const firstRender = await renderWithEffects(
-      <RouterProvider router={router} />,
-    );
-
-    await waitFor(() => expect(mapModule.Map).toHaveBeenCalled());
-
-    const mapInstance = (mapModule.Map.mock.results.at(-1)?.value ??
-      null) as any;
-    expect(mapInstance).toBeTruthy();
-
-    const tasksToggle = await screen.findByLabelText('Задачи');
-    const optimizedToggle = screen.getByLabelText('Оптимизация');
-    expect(tasksToggle).toBeChecked();
-    expect(optimizedToggle).toBeChecked();
-
-    fireEvent.click(tasksToggle);
-    expect(tasksToggle).not.toBeChecked();
-
-    act(() => {
-      mapInstance.easeTo({
-        center: [12, 48],
-        zoom: 9,
-        pitch: 25,
-        bearing: 10,
-      });
-      mapInstance.__emit('moveend', {});
-      mapInstance.__emit('pitchend', {});
-      mapInstance.__emit('rotateend', {});
-    });
-
-    fireEvent.click(screen.getByRole('button', { name: 'Перспектива' }));
 
     await waitFor(() => {
-      expect(window.localStorage.getItem('logistics:map-state')).toBeTruthy();
+      expect(screen.queryByText('Маршрут 1')).not.toBeInTheDocument();
+      expect(screen.getByText('Маршрут 2')).toBeInTheDocument();
+      expect(screen.getByText('В работе')).toBeInTheDocument();
     });
-
-    const savedLayers = JSON.parse(
-      window.localStorage.getItem('logistics:layer-visibility') ?? '{}',
-    );
-    expect(savedLayers).toMatchObject({ tasks: false, optimized: true });
-
-    const savedMapState = JSON.parse(
-      window.localStorage.getItem('logistics:map-state') ?? '{}',
-    );
-    expect(savedMapState).toMatchObject({
-      center: [12, 48],
-      zoom: 9,
-      pitch: 55,
-      bearing: 28,
-      viewMode: 'perspective',
-    });
-
-    firstRender.unmount();
-    mapModule.Map.mockClear();
-
-    const secondRouter = createMemoryRouter(
-      [
-        { path: '/logistics', element: <LogisticsPage /> },
-        { path: '*', element: <LogisticsPage /> },
-      ],
-      {
-        initialEntries: ['/logistics'],
-        future: { v7_relativeSplatPath: true },
-      },
-    );
-
-    await renderWithEffects(<RouterProvider router={secondRouter} />);
-
-    await waitFor(() => expect(mapModule.Map).toHaveBeenCalled());
-
-    const mapCall = mapModule.Map.mock.calls.at(-1)?.[0] as
-      | Record<string, unknown>
-      | undefined;
-    expect(mapCall?.center).toEqual([12, 48]);
-    expect(mapCall?.zoom).toBe(9);
-    expect(mapCall?.pitch).toBe(55);
-    expect(mapCall?.bearing).toBe(28);
-
-    const restoredTasksToggle = await screen.findByLabelText('Задачи');
-    expect(restoredTasksToggle).not.toBeChecked();
-    const perspectiveButton = screen.getByRole('button', {
-      name: 'Перспектива',
-    });
-    expect(perspectiveButton).toHaveAttribute('aria-pressed', 'true');
   });
 
-  it('переключает карту и список на мобильной ширине и задаёт адаптивную высоту карты', async () => {
-    await renderWithEffects(
-      <MemoryRouter future={{ v7_relativeSplatPath: true }}>
-        <LogisticsPage />
-      </MemoryRouter>,
-    );
+  it('показывает сообщение об ошибке при недоступности сервиса', async () => {
+    listRoutePlansMock.mockRejectedValueOnce(new Error('network error'));
 
-    const mapContainer = await waitFor(() =>
-      document.getElementById('logistics-map'),
-    );
+    await renderPage();
 
-    expect(mapContainer).toBeTruthy();
-    expect(mapContainer?.className).toContain('h-[46vh]');
-    expect(mapContainer?.className).toContain('sm:h-[56vh]');
-    expect(mapContainer?.className).toContain('xl:h-[72vh]');
-
-    const mapSection = screen.getByTestId('logistics-map-panel');
-    const tasksCard = screen.getByTestId('logistics-tasks-card');
-    const mapTab = screen.getByRole('button', { name: 'Карта' });
-    const listTab = screen.getByRole('button', { name: 'Список' });
-
-    expect(mapSection.className).not.toContain('hidden');
-    expect(tasksCard.className).toContain('hidden');
-
-    fireEvent.click(listTab);
-
-    expect(mapSection.className).toContain('hidden');
-    expect(tasksCard.className).not.toContain('hidden');
-
-    fireEvent.click(mapTab);
-
-    expect(mapSection.className).not.toContain('hidden');
-    expect(tasksCard.className).toContain('hidden');
+    expect(await screen.findByRole('alert')).toHaveTextContent('network error');
+    expect(addToastMock).toHaveBeenCalled();
   });
 });

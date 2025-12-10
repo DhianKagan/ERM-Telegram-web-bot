@@ -283,8 +283,7 @@ interface InitialValues {
   status: string;
   completedAt: string;
   creator: string;
-  assigneeId: string;
-  assigneeIds: number[];
+  assignees: number[];
   startDate: string;
   dueDate: string;
   attachments: Attachment[];
@@ -334,6 +333,14 @@ const toAssigneeNumber = (value: unknown): number | null => {
     return Number.isFinite(parsed) ? parsed : null;
   }
   return null;
+};
+
+const normalizeAssigneeList = (value: unknown): number[] => {
+  if (!Array.isArray(value)) return [];
+  const result = value
+    .map((item) => toAssigneeNumber(item))
+    .filter((item): item is number => item !== null);
+  return Array.from(new Set(result));
 };
 
 const normalizePriorityOption = (value?: string | null) => {
@@ -736,7 +743,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   }, [kind, entityKind]);
   const [editing, setEditing] = React.useState(true);
   const initialRef = React.useRef<InitialValues | null>(null);
-  const hasAutofilledAssignee = React.useRef(false);
   const [initialDates, setInitialDates] = React.useState<{
     start: string;
     due: string;
@@ -750,7 +756,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   type TaskFormValues = {
     title: string;
     description?: string;
-    assigneeId: string;
+    assignees: number[];
     startDate?: string;
     dueDate?: string;
   };
@@ -760,8 +766,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         typeof values.title === 'string' ? values.title.trim() : '';
       const normalizedDescription =
         typeof values.description === 'string' ? values.description : '';
-      const normalizedAssignee =
-        typeof values.assigneeId === 'string' ? values.assigneeId.trim() : '';
+      const normalizedAssignees = normalizeAssigneeList(values.assignees);
       const normalizedStartRaw =
         typeof values.startDate === 'string' ? values.startDate.trim() : '';
       const normalizedDueRaw =
@@ -769,7 +774,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       const normalized: TaskFormValues = {
         title: normalizedTitle,
         description: normalizedDescription,
-        assigneeId: normalizedAssignee,
+        assignees: normalizedAssignees,
         startDate: normalizedStartRaw || undefined,
         dueDate: normalizedDueRaw || undefined,
       };
@@ -780,8 +785,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
           message: t('titleRequired'),
         };
       }
-      if (!normalizedAssignee) {
-        fieldErrors.assigneeId = {
+      if (normalizedAssignees.length === 0) {
+        fieldErrors.assignees = {
           type: 'required',
           message: t('assigneeRequiredError'),
         };
@@ -822,7 +827,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     defaultValues: {
       title: '',
       description: '',
-      assigneeId: '',
+      assignees: [],
       startDate: '',
       dueDate: '',
     },
@@ -971,13 +976,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     () => currentUserId !== null && taskAssigneeIds.includes(currentUserId),
     [taskAssigneeIds, currentUserId],
   );
-  const sameActor = isCreator && isExecutor;
   const isTaskNew = initialStatus === 'Новая';
   const canEditTask = canEditAll || isExecutor || (isCreator && isTaskNew);
-  const canChangeStatus =
-    canEditAll ||
-    (isExecutor && !sameActor) ||
-    ((isCreator || sameActor) && isTaskNew);
+  const canChangeStatus = canEditAll || isExecutor || isCreator;
+  const canFinalizeStatus = canEditAll || isCreator;
   const priorities = fields.find((f) => f.name === 'priority')?.options || [];
   const transports =
     fields.find((f) => f.name === 'transport_type')?.options || [];
@@ -1332,30 +1334,14 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         (taskData as Record<string, unknown>).completedAt;
       const curCompletedAt = toIsoString(rawCompleted);
       const normalizedAssigneeIds = (() => {
-        const candidates: number[] = [];
-        if (Array.isArray(taskData.assignees)) {
-          taskData.assignees.forEach((candidate) => {
-            const parsed = toAssigneeNumber(candidate);
-            if (parsed !== null) candidates.push(parsed);
-          });
-        }
+        const candidates = normalizeAssigneeList(taskData.assignees);
         const primaryAssignee = toAssigneeNumber(
           (taskData as Record<string, unknown>).assigned_user_id,
         );
         if (primaryAssignee !== null) candidates.push(primaryAssignee);
         return Array.from(new Set(candidates));
       })();
-      const rawAssignee = Array.isArray(taskData.assignees)
-        ? (taskData.assignees as (string | number | null | undefined)[])[0]
-        : (taskData as Record<string, unknown>).assigned_user_id;
-      const assigneeId = (() => {
-        if (rawAssignee === null || rawAssignee === undefined) return '';
-        if (typeof rawAssignee === 'string') {
-          const trimmed = rawAssignee.trim();
-          return trimmed.length > 0 ? trimmed : '';
-        }
-        return String(rawAssignee);
-      })();
+      setTaskAssigneeIds(normalizedAssigneeIds);
       const driverNumeric = toAssigneeNumber(
         (taskData as Record<string, unknown>).transport_driver_id,
       );
@@ -1439,11 +1425,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       stableReset({
         title: (taskData.title as string) || '',
         description: (taskData.task_description as string) || '',
-        assigneeId,
+        assignees: normalizedAssigneeIds,
         startDate,
         dueDate,
       });
-      hasAutofilledAssignee.current = true;
       setTaskType(normalizedTaskType);
       const commentHtml = (taskData.comment as string) || '';
       const attachmentsFromTask = collectTaskAttachments(
@@ -1530,8 +1515,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         status: curStatus,
         completedAt: curCompletedAt,
         creator: String((taskData.created_by as unknown) || ''),
-        assigneeId,
-        assigneeIds: normalizedAssigneeIds,
+        assignees: normalizedAssigneeIds,
         startDate,
         dueDate,
         attachments: mergeAttachmentLists([], attachmentsFromTask),
@@ -1631,11 +1615,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       typeof values.title === 'string' ? values.title.trim() : '';
     const descriptionValue =
       typeof values.description === 'string' ? values.description : '';
-    const assigneeRaw =
-      typeof values.assigneeId === 'string' ? values.assigneeId.trim() : '';
-    const assigneeNumeric = toNumericValue(assigneeRaw);
-    const resolvedAssignee =
-      assigneeNumeric !== null ? assigneeNumeric : assigneeRaw || undefined;
+    const selectedAssignees =
+      taskAssigneeIds.length > 0
+        ? taskAssigneeIds
+        : normalizeAssigneeList(values.assignees);
     const resolvedTaskType =
       entityKind === 'request' ? DEFAULT_REQUEST_TYPE : taskType;
 
@@ -1652,13 +1635,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       attachments,
     };
 
-    if (resolvedAssignee !== undefined) {
-      payload.assigned_user_id = resolvedAssignee;
-    }
-    if (taskAssigneeIds.length > 0) {
-      payload.assignees = taskAssigneeIds;
-    } else if (resolvedAssignee !== undefined) {
-      payload.assignees = [resolvedAssignee];
+    if (selectedAssignees.length > 0) {
+      payload.assignees = selectedAssignees;
+      payload.assigned_user_id = selectedAssignees[0];
     }
 
     const creatorNumeric = toNumericValue(creator);
@@ -1906,8 +1885,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       status: DEFAULT_STATUS,
       completedAt: '',
       creator: user ? String(user.telegram_id) : '',
-      assigneeId: '',
-      assigneeIds: defaultAssigneeIds,
+      assignees: defaultAssigneeIds,
       startDate: defaultStartDate,
       dueDate: defaultDueDate,
       attachments: [],
@@ -1931,11 +1909,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     stableReset({
       title: '',
       description: '',
-      assigneeId: '',
+      assignees: defaultAssigneeIds,
       startDate: defaultStartDate,
       dueDate: defaultDueDate,
     });
-    hasAutofilledAssignee.current = false;
     setCargoLength('');
     setCargoWidth('');
     setCargoHeight('');
@@ -2220,21 +2197,15 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         if (shouldSetDue) {
           setValue('dueDate', dueInputValue);
         }
-        const assignedRaw =
-          typeof formData.assigneeId === 'string'
-            ? formData.assigneeId.trim()
-            : '';
-        if (!assignedRaw) {
-          setError('assigneeId', {
+        const assignedList = normalizeAssigneeList(formData.assignees);
+        if (assignedList.length === 0) {
+          setError('assignees', {
             type: 'required',
             message: t('assigneeRequiredError'),
           });
           setAlertMsg(t('assigneeRequiredError'));
           return;
         }
-        const assignedNumeric = toNumericValue(assignedRaw);
-        const assignedValue =
-          assignedNumeric !== null ? assignedNumeric : assignedRaw;
         const resolvedTaskType =
           entityKind === 'request' ? DEFAULT_REQUEST_TYPE : taskType;
         const payload: Record<string, unknown> = {
@@ -2247,7 +2218,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
           payment_method: paymentMethod,
           status,
           created_by: toNumericValue(creator),
-          assigned_user_id: assignedValue,
+          assigned_user_id: assignedList[0],
+          assignees: assignedList,
           logistics_enabled: showLogistics,
         };
         const driverCandidate = transportDriverId.trim();
@@ -2430,7 +2402,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       }
     },
     (formErrors: FieldErrors<TaskFormValues>) => {
-      if (formErrors.assigneeId) {
+      if (formErrors.assignees) {
         setIsSubmitting(false);
         setAlertMsg(t('assigneeRequiredError'));
       }
@@ -2443,6 +2415,14 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const [showAcceptConfirm, setShowAcceptConfirm] = React.useState(false);
   const [showDoneConfirm, setShowDoneConfirm] = React.useState(false);
   const [pendingDoneOption, setPendingDoneOption] = React.useState('');
+  React.useEffect(() => {
+    if (!canFinalizeStatus && showDoneSelect) {
+      setShowDoneSelect(false);
+    }
+    if (!canFinalizeStatus && showDoneConfirm) {
+      setShowDoneConfirm(false);
+    }
+  }, [canFinalizeStatus, showDoneConfirm, showDoneSelect]);
 
   React.useEffect(() => {
     if (isEdit || !editing) {
@@ -2514,7 +2494,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     reset({
       title: d.title,
       description: d.description,
-      assigneeId: d.assigneeId,
+      assignees: d.assignees,
       startDate: d.startDate,
       dueDate: d.dueDate,
     });
@@ -2532,7 +2512,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     setInitialStatus(d.status);
     setStatus(d.status);
     setCompletedAt(d.completedAt);
-    setTaskAssigneeIds(d.assigneeIds);
+    setTaskAssigneeIds(d.assignees);
     setCreator(d.creator);
     setCargoLength(d.cargoLength);
     setCargoWidth(d.cargoWidth);
@@ -2594,6 +2574,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const completeTask = async (opt: string) => {
     const targetId = effectiveTaskId;
     if (!targetId) return;
+    if (!canFinalizeStatus) {
+      setAlertMsg(t('taskSaveFailed'));
+      return;
+    }
     const prev = status;
     setStatus('Выполнена');
     try {
@@ -2748,29 +2732,27 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                 <div className="space-y-5">
                   <div>
                     <Controller
-                      name="assigneeId"
+                      name="assignees"
                       control={control}
                       render={({ field }) => (
                         <MultiUserSelect
                           label={t('assignees')}
                           users={users}
-                          value={
-                            typeof field.value === 'string' &&
-                            field.value.trim().length > 0
-                              ? field.value.trim()
-                              : null
-                          }
-                          onChange={(val) => field.onChange(val ?? '')}
+                          value={Array.isArray(field.value) ? field.value : []}
+                          onChange={(val) => {
+                            setTaskAssigneeIds(val);
+                            field.onChange(val);
+                          }}
                           onBlur={field.onBlur}
                           disabled={!editing}
                           required
                           placeholder={t('assigneeSelectPlaceholder')}
                           hint={
-                            !errors.assigneeId
+                            !errors.assignees
                               ? t('assigneeSelectHint')
                               : undefined
                           }
-                          error={errors.assigneeId?.message ?? null}
+                          error={errors.assignees?.message ?? null}
                         />
                       )}
                     />
@@ -2849,7 +2831,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                   variant: 'default',
                                   size: 'sm',
                                 }),
-                                "rounded-2xl px-3 shrink-0 whitespace-nowrap h-10",
+                                'rounded-2xl px-3 shrink-0 whitespace-nowrap h-10',
                               )}
                             >
                               Google Maps
@@ -3445,7 +3427,12 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
               )}
               {isEdit && !editing && canChangeStatus && (
                 <>
-                  <div className="mt-2 grid grid-cols-2 gap-2">
+                  <div
+                    className={cn(
+                      'mt-2 grid gap-2',
+                      canFinalizeStatus ? 'grid-cols-2' : 'grid-cols-1',
+                    )}
+                  >
                     <Button
                       className={cn(
                         'rounded-lg',
@@ -3457,19 +3444,21 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                     >
                       {t('accept')}
                     </Button>
-                    <Button
-                      className={cn(
-                        'rounded-lg',
-                        selectedAction === 'done' &&
-                          'ring-accentPrimary ring-2',
-                      )}
-                      variant={status === 'Выполнена' ? 'success' : 'default'}
-                      onClick={() => setShowDoneSelect((v) => !v)}
-                    >
-                      {t('done')}
-                    </Button>
+                    {canFinalizeStatus ? (
+                      <Button
+                        className={cn(
+                          'rounded-lg',
+                          selectedAction === 'done' &&
+                            'ring-accentPrimary ring-2',
+                        )}
+                        variant={status === 'Выполнена' ? 'success' : 'default'}
+                        onClick={() => setShowDoneSelect((v) => !v)}
+                      >
+                        {t('done')}
+                      </Button>
+                    ) : null}
                   </div>
-                  {showDoneSelect && (
+                  {canFinalizeStatus && showDoneSelect && (
                     <>
                       <select
                         onChange={(e) => {
@@ -3501,17 +3490,19 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                     }}
                     onCancel={() => setShowAcceptConfirm(false)}
                   />
-                  <ConfirmDialog
-                    open={showDoneConfirm}
-                    message={t('completeTaskQuestion')}
-                    confirmText={t('done')}
-                    cancelText={t('cancel')}
-                    onConfirm={() => {
-                      setShowDoneConfirm(false);
-                      completeTask(pendingDoneOption);
-                    }}
-                    onCancel={() => setShowDoneConfirm(false)}
-                  />
+                  {canFinalizeStatus ? (
+                    <ConfirmDialog
+                      open={showDoneConfirm}
+                      message={t('completeTaskQuestion')}
+                      confirmText={t('done')}
+                      cancelText={t('cancel')}
+                      onConfirm={() => {
+                        setShowDoneConfirm(false);
+                        completeTask(pendingDoneOption);
+                      }}
+                      onCancel={() => setShowDoneConfirm(false)}
+                    />
+                  ) : null}
                 </>
               )}
             </>

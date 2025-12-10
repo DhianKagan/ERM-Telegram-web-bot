@@ -1,11 +1,11 @@
 #!/usr/bin/env node
-// patch: 078-ors-proxy-railway-troubleshoot.cjs
-// purpose: добавить инструкцию по настройке Railway UI для прокси OpenRouteService
+// patch: 102-remove-ors-proxy-and-multi-assignees.cjs
+// purpose: удалить ors-proxy и перевести TaskDialog на выбор нескольких исполнителей
 const fs = require('node:fs');
 const path = require('node:path');
 const { execSync } = require('node:child_process');
 
-const patchPath = path.resolve(__dirname, '078-ors-proxy-railway-troubleshoot.patch');
+const patchPath = path.resolve(__dirname, '102-remove-ors-proxy-and-multi-assignees.patch');
 
 if (!fs.existsSync(patchPath)) {
   throw new Error('Файл патча не найден: ' + patchPath);

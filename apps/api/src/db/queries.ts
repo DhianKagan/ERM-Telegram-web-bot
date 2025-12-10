@@ -1180,7 +1180,6 @@ export async function updateTaskStatus(
   const existing = await Task.findById(id);
   if (!existing) return null;
   const source = options.source ?? 'web';
-  const kind = detectTaskKind(existing);
   const currentStatus =
     typeof existing.status === 'string'
       ? (existing.status as TaskDocument['status'])
@@ -1193,47 +1192,42 @@ export async function updateTaskStatus(
     assignees.includes(userId);
   const creatorId = Number(existing.created_by);
   const isCreator = Number.isFinite(creatorId) && creatorId === userId;
+  const isCancellation = status === 'Отменена';
+  const isCompletion = status === 'Выполнена';
   let allowCreatorCancellation = false;
-  if (status === 'Отменена') {
-    if (kind === 'task') {
-      if (!isCreator) {
-        const err = new Error(
-          'Статус «Отменена» может установить только создатель задачи.',
-        );
-        (err as Error & { code?: string }).code = 'TASK_CANCEL_FORBIDDEN';
-        throw err;
-      }
-      if (source !== 'web') {
-        const err = new Error(
-          'Отмена задачи в Telegram недоступна. Используйте веб-форму.',
-        );
-        (err as Error & { code?: string }).code =
-          'TASK_CANCEL_SOURCE_FORBIDDEN';
-        throw err;
-      }
-      allowCreatorCancellation = true;
-    } else {
-      if (!isCreator && !isExecutor) {
-        const err = new Error(
-          'Отменить заявку могут только исполнитель или создатель.',
-        );
-        (err as Error & { code?: string }).code =
-          'TASK_REQUEST_CANCEL_FORBIDDEN';
-        throw err;
-      }
-      if (isCreator) {
-        allowCreatorCancellation = true;
-      }
+  if (isCancellation) {
+    if (!isCreator) {
+      const err = new Error(
+        'Статус «Отменена» может установить только создатель задачи.',
+      );
+      (err as Error & { code?: string }).code = 'TASK_CANCEL_FORBIDDEN';
+      throw err;
     }
+    if (source !== 'web') {
+      const err = new Error(
+        'Отмена задачи в Telegram недоступна. Используйте веб-форму.',
+      );
+      (err as Error & { code?: string }).code = 'TASK_CANCEL_SOURCE_FORBIDDEN';
+      throw err;
+    }
+    allowCreatorCancellation = true;
+  }
+  if (isCompletion && !isCreator) {
+    const err = new Error(
+      'Статус «Выполнена» может установить только создатель задачи.',
+    );
+    (err as Error & { code?: string }).code = 'TASK_STATUS_FORBIDDEN';
+    throw err;
   }
   if (
     hasAssignments &&
     !isExecutor &&
-    !(status === 'Отменена' && allowCreatorCancellation)
+    !(isCancellation && allowCreatorCancellation) &&
+    !(isCompletion && isCreator)
   ) {
     throw new Error('Нет прав на изменение статуса задачи');
   }
-  if (status === 'Выполнена' && currentStatus) {
+  if (isCompletion && currentStatus) {
     const allowedCompletionSources: TaskDocument['status'][] = [
       'Новая',
       'В работе',

@@ -37,7 +37,6 @@
 3. Если хотите вынести очереди в отдельный процесс Railway, создайте дополнительный сервис из этого же репозитория и выберите команду `worker` из `Procfile.railway` (или задайте вручную `pnpm --filter worker run start`).
 4. Установите переменные окружения для воркера: `QUEUE_REDIS_URL`, `QUEUE_PREFIX` (опционально), `GEOCODER_URL`/`GEOCODER_USER_AGENT`/`GEOCODER_EMAIL`/`GEOCODER_API_KEY`/`GEOCODER_PROXY_TOKEN`, `ROUTING_URL` и при необходимости `QUEUE_CONCURRENCY`.
    - Прямое подключение к ORS: `GEOCODER_URL=https://api.openrouteservice.org/geocode/search` и ключ в `GEOCODER_API_KEY` или `ORS_API_KEY`.
-   - Через наш ORS Proxy: `GEOCODER_URL=http://<private_host_proxy>:5000/search`, `GEOCODER_PROXY_TOKEN=<PROXY_TOKEN>`, `GEOCODER_API_KEY` не нужен.
 5. После деплоя убедитесь, что на эндпоинте `/metrics` основного API появились метрики `bullmq_jobs_total` с состояниями `waiting`, `active`, `delayed`, `failed`, `completed`.
 
 ## 5. Запуск и проверка

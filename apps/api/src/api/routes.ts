@@ -514,20 +514,6 @@ export default async function registerRoutes(
         });
         return;
       }
-      const status = typeof task.status === 'string' ? task.status : undefined;
-      const hasTaskStarted = status !== undefined && status !== 'Новая';
-      const isCreator = Number(task.created_by) === userId;
-      const isExecutor = assigneeIds.has(userId);
-      const isController = controllerIds.has(userId);
-      if (!isController && isCreator && isExecutor && hasTaskStarted) {
-        sendProblem(req, res, {
-          type: 'about:blank',
-          title: 'Доступ запрещён',
-          status: 403,
-          detail: 'Нет прав для изменения статуса',
-        });
-        return;
-      }
       try {
         const updated = await updateTaskStatus(
           req.params.id,

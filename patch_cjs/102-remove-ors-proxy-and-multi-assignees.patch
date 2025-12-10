@@ -1,0 +1,2147 @@
+diff --git a/apps/api/src/api/routes.ts b/apps/api/src/api/routes.ts
+index dcc28bd..83c228d 100644
+--- a/apps/api/src/api/routes.ts
++++ b/apps/api/src/api/routes.ts
+@@ -519,15 +519,6 @@ export default async function registerRoutes(
+       const isCreator = Number(task.created_by) === userId;
+       const isExecutor = assigneeIds.has(userId);
+       const isController = controllerIds.has(userId);
+-      if (!isController && isCreator && isExecutor && hasTaskStarted) {
+-        sendProblem(req, res, {
+-          type: 'about:blank',
+-          title: 'Доступ запрещён',
+-          status: 403,
+-          detail: 'Нет прав для изменения статуса',
+-        });
+-        return;
+-      }
+       try {
+         const updated = await updateTaskStatus(
+           req.params.id,
+diff --git a/apps/api/src/db/queries.ts b/apps/api/src/db/queries.ts
+index 9da9425..1d82e1f 100644
+--- a/apps/api/src/db/queries.ts
++++ b/apps/api/src/db/queries.ts
+@@ -1180,7 +1180,6 @@ export async function updateTaskStatus(
+   const existing = await Task.findById(id);
+   if (!existing) return null;
+   const source = options.source ?? 'web';
+-  const kind = detectTaskKind(existing);
+   const currentStatus =
+     typeof existing.status === 'string'
+       ? (existing.status as TaskDocument['status'])
+@@ -1193,47 +1192,42 @@ export async function updateTaskStatus(
+     assignees.includes(userId);
+   const creatorId = Number(existing.created_by);
+   const isCreator = Number.isFinite(creatorId) && creatorId === userId;
++  const isCancellation = status === 'Отменена';
++  const isCompletion = status === 'Выполнена';
+   let allowCreatorCancellation = false;
+-  if (status === 'Отменена') {
+-    if (kind === 'task') {
+-      if (!isCreator) {
+-        const err = new Error(
+-          'Статус «Отменена» может установить только создатель задачи.',
+-        );
+-        (err as Error & { code?: string }).code = 'TASK_CANCEL_FORBIDDEN';
+-        throw err;
+-      }
+-      if (source !== 'web') {
+-        const err = new Error(
+-          'Отмена задачи в Telegram недоступна. Используйте веб-форму.',
+-        );
+-        (err as Error & { code?: string }).code =
+-          'TASK_CANCEL_SOURCE_FORBIDDEN';
+-        throw err;
+-      }
+-      allowCreatorCancellation = true;
+-    } else {
+-      if (!isCreator && !isExecutor) {
+-        const err = new Error(
+-          'Отменить заявку могут только исполнитель или создатель.',
+-        );
+-        (err as Error & { code?: string }).code =
+-          'TASK_REQUEST_CANCEL_FORBIDDEN';
+-        throw err;
+-      }
+-      if (isCreator) {
+-        allowCreatorCancellation = true;
+-      }
++  if (isCancellation) {
++    if (!isCreator) {
++      const err = new Error(
++        'Статус «Отменена» может установить только создатель задачи.',
++      );
++      (err as Error & { code?: string }).code = 'TASK_CANCEL_FORBIDDEN';
++      throw err;
+     }
++    if (source !== 'web') {
++      const err = new Error(
++        'Отмена задачи в Telegram недоступна. Используйте веб-форму.',
++      );
++      (err as Error & { code?: string }).code = 'TASK_CANCEL_SOURCE_FORBIDDEN';
++      throw err;
++    }
++    allowCreatorCancellation = true;
++  }
++  if (isCompletion && !isCreator) {
++    const err = new Error(
++      'Статус «Выполнена» может установить только создатель задачи.',
++    );
++    (err as Error & { code?: string }).code = 'TASK_STATUS_FORBIDDEN';
++    throw err;
+   }
+   if (
+     hasAssignments &&
+     !isExecutor &&
+-    !(status === 'Отменена' && allowCreatorCancellation)
++    !(isCancellation && allowCreatorCancellation) &&
++    !(isCompletion && isCreator)
+   ) {
+     throw new Error('Нет прав на изменение статуса задачи');
+   }
+-  if (status === 'Выполнена' && currentStatus) {
++  if (isCompletion && currentStatus) {
+     const allowedCompletionSources: TaskDocument['status'][] = [
+       'Новая',
+       'В работе',
+diff --git a/apps/web/src/components/MultiUserSelect.tsx b/apps/web/src/components/MultiUserSelect.tsx
+index 19a5d2e..a2ced53 100644
+--- a/apps/web/src/components/MultiUserSelect.tsx
++++ b/apps/web/src/components/MultiUserSelect.tsx
+@@ -1,7 +1,7 @@
+-// Назначение файла: компонент выбора одного пользователя.
++// Назначение файла: компонент выбора списка пользователей.
+ // Модули: React, react-select
+ import { useId, useMemo } from 'react';
+-import Select from 'react-select';
++import Select, { type MultiValue } from 'react-select';
+ 
+ interface Props {
+   label: string;
+@@ -11,8 +11,8 @@ interface Props {
+     username?: string;
+     telegram_username?: string | null;
+   }[];
+-  value: string | null;
+-  onChange: (v: string | null) => void;
++  value: number[];
++  onChange: (v: number[]) => void;
+   onBlur?: () => void;
+   disabled?: boolean;
+   required?: boolean;
+@@ -36,13 +36,13 @@ export default function MultiUserSelect({
+   const options = useMemo(
+     () =>
+       users.map((u) => ({
+-        value: String(u.telegram_id),
+-        label: u.name || u.telegram_username || u.username,
++        value: u.telegram_id,
++        label: u.name || u.telegram_username || u.username || String(u.telegram_id),
+       })),
+     [users],
+   );
+   const selectId = useId();
+-  const selected = options.find((o) => o.value === value) ?? null;
++  const selected = options.filter((o) => value.includes(o.value));
+   const helperId = error
+     ? `${selectId}-error`
+     : hint
+@@ -55,18 +55,15 @@ export default function MultiUserSelect({
+         {required ? <span className="text-red-600"> *</span> : null}
+       </label>
+       <Select
++        isMulti
+         isDisabled={disabled}
+         options={options}
+         value={selected}
+         inputId={selectId}
+         placeholder={placeholder ?? 'Выберите'}
+         onChange={(val) => {
+-          if (!val) {
+-            onChange(null);
+-            return;
+-          }
+-          const item = val as { value?: string } | null;
+-          onChange(item?.value ?? null);
++          const list = (val as MultiValue<{ value: number }>).map((item) => item.value);
++          onChange(list);
+         }}
+         onBlur={onBlur}
+         className="mt-1"
+diff --git a/apps/web/src/components/TaskDialog.test.tsx b/apps/web/src/components/TaskDialog.test.tsx
+index 74509bf..b79f7af 100644
+--- a/apps/web/src/components/TaskDialog.test.tsx
++++ b/apps/web/src/components/TaskDialog.test.tsx
+@@ -47,12 +47,20 @@ jest.mock(
+       <label>
+         <span>{label}</span>
+         <select
++          multiple
+           data-testid="assignee"
+-          value={value ?? ''}
+-          onChange={(event) => onChange(event.target.value || null)}
++          value={(value as number[] | undefined)?.map(String) ?? []}
++          onChange={(event) => {
++            const selectedOptions = Array.from(event.target.selectedOptions);
++            const values = selectedOptions.length
++              ? selectedOptions.map((option) => Number(option.value))
++              : event.target.value
++                ? [Number(event.target.value)]
++                : [];
++            onChange(values);
++          }}
+           onBlur={onBlur}
+         >
+-          <option value="">—</option>
+           {users.map((user: any) => (
+             <option key={user.telegram_id} value={String(user.telegram_id)}>
+               {user.name ||
+@@ -182,7 +190,7 @@ describe('TaskDialog', () => {
+     await waitFor(() =>
+       expect(updateTaskMock).toHaveBeenCalledWith(
+         '1',
+-        expect.objectContaining({ assigned_user_id: 1 }),
++        expect.objectContaining({ assigned_user_id: 1, assignees: [1] }),
+       ),
+     );
+ 
+@@ -388,7 +396,12 @@ describe('TaskDialog', () => {
+     )) as HTMLSelectElement;
+     await screen.findByText('Alice');
+     await act(async () => {
+-      fireEvent.change(assigneeSelect, { target: { value: '1' } });
++      fireEvent.change(assigneeSelect, {
++        target: {
++          value: '1',
++          selectedOptions: [{ value: '1' }],
++        },
++      });
+       await Promise.resolve();
+     });
+ 
+@@ -463,7 +476,12 @@ describe('TaskDialog', () => {
+     const assigneeSelect = await screen.findByTestId('assignee');
+     await screen.findByText('Alice');
+     await act(async () => {
+-      fireEvent.change(assigneeSelect, { target: { value: '2' } });
++      fireEvent.change(assigneeSelect, {
++        target: {
++          value: '2',
++          selectedOptions: [{ value: '2' }],
++        },
++      });
+     });
+ 
+     await clickSubmitButton();
+@@ -473,6 +491,7 @@ describe('TaskDialog', () => {
+         expect.objectContaining({
+           title: 'Deliver docs',
+           assigned_user_id: 2,
++          assignees: [2],
+         }),
+       ),
+     );
+diff --git a/apps/web/src/components/TaskDialog.tsx b/apps/web/src/components/TaskDialog.tsx
+index b05be25..b42f9fd 100644
+--- a/apps/web/src/components/TaskDialog.tsx
++++ b/apps/web/src/components/TaskDialog.tsx
+@@ -283,8 +283,7 @@ interface InitialValues {
+   status: string;
+   completedAt: string;
+   creator: string;
+-  assigneeId: string;
+-  assigneeIds: number[];
++  assignees: number[];
+   startDate: string;
+   dueDate: string;
+   attachments: Attachment[];
+@@ -336,6 +335,14 @@ const toAssigneeNumber = (value: unknown): number | null => {
+   return null;
+ };
+ 
++const normalizeAssigneeList = (value: unknown): number[] => {
++  if (!Array.isArray(value)) return [];
++  const result = value
++    .map((item) => toAssigneeNumber(item))
++    .filter((item): item is number => item !== null);
++  return Array.from(new Set(result));
++};
++
+ const normalizePriorityOption = (value?: string | null) => {
+   if (typeof value !== 'string') {
+     return undefined;
+@@ -736,7 +743,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+   }, [kind, entityKind]);
+   const [editing, setEditing] = React.useState(true);
+   const initialRef = React.useRef<InitialValues | null>(null);
+-  const hasAutofilledAssignee = React.useRef(false);
+   const [initialDates, setInitialDates] = React.useState<{
+     start: string;
+     due: string;
+@@ -750,7 +756,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+   type TaskFormValues = {
+     title: string;
+     description?: string;
+-    assigneeId: string;
++    assignees: number[];
+     startDate?: string;
+     dueDate?: string;
+   };
+@@ -760,8 +766,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+         typeof values.title === 'string' ? values.title.trim() : '';
+       const normalizedDescription =
+         typeof values.description === 'string' ? values.description : '';
+-      const normalizedAssignee =
+-        typeof values.assigneeId === 'string' ? values.assigneeId.trim() : '';
++      const normalizedAssignees = normalizeAssigneeList(values.assignees);
+       const normalizedStartRaw =
+         typeof values.startDate === 'string' ? values.startDate.trim() : '';
+       const normalizedDueRaw =
+@@ -769,7 +774,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+       const normalized: TaskFormValues = {
+         title: normalizedTitle,
+         description: normalizedDescription,
+-        assigneeId: normalizedAssignee,
++        assignees: normalizedAssignees,
+         startDate: normalizedStartRaw || undefined,
+         dueDate: normalizedDueRaw || undefined,
+       };
+@@ -780,8 +785,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+           message: t('titleRequired'),
+         };
+       }
+-      if (!normalizedAssignee) {
+-        fieldErrors.assigneeId = {
++      if (normalizedAssignees.length === 0) {
++        fieldErrors.assignees = {
+           type: 'required',
+           message: t('assigneeRequiredError'),
+         };
+@@ -822,7 +827,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+     defaultValues: {
+       title: '',
+       description: '',
+-      assigneeId: '',
++      assignees: [],
+       startDate: '',
+       dueDate: '',
+     },
+@@ -971,13 +976,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+     () => currentUserId !== null && taskAssigneeIds.includes(currentUserId),
+     [taskAssigneeIds, currentUserId],
+   );
+-  const sameActor = isCreator && isExecutor;
+   const isTaskNew = initialStatus === 'Новая';
+   const canEditTask = canEditAll || isExecutor || (isCreator && isTaskNew);
+-  const canChangeStatus =
+-    canEditAll ||
+-    (isExecutor && !sameActor) ||
+-    ((isCreator || sameActor) && isTaskNew);
++  const canChangeStatus = canEditAll || isExecutor || isCreator;
++  const canFinalizeStatus = canEditAll || isCreator;
+   const priorities = fields.find((f) => f.name === 'priority')?.options || [];
+   const transports =
+     fields.find((f) => f.name === 'transport_type')?.options || [];
+@@ -1332,30 +1334,14 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+         (taskData as Record<string, unknown>).completedAt;
+       const curCompletedAt = toIsoString(rawCompleted);
+       const normalizedAssigneeIds = (() => {
+-        const candidates: number[] = [];
+-        if (Array.isArray(taskData.assignees)) {
+-          taskData.assignees.forEach((candidate) => {
+-            const parsed = toAssigneeNumber(candidate);
+-            if (parsed !== null) candidates.push(parsed);
+-          });
+-        }
++        const candidates = normalizeAssigneeList(taskData.assignees);
+         const primaryAssignee = toAssigneeNumber(
+           (taskData as Record<string, unknown>).assigned_user_id,
+         );
+         if (primaryAssignee !== null) candidates.push(primaryAssignee);
+         return Array.from(new Set(candidates));
+       })();
+-      const rawAssignee = Array.isArray(taskData.assignees)
+-        ? (taskData.assignees as (string | number | null | undefined)[])[0]
+-        : (taskData as Record<string, unknown>).assigned_user_id;
+-      const assigneeId = (() => {
+-        if (rawAssignee === null || rawAssignee === undefined) return '';
+-        if (typeof rawAssignee === 'string') {
+-          const trimmed = rawAssignee.trim();
+-          return trimmed.length > 0 ? trimmed : '';
+-        }
+-        return String(rawAssignee);
+-      })();
++      setTaskAssigneeIds(normalizedAssigneeIds);
+       const driverNumeric = toAssigneeNumber(
+         (taskData as Record<string, unknown>).transport_driver_id,
+       );
+@@ -1439,11 +1425,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+       stableReset({
+         title: (taskData.title as string) || '',
+         description: (taskData.task_description as string) || '',
+-        assigneeId,
++        assignees: normalizedAssigneeIds,
+         startDate,
+         dueDate,
+       });
+-      hasAutofilledAssignee.current = true;
+       setTaskType(normalizedTaskType);
+       const commentHtml = (taskData.comment as string) || '';
+       const attachmentsFromTask = collectTaskAttachments(
+@@ -1530,8 +1515,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+         status: curStatus,
+         completedAt: curCompletedAt,
+         creator: String((taskData.created_by as unknown) || ''),
+-        assigneeId,
+-        assigneeIds: normalizedAssigneeIds,
++        assignees: normalizedAssigneeIds,
+         startDate,
+         dueDate,
+         attachments: mergeAttachmentLists([], attachmentsFromTask),
+@@ -1631,11 +1615,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+       typeof values.title === 'string' ? values.title.trim() : '';
+     const descriptionValue =
+       typeof values.description === 'string' ? values.description : '';
+-    const assigneeRaw =
+-      typeof values.assigneeId === 'string' ? values.assigneeId.trim() : '';
+-    const assigneeNumeric = toNumericValue(assigneeRaw);
+-    const resolvedAssignee =
+-      assigneeNumeric !== null ? assigneeNumeric : assigneeRaw || undefined;
++    const selectedAssignees =
++      taskAssigneeIds.length > 0
++        ? taskAssigneeIds
++        : normalizeAssigneeList(values.assignees);
+     const resolvedTaskType =
+       entityKind === 'request' ? DEFAULT_REQUEST_TYPE : taskType;
+ 
+@@ -1652,13 +1635,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+       attachments,
+     };
+ 
+-    if (resolvedAssignee !== undefined) {
+-      payload.assigned_user_id = resolvedAssignee;
+-    }
+-    if (taskAssigneeIds.length > 0) {
+-      payload.assignees = taskAssigneeIds;
+-    } else if (resolvedAssignee !== undefined) {
+-      payload.assignees = [resolvedAssignee];
++    if (selectedAssignees.length > 0) {
++      payload.assignees = selectedAssignees;
++      payload.assigned_user_id = selectedAssignees[0];
+     }
+ 
+     const creatorNumeric = toNumericValue(creator);
+@@ -1906,8 +1885,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+       status: DEFAULT_STATUS,
+       completedAt: '',
+       creator: user ? String(user.telegram_id) : '',
+-      assigneeId: '',
+-      assigneeIds: defaultAssigneeIds,
++      assignees: defaultAssigneeIds,
+       startDate: defaultStartDate,
+       dueDate: defaultDueDate,
+       attachments: [],
+@@ -1931,11 +1909,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+     stableReset({
+       title: '',
+       description: '',
+-      assigneeId: '',
++      assignees: defaultAssigneeIds,
+       startDate: defaultStartDate,
+       dueDate: defaultDueDate,
+     });
+-    hasAutofilledAssignee.current = false;
+     setCargoLength('');
+     setCargoWidth('');
+     setCargoHeight('');
+@@ -2220,21 +2197,15 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+         if (shouldSetDue) {
+           setValue('dueDate', dueInputValue);
+         }
+-        const assignedRaw =
+-          typeof formData.assigneeId === 'string'
+-            ? formData.assigneeId.trim()
+-            : '';
+-        if (!assignedRaw) {
+-          setError('assigneeId', {
++        const assignedList = normalizeAssigneeList(formData.assignees);
++        if (assignedList.length === 0) {
++          setError('assignees', {
+             type: 'required',
+             message: t('assigneeRequiredError'),
+           });
+           setAlertMsg(t('assigneeRequiredError'));
+           return;
+         }
+-        const assignedNumeric = toNumericValue(assignedRaw);
+-        const assignedValue =
+-          assignedNumeric !== null ? assignedNumeric : assignedRaw;
+         const resolvedTaskType =
+           entityKind === 'request' ? DEFAULT_REQUEST_TYPE : taskType;
+         const payload: Record<string, unknown> = {
+@@ -2247,7 +2218,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+           payment_method: paymentMethod,
+           status,
+           created_by: toNumericValue(creator),
+-          assigned_user_id: assignedValue,
++          assigned_user_id: assignedList[0],
++          assignees: assignedList,
+           logistics_enabled: showLogistics,
+         };
+         const driverCandidate = transportDriverId.trim();
+@@ -2430,7 +2402,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+       }
+     },
+     (formErrors: FieldErrors<TaskFormValues>) => {
+-      if (formErrors.assigneeId) {
++      if (formErrors.assignees) {
+         setIsSubmitting(false);
+         setAlertMsg(t('assigneeRequiredError'));
+       }
+@@ -2443,6 +2415,14 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+   const [showAcceptConfirm, setShowAcceptConfirm] = React.useState(false);
+   const [showDoneConfirm, setShowDoneConfirm] = React.useState(false);
+   const [pendingDoneOption, setPendingDoneOption] = React.useState('');
++  React.useEffect(() => {
++    if (!canFinalizeStatus && showDoneSelect) {
++      setShowDoneSelect(false);
++    }
++    if (!canFinalizeStatus && showDoneConfirm) {
++      setShowDoneConfirm(false);
++    }
++  }, [canFinalizeStatus, showDoneConfirm, showDoneSelect]);
+ 
+   React.useEffect(() => {
+     if (isEdit || !editing) {
+@@ -2514,7 +2494,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+     reset({
+       title: d.title,
+       description: d.description,
+-      assigneeId: d.assigneeId,
++      assignees: d.assignees,
+       startDate: d.startDate,
+       dueDate: d.dueDate,
+     });
+@@ -2532,7 +2512,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+     setInitialStatus(d.status);
+     setStatus(d.status);
+     setCompletedAt(d.completedAt);
+-    setTaskAssigneeIds(d.assigneeIds);
++    setTaskAssigneeIds(d.assignees);
+     setCreator(d.creator);
+     setCargoLength(d.cargoLength);
+     setCargoWidth(d.cargoWidth);
+@@ -2594,6 +2574,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+   const completeTask = async (opt: string) => {
+     const targetId = effectiveTaskId;
+     if (!targetId) return;
++    if (!canFinalizeStatus) {
++      setAlertMsg(t('taskSaveFailed'));
++      return;
++    }
+     const prev = status;
+     setStatus('Выполнена');
+     try {
+@@ -2748,29 +2732,27 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+                 <div className="space-y-5">
+                   <div>
+                     <Controller
+-                      name="assigneeId"
++                      name="assignees"
+                       control={control}
+                       render={({ field }) => (
+                         <MultiUserSelect
+                           label={t('assignees')}
+                           users={users}
+-                          value={
+-                            typeof field.value === 'string' &&
+-                            field.value.trim().length > 0
+-                              ? field.value.trim()
+-                              : null
+-                          }
+-                          onChange={(val) => field.onChange(val ?? '')}
++                          value={Array.isArray(field.value) ? field.value : []}
++                          onChange={(val) => {
++                            setTaskAssigneeIds(val);
++                            field.onChange(val);
++                          }}
+                           onBlur={field.onBlur}
+                           disabled={!editing}
+                           required
+                           placeholder={t('assigneeSelectPlaceholder')}
+                           hint={
+-                            !errors.assigneeId
++                            !errors.assignees
+                               ? t('assigneeSelectHint')
+                               : undefined
+                           }
+-                          error={errors.assigneeId?.message ?? null}
++                          error={errors.assignees?.message ?? null}
+                         />
+                       )}
+                     />
+@@ -3445,7 +3427,14 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+               )}
+               {isEdit && !editing && canChangeStatus && (
+                 <>
+-                  <div className="mt-2 grid grid-cols-2 gap-2">
++                  <div
++                    className={cn(
++                      'mt-2 grid gap-2',
++                      canFinalizeStatus
++                        ? 'grid-cols-2'
++                        : 'grid-cols-1',
++                    )}
++                  >
+                     <Button
+                       className={cn(
+                         'rounded-lg',
+@@ -3457,19 +3446,23 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+                     >
+                       {t('accept')}
+                     </Button>
+-                    <Button
+-                      className={cn(
+-                        'rounded-lg',
+-                        selectedAction === 'done' &&
+-                          'ring-accentPrimary ring-2',
+-                      )}
+-                      variant={status === 'Выполнена' ? 'success' : 'default'}
+-                      onClick={() => setShowDoneSelect((v) => !v)}
+-                    >
+-                      {t('done')}
+-                    </Button>
++                    {canFinalizeStatus ? (
++                      <Button
++                        className={cn(
++                          'rounded-lg',
++                          selectedAction === 'done' &&
++                            'ring-accentPrimary ring-2',
++                        )}
++                        variant={
++                          status === 'Выполнена' ? 'success' : 'default'
++                        }
++                        onClick={() => setShowDoneSelect((v) => !v)}
++                      >
++                        {t('done')}
++                      </Button>
++                    ) : null}
+                   </div>
+-                  {showDoneSelect && (
++                  {canFinalizeStatus && showDoneSelect && (
+                     <>
+                       <select
+                         onChange={(e) => {
+@@ -3501,17 +3494,19 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+                     }}
+                     onCancel={() => setShowAcceptConfirm(false)}
+                   />
+-                  <ConfirmDialog
+-                    open={showDoneConfirm}
+-                    message={t('completeTaskQuestion')}
+-                    confirmText={t('done')}
+-                    cancelText={t('cancel')}
+-                    onConfirm={() => {
+-                      setShowDoneConfirm(false);
+-                      completeTask(pendingDoneOption);
+-                    }}
+-                    onCancel={() => setShowDoneConfirm(false)}
+-                  />
++                  {canFinalizeStatus ? (
++                    <ConfirmDialog
++                      open={showDoneConfirm}
++                      message={t('completeTaskQuestion')}
++                      confirmText={t('done')}
++                      cancelText={t('cancel')}
++                      onConfirm={() => {
++                        setShowDoneConfirm(false);
++                        completeTask(pendingDoneOption);
++                      }}
++                      onCancel={() => setShowDoneConfirm(false)}
++                    />
++                  ) : null}
+                 </>
+               )}
+             </>
+diff --git a/docs/railway_full_setup.md b/docs/railway_full_setup.md
+index 9506c4c..00a5737 100644
+--- a/docs/railway_full_setup.md
++++ b/docs/railway_full_setup.md
+@@ -37,7 +37,6 @@
+ 3. Если хотите вынести очереди в отдельный процесс Railway, создайте дополнительный сервис из этого же репозитория и выберите команду `worker` из `Procfile.railway` (или задайте вручную `pnpm --filter worker run start`).
+ 4. Установите переменные окружения для воркера: `QUEUE_REDIS_URL`, `QUEUE_PREFIX` (опционально), `GEOCODER_URL`/`GEOCODER_USER_AGENT`/`GEOCODER_EMAIL`/`GEOCODER_API_KEY`/`GEOCODER_PROXY_TOKEN`, `ROUTING_URL` и при необходимости `QUEUE_CONCURRENCY`.
+    - Прямое подключение к ORS: `GEOCODER_URL=https://api.openrouteservice.org/geocode/search` и ключ в `GEOCODER_API_KEY` или `ORS_API_KEY`.
+-   - Через наш ORS Proxy: `GEOCODER_URL=http://<private_host_proxy>:5000/search`, `GEOCODER_PROXY_TOKEN=<PROXY_TOKEN>`, `GEOCODER_API_KEY` не нужен.
+ 5. После деплоя убедитесь, что на эндпоинте `/metrics` основного API появились метрики `bullmq_jobs_total` с состояниями `waiting`, `active`, `delayed`, `failed`, `completed`.
+ 
+ ## 5. Запуск и проверка
+diff --git a/docs/railway_ors_proxy.md b/docs/railway_ors_proxy.md
+deleted file mode 100644
+index e116766..0000000
+--- a/docs/railway_ors_proxy.md
++++ /dev/null
+@@ -1,61 +0,0 @@
+-<!-- Назначение файла: инструкция по деплою прокси OpenRouteService на Railway. -->
+-
+-# Деплой прокси OpenRouteService на Railway
+-
+-Прокси-сервис из `tools/ors-proxy` защищает ключ OpenRouteService, кеширует ответы в Redis и отдаёт маршруты и матрицы через собственный токен авторизации. Ниже перечислены шаги для отдельного сервиса на Railway.
+-
+-## Требования
+-
+-- учётная запись Railway с доступом к проекту и подключённым репозиторием;
+-- рабочий ключ OpenRouteService (`ORS_API_KEY`);
+-- подключение Redis (плагин Railway или внешний хост) для кеша;
+-- выделенный токен для клиентов прокси (`PROXY_TOKEN`).
+-
+-## Подготовка окружения
+-
+-1. Создайте сервис **Redis** в проекте Railway или подключите существующий инстанс. Скопируйте строку подключения, она понадобится для переменной `REDIS_URL`.
+-2. Откройте проект и добавьте новый сервис из GitHub-репозитория. В настройках сервиса укажите корень `tools/ors-proxy` — Railway возьмёт `Dockerfile` из этого каталога. Путь нужно задавать **без ведущего слэша**: значение `/tools/ors-proxy` воспринимается как абсолютный путь в контейнере и приводит к ошибке поиска Dockerfile. Если указать корень нельзя, выберите окружение `ors-proxy`: файл `railway.json` настроит сборку через `tools/ors-proxy/Dockerfile` и будет отслеживать изменения только в каталоге прокси.
+-3. Убедитесь, что сервис слушает `PORT`, который предоставляет Railway; `Dockerfile` уже пробрасывает порт `5000`, дополнительно менять команду запуска не требуется.
+-4. Скопируйте файл `.env.example` из каталога `tools/ors-proxy` в `.env` и заполните значения перед деплоем. Это снизит риск опечаток в переменных окружения.
+-
+-### Проверка настроек в Railway UI
+-
+-- В разделе **Settings → Source** убедитесь, что параметр **Root Directory** выставлен в `tools/ors-proxy`, а в блоке **Build** выбран тип **Dockerfile** с путём `tools/ors-proxy/Dockerfile`. Используйте относительные пути, например `tools/ors-proxy/Dockerfile`; абсолютный `/tools/ors-proxy/Dockerfile` приведёт к сборке из корня и ошибке `dockerfile invalid: file with no instructions`.
+-- В разделе **Networking** включите **Private Networking**, чтобы URL вида `redis.railway.internal` был доступен из контейнера. Для внешних подключений используйте схему `rediss://` и порт, выдаваемый Railway, если включён TLS.
+-- После изменения настроек перезапустите деплой — новая сборка должна подняться без ошибок Redis.
+-
+-## Настройка переменных окружения
+-
+-Задайте переменные в разделе **Variables** сервиса прокси:
+-
+-- `ORS_API_KEY` — ключ OpenRouteService.
+-- `REDIS_URL` — строка подключения Redis, например `redis://default:<пароль>@<хост>:6379` или `rediss://` при включённом TLS.
+-- `PROXY_TOKEN` — секретный токен, который клиенты передают в заголовке `X-Proxy-Token`.
+-- `CACHE_TTL_SEC` — время жизни кеша в секундах; по умолчанию 86400 (сутки).
+-- `ORS_BASE_URL` — при необходимости укажите альтернативный адрес OpenRouteService; по умолчанию используется `https://api.openrouteservice.org`.
+-
+-Параметр `ORS_BASE_URL` указывает только домен OpenRouteService: прокси сам добавляет пути `/v2/directions/{profile}` и `/v2/matrix/{profile}` при обращении к API. Не нужно вписывать путь до конкретного метода, достаточно оставить хост (`https://api.openrouteservice.org`).
+-
+-Ключ `ORS_API_KEY` прокси передаёт в заголовке `Authorization` при каждом запросе в OpenRouteService. Клиентам ключ знать не нужно: они работают с прокси по URL вида `https://<домен_railway>/route` или `/table` и передают только `X-Proxy-Token`. Если ответы приходят с `401`, убедитесь, что токен совпадает и переменные окружения прокси заполнены.
+-
+-Если запросы отвечают кодом `401`, убедитесь, что клиенты отправляют заголовок `X-Proxy-Token` с тем же значением, что и в переменной `PROXY_TOKEN`, и что переменные действительно загрузились (видны в разделе **Variables** после деплоя).
+-
+-После сохранения переменных запустите деплой вручную или дождитесь автосборки.
+-
+-## Проверка после деплоя
+-
+-1. Откройте логи сервиса и убедитесь, что контейнер стартовал без ошибок Redis и ключей ORS.
+-2. Выполните пробный запрос со своим токеном:
+-
+-   ```bash
+-   curl -H "X-Proxy-Token: <PROXY_TOKEN>" "https://<домен_railway>/route?start=30.5,50.4&end=30.6,50.45&profile=driving-car"
+-   ```
+-
+-   В ответ должен прийти JSON OpenRouteService. Аналогично проверьте `https://<домен>/table` через POST с телом `{ "locations": [[lon, lat], ...] }` или GET с параметром `locations=lon,lat|lon,lat`.
+-
+-3. Добавьте `/health` в healthcheck Railway или проверьте вручную: `curl https://<домен_railway>/health`.
+-
+-## Интеграция с основным приложением
+-
+-- В переменных `ROUTING_URL` и `VITE_ROUTING_URL` основного проекта укажите `https://<домен_railway>/route`, чтобы бэкенд и клиент обращались к прокси вместо OSRM.
+-- Используйте тот же `PROXY_TOKEN` при вызове маршрутов из автоматизаций или внешних сервисов; передавайте его в `X-Proxy-Token`.
+diff --git a/docs/technical_manual.md b/docs/technical_manual.md
+index 6ef8395..8800a0a 100644
+--- a/docs/technical_manual.md
++++ b/docs/technical_manual.md
+@@ -666,7 +666,7 @@ pnpm --dir bot dev # запуск api и web
+ 2. Задайте переменные `BOT_TOKEN`, `MONGO_DATABASE_URL`, `APP_URL`, `ROUTING_URL` и `VITE_ROUTING_URL`. Переменная `MONGO_DATABASE_URL` определяет строку подключения к MongoDB: скрипт `scripts/pre_pr_check.sh` поднимает MongoDB в памяти и задаёт её автоматически, а `scripts/check_mongo.mjs` пропускает проверку при `CI=true`. Конфигурация API проверяет, что строка содержит имя базы (например `/ermdb`) и параметр `authSource` для корневого пользователя Railway; без них сервер не запустится. При необходимости можно отдельно задать `MONGO_DATABASE_NAME` и `MONGO_AUTH_SOURCE` — приложение дополнит URL, что удобно для публичных ссылок Railway. Переменные `LOG_LEVEL`, `LOG_TELEGRAM_TOKEN` и `LOG_TELEGRAM_CHAT` можно не задавать. Значения `GATEWAY_API_KEY` и `GATEWAY_SENDER` более не требуются.
+ 3. Railway использует `Procfile`, который собирает клиент и запускает pm2.
+ 4. Убедитесь, что приложение слушает `process.env.PORT` на адресе `0.0.0.0`.
+-5. Если для маршрутизации нужен прокси OpenRouteService, разверните сервис по инструкции `docs/railway_ors_proxy.md` и укажите его URL в `ROUTING_URL` и `VITE_ROUTING_URL`.
++5. Задайте `ROUTING_URL` и `VITE_ROUTING_URL` на адрес вашего сервиса маршрутизации (например, OSRM или публичный OpenRouteService).
+ 
+ ### Предотвращение поломок фронтенда
+ 
+diff --git a/patch_cjs/074-ors-proxy.cjs b/patch_cjs/074-ors-proxy.cjs
+deleted file mode 100644
+index 45a72dc..0000000
+--- a/patch_cjs/074-ors-proxy.cjs
++++ /dev/null
+@@ -1,24 +0,0 @@
+-#!/usr/bin/env node
+-// patch: 074-ors-proxy.cjs
+-// purpose: добавить прокси OpenRouteService с кешем Redis и аутентификацией по токену
+-const fs = require('node:fs');
+-const path = require('node:path');
+-const { execSync } = require('node:child_process');
+-
+-const patchPath = path.resolve(__dirname, '074-ors-proxy.patch');
+-
+-if (!fs.existsSync(patchPath)) {
+-  throw new Error('Файл патча не найден: ' + patchPath);
+-}
+-
+-const patch = fs.readFileSync(patchPath, 'utf8');
+-
+-if (!patch.trim()) {
+-  console.log('Нет изменений для применения');
+-  process.exit(0);
+-}
+-
+-execSync('git apply -', {
+-  stdio: ['pipe', 'inherit', 'inherit'],
+-  input: patch,
+-});
+diff --git a/patch_cjs/074-ors-proxy.patch b/patch_cjs/074-ors-proxy.patch
+deleted file mode 100644
+index 6ab43ce..0000000
+--- a/patch_cjs/074-ors-proxy.patch
++++ /dev/null
+@@ -1,300 +0,0 @@
+-diff --git a/tools/ors-proxy/.dockerignore b/tools/ors-proxy/.dockerignore
+-new file mode 100644
+-index 0000000..ce29700
+---- /dev/null
+-+++ b/tools/ors-proxy/.dockerignore
+-@@ -0,0 +1,5 @@
+-+__pycache__
+-+*.pyc
+-+.venv
+-+.env
+-+*.log
+-diff --git a/tools/ors-proxy/.env.example b/tools/ors-proxy/.env.example
+-new file mode 100644
+-index 0000000..e97beae
+---- /dev/null
+-+++ b/tools/ors-proxy/.env.example
+-@@ -0,0 +1,5 @@
+-+ORS_API_KEY=YOUR_ORS_KEY
+-+REDIS_URL=redis://default:password@redis.railway.internal:6379
+-+CACHE_TTL_SEC=86400
+-+PORT=5000
+-+PROXY_TOKEN=your_token_here
+-diff --git a/tools/ors-proxy/Dockerfile b/tools/ors-proxy/Dockerfile
+-new file mode 100644
+-index 0000000..847bf8c
+---- /dev/null
+-+++ b/tools/ors-proxy/Dockerfile
+-@@ -0,0 +1,10 @@
+-+FROM python:3.12-slim
+-+WORKDIR /app
+-+RUN apt-get update && apt-get install -y --no-install-recommends build-essential \
+-+    && rm -rf /var/lib/apt/lists/*
+-+COPY requirements.txt .
+-+RUN pip install --no-cache-dir -r requirements.txt
+-+COPY . .
+-+ENV PYTHONUNBUFFERED=1
+-+EXPOSE 5000
+-+CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "proxy:app"]
+-diff --git a/tools/ors-proxy/proxy.py b/tools/ors-proxy/proxy.py
+-new file mode 100644
+-index 0000000..981e556
+---- /dev/null
+-+++ b/tools/ors-proxy/proxy.py
+-@@ -0,0 +1,189 @@
+-+"""Прокси OpenRouteService с кешированием в Redis и проверкой токена."""
+-+from __future__ import annotations
+-+
+-+import hashlib
+-+import json
+-+import logging
+-+import os
+-+import time
+-+from typing import Any, Dict, List, Optional
+-+
+-+import redis
+-+import requests
+-+from flask import Flask, Response, jsonify, request
+-+
+-+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+-+logger = logging.getLogger(__name__)
+-+
+-+ORS_API_KEY = os.getenv("ORS_API_KEY")
+-+REDIS_URL = os.getenv("REDIS_URL")
+-+CACHE_TTL_SEC = int(os.getenv("CACHE_TTL_SEC", "86400"))
+-+PROXY_TOKEN = os.getenv("PROXY_TOKEN")
+-+
+-+if not ORS_API_KEY:
+-+    raise RuntimeError("Требуется переменная окружения ORS_API_KEY")
+-+if not REDIS_URL:
+-+    raise RuntimeError("Требуется переменная окружения REDIS_URL")
+-+if not PROXY_TOKEN:
+-+    raise RuntimeError("Требуется переменная окружения PROXY_TOKEN")
+-+
+-+app = Flask(__name__)
+-+
+-+redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+-+requests_session = requests.Session()
+-+ORS_BASE_URL = os.getenv("ORS_BASE_URL", "https://api.openrouteservice.org")
+-+LOCK_TTL_SEC = 30
+-+LOCK_SLEEP_SEC = 0.25
+-+LOCK_MAX_WAIT_SEC = 5
+-+
+-+
+-+def _error(message: str, status: int = 400) -> Response:
+-+    payload = {"error": message}
+-+    return Response(json.dumps(payload), status=status, mimetype="application/json")
+-+
+-+
+-+def _parse_point(raw: str) -> Optional[List[float]]:
+-+    parts = [chunk.strip() for chunk in raw.split(",")]
+-+    if len(parts) != 2:
+-+        return None
+-+    try:
+-+        lon = float(parts[0])
+-+        lat = float(parts[1])
+-+    except ValueError:
+-+        return None
+-+    return [lon, lat]
+-+
+-+
+-+def _parse_locations(raw: str) -> Optional[List[List[float]]]:
+-+    separator = ";" if ";" in raw else "|" if "|" in raw else None
+-+    coordinates = raw.split(separator) if separator else [raw]
+-+    result: List[List[float]] = []
+-+    for item in coordinates:
+-+        point = _parse_point(item)
+-+        if not point:
+-+            return None
+-+        result.append(point)
+-+    return result if len(result) >= 2 else None
+-+
+-+
+-+def _cache_key(name: str, payload: Dict[str, Any]) -> str:
+-+    serialized = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+-+    digest = hashlib.sha1(serialized.encode("utf-8")).hexdigest()
+-+    return f"{name}:{digest}"
+-+
+-+
+-+def _get_cached(key: str) -> Optional[str]:
+-+    try:
+-+        return redis_client.get(f"cache:{key}")
+-+    except redis.RedisError:
+-+        logger.warning("Не удалось прочитать кеш Redis", exc_info=True)
+-+        return None
+-+
+-+
+-+def _store_cache(key: str, value: str) -> None:
+-+    try:
+-+        redis_client.setex(f"cache:{key}", CACHE_TTL_SEC, value)
+-+    except redis.RedisError:
+-+        logger.warning("Не удалось сохранить ответ в кеш Redis", exc_info=True)
+-+
+-+
+-+def _release_lock(lock_key: str) -> None:
+-+    try:
+-+        redis_client.delete(lock_key)
+-+    except redis.RedisError:
+-+        logger.warning("Не удалось снять блокировку в Redis", exc_info=True)
+-+
+-+
+-+def _acquire_lock(cache_key: str) -> bool:
+-+    lock_key = f"lock:{cache_key}"
+-+    try:
+-+        acquired = redis_client.set(lock_key, "1", nx=True, ex=LOCK_TTL_SEC)
+-+        return bool(acquired)
+-+    except redis.RedisError:
+-+        logger.warning("Не удалось установить блокировку в Redis", exc_info=True)
+-+        return True
+-+
+-+
+-+def _wait_for_cache(cache_key: str) -> Optional[str]:
+-+    deadline = time.time() + LOCK_MAX_WAIT_SEC
+-+    while time.time() < deadline:
+-+        cached = _get_cached(cache_key)
+-+        if cached:
+-+            return cached
+-+        time.sleep(LOCK_SLEEP_SEC)
+-+    return None
+-+
+-+
+-+def _require_token() -> Optional[Response]:
+-+    token = request.headers.get("X-Proxy-Token")
+-+    if token != PROXY_TOKEN:
+-+        return _error("Требуется корректный токен", status=401)
+-+    return None
+-+
+-+
+-+def _forward_response(resp: requests.Response) -> Response:
+-+    content_type = resp.headers.get("Content-Type", "application/json")
+-+    return Response(resp.content, status=resp.status_code, mimetype=content_type)
+-+
+-+
+-+@app.route("/health", methods=["GET"])
+-+def health() -> Response:
+-+    return jsonify({"status": "ok"})
+-+
+-+
+-+@app.route("/route", methods=["GET"])
+-+def route() -> Response:
+-+    auth_error = _require_token()
+-+    if auth_error:
+-+        return auth_error
+-+
+-+    start_raw = request.args.get("start")
+-+    end_raw = request.args.get("end")
+-+    profile = request.args.get("profile", "driving-car")
+-+
+-+    if not start_raw or not end_raw:
+-+        return _error("Параметры start и end обязательны", status=400)
+-+
+-+    start_point = _parse_point(start_raw)
+-+    end_point = _parse_point(end_raw)
+-+    if not start_point or not end_point:
+-+        return _error("Координаты должны быть в формате lon,lat", status=400)
+-+
+-+    cache_key = _cache_key(
+-+        "route", {"profile": profile, "start": start_point, "end": end_point}
+-+    )
+-+
+-+    cached = _get_cached(cache_key)
+-+    if cached:
+-+        return Response(cached, mimetype="application/json")
+-+
+-+    lock_key = f"lock:{cache_key}"
+-+    lock_acquired = _acquire_lock(cache_key)
+-+    if not lock_acquired:
+-+        waited = _wait_for_cache(cache_key)
+-+        if waited:
+-+            return Response(waited, mimetype="application/json")
+-+
+-+    url = f"{ORS_BASE_URL}/v2/directions/{profile}"
+-+    try:
+-+        resp = requests_session.get(
+-+            url,
+-+            params={"start": start_raw, "end": end_raw},
+-+            headers={"Authorization": ORS_API_KEY},
+-+            timeout=30,
+-+        )
+-+    except requests.RequestException:
+-+        _release_lock(lock_key)
+-+        logger.exception("Ошибка запроса к OpenRouteService")
+-+        return _error("Сервис маршрутизации недоступен", status=502)
+-+
+-+    if resp.ok:
+-+        _store_cache(cache_key, resp.text)
+-+    _release_lock(lock_key)
+-+    return _forward_response(resp)
+-+
+-+
+-+@app.route("/table", methods=["GET", "POST"])
+-+def table() -> Response:
+-+    auth_error = _require_token()
+-+    if auth_error:
+-+        return auth_error
+-+
+-+    profile = request.args.get("profile", "driving-car")
+-+    metrics_raw = request.args.get("metrics", "distance,duration")
+-+    metrics = [metric.strip() for metric in metrics_raw.split(",") if metric.strip()]
+-+
+-+    if request.method == "POST":
+-+        body = request.get_json(silent=True) or {}
+-+        locations = body.get("locations")
+-+    else:
+-+        locations_raw = request.args.get("locations")
+-+        if not locations_raw:
+-+            return _error("Параметр locations обязателен", status=400)
+-+        locations = _parse_locations(locations_raw)
+-+
+-+    if not locations or not isinstance(locations, list):
+-+        return _error("Не удалось разобрать список координат", status=400)
+-+
+-+    cache_key = _cache_key(
+-+        "table", {"profile": profile, "metrics": metrics, "locations": locations}
+-+    )
+-+
+-+    cached = _get_cached(cache_key)
+-+    if cached:
+-+        return Response(cached, mimetype="application/json")
+-+
+-+    lock_key = f"lock:{cache_key}"
+-+    lock_acquired = _acquire_lock(cache_key)
+-+    if not lock_acquired:
+-+        waited = _wait_for_cache(cache_key)
+-+        if waited:
+-+            return Response(waited, mimetype="application/json")
+-+
+-+    url = f"{ORS_BASE_URL}/v2/matrix/{profile}"
+-+    payload = {"locations": locations, "metrics": metrics}
+-+    try:
+-+        resp = requests_session.post(
+-+            url,
+-+            json=payload,
+-+            headers={"Authorization": ORS_API_KEY},
+-+            timeout=60,
+-+        )
+-+    except requests.RequestException:
+-+        _release_lock(lock_key)
+-+        logger.exception("Ошибка запроса матрицы в OpenRouteService")
+-+        return _error("Сервис построения матрицы недоступен", status=502)
+-+
+-+    if resp.ok:
+-+        _store_cache(cache_key, resp.text)
+-+    _release_lock(lock_key)
+-+    return _forward_response(resp)
+-+
+-+
+-+if __name__ == "__main__":
+-+    port = int(os.getenv("PORT", "5000"))
+-+    app.run(host="0.0.0.0", port=port)
+-diff --git a/tools/ors-proxy/requirements.txt b/tools/ors-proxy/requirements.txt
+-new file mode 100644
+-index 0000000..991fe52
+---- /dev/null
+-+++ b/tools/ors-proxy/requirements.txt
+-@@ -0,0 +1,5 @@
+-+Flask>=2.2
+-+requests>=2.31
+-+redis>=4.5
+-+python-dotenv>=1.0
+-+gunicorn>=20.1
+diff --git a/patch_cjs/075-ors-proxy-railway-docs.cjs b/patch_cjs/075-ors-proxy-railway-docs.cjs
+deleted file mode 100644
+index e7b55ef..0000000
+--- a/patch_cjs/075-ors-proxy-railway-docs.cjs
++++ /dev/null
+@@ -1,24 +0,0 @@
+-#!/usr/bin/env node
+-// patch: 075-ors-proxy-railway-docs.cjs
+-// purpose: добавить инструкцию по деплою прокси OpenRouteService на Railway и ссылку из технического руководства
+-const fs = require('node:fs');
+-const path = require('node:path');
+-const { execSync } = require('node:child_process');
+-
+-const patchPath = path.resolve(__dirname, '075-ors-proxy-railway-docs.patch');
+-
+-if (!fs.existsSync(patchPath)) {
+-  throw new Error('Файл патча не найден: ' + patchPath);
+-}
+-
+-const patch = fs.readFileSync(patchPath, 'utf8');
+-
+-if (!patch.trim()) {
+-  console.log('Нет изменений для применения');
+-  process.exit(0);
+-}
+-
+-execSync('git apply -', {
+-  stdio: ['pipe', 'inherit', 'inherit'],
+-  input: patch,
+-});
+diff --git a/patch_cjs/075-ors-proxy-railway-docs.patch b/patch_cjs/075-ors-proxy-railway-docs.patch
+deleted file mode 100644
+index a9894b6..0000000
+--- a/patch_cjs/075-ors-proxy-railway-docs.patch
++++ /dev/null
+@@ -1,65 +0,0 @@
+-diff --git a/docs/technical_manual.md b/docs/technical_manual.md
+-index e808326..6ef8395 100644
+---- a/docs/technical_manual.md
+-+++ b/docs/technical_manual.md
+-@@ -666,6 +666,7 @@ pnpm --dir bot dev # запуск api и web
+- 2. Задайте переменные `BOT_TOKEN`, `MONGO_DATABASE_URL`, `APP_URL`, `ROUTING_URL` и `VITE_ROUTING_URL`. Переменная `MONGO_DATABASE_URL` определяет строку подключения к MongoDB: скрипт `scripts/pre_pr_check.sh` поднимает MongoDB в памяти и задаёт её автоматически, а `scripts/check_mongo.mjs` пропускает проверку при `CI=true`. Конфигурация API проверяет, что строка содержит имя базы (например `/ermdb`) и параметр `authSource` для корневого пользователя Railway; без них сервер не запустится. При необходимости можно отдельно задать `MONGO_DATABASE_NAME` и `MONGO_AUTH_SOURCE` — приложение дополнит URL, что удобно для публичных ссылок Railway. Переменные `LOG_LEVEL`, `LOG_TELEGRAM_TOKEN` и `LOG_TELEGRAM_CHAT` можно не задавать. Значения `GATEWAY_API_KEY` и `GATEWAY_SENDER` более не требуются.
+- 3. Railway использует `Procfile`, который собирает клиент и запускает pm2.
+- 4. Убедитесь, что приложение слушает `process.env.PORT` на адресе `0.0.0.0`.
+-+5. Если для маршрутизации нужен прокси OpenRouteService, разверните сервис по инструкции `docs/railway_ors_proxy.md` и укажите его URL в `ROUTING_URL` и `VITE_ROUTING_URL`.
+- 
+- ### Предотвращение поломок фронтенда
+- 
+-diff --git a/docs/railway_ors_proxy.md b/docs/railway_ors_proxy.md
+-new file mode 100644
+-index 0000000..433bed0
+---- /dev/null
+-+++ b/docs/railway_ors_proxy.md
+-@@ -0,0 +1,47 @@
+-+<!-- Назначение файла: инструкция по деплою прокси OpenRouteService на Railway. -->
+-+
+-+# Деплой прокси OpenRouteService на Railway
+-+
+-+Прокси-сервис из `tools/ors-proxy` защищает ключ OpenRouteService, кеширует ответы в Redis и отдаёт маршруты и матрицы через собственный токен авторизации. Ниже перечислены шаги для отдельного сервиса на Railway.
+-+
+-+## Требования
+-+
+-+- учётная запись Railway с доступом к проекту и подключённым репозиторием;
+-+- рабочий ключ OpenRouteService (`ORS_API_KEY`);
+-+- подключение Redis (плагин Railway или внешний хост) для кеша;
+-+- выделенный токен для клиентов прокси (`PROXY_TOKEN`).
+-+
+-+## Подготовка окружения
+-+
+-+1. Создайте сервис **Redis** в проекте Railway или подключите существующий инстанс. Скопируйте строку подключения, она понадобится для переменной `REDIS_URL`.
+-+2. Откройте проект и добавьте новый сервис из GitHub-репозитория. В настройках сервиса укажите корень `tools/ors-proxy` — Railway возьмёт `Dockerfile` из этого каталога.
+-+3. Убедитесь, что сервис слушает `PORT`, который предоставляет Railway; `Dockerfile` уже пробрасывает порт `5000`, дополнительно менять команду запуска не требуется.
+-+
+-+## Настройка переменных окружения
+-+
+-+Задайте переменные в разделе **Variables** сервиса прокси:
+-+
+-+- `ORS_API_KEY` — ключ OpenRouteService.
+-+- `REDIS_URL` — строка подключения Redis, например `redis://default:<пароль>@<хост>:6379` или `rediss://` при включённом TLS.
+-+- `PROXY_TOKEN` — секретный токен, который клиенты передают в заголовке `X-Proxy-Token`.
+-+- `CACHE_TTL_SEC` — время жизни кеша в секундах; по умолчанию 86400 (сутки).
+-+- `ORS_BASE_URL` — при необходимости укажите альтернативный адрес OpenRouteService; по умолчанию используется `https://api.openrouteservice.org`.
+-+
+-+После сохранения переменных запустите деплой вручную или дождитесь автосборки.
+-+
+-+## Проверка после деплоя
+-+
+-+1. Откройте логи сервиса и убедитесь, что контейнер стартовал без ошибок Redis и ключей ORS.
+-+2. Выполните пробный запрос со своим токеном:
+-+
+-+   ```bash
+-+   curl -H "X-Proxy-Token: <PROXY_TOKEN>" "https://<домен_railway>/route?start=30.5,50.4&end=30.6,50.45&profile=driving-car"
+-+   ```
+-+
+-+   В ответ должен прийти JSON OpenRouteService. Аналогично проверьте `https://<домен>/table` через POST с телом `{ "locations": [[lon, lat], ...] }` или GET с параметром `locations=lon,lat|lon,lat`.
+-+3. Добавьте `/health` в healthcheck Railway или проверьте вручную: `curl https://<домен_railway>/health`.
+-+
+-+## Интеграция с основным приложением
+-+
+-+- В переменных `ROUTING_URL` и `VITE_ROUTING_URL` основного проекта укажите `https://<домен_railway>/route`, чтобы бэкенд и клиент обращались к прокси вместо OSRM.
+-+- Используйте тот же `PROXY_TOKEN` при вызове маршрутов из автоматизаций или внешних сервисов; передавайте его в `X-Proxy-Token`.
+diff --git a/patch_cjs/076-ors-proxy-docker-context.cjs b/patch_cjs/076-ors-proxy-docker-context.cjs
+deleted file mode 100644
+index cca10bd..0000000
+--- a/patch_cjs/076-ors-proxy-docker-context.cjs
++++ /dev/null
+@@ -1,24 +0,0 @@
+-#!/usr/bin/env node
+-// patch: 076-ors-proxy-docker-context.cjs
+-// purpose: исправить путь копирования зависимостей для сборки прокси OpenRouteService
+-const fs = require('node:fs');
+-const path = require('node:path');
+-const { execSync } = require('node:child_process');
+-
+-const patchPath = path.resolve(__dirname, '076-ors-proxy-docker-context.patch');
+-
+-if (!fs.existsSync(patchPath)) {
+-  throw new Error('Файл патча не найден: ' + patchPath);
+-}
+-
+-const patch = fs.readFileSync(patchPath, 'utf8');
+-
+-if (!patch.trim()) {
+-  console.log('Нет изменений для применения');
+-  process.exit(0);
+-}
+-
+-execSync('git apply -', {
+-  stdio: ['pipe', 'inherit', 'inherit'],
+-  input: patch,
+-});
+diff --git a/patch_cjs/076-ors-proxy-docker-context.patch b/patch_cjs/076-ors-proxy-docker-context.patch
+deleted file mode 100644
+index ab1e129..0000000
+--- a/patch_cjs/076-ors-proxy-docker-context.patch
++++ /dev/null
+@@ -1,17 +0,0 @@
+-diff --git a/tools/ors-proxy/Dockerfile b/tools/ors-proxy/Dockerfile
+-index 847bf8c..c9e0f0a 100644
+---- a/tools/ors-proxy/Dockerfile
+-+++ b/tools/ors-proxy/Dockerfile
+-@@ -1,9 +1,9 @@
+- FROM python:3.12-slim
+- WORKDIR /app
+- RUN apt-get update && apt-get install -y --no-install-recommends build-essential \
+-     && rm -rf /var/lib/apt/lists/*
+--COPY requirements.txt .
+-+COPY tools/ors-proxy/requirements.txt ./requirements.txt
+- RUN pip install --no-cache-dir -r requirements.txt
+--COPY . .
+-+COPY tools/ors-proxy/ .
+- ENV PYTHONUNBUFFERED=1
+- EXPOSE 5000
+- CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "proxy:app"]
+diff --git a/patch_cjs/077-ors-proxy-railway-config.cjs b/patch_cjs/077-ors-proxy-railway-config.cjs
+deleted file mode 100644
+index 8b4ee5a..0000000
+--- a/patch_cjs/077-ors-proxy-railway-config.cjs
++++ /dev/null
+@@ -1,24 +0,0 @@
+-#!/usr/bin/env node
+-// patch: 077-ors-proxy-railway-config.cjs
+-// purpose: настроить сборку Railway для прокси OpenRouteService и обновить инструкцию
+-const fs = require('node:fs');
+-const path = require('node:path');
+-const { execSync } = require('node:child_process');
+-
+-const patchPath = path.resolve(__dirname, '077-ors-proxy-railway-config.patch');
+-
+-if (!fs.existsSync(patchPath)) {
+-  throw new Error('Файл патча не найден: ' + patchPath);
+-}
+-
+-const patch = fs.readFileSync(patchPath, 'utf8');
+-
+-if (!patch.trim()) {
+-  console.log('Нет изменений для применения');
+-  process.exit(0);
+-}
+-
+-execSync('git apply -', {
+-  stdio: ['pipe', 'inherit', 'inherit'],
+-  input: patch,
+-});
+diff --git a/patch_cjs/077-ors-proxy-railway-config.patch b/patch_cjs/077-ors-proxy-railway-config.patch
+deleted file mode 100644
+index 30ee387..0000000
+--- a/patch_cjs/077-ors-proxy-railway-config.patch
++++ /dev/null
+@@ -1,32 +0,0 @@
+-diff --git a/docs/railway_ors_proxy.md b/docs/railway_ors_proxy.md
+-index 1b257ad..e4b3162 100644
+---- a/docs/railway_ors_proxy.md
+-+++ b/docs/railway_ors_proxy.md
+-@@ -14,7 +14,7 @@
+- ## Подготовка окружения
+- 
+- 1. Создайте сервис **Redis** в проекте Railway или подключите существующий инстанс. Скопируйте строку подключения, она понадобится для переменной `REDIS_URL`.
+--2. Откройте проект и добавьте новый сервис из GitHub-репозитория. В настройках сервиса укажите корень `tools/ors-proxy` — Railway возьмёт `Dockerfile` из этого каталога.
+-+2. Откройте проект и добавьте новый сервис из GitHub-репозитория. В настройках сервиса укажите корень `tools/ors-proxy` — Railway возьмёт `Dockerfile` из этого каталога. Если указать корень нельзя, выберите окружение `ors-proxy`: файл `railway.json` настроит сборку через `tools/ors-proxy/Dockerfile` и будет отслеживать изменения только в каталоге прокси.
+- 3. Убедитесь, что сервис слушает `PORT`, который предоставляет Railway; `Dockerfile` уже пробрасывает порт `5000`, дополнительно менять команду запуска не требуется.
+- 
+- ## Настройка переменных окружения
+-diff --git a/railway.json b/railway.json
+-index 12b8a43..55b127e 100644
+---- a/railway.json
+-+++ b/railway.json
+-@@ -2,5 +2,14 @@
+-   "$schema": "https://railway.app/railway.schema.json",
+-   "build": {
+-     "builder": "NIXPACKS"
+-+  },
+-+  "environments": {
+-+    "ors-proxy": {
+-+      "build": {
+-+        "builder": "DOCKERFILE",
+-+        "dockerfilePath": "tools/ors-proxy/Dockerfile",
+-+        "watchPatterns": ["tools/ors-proxy/**"]
+-+      }
+-+    }
+-   }
+- }
+diff --git a/patch_cjs/078-ors-proxy-railway-troubleshoot.cjs b/patch_cjs/078-ors-proxy-railway-troubleshoot.cjs
+deleted file mode 100644
+index 0b9625b..0000000
+--- a/patch_cjs/078-ors-proxy-railway-troubleshoot.cjs
++++ /dev/null
+@@ -1,24 +0,0 @@
+-#!/usr/bin/env node
+-// patch: 078-ors-proxy-railway-troubleshoot.cjs
+-// purpose: добавить инструкцию по настройке Railway UI для прокси OpenRouteService
+-const fs = require('node:fs');
+-const path = require('node:path');
+-const { execSync } = require('node:child_process');
+-
+-const patchPath = path.resolve(__dirname, '078-ors-proxy-railway-troubleshoot.patch');
+-
+-if (!fs.existsSync(patchPath)) {
+-  throw new Error('Файл патча не найден: ' + patchPath);
+-}
+-
+-const patch = fs.readFileSync(patchPath, 'utf8');
+-
+-if (!patch.trim()) {
+-  console.log('Нет изменений для применения');
+-  process.exit(0);
+-}
+-
+-execSync('git apply -', {
+-  stdio: ['pipe', 'inherit', 'inherit'],
+-  input: patch,
+-});
+diff --git a/patch_cjs/078-ors-proxy-railway-troubleshoot.patch b/patch_cjs/078-ors-proxy-railway-troubleshoot.patch
+deleted file mode 100644
+index 3fb2711..0000000
+--- a/patch_cjs/078-ors-proxy-railway-troubleshoot.patch
++++ /dev/null
+@@ -1,17 +0,0 @@
+-diff --git a/docs/railway_ors_proxy.md b/docs/railway_ors_proxy.md
+-index e4b3162..57cfdae 100644
+---- a/docs/railway_ors_proxy.md
+-+++ b/docs/railway_ors_proxy.md
+-@@ -17,6 +17,12 @@
+- 2. Откройте проект и добавьте новый сервис из GitHub-репозитория. В настройках сервиса укажите корень `tools/ors-proxy` — Railway возьмёт `Dockerfile` из этого каталога. Если указать корень нельзя, выберите окружение `ors-proxy`: файл `railway.json` настроит сборку через `tools/ors-proxy/Dockerfile` и будет отслеживать изменения только в каталоге прокси.
+- 3. Убедитесь, что сервис слушает `PORT`, который предоставляет Railway; `Dockerfile` уже пробрасывает порт `5000`, дополнительно менять команду запуска не требуется.
+- 
+-+### Проверка настроек в Railway UI
+-+
+-+- В разделе **Settings → Source** убедитесь, что параметр **Root Directory** выставлен в `tools/ors-proxy`, а в блоке **Build** выбран тип **Dockerfile** с путём `tools/ors-proxy/Dockerfile`. При использовании значения по умолчанию (корень репозитория) Railway пытается парсить другой Dockerfile и показывает ошибку `dockerfile invalid: file with no instructions`.
+-+- В разделе **Networking** включите **Private Networking**, чтобы URL вида `redis.railway.internal` был доступен из контейнера. Для внешних подключений используйте схему `rediss://` и порт, выдаваемый Railway, если включён TLS.
+-+- После изменения настроек перезапустите деплой — новая сборка должна подняться без ошибок Redis.
+-+
+- ## Настройка переменных окружения
+- 
+- Задайте переменные в разделе **Variables** сервиса прокси:
+diff --git a/patch_cjs/079-ors-proxy-railway-root-path.cjs b/patch_cjs/079-ors-proxy-railway-root-path.cjs
+deleted file mode 100644
+index ac34cba..0000000
+--- a/patch_cjs/079-ors-proxy-railway-root-path.cjs
++++ /dev/null
+@@ -1,24 +0,0 @@
+-#!/usr/bin/env node
+-// patch: 079-ors-proxy-railway-root-path.cjs
+-// purpose: уточнить относительный путь Dockerfile для прокси OpenRouteService на Railway
+-const fs = require('node:fs');
+-const path = require('node:path');
+-const { execSync } = require('node:child_process');
+-
+-const patchPath = path.resolve(__dirname, '079-ors-proxy-railway-root-path.patch');
+-
+-if (!fs.existsSync(patchPath)) {
+-  throw new Error('Файл патча не найден: ' + patchPath);
+-}
+-
+-const patch = fs.readFileSync(patchPath, 'utf8');
+-
+-if (!patch.trim()) {
+-  console.log('Нет изменений для применения');
+-  process.exit(0);
+-}
+-
+-execSync('git apply -', {
+-  stdio: ['pipe', 'inherit', 'inherit'],
+-  input: patch,
+-});
+diff --git a/patch_cjs/079-ors-proxy-railway-root-path.patch b/patch_cjs/079-ors-proxy-railway-root-path.patch
+deleted file mode 100644
+index 4fb612b..0000000
+--- a/patch_cjs/079-ors-proxy-railway-root-path.patch
++++ /dev/null
+@@ -1,20 +0,0 @@
+-diff --git a/docs/railway_ors_proxy.md b/docs/railway_ors_proxy.md
+-index 5df204a..f53d42a 100644
+---- a/docs/railway_ors_proxy.md
+-+++ b/docs/railway_ors_proxy.md
+-@@ -14,13 +14,13 @@
+- ## Подготовка окружения
+- 
+- 1. Создайте сервис **Redis** в проекте Railway или подключите существующий инстанс. Скопируйте строку подключения, она понадобится для переменной `REDIS_URL`.
+--2. Откройте проект и добавьте новый сервис из GitHub-репозитория. В настройках сервиса укажите корень `tools/ors-proxy` — Railway возьмёт `Dockerfile` из этого каталога. Если указать корень нельзя, выберите окружение `ors-proxy`: файл `railway.json` настроит сборку через `tools/ors-proxy/Dockerfile` и будет отслеживать изменения только в каталоге прокси.
+-+2. Откройте проект и добавьте новый сервис из GitHub-репозитория. В настройках сервиса укажите корень `tools/ors-proxy` — Railway возьмёт `Dockerfile` из этого каталога. Путь нужно задавать **без ведущего слэша**: значение `/tools/ors-proxy` воспринимается как абсолютный путь в контейнере и приводит к ошибке поиска Dockerfile. Если указать корень нельзя, выберите окружение `ors-proxy`: файл `railway.json` настроит сборку через `tools/ors-proxy/Dockerfile` и будет отслеживать изменения только в каталоге прокси.
+- 3. Убедитесь, что сервис слушает `PORT`, который предоставляет Railway; `Dockerfile` уже пробрасывает порт `5000`, дополнительно менять команду запуска не требуется.
+- 4. Скопируйте файл `.env.example` из каталога `tools/ors-proxy` в `.env` и заполните значения перед деплоем. Это снизит риск опечаток в переменных окружения.
+- 
+- ### Проверка настроек в Railway UI
+- 
+--- В разделе **Settings → Source** убедитесь, что параметр **Root Directory** выставлен в `tools/ors-proxy`, а в блоке **Build** выбран тип **Dockerfile** с путём `tools/ors-proxy/Dockerfile`. При использовании значения по умолчанию (корень репозитория) Railway пытается парсить другой Dockerfile и показывает ошибку `dockerfile invalid: file with no instructions`.
+-+- В разделе **Settings → Source** убедитесь, что параметр **Root Directory** выставлен в `tools/ors-proxy`, а в блоке **Build** выбран тип **Dockerfile** с путём `tools/ors-proxy/Dockerfile`. Используйте относительные пути, например `tools/ors-proxy/Dockerfile`; абсолютный `/tools/ors-proxy/Dockerfile` приведёт к сборке из корня и ошибке `dockerfile invalid: file with no instructions`.
+- - В разделе **Networking** включите **Private Networking**, чтобы URL вида `redis.railway.internal` был доступен из контейнера. Для внешних подключений используйте схему `rediss://` и порт, выдаваемый Railway, если включён TLS.
+- - После изменения настроек перезапустите деплой — новая сборка должна подняться без ошибок Redis.
+- 
+diff --git a/patch_cjs/081-ors-proxy-ors-key-usage.cjs b/patch_cjs/081-ors-proxy-ors-key-usage.cjs
+deleted file mode 100644
+index e6c2dd4..0000000
+--- a/patch_cjs/081-ors-proxy-ors-key-usage.cjs
++++ /dev/null
+@@ -1,24 +0,0 @@
+-#!/usr/bin/env node
+-// patch: 081-ors-proxy-ors-key-usage.cjs
+-// purpose: разъяснить использование ORS_BASE_URL и ORS_API_KEY в инструкции по прокси OpenRouteService
+-const fs = require('node:fs');
+-const path = require('node:path');
+-const { execSync } = require('node:child_process');
+-
+-const patchPath = path.resolve(__dirname, '081-ors-proxy-ors-key-usage.patch');
+-
+-if (!fs.existsSync(patchPath)) {
+-  throw new Error('Файл патча не найден: ' + patchPath);
+-}
+-
+-const patch = fs.readFileSync(patchPath, 'utf8');
+-
+-if (!patch.trim()) {
+-  console.log('Нет изменений для применения');
+-  process.exit(0);
+-}
+-
+-execSync('git apply -', {
+-  stdio: ['pipe', 'inherit', 'inherit'],
+-  input: patch,
+-});
+diff --git a/patch_cjs/081-ors-proxy-ors-key-usage.patch b/patch_cjs/081-ors-proxy-ors-key-usage.patch
+deleted file mode 100644
+index ddeac3a..0000000
+--- a/patch_cjs/081-ors-proxy-ors-key-usage.patch
++++ /dev/null
+@@ -1,15 +0,0 @@
+-diff --git a/docs/railway_ors_proxy.md b/docs/railway_ors_proxy.md
+-index f53d42a..e116766 100644
+---- a/docs/railway_ors_proxy.md
+-+++ b/docs/railway_ors_proxy.md
+-@@ -34,6 +34,10 @@
+- - `CACHE_TTL_SEC` — время жизни кеша в секундах; по умолчанию 86400 (сутки).
+- - `ORS_BASE_URL` — при необходимости укажите альтернативный адрес OpenRouteService; по умолчанию используется `https://api.openrouteservice.org`.
+- 
+-+Параметр `ORS_BASE_URL` указывает только домен OpenRouteService: прокси сам добавляет пути `/v2/directions/{profile}` и `/v2/matrix/{profile}` при обращении к API. Не нужно вписывать путь до конкретного метода, достаточно оставить хост (`https://api.openrouteservice.org`).
+-+
+-+Ключ `ORS_API_KEY` прокси передаёт в заголовке `Authorization` при каждом запросе в OpenRouteService. Клиентам ключ знать не нужно: они работают с прокси по URL вида `https://<домен_railway>/route` или `/table` и передают только `X-Proxy-Token`. Если ответы приходят с `401`, убедитесь, что токен совпадает и переменные окружения прокси заполнены.
+-+
+- Если запросы отвечают кодом `401`, убедитесь, что клиенты отправляют заголовок `X-Proxy-Token` с тем же значением, что и в переменной `PROXY_TOKEN`, и что переменные действительно загрузились (видны в разделе **Variables** после деплоя).
+- 
+- После сохранения переменных запустите деплой вручную или дождитесь автосборки.
+diff --git a/patch_cjs/092-ors-proxy-token.cjs b/patch_cjs/092-ors-proxy-token.cjs
+deleted file mode 100644
+index 68a421e..0000000
+--- a/patch_cjs/092-ors-proxy-token.cjs
++++ /dev/null
+@@ -1,21 +0,0 @@
+-#!/usr/bin/env node
+-// patch: 092-ors-proxy-token.cjs
+-// purpose: добавить поддержку токена прокси в воркере и документацию по GEOCODER_URL
+-const fs = require('node:fs');
+-const path = require('node:path');
+-const { execSync } = require('node:child_process');
+-
+-const patchPath = path.resolve(__dirname, '092-ors-proxy-token.patch');
+-
+-if (!fs.existsSync(patchPath)) {
+-  throw new Error('Файл патча не найден: ' + patchPath);
+-}
+-
+-const patch = fs.readFileSync(patchPath, 'utf8');
+-
+-if (!patch.trim()) {
+-  console.log('Нет изменений для применения');
+-  process.exit(0);
+-}
+-
+-execSync('git apply -', { stdio: 'inherit', input: patch });
+diff --git a/patch_cjs/092-ors-proxy-token.patch b/patch_cjs/092-ors-proxy-token.patch
+deleted file mode 100644
+index afccf5c..0000000
+--- a/patch_cjs/092-ors-proxy-token.patch
++++ /dev/null
+@@ -1,87 +0,0 @@
+-diff --git a/apps/worker/README.md b/apps/worker/README.md
+-index 4e901ce..57a11a0 100644
+---- a/apps/worker/README.md
+-+++ b/apps/worker/README.md
+-@@ -17,7 +17,7 @@
+- - `QUEUE_REDIS_URL` — обязательная строка подключения к Redis.
+- - `QUEUE_PREFIX` — общий префикс ключей BullMQ.
+- - `QUEUE_ATTEMPTS`, `QUEUE_BACKOFF_MS`, `QUEUE_CONCURRENCY` — параметры повторов и параллелизма воркеров.
+--- `GEOCODER_ENABLED`, `GEOCODER_URL`, `GEOCODER_USER_AGENT`, `GEOCODER_EMAIL`, `GEOCODER_API_KEY` — управление вызовами геокодера (поддерживаются Nominatim и OpenRouteService `/geocode/search`).
+-+- `GEOCODER_ENABLED`, `GEOCODER_URL`, `GEOCODER_USER_AGENT`, `GEOCODER_EMAIL`, `GEOCODER_API_KEY`, `GEOCODER_PROXY_TOKEN` — управление вызовами геокодера (поддерживаются Nominatim и OpenRouteService `/geocode/search`, в том числе через наш прокси с токеном).
+- - `ROUTING_URL`, `OSRM_ALGORITHM` — настройки OSRM для расчёта расстояний.
+- - `LOG_LEVEL` — уровень логирования Pino.
+- 
+-@@ -37,5 +37,6 @@
+- 
+- - Геокодер можно временно отключить через `GEOCODER_ENABLED=0`, тогда маршрутизация продолжит работать.
+- - Для OpenRouteService укажите `GEOCODER_URL=https://api.openrouteservice.org/geocode/search` и ключ `GEOCODER_API_KEY` (или `ORS_API_KEY`).
+-+- Для работы через наш ORS Proxy задайте `GEOCODER_URL=http://<private_host_proxy>:5000/search` и `GEOCODER_PROXY_TOKEN=<PROXY_TOKEN>`, ключ `GEOCODER_API_KEY` не нужен: прокси сам ходит в ORS по `ORS_API_KEY`.
+- - Для продакшна используйте собственный Nominatim и OSRM, либо OpenRouteService Proxy с ключом, чтобы избежать лимитов публичных сервисов.
+- - При развёртывании на Railway Procfile уже включает процесс `worker`, достаточно передать переменные окружения очередей.
+-diff --git a/apps/worker/env.example b/apps/worker/env.example
+-index 0a76c34..f81b1ea 100644
+---- a/apps/worker/env.example
+-+++ b/apps/worker/env.example
+-@@ -15,6 +15,7 @@ GEOCODER_URL=https://nominatim.openstreetmap.org/search
+- GEOCODER_USER_AGENT=ERM Logistics geocoder (local)
+- GEOCODER_EMAIL=
+- GEOCODER_API_KEY=
+-+GEOCODER_PROXY_TOKEN=
+- 
+- # --- Маршрутизация ---
+- ROUTING_URL=https://router.project-osrm.org
+-diff --git a/apps/worker/src/config.ts b/apps/worker/src/config.ts
+-index e7e9c9f..60e1411 100644
+---- a/apps/worker/src/config.ts
+-+++ b/apps/worker/src/config.ts
+-@@ -94,6 +94,12 @@ const geocoderApiKeyRaw = (
+-   ''
+- ).trim();
+- const geocoderApiKey = geocoderApiKeyRaw || undefined;
+-+const geocoderProxyTokenRaw = (
+-+  process.env.GEOCODER_PROXY_TOKEN ||
+-+  process.env.PROXY_TOKEN ||
+-+  ''
+-+).trim();
+-+const geocoderProxyToken = geocoderProxyTokenRaw || undefined;
+- 
+- if (geocoderProvider === 'openrouteservice' && !geocoderApiKey) {
+-   logger.warn(
+-@@ -135,6 +141,7 @@ export const workerConfig = {
+-     userAgent: geocoderUserAgent,
+-     email: geocoderEmail,
+-     apiKey: geocoderApiKey,
+-+    proxyToken: geocoderProxyToken,
+-     provider: geocoderProvider,
+-   },
+-   routing: {
+-diff --git a/apps/worker/src/tasks/geocoding.ts b/apps/worker/src/tasks/geocoding.ts
+-index 61944a8..6e41941 100644
+---- a/apps/worker/src/tasks/geocoding.ts
+-+++ b/apps/worker/src/tasks/geocoding.ts
+-@@ -77,6 +77,10 @@ const prepareRequest = (
+-     'User-Agent': config.userAgent,
+-   };
+- 
+-+  if (config.proxyToken) {
+-+    headers['X-Proxy-Token'] = config.proxyToken;
+-+  }
+-+
+-   if (config.provider === 'openrouteservice') {
+-     if (!url.searchParams.has('size')) {
+-       url.searchParams.set('size', '1');
+-diff --git a/docs/railway_full_setup.md b/docs/railway_full_setup.md
+-index 307b4a4..9506c4c 100644
+---- a/docs/railway_full_setup.md
+-+++ b/docs/railway_full_setup.md
+-@@ -35,7 +35,9 @@
+- 1. Добавьте плагин **Redis** или подключите внешний инстанс, сохраните строку подключения в переменную `QUEUE_REDIS_URL` (поддерживаются схемы `redis://` и `rediss://`).
+- 2. При деплое основного приложения Procfile автоматически стартует `api`, `bot` и `worker` внутри одного сервиса через pm2 — отдельный билд не требуется, достаточно прокинуть переменные окружения очередей.
+- 3. Если хотите вынести очереди в отдельный процесс Railway, создайте дополнительный сервис из этого же репозитория и выберите команду `worker` из `Procfile.railway` (или задайте вручную `pnpm --filter worker run start`).
+--4. Установите переменные окружения для воркера: `QUEUE_REDIS_URL`, `QUEUE_PREFIX` (опционально), `GEOCODER_URL`/`GEOCODER_USER_AGENT`/`GEOCODER_EMAIL`/`GEOCODER_API_KEY`, `ROUTING_URL` и при необходимости `QUEUE_CONCURRENCY`. Для OpenRouteService Proxy используйте `GEOCODER_URL=https://api.openrouteservice.org/geocode/search` и ключ в `GEOCODER_API_KEY` или `ORS_API_KEY`.
+-+4. Установите переменные окружения для воркера: `QUEUE_REDIS_URL`, `QUEUE_PREFIX` (опционально), `GEOCODER_URL`/`GEOCODER_USER_AGENT`/`GEOCODER_EMAIL`/`GEOCODER_API_KEY`/`GEOCODER_PROXY_TOKEN`, `ROUTING_URL` и при необходимости `QUEUE_CONCURRENCY`.
+-+   - Прямое подключение к ORS: `GEOCODER_URL=https://api.openrouteservice.org/geocode/search` и ключ в `GEOCODER_API_KEY` или `ORS_API_KEY`.
+-+   - Через наш ORS Proxy: `GEOCODER_URL=http://<private_host_proxy>:5000/search`, `GEOCODER_PROXY_TOKEN=<PROXY_TOKEN>`, `GEOCODER_API_KEY` не нужен.
+- 5. После деплоя убедитесь, что на эндпоинте `/metrics` основного API появились метрики `bullmq_jobs_total` с состояниями `waiting`, `active`, `delayed`, `failed`, `completed`.
+- 
+- ## 5. Запуск и проверка
+diff --git a/railway.json b/railway.json
+index 55b127e..12b8a43 100644
+--- a/railway.json
++++ b/railway.json
+@@ -2,14 +2,5 @@
+   "$schema": "https://railway.app/railway.schema.json",
+   "build": {
+     "builder": "NIXPACKS"
+-  },
+-  "environments": {
+-    "ors-proxy": {
+-      "build": {
+-        "builder": "DOCKERFILE",
+-        "dockerfilePath": "tools/ors-proxy/Dockerfile",
+-        "watchPatterns": ["tools/ors-proxy/**"]
+-      }
+-    }
+   }
+ }
+diff --git a/tools/ors-proxy/.dockerignore b/tools/ors-proxy/.dockerignore
+deleted file mode 100644
+index ce29700..0000000
+--- a/tools/ors-proxy/.dockerignore
++++ /dev/null
+@@ -1,5 +0,0 @@
+-__pycache__
+-*.pyc
+-.venv
+-.env
+-*.log
+diff --git a/tools/ors-proxy/.env.example b/tools/ors-proxy/.env.example
+deleted file mode 100644
+index bcb145a..0000000
+--- a/tools/ors-proxy/.env.example
++++ /dev/null
+@@ -1,10 +0,0 @@
+-# Пример окружения для прокси OpenRouteService
+-# Значения замените на актуальные перед деплоем
+-
+-ORS_API_KEY=замените_на_ключ_openrouteservice
+-REDIS_URL=redis://default:пароль@хост:6379
+-PROXY_TOKEN=задайте_секретный_токен_для_X-Proxy-Token
+-
+-# Необязательные параметры
+-CACHE_TTL_SEC=86400
+-ORS_BASE_URL=https://api.openrouteservice.org
+diff --git a/tools/ors-proxy/Dockerfile b/tools/ors-proxy/Dockerfile
+deleted file mode 100644
+index d898636..0000000
+--- a/tools/ors-proxy/Dockerfile
++++ /dev/null
+@@ -1,10 +0,0 @@
+-FROM python:3.12-slim
+-WORKDIR /app
+-RUN apt-get update && apt-get install -y --no-install-recommends build-essential \
+-    && rm -rf /var/lib/apt/lists/*
+-COPY tools/ors-proxy/requirements.txt ./requirements.txt
+-RUN pip install --no-cache-dir -r requirements.txt
+-COPY tools/ors-proxy/ .
+-ENV PYTHONUNBUFFERED=1
+-EXPOSE 5000
+-CMD ["gunicorn", "-w", "4", "-b", "0.0.0.0:5000", "proxy:app"]
+diff --git a/tools/ors-proxy/proxy.py b/tools/ors-proxy/proxy.py
+deleted file mode 100644
+index e5256d4..0000000
+--- a/tools/ors-proxy/proxy.py
++++ /dev/null
+@@ -1,471 +0,0 @@
+-# tools/ors-proxy/proxy.py
+-"""Прокси OpenRouteService с кешированием в Redis и проверкой токена.
+-Добавлено:
+- - CORS (для тестирования фронтенда)
+- - Логирование входящих заголовков и координат
+- - Логирование тела ответа ORS при ошибках (чтобы понять 400/404)
+-"""
+-from __future__ import annotations
+-
+-import hashlib
+-import json
+-import logging
+-import os
+-import time
+-from typing import Any, Dict, List, Optional
+-
+-import redis
+-import requests
+-from flask import Flask, Response, jsonify, request
+-from flask_cors import CORS
+-
+-logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+-logger = logging.getLogger(__name__)
+-
+-ORS_API_KEY = os.getenv("ORS_API_KEY")
+-REDIS_URL = os.getenv("REDIS_URL")
+-CACHE_TTL_SEC = int(os.getenv("CACHE_TTL_SEC", "86400"))
+-PROXY_TOKEN = os.getenv("PROXY_TOKEN")
+-
+-if not ORS_API_KEY:
+-    raise RuntimeError("Требуется переменная окружения ORS_API_KEY")
+-if not REDIS_URL:
+-    raise RuntimeError("Требуется переменная окружения REDIS_URL")
+-if not PROXY_TOKEN:
+-    raise RuntimeError("Требуется переменная окружения PROXY_TOKEN")
+-
+-app = Flask(__name__)
+-
+-# Для отладки фронтенда разрешаем CORS только с домена фронтенда
+-CORS(
+-    app,
+-    origins=[os.getenv("FRONTEND_ORIGIN", "https://agromarket.up.railway.app")],
+-    allow_headers=["X-Proxy-Token", "Content-Type", "Authorization", "X-XSRF-TOKEN"],
+-    expose_headers=["Content-Type"],
+-)
+-
+-redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+-requests_session = requests.Session()
+-ORS_BASE_URL = os.getenv("ORS_BASE_URL", "https://api.openrouteservice.org")
+-LOCK_TTL_SEC = 30
+-LOCK_SLEEP_SEC = 0.25
+-LOCK_MAX_WAIT_SEC = 5
+-
+-OSRM_TO_ORS_PROFILE = {
+-    "driving": "driving-car",
+-    "driving-car": "driving-car",
+-    "cycling": "cycling-regular",
+-    "cycling-regular": "cycling-regular",
+-    "walking": "foot-walking",
+-    "foot": "foot-walking",
+-    "foot-walking": "foot-walking",
+-}
+-
+-
+-def _error(message: str, status: int = 400) -> Response:
+-    payload = {"error": message}
+-    return Response(json.dumps(payload), status=status, mimetype="application/json")
+-
+-
+-def _parse_point(raw: str) -> Optional[List[float]]:
+-    parts = [chunk.strip() for chunk in raw.split(",")]
+-    if len(parts) != 2:
+-        return None
+-    try:
+-        lon = float(parts[0])
+-        lat = float(parts[1])
+-    except ValueError:
+-        return None
+-    return [lon, lat]
+-
+-
+-def _parse_locations(raw: str) -> Optional[List[List[float]]]:
+-    separator = ";" if ";" in raw else "|" if "|" in raw else None
+-    coordinates = raw.split(separator) if separator else [raw]
+-    result: List[List[float]] = []
+-    for item in coordinates:
+-        point = _parse_point(item)
+-        if not point:
+-            return None
+-        result.append(point)
+-    return result if len(result) >= 2 else None
+-
+-
+-def _cache_key(name: str, payload: Dict[str, Any]) -> str:
+-    serialized = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+-    digest = hashlib.sha1(serialized.encode("utf-8")).hexdigest()
+-    return f"{name}:{digest}"
+-
+-
+-def _get_cached(key: str) -> Optional[str]:
+-    try:
+-        return redis_client.get(f"cache:{key}")
+-    except redis.RedisError:
+-        logger.warning("Не удалось прочитать кеш Redis", exc_info=True)
+-        return None
+-
+-
+-def _store_cache(key: str, value: str) -> None:
+-    try:
+-        redis_client.setex(f"cache:{key}", CACHE_TTL_SEC, value)
+-    except redis.RedisError:
+-        logger.warning("Не удалось сохранить ответ в кеш Redis", exc_info=True)
+-
+-
+-def _release_lock(lock_key: str) -> None:
+-    try:
+-        redis_client.delete(lock_key)
+-    except redis.RedisError:
+-        logger.warning("Не удалось снять блокировку в Redis", exc_info=True)
+-
+-
+-def _acquire_lock(cache_key: str) -> bool:
+-    lock_key = f"lock:{cache_key}"
+-    try:
+-        acquired = redis_client.set(lock_key, "1", nx=True, ex=LOCK_TTL_SEC)
+-        return bool(acquired)
+-    except redis.RedisError:
+-        logger.warning("Не удалось установить блокировку в Redis", exc_info=True)
+-        return True
+-
+-
+-def _wait_for_cache(cache_key: str) -> Optional[str]:
+-    deadline = time.time() + LOCK_MAX_WAIT_SEC
+-    while time.time() < deadline:
+-        cached = _get_cached(cache_key)
+-        if cached:
+-            return cached
+-        time.sleep(LOCK_SLEEP_SEC)
+-    return None
+-
+-
+-def _require_token() -> Optional[Response]:
+-    token = request.headers.get("X-Proxy-Token")
+-    if token != PROXY_TOKEN:
+-        logger.warning("Запрос без/с неверным X-Proxy-Token: headers=%s", dict(request.headers))
+-        return _error("Требуется корректный токен", status=401)
+-    return None
+-
+-
+-def _forward_response(resp: requests.Response) -> Response:
+-    content_type = resp.headers.get("Content-Type", "application/json")
+-    return Response(resp.content, status=resp.status_code, mimetype=content_type)
+-
+-
+-@app.route("/health", methods=["GET", "OPTIONS"])
+-def health() -> Response:
+-    return jsonify({"status": "ok"})
+-
+-
+-@app.route("/route", methods=["GET", "OPTIONS"])
+-def route() -> Response:
+-    if request.method == "OPTIONS":
+-        return Response(status=204)
+-
+-    auth_error = _require_token()
+-    if auth_error:
+-        return auth_error
+-
+-    start_raw = request.args.get("start")
+-    end_raw = request.args.get("end")
+-    profile = request.args.get("profile", "driving-car")
+-
+-    if not start_raw or not end_raw:
+-        return _error("Параметры start и end обязательны", status=400)
+-
+-    start_point = _parse_point(start_raw)
+-    end_point = _parse_point(end_raw)
+-    if not start_point or not end_point:
+-        return _error("Координаты должны быть в формате lon,lat", status=400)
+-
+-    cache_key = _cache_key(
+-        "route", {"profile": profile, "start": start_point, "end": end_point}
+-    )
+-
+-    cached = _get_cached(cache_key)
+-    if cached:
+-        return Response(cached, mimetype="application/json")
+-
+-    lock_key = f"lock:{cache_key}"
+-    lock_acquired = _acquire_lock(cache_key)
+-    if not lock_acquired:
+-        waited = _wait_for_cache(cache_key)
+-        if waited:
+-            return Response(waited, mimetype="application/json")
+-
+-    url = f"{ORS_BASE_URL}/v2/directions/{profile}"
+-    try:
+-        resp = requests_session.get(
+-            url,
+-            params={"start": start_raw, "end": end_raw},
+-            headers={"Authorization": ORS_API_KEY},
+-            timeout=60,
+-        )
+-    except requests.RequestException:
+-        _release_lock(lock_key)
+-        logger.exception("Ошибка запроса к OpenRouteService")
+-        return _error("Сервис маршрутизации недоступен", status=502)
+-
+-    if resp.ok:
+-        _store_cache(cache_key, resp.text)
+-    else:
+-        try:
+-            logger.error("ORS returned non-ok for /route", {"status": resp.status_code, "body": resp.text})
+-        except Exception:
+-            logger.exception("Не удалось логировать тело ответа ORS для /route")
+-    _release_lock(lock_key)
+-    return _forward_response(resp)
+-
+-
+-@app.route("/route/v1/<profile>/<coords>", methods=["GET", "OPTIONS"])
+-def route_osrm_style(profile: str, coords: str) -> Response:
+-    if request.method == "OPTIONS":
+-        return Response(status=204)
+-
+-    auth_error = _require_token()
+-    if auth_error:
+-        return auth_error
+-
+-    logger.info("Incoming OSRM route req: path=%s headers=%s", request.path, dict(request.headers))
+-
+-    locations = _parse_locations(coords)
+-    if not locations:
+-        return _error("Координаты должны быть в формате lon,lat;lon2,lat2;...", status=400)
+-
+-    ors_profile = OSRM_TO_ORS_PROFILE.get(profile, None)
+-    if not ors_profile:
+-        ors_profile = profile
+-
+-    cache_key = _cache_key("route_v1", {"profile": ors_profile, "locations": locations})
+-    cached = _get_cached(cache_key)
+-    if cached:
+-        return Response(cached, mimetype="application/json")
+-
+-    lock_key = f"lock:{cache_key}"
+-    lock_acquired = _acquire_lock(cache_key)
+-    if not lock_acquired:
+-        waited = _wait_for_cache(cache_key)
+-        if waited:
+-            return Response(waited, mimetype="application/json")
+-
+-    url = f"{ORS_BASE_URL}/v2/directions/{ors_profile}"
+-    payload = {
+-        "coordinates": locations,
+-        "instructions": True,
+-        "units": "m",
+-    }
+-    headers = {"Authorization": ORS_API_KEY, "Content-Type": "application/json"}
+-
+-    try:
+-        resp = requests_session.post(url, json=payload, headers=headers, timeout=60)
+-    except requests.RequestException:
+-        _release_lock(lock_key)
+-        logger.exception("Ошибка запроса к OpenRouteService (directions)")
+-        return _error("Сервис маршрутизации недоступен", status=502)
+-
+-    if not resp.ok:
+-        try:
+-            logger.error("ORS directions returned status", {"status": resp.status_code, "body": resp.text, "profile": ors_profile, "locations": locations})
+-        except Exception:
+-            logger.exception("Не удалось логировать тело ответа ORS (directions)")
+-        _release_lock(lock_key)
+-        return _forward_response(resp)
+-
+-    try:
+-        ors_json = resp.json()
+-    except Exception:
+-        _release_lock(lock_key)
+-        logger.exception("Не удалось распарсить ответ от ORS")
+-        return _error("Не удалось распарсить ответ от OpenRouteService", status=502)
+-
+-    route = None
+-    if "routes" in ors_json and isinstance(ors_json["routes"], list) and len(ors_json["routes"]) > 0:
+-        route = ors_json["routes"][0]
+-
+-    if not route:
+-        _release_lock(lock_key)
+-        result_body = json.dumps({"code": "NoRoute", "routes": []})
+-        _store_cache(cache_key, result_body)
+-        return Response(result_body, mimetype="application/json")
+-
+-    distance = None
+-    duration = None
+-    try:
+-        summary = route.get("summary", {})
+-        distance = summary.get("distance")
+-        duration = summary.get("duration")
+-        if distance is None or duration is None:
+-            segments = route.get("segments", []) or []
+-            if segments:
+-                distance = sum(seg.get("distance", 0) for seg in segments)
+-                duration = sum(seg.get("duration", 0) for seg in segments)
+-    except Exception:
+-        distance = None
+-        duration = None
+-
+-    geometry = route.get("geometry")
+-
+-    waypoints = []
+-    for idx, loc in enumerate(locations):
+-        waypoints.append({"location": loc, "name": ""})
+-
+-    osrm_like: Dict[str, Any] = {
+-        "code": "Ok",
+-        "routes": [
+-            {
+-                "distance": distance,
+-                "duration": duration,
+-                "geometry": geometry,
+-            }
+-        ],
+-        "waypoints": waypoints,
+-    }
+-
+-    result_body = json.dumps(osrm_like)
+-    _store_cache(cache_key, result_body)
+-    _release_lock(lock_key)
+-    return Response(result_body, mimetype="application/json")
+-
+-
+-@app.route("/table", methods=["GET", "POST", "OPTIONS"])
+-def table() -> Response:
+-    if request.method == "OPTIONS":
+-        return Response(status=204)
+-
+-    auth_error = _require_token()
+-    if auth_error:
+-        return auth_error
+-
+-    profile = request.args.get("profile", "driving-car")
+-    metrics_raw = request.args.get("metrics", "distance,duration")
+-    metrics = [metric.strip() for metric in metrics_raw.split(",") if metric.strip()]
+-
+-    if request.method == "POST":
+-        body = request.get_json(silent=True) or {}
+-        locations = body.get("locations")
+-    else:
+-        locations_raw = request.args.get("locations")
+-        if not locations_raw:
+-            return _error("Параметр locations обязателен", status=400)
+-        locations = _parse_locations(locations_raw)
+-
+-    if not locations or not isinstance(locations, list):
+-        return _error("Не удалось разобрать список координат", status=400)
+-
+-    cache_key = _cache_key(
+-        "table", {"profile": profile, "metrics": metrics, "locations": locations}
+-    )
+-
+-    cached = _get_cached(cache_key)
+-    if cached:
+-        return Response(cached, mimetype="application/json")
+-
+-    lock_key = f"lock:{cache_key}"
+-    lock_acquired = _acquire_lock(cache_key)
+-    if not lock_acquired:
+-        waited = _wait_for_cache(cache_key)
+-        if waited:
+-            return Response(waited, mimetype="application/json")
+-
+-    url = f"{ORS_BASE_URL}/v2/matrix/{profile}"
+-    payload = {"locations": locations, "metrics": metrics}
+-    try:
+-        resp = requests_session.post(
+-            url,
+-            json=payload,
+-            headers={"Authorization": ORS_API_KEY},
+-            timeout=60,
+-        )
+-    except requests.RequestException:
+-        _release_lock(lock_key)
+-        logger.exception("Ошибка запроса матрицы в OpenRouteService")
+-        return _error("Сервис построения матрицы недоступен", status=502)
+-
+-    if not resp.ok:
+-        try:
+-            logger.error("ORS matrix returned status", {"status": resp.status_code, "body": resp.text})
+-        except Exception:
+-            logger.exception("Не удалось логировать тело ответа ORS (matrix)")
+-    if resp.ok:
+-        _store_cache(cache_key, resp.text)
+-    _release_lock(lock_key)
+-    return _forward_response(resp)
+-
+-
+-@app.route("/search", methods=["GET", "OPTIONS"])
+-def search() -> Response:
+-    if request.method == "OPTIONS":
+-        return Response(status=204)
+-
+-    auth_error = _require_token()
+-    if auth_error:
+-        return auth_error
+-
+-    q = request.args.get("q") or request.args.get("text")
+-    if not q:
+-        return _error("Параметр q (или text) обязателен", status=400)
+-
+-    cache_key = _cache_key("geocode", {"q": q})
+-    cached = _get_cached(cache_key)
+-    if cached:
+-        return Response(cached, mimetype="application/json")
+-
+-    lock_acquired = _acquire_lock(cache_key)
+-    if not lock_acquired:
+-        waited = _wait_for_cache(cache_key)
+-        if waited:
+-            return Response(waited, mimetype="application/json")
+-
+-    url = f"{ORS_BASE_URL}/geocode/search"
+-    try:
+-        resp = requests_session.get(
+-            url,
+-            params={"text": q, "size": 1},
+-            headers={"Authorization": ORS_API_KEY},
+-            timeout=30,
+-        )
+-    except requests.RequestException:
+-        logger.exception("Ошибка запроса к OpenRouteService (geocode)")
+-        _release_lock(cache_key)
+-        return _error("Сервис геокодирования недоступен", status=502)
+-
+-    result_body = None
+-    if resp.ok:
+-        try:
+-            payload = resp.json()
+-            features = payload.get("features") or []
+-            if features and isinstance(features, list):
+-                feat = features[0]
+-                coords = feat.get("geometry", {}).get("coordinates", [])
+-                props = feat.get("properties", {}) or {}
+-                if coords and len(coords) >= 2:
+-                    lon = coords[0]
+-                    lat = coords[1]
+-                    display = props.get("label") or props.get("name") or props.get("locality") or props.get("region") or ""
+-                    nominatim_like = [{
+-                        "lat": str(lat),
+-                        "lon": str(lon),
+-                        "display_name": display,
+-                        "properties": props
+-                    }]
+-                    result_body = json.dumps(nominatim_like)
+-            if result_body is None:
+-                result_body = resp.text
+-            _store_cache(cache_key, result_body)
+-        except Exception:
+-            logger.exception("Не удалось распарсить ответ геокодера")
+-            result_body = resp.text
+-            _store_cache(cache_key, result_body)
+-    else:
+-        try:
+-            logger.error("ORS geocode returned status", {"status": resp.status_code, "body": resp.text})
+-        except Exception:
+-            logger.exception("Не удалось логировать тело ответа ORS (geocode)")
+-
+-    _release_lock(cache_key)
+-    return Response(result_body or json.dumps([]), mimetype="application/json")
+-
+-
+-if __name__ == "__main__":
+-    port = int(os.getenv("PORT", "5000"))
+-    app.run(host="0.0.0.0", port=port)
+diff --git a/tools/ors-proxy/requirements.txt b/tools/ors-proxy/requirements.txt
+deleted file mode 100644
+index a6a78c3..0000000
+--- a/tools/ors-proxy/requirements.txt
++++ /dev/null
+@@ -1,6 +0,0 @@
+-Flask>=2.2
+-Flask-Cors>=3.0
+-requests>=2.31
+-redis>=4.5
+-python-dotenv>=1.0
+-gunicorn>=20.1

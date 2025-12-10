@@ -47,12 +47,20 @@ jest.mock(
       <label>
         <span>{label}</span>
         <select
+          multiple
           data-testid="assignee"
-          value={value ?? ''}
-          onChange={(event) => onChange(event.target.value || null)}
+          value={(value as number[] | undefined)?.map(String) ?? []}
+          onChange={(event) => {
+            const selectedOptions = Array.from(event.target.selectedOptions);
+            const values = selectedOptions.length
+              ? selectedOptions.map((option) => Number(option.value))
+              : event.target.value
+                ? [Number(event.target.value)]
+                : [];
+            onChange(values);
+          }}
           onBlur={onBlur}
         >
-          <option value="">—</option>
           {users.map((user: any) => (
             <option key={user.telegram_id} value={String(user.telegram_id)}>
               {user.name ||
@@ -182,7 +190,7 @@ describe('TaskDialog', () => {
     await waitFor(() =>
       expect(updateTaskMock).toHaveBeenCalledWith(
         '1',
-        expect.objectContaining({ assigned_user_id: 1 }),
+        expect.objectContaining({ assigned_user_id: 1, assignees: [1] }),
       ),
     );
 
@@ -388,7 +396,12 @@ describe('TaskDialog', () => {
     )) as HTMLSelectElement;
     await screen.findByText('Alice');
     await act(async () => {
-      fireEvent.change(assigneeSelect, { target: { value: '1' } });
+      fireEvent.change(assigneeSelect, {
+        target: {
+          value: '1',
+          selectedOptions: [{ value: '1' }],
+        },
+      });
       await Promise.resolve();
     });
 
@@ -463,7 +476,12 @@ describe('TaskDialog', () => {
     const assigneeSelect = await screen.findByTestId('assignee');
     await screen.findByText('Alice');
     await act(async () => {
-      fireEvent.change(assigneeSelect, { target: { value: '2' } });
+      fireEvent.change(assigneeSelect, {
+        target: {
+          value: '2',
+          selectedOptions: [{ value: '2' }],
+        },
+      });
     });
 
     await clickSubmitButton();
@@ -473,6 +491,7 @@ describe('TaskDialog', () => {
         expect.objectContaining({
           title: 'Deliver docs',
           assigned_user_id: 2,
+          assignees: [2],
         }),
       ),
     );

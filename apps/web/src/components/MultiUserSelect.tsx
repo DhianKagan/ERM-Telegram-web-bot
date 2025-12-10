@@ -1,7 +1,7 @@
-// Назначение файла: компонент выбора одного пользователя.
+// Назначение файла: компонент выбора списка пользователей.
 // Модули: React, react-select
 import { useId, useMemo } from 'react';
-import Select from 'react-select';
+import Select, { type MultiValue } from 'react-select';
 
 interface Props {
   label: string;
@@ -11,8 +11,8 @@ interface Props {
     username?: string;
     telegram_username?: string | null;
   }[];
-  value: string | null;
-  onChange: (v: string | null) => void;
+  value: number[];
+  onChange: (v: number[]) => void;
   onBlur?: () => void;
   disabled?: boolean;
   required?: boolean;
@@ -36,13 +36,14 @@ export default function MultiUserSelect({
   const options = useMemo(
     () =>
       users.map((u) => ({
-        value: String(u.telegram_id),
-        label: u.name || u.telegram_username || u.username,
+        value: u.telegram_id,
+        label:
+          u.name || u.telegram_username || u.username || String(u.telegram_id),
       })),
     [users],
   );
   const selectId = useId();
-  const selected = options.find((o) => o.value === value) ?? null;
+  const selected = options.filter((o) => value.includes(o.value));
   const helperId = error
     ? `${selectId}-error`
     : hint
@@ -55,18 +56,17 @@ export default function MultiUserSelect({
         {required ? <span className="text-red-600"> *</span> : null}
       </label>
       <Select
+        isMulti
         isDisabled={disabled}
         options={options}
         value={selected}
         inputId={selectId}
         placeholder={placeholder ?? 'Выберите'}
         onChange={(val) => {
-          if (!val) {
-            onChange(null);
-            return;
-          }
-          const item = val as { value?: string } | null;
-          onChange(item?.value ?? null);
+          const list = (val as MultiValue<{ value: number }>).map(
+            (item) => item.value,
+          );
+          onChange(list);
         }}
         onBlur={onBlur}
         className="mt-1"

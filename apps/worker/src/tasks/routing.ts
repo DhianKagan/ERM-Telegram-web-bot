@@ -3,7 +3,13 @@
 import type { Coordinates, RouteDistanceJobResult } from 'shared';
 import type { WorkerConfig } from '../config';
 import { logger } from '../logger';
-import { normalizePointsString, precheckLocations, parsePointInput, LatLng, haversineDistanceMeters } from '../utils/geo';
+import {
+  normalizePointsString,
+  precheckLocations,
+  parsePointInput,
+  LatLng,
+  haversineDistanceMeters,
+} from '../utils/geo';
 
 const REQUEST_TIMEOUT_MS = Number(process.env.WORKER_ROUTE_TIMEOUT_MS || '30000'); // 30s default
 
@@ -18,6 +24,14 @@ const buildRouteUrl = (
   config: WorkerConfig['routing'],
   coordsStr: string,
 ): URL => {
+  // Защита от случая, когда baseUrl отсутствует — в таком случае вызовы маршрутизации
+  // не должны происходить (config.enabled должен быть false), но для безопасности
+  // и корректности типов проверяем это явно.
+  if (!config.baseUrl) {
+    throw new Error('Routing baseUrl is not configured');
+  }
+
+  // Теперь compiler знает, что baseUrl — строка
   const base = new URL(config.baseUrl);
   const normalizedPath = base.pathname.replace(/\/+$/, '');
   base.pathname = `${normalizedPath}/${coordsStr}`;
@@ -78,7 +92,15 @@ export const calculateRouteDistance = async (
   }
 
   const normalizedCoords = locations.map((p) => `${p[0]},${p[1]}`).join(';');
-  const url = buildRouteUrl(config, normalizedCoords);
+
+  // buildRouteUrl теперь безопасно проверяет наличие baseUrl
+  let url: URL;
+  try {
+    url = buildRouteUrl(config, normalizedCoords);
+  } catch (err) {
+    logger.warn({ err, config }, 'calculateRouteDistance: routing baseUrl missing or invalid');
+    return { distanceKm: null };
+  }
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);

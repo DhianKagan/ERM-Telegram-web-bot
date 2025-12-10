@@ -31,8 +31,10 @@ import {
   updateCollectionItem,
   removeCollectionItem,
   CollectionItem,
+  toCollectionObject,
+  fetchCollectionObjects,
 } from '../../services/collections';
-import CollectionForm from './CollectionForm';
+import CollectionForm, { CollectionFormState } from './CollectionForm';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import EmployeeCardForm from '../../components/EmployeeCardForm';
 import Modal from '../../components/Modal';
@@ -45,6 +47,7 @@ import StoragePage from '../Storage';
 import HealthCheckTab from './HealthCheckTab';
 import {
   collectionColumns,
+  collectionObjectColumns,
   type CollectionTableRow,
 } from '../../columns/collectionColumns';
 import { settingsUserColumns } from '../../columns/settingsUserColumns';
@@ -86,6 +89,7 @@ import {
   DocumentTextIcon,
   RectangleStackIcon,
   ShieldCheckIcon,
+  MapPinIcon,
 } from '@heroicons/react/24/outline';
 
 const moduleTabs = [
@@ -149,6 +153,11 @@ const types = [
     description: 'Роли и рабочие позиции',
   },
   {
+    key: 'objects',
+    label: 'Объект',
+    description: 'Адреса и координаты площадок',
+  },
+  {
     key: 'employees',
     label: 'Сотрудник',
     description: 'Карточки и доступы сотрудников',
@@ -196,6 +205,15 @@ const emptyUser: UserFormData = {
   positionId: '',
 };
 
+const emptyItemForm: ItemForm = {
+  name: '',
+  value: '',
+  meta: undefined,
+  address: '',
+  latitude: '',
+  longitude: '',
+};
+
 const tabIcons: Record<
   CollectionKey,
   React.ComponentType<React.SVGProps<SVGSVGElement>>
@@ -203,6 +221,7 @@ const tabIcons: Record<
   departments: BuildingOffice2Icon,
   divisions: Squares2X2Icon,
   positions: IdentificationIcon,
+  objects: MapPinIcon,
   employees: UserGroupIcon,
   fleets: TruckIcon,
   users: KeyIcon,
@@ -232,11 +251,7 @@ const renderBadgeList = (items: string[]) => {
   );
 };
 
-interface ItemForm {
-  _id?: string;
-  name: string;
-  value: string;
-}
+type ItemForm = CollectionFormState & { meta?: CollectionItem['meta'] };
 
 const normalizeId = (value: string) => {
   const trimmed = value.trim();
@@ -905,7 +920,9 @@ const USER_DELETE_ERROR = 'Не удалось удалить пользоват
 const EMPLOYEE_DELETE_SUCCESS = 'Сотрудник удалён';
 const EMPLOYEE_DELETE_ERROR = 'Не удалось удалить сотрудника';
 
-type CollectionColumn = (typeof collectionColumns)[number];
+type CollectionColumn =
+  | (typeof collectionColumns)[number]
+  | (typeof collectionObjectColumns)[number];
 
 const hasAccessorKey = (
   column: CollectionColumn,
@@ -930,7 +947,7 @@ export default function CollectionsPage() {
   const [searchDrafts, setSearchDrafts] = useState<
     Record<CollectionKey, string>
   >(() => createInitialQueries());
-  const [form, setForm] = useState<ItemForm>({ name: '', value: '' });
+  const [form, setForm] = useState<ItemForm>(emptyItemForm);
   const [hint, setHint] = useState('');
   const [allDepartments, setAllDepartments] = useState<CollectionItem[]>([]);
   const [allDivisions, setAllDivisions] = useState<CollectionItem[]>([]);
@@ -1016,6 +1033,14 @@ export default function CollectionsPage() {
     return { readonly, notice };
   }, [selectedCollection]);
 
+  const selectedObjectDetails = useMemo(
+    () =>
+      selectedCollection?.type === 'objects'
+        ? toCollectionObject(selectedCollection)
+        : null,
+    [selectedCollection],
+  );
+
   const breadcrumbs = useMemo(
     () => [
       { label: t('nav.settings'), href: '/settings' },
@@ -1088,6 +1113,14 @@ export default function CollectionsPage() {
         const list = await fetchAllCollectionItems('employees');
         setItems(list);
         setTotal(list.length);
+        setHint('');
+        return;
+      }
+      if (active === 'objects') {
+        const { items: loadedItems, total: loadedTotal } =
+          await fetchCollectionObjects(currentQuery, page, limit);
+        setItems(loadedItems);
+        setTotal(loadedTotal);
         setHint('');
         return;
       }
@@ -1347,7 +1380,7 @@ export default function CollectionsPage() {
     if (active !== 'users' && active !== 'tasks') {
       void load();
       if (active !== 'fleets') {
-        setForm({ name: '', value: '' });
+        setForm(emptyItemForm);
       }
     } else {
       setHint('');
@@ -1385,10 +1418,30 @@ export default function CollectionsPage() {
 
   const openCollectionModal = (item?: CollectionItem) => {
     if (item) {
-      setForm({ _id: item._id, name: item.name, value: item.value });
+      if (item.type === 'objects') {
+        const object = toCollectionObject(item);
+        setForm({
+          _id: object._id,
+          name: object.name,
+          value: object.address,
+          meta: object.meta,
+          address: object.address,
+          latitude:
+            object.latitude !== undefined ? object.latitude.toString() : '',
+          longitude:
+            object.longitude !== undefined ? object.longitude.toString() : '',
+        });
+      } else {
+        setForm({
+          _id: item._id,
+          name: item.name,
+          value: item.value,
+          meta: item.meta,
+        });
+      }
       setSelectedCollection(item);
     } else {
-      setForm({ name: '', value: '' });
+      setForm(emptyItemForm);
       setSelectedCollection(null);
     }
     setCollectionModalOpen(true);
@@ -1397,7 +1450,7 @@ export default function CollectionsPage() {
   const closeCollectionModal = () => {
     setCollectionModalOpen(false);
     setSelectedCollection(null);
-    setForm({ name: '', value: '' });
+    setForm(emptyItemForm);
   };
 
   const mapUserToForm = (user?: User): UserFormData => ({
@@ -1571,8 +1624,32 @@ export default function CollectionsPage() {
       return;
     }
     let valueToSave = form.value;
+    let metaToSave: Record<string, unknown> | undefined;
     if (active === 'departments') {
       valueToSave = safeParseIds(form.value).join(',');
+    } else if (active === 'objects') {
+      const address = (form.address ?? form.value ?? '').trim();
+      if (!address) {
+        setHint('Укажите адрес объекта.');
+        return;
+      }
+      valueToSave = address;
+      const latitude = parseCoordinateInput(form.latitude);
+      const longitude = parseCoordinateInput(form.longitude);
+      const meta: Record<string, unknown> = {
+        ...(form.meta ?? {}),
+        address,
+      };
+      if (latitude !== undefined) {
+        meta.latitude = latitude;
+      }
+      if (longitude !== undefined) {
+        meta.longitude = longitude;
+      }
+      if (latitude !== undefined || longitude !== undefined) {
+        meta.location = { lat: latitude, lng: longitude };
+      }
+      metaToSave = meta;
     } else {
       valueToSave = form.value.trim();
       if (!valueToSave) {
@@ -1582,20 +1659,17 @@ export default function CollectionsPage() {
     }
     try {
       let saved: CollectionItem | null = null;
+      const payload = {
+        name: trimmedName,
+        value: valueToSave,
+        ...(metaToSave ? { meta: metaToSave } : {}),
+      };
       if (form._id) {
-        saved = await updateCollectionItem(
-          form._id,
-          {
-            name: trimmedName,
-            value: valueToSave,
-          },
-          { collectionType: active },
-        );
-      } else {
-        saved = await createCollectionItem(active, {
-          name: trimmedName,
-          value: valueToSave,
+        saved = await updateCollectionItem(form._id, payload, {
+          collectionType: active,
         });
+      } else {
+        saved = await createCollectionItem(active, payload);
       }
       if (!saved) {
         throw new Error('Сервер не вернул сохранённый элемент');
@@ -1764,10 +1838,28 @@ export default function CollectionsPage() {
           ? formatCollectionRawValue(divisionName)
           : SETTINGS_BADGE_EMPTY;
       }
+      if (type === 'objects') {
+        const object = toCollectionObject(item);
+        const coordinates = formatCoordinates(
+          object.latitude,
+          object.longitude,
+        );
+        if (coordinates !== SETTINGS_BADGE_EMPTY) {
+          return coordinates;
+        }
+        const address = object.address?.trim();
+        return address || SETTINGS_BADGE_EMPTY;
+      }
       const formatted = formatCollectionRawValue(item.value ?? '');
       return formatted || SETTINGS_BADGE_EMPTY;
     },
-    [allDepartments, allDivisions, departmentMap, divisionMap],
+    [
+      allDepartments,
+      allDivisions,
+      departmentMap,
+      divisionMap,
+      formatCoordinates,
+    ],
   );
 
   const formatMetaSummary = useCallback((meta?: CollectionItem['meta']) => {
@@ -1776,12 +1868,35 @@ export default function CollectionsPage() {
     return summary || SETTINGS_BADGE_EMPTY;
   }, []);
 
+  const formatCoordinates = useCallback(
+    (latitude?: number, longitude?: number) => {
+      const parts: string[] = [];
+      if (typeof latitude === 'number' && Number.isFinite(latitude)) {
+        parts.push(latitude.toString());
+      }
+      if (typeof longitude === 'number' && Number.isFinite(longitude)) {
+        parts.push(longitude.toString());
+      }
+      if (!parts.length) return SETTINGS_BADGE_EMPTY;
+      return parts.join(', ');
+    },
+    [],
+  );
+
+  const parseCoordinateInput = useCallback((value?: string) => {
+    if (!value) return undefined;
+    const trimmed = value.trim();
+    if (!trimmed) return undefined;
+    const parsed = Number.parseFloat(trimmed);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  }, []);
+
   const copyIdLabel = t('collections.actions.copyId');
   const copiedIdLabel = t('collections.actions.copiedId');
 
-  const localizedCollectionColumns = useMemo(
-    () =>
-      collectionColumns.map((column) => {
+  const localizeColumns = useCallback(
+    (columns: CollectionColumn[]) =>
+      columns.map((column) => {
         if (!hasAccessorKey(column)) {
           return column;
         }
@@ -1825,11 +1940,31 @@ export default function CollectionsPage() {
               ...column,
               header: t('collections.table.columns.meta'),
             };
+          case 'address':
+            return {
+              ...column,
+              header: t('collections.table.columns.address'),
+            };
+          case 'coordinates':
+            return {
+              ...column,
+              header: t('collections.table.columns.coordinates'),
+            };
           default:
             return column;
         }
       }),
     [copiedIdLabel, copyIdLabel, t],
+  );
+
+  const localizedCollectionColumns = useMemo(
+    () => localizeColumns(collectionColumns),
+    [localizeColumns],
+  );
+
+  const localizedObjectColumns = useMemo(
+    () => localizeColumns(collectionObjectColumns),
+    [localizeColumns],
   );
 
   const collectionSearchPlaceholder = t('collections.search.placeholder');
@@ -1966,6 +2101,62 @@ export default function CollectionsPage() {
       </select>
     ),
     [allDivisions],
+  );
+
+  const renderObjectValueField = useCallback(
+    (
+      currentForm: ItemForm,
+      handleChange: (next: ItemForm) => void,
+      options?: { readonly?: boolean },
+    ) => {
+      const readonly = options?.readonly;
+      const addressValue = currentForm.address ?? currentForm.value;
+      return (
+        <div className="space-y-2">
+          <input
+            className="h-10 w-full rounded border px-3"
+            value={addressValue}
+            placeholder="Адрес объекта"
+            onChange={(event) =>
+              handleChange({
+                ...currentForm,
+                address: event.target.value,
+                value: event.target.value,
+              })
+            }
+            required
+            disabled={readonly}
+          />
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            <input
+              className="h-10 w-full rounded border px-3"
+              value={currentForm.latitude ?? ''}
+              placeholder="Широта"
+              onChange={(event) =>
+                handleChange({
+                  ...currentForm,
+                  latitude: event.target.value,
+                })
+              }
+              disabled={readonly}
+            />
+            <input
+              className="h-10 w-full rounded border px-3"
+              value={currentForm.longitude ?? ''}
+              placeholder="Долгота"
+              onChange={(event) =>
+                handleChange({
+                  ...currentForm,
+                  longitude: event.target.value,
+                })
+              }
+              disabled={readonly}
+            />
+          </div>
+        </div>
+      );
+    },
+    [],
   );
 
   const totalPages = Math.ceil(total / limit) || 1;
@@ -2390,14 +2581,29 @@ export default function CollectionsPage() {
             {types.map((type) => {
               const isActiveTab = type.key === active;
               const rows: CollectionTableRow[] = isActiveTab
-                ? items.map((item) => ({
-                    ...item,
-                    displayValue: getItemDisplayValue(
-                      item,
-                      type.key as CollectionKey,
-                    ),
-                    metaSummary: formatMetaSummary(item.meta),
-                  }))
+                ? items.map((item) => {
+                    if (type.key === 'objects') {
+                      const object = toCollectionObject(item);
+                      return {
+                        ...item,
+                        address: object.address,
+                        coordinates: formatCoordinates(
+                          object.latitude,
+                          object.longitude,
+                        ),
+                        displayValue: object.address || SETTINGS_BADGE_EMPTY,
+                        metaSummary: formatMetaSummary(item.meta),
+                      };
+                    }
+                    return {
+                      ...item,
+                      displayValue: getItemDisplayValue(
+                        item,
+                        type.key as CollectionKey,
+                      ),
+                      metaSummary: formatMetaSummary(item.meta),
+                    };
+                  })
                 : [];
               const columnsForType =
                 type.key === 'departments'
@@ -2406,7 +2612,9 @@ export default function CollectionsPage() {
                     ? divisionColumns
                     : type.key === 'positions'
                       ? positionColumns
-                      : localizedCollectionColumns;
+                      : type.key === 'objects'
+                        ? localizedObjectColumns
+                        : localizedCollectionColumns;
 
               if (type.key === 'users') {
                 const showEmpty = paginatedUsers.length === 0;
@@ -2644,6 +2852,54 @@ export default function CollectionsPage() {
                       </div>
                     </dl>
                   </>
+                ) : selectedCollection.type === 'objects' &&
+                  selectedObjectDetails ? (
+                  <>
+                    <h3 className="text-base font-semibold">
+                      Информация об объекте
+                    </h3>
+                    <dl className="mt-2 space-y-3 text-sm">
+                      <div className="flex justify-between gap-4">
+                        <dt className="font-medium text-slate-500">ID</dt>
+                        <dd className="text-right text-slate-900">
+                          {selectedCollection._id}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <dt className="font-medium text-slate-500">Название</dt>
+                        <dd className="text-right text-slate-900">
+                          {selectedCollection.name}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <dt className="font-medium text-slate-500">Адрес</dt>
+                        <dd className="text-right text-slate-900">
+                          {selectedObjectDetails.address || '—'}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <dt className="font-medium text-slate-500">
+                          Координаты
+                        </dt>
+                        <dd className="text-right text-slate-900">
+                          {formatCoordinates(
+                            selectedObjectDetails.latitude,
+                            selectedObjectDetails.longitude,
+                          )}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="font-medium text-slate-500">Meta</dt>
+                        <dd className="mt-1">
+                          <pre className="max-h-48 overflow-auto rounded bg-white p-2 text-xs text-slate-800">
+                            {selectedCollection.meta
+                              ? JSON.stringify(selectedCollection.meta, null, 2)
+                              : '{}'}
+                          </pre>
+                        </dd>
+                      </div>
+                    </dl>
+                  </>
                 ) : (
                   <>
                     <h3 className="text-base font-semibold">
@@ -2694,7 +2950,7 @@ export default function CollectionsPage() {
               onChange={setForm}
               onSubmit={submit}
               onDelete={remove}
-              onReset={() => setForm({ name: '', value: '' })}
+              onReset={() => setForm(emptyItemForm)}
               valueLabel={
                 active === 'departments'
                   ? 'Отделы'
@@ -2702,7 +2958,9 @@ export default function CollectionsPage() {
                     ? 'Департамент'
                     : active === 'positions'
                       ? 'Отдел'
-                      : undefined
+                      : active === 'objects'
+                        ? 'Адрес'
+                        : undefined
               }
               renderValueField={
                 active === 'departments'
@@ -2711,7 +2969,9 @@ export default function CollectionsPage() {
                     ? renderDivisionValueField
                     : active === 'positions'
                       ? renderPositionValueField
-                      : undefined
+                      : active === 'objects'
+                        ? renderObjectValueField
+                        : undefined
               }
               readonly={selectedCollectionInfo.readonly}
               readonlyNotice={selectedCollectionInfo.notice}

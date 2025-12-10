@@ -1,0 +1,1170 @@
+diff --git a/apps/web/src/columns/collectionColumns.tsx b/apps/web/src/columns/collectionColumns.tsx
+index 70d4ba8..d9765f0 100644
+--- a/apps/web/src/columns/collectionColumns.tsx
++++ b/apps/web/src/columns/collectionColumns.tsx
+@@ -6,6 +6,8 @@ import type { CollectionItem } from '../services/collections';
+ export interface CollectionTableRow extends CollectionItem {
+   displayValue: string;
+   metaSummary: string;
++  address?: string;
++  coordinates?: string;
+ }
+ 
+ export const collectionColumns: ColumnDef<CollectionTableRow>[] = [
+@@ -40,3 +42,26 @@ export const collectionColumns: ColumnDef<CollectionTableRow>[] = [
+     meta: { minWidth: '10rem', maxWidth: '24rem' },
+   },
+ ];
++
++export const collectionObjectColumns: ColumnDef<CollectionTableRow>[] = [
++  {
++    accessorKey: 'name',
++    header: 'Название',
++    meta: { minWidth: '8rem', maxWidth: '16rem' },
++  },
++  {
++    accessorKey: 'address',
++    header: 'Адрес',
++    meta: { minWidth: '10rem', maxWidth: '20rem' },
++  },
++  {
++    accessorKey: 'coordinates',
++    header: 'Координаты',
++    meta: { minWidth: '8rem', maxWidth: '14rem' },
++  },
++  {
++    accessorKey: '_id',
++    header: 'Идентификатор',
++    meta: { minWidth: '10rem', maxWidth: '16rem' },
++  },
++];
+diff --git a/apps/web/src/locales/en/translation.json b/apps/web/src/locales/en/translation.json
+index 5441814..bc6e4ee 100644
+--- a/apps/web/src/locales/en/translation.json
++++ b/apps/web/src/locales/en/translation.json
+@@ -30,9 +30,11 @@
+     },
+     "table": {
+       "columns": {
+-        "name": "Name",
+-        "value": "Value",
+-        "relations": "Related data",
++    "name": "Name",
++    "value": "Value",
++    "address": "Address",
++    "coordinates": "Coordinates",
++    "relations": "Related data",
+         "type": "Type",
+         "id": "ID",
+         "meta": "Additional info"
+diff --git a/apps/web/src/locales/ru/translation.json b/apps/web/src/locales/ru/translation.json
+index dca780a..425fb6e 100644
+--- a/apps/web/src/locales/ru/translation.json
++++ b/apps/web/src/locales/ru/translation.json
+@@ -30,11 +30,13 @@
+     },
+     "table": {
+       "columns": {
+-        "name": "Название",
+-        "value": "Значение",
+-        "relations": "Связанные данные",
+-        "type": "Тип",
+-        "id": "ID",
++      "name": "Название",
++      "value": "Значение",
++      "address": "Адрес",
++      "coordinates": "Координаты",
++      "relations": "Связанные данные",
++      "type": "Тип",
++      "id": "ID",
+         "meta": "Доп. сведения"
+       },
+       "empty": {
+diff --git a/apps/web/src/locales/uk/translation.json b/apps/web/src/locales/uk/translation.json
+index 765d259..1eb5b1d 100644
+--- a/apps/web/src/locales/uk/translation.json
++++ b/apps/web/src/locales/uk/translation.json
+@@ -19,9 +19,11 @@
+     },
+     "table": {
+       "columns": {
+-        "name": "Назва",
+-        "value": "Значення",
+-        "relations": "Пов'язані дані",
++    "name": "Назва",
++    "value": "Значення",
++    "address": "Адреса",
++    "coordinates": "Координати",
++    "relations": "Пов'язані дані",
+         "type": "Тип",
+         "id": "ID",
+         "meta": "Дод. відомості"
+diff --git a/apps/web/src/pages/Settings/CollectionForm.tsx b/apps/web/src/pages/Settings/CollectionForm.tsx
+index a7226b4..6bccd28 100644
+--- a/apps/web/src/pages/Settings/CollectionForm.tsx
++++ b/apps/web/src/pages/Settings/CollectionForm.tsx
+@@ -5,22 +5,26 @@ import React from 'react';
+ import { Button } from '@/components/ui/button';
+ import ConfirmDialog from '../../components/ConfirmDialog';
+ 
+-interface ItemForm {
++export interface CollectionFormState {
+   _id?: string;
+   name: string;
+   value: string;
++  meta?: Record<string, unknown>;
++  address?: string;
++  latitude?: string;
++  longitude?: string;
+ }
+ 
+ interface Props {
+-  form: ItemForm;
+-  onChange: (form: ItemForm) => void;
++  form: CollectionFormState;
++  onChange: (form: CollectionFormState) => void;
+   onSubmit: () => void;
+   onDelete: () => void;
+   onReset: () => void;
+   valueLabel?: string;
+   renderValueField?: (
+-    form: ItemForm,
+-    onChange: (form: ItemForm) => void,
++    form: CollectionFormState,
++    onChange: (form: CollectionFormState) => void,
+     options?: { readonly?: boolean },
+   ) => React.ReactNode;
+   readonly?: boolean;
+diff --git a/apps/web/src/pages/Settings/CollectionsPage.test.tsx b/apps/web/src/pages/Settings/CollectionsPage.test.tsx
+index 9d2a9b4..0efd6b4 100644
+--- a/apps/web/src/pages/Settings/CollectionsPage.test.tsx
++++ b/apps/web/src/pages/Settings/CollectionsPage.test.tsx
+@@ -40,13 +40,18 @@ const extractHeaderText = (header: unknown): string => {
+   return '';
+ };
+ 
+-jest.mock('../../services/collections', () => ({
+-  fetchCollectionItems: jest.fn(),
+-  fetchAllCollectionItems: jest.fn(),
+-  createCollectionItem: jest.fn(),
+-  updateCollectionItem: jest.fn(),
+-  removeCollectionItem: jest.fn(),
+-}));
++jest.mock('../../services/collections', () => {
++  const actual = jest.requireActual('../../services/collections');
++  return {
++    ...actual,
++    fetchCollectionItems: jest.fn(),
++    fetchAllCollectionItems: jest.fn(),
++    fetchCollectionObjects: jest.fn(),
++    createCollectionItem: jest.fn(),
++    updateCollectionItem: jest.fn(),
++    removeCollectionItem: jest.fn(),
++  };
++});
+ 
+ jest.mock('../../services/users', () => ({
+   fetchUsers: jest.fn().mockResolvedValue([]),
+@@ -221,11 +226,48 @@ jest.mock('./CollectionForm', () => ({
+     form,
+     onChange,
+     onSubmit,
++    onDelete,
++    onReset,
++    renderValueField,
+     readonly,
+   }: {
+-    form: { _id?: string; name: string; value?: string };
+-    onChange: (next: { _id?: string; name: string; value?: string }) => void;
++    form: {
++      _id?: string;
++      name: string;
++      value?: string;
++      address?: string;
++      latitude?: string;
++      longitude?: string;
++    };
++    onChange: (next: {
++      _id?: string;
++      name: string;
++      value?: string;
++      address?: string;
++      latitude?: string;
++      longitude?: string;
++    }) => void;
+     onSubmit: () => void;
++    onDelete?: () => void;
++    onReset?: () => void;
++    renderValueField?: (
++      form: {
++        _id?: string;
++        name: string;
++        value?: string;
++        address?: string;
++        latitude?: string;
++        longitude?: string;
++      },
++      onChange: (next: {
++        _id?: string;
++        name: string;
++        value?: string;
++        address?: string;
++        latitude?: string;
++        longitude?: string;
++      }) => void,
++    ) => React.ReactNode;
+     readonly?: boolean;
+     readonlyNotice?: string;
+   }) => (
+@@ -249,20 +291,32 @@ jest.mock('./CollectionForm', () => ({
+         }
+         disabled={readonly}
+       />
+-      <input
+-        data-testid="collection-value"
+-        id="test-collection-value"
+-        name="collectionValue"
+-        value={form?.value ?? ''}
+-        onChange={(event) =>
+-          onChange({
+-            ...(form ?? { name: '', value: '' }),
+-            value: event.target.value,
+-          })
+-        }
+-        disabled={readonly}
+-      />
++      <div data-testid="collection-value">
++        {renderValueField ? (
++          renderValueField(form, onChange, { readonly })
++        ) : (
++          <input
++            data-testid="collection-value"
++            id="test-collection-value"
++            name="collectionValue"
++            value={form?.value ?? ''}
++            onChange={(event) =>
++              onChange({
++                ...(form ?? { name: '', value: '' }),
++                value: event.target.value,
++              })
++            }
++            disabled={readonly}
++          />
++        )}
++      </div>
+       <button type="submit">Сохранить</button>
++      <button type="button" onClick={onReset}>
++        Очистить
++      </button>
++      <button type="button" onClick={onDelete}>
++        Удалить
++      </button>
+     </form>
+   ),
+ }));
+@@ -278,6 +332,9 @@ describe('CollectionsPage', () => {
+   const mockedFetchAll = fetchAllCollectionItems as jest.MockedFunction<
+     typeof fetchAllCollectionItems
+   >;
++  const mockedFetchObjects = fetchCollectionObjects as jest.MockedFunction<
++    typeof fetchCollectionObjects
++  >;
+   const mockedCreate = createCollectionItem as jest.MockedFunction<
+     typeof createCollectionItem
+   >;
+@@ -324,6 +381,20 @@ describe('CollectionsPage', () => {
+       },
+       финансы: { items: [], total: 0 },
+     },
++    objects: {
++      '': {
++        items: [
++          {
++            _id: 'obj-1',
++            type: 'objects',
++            name: 'Склад Левый берег',
++            value: '',
++            meta: { address: 'Киев, Береговая 1', latitude: 50.5, longitude: 30.6 },
++          },
++        ],
++        total: 1,
++      },
++    },
+     employees: {
+       '': {
+         items: [
+@@ -352,6 +423,7 @@ describe('CollectionsPage', () => {
+   beforeEach(() => {
+     mockedFetch.mockReset();
+     mockedFetchAll.mockReset();
++    mockedFetchObjects.mockReset();
+     mockedCreate.mockReset();
+     mockedFetchUsers.mockReset();
+     mockedFetch.mockImplementation(async (type: string, search = '') => {
+@@ -364,6 +436,12 @@ describe('CollectionsPage', () => {
+       const defaultEntry = byType[''] ?? { items: [] };
+       return (defaultEntry.items ?? []) as CollectionItem[];
+     });
++    mockedFetchObjects.mockImplementation(async (search = '') => {
++      const byType = dataset.objects ?? {};
++      const key = search || '';
++      const entry = byType[key] ?? byType[''] ?? { items: [], total: 0 };
++      return entry;
++    });
+     mockedFetchUsers.mockResolvedValue([]);
+   });
+ 
+@@ -902,6 +980,34 @@ describe('CollectionsPage', () => {
+     expect(within(employeesPanel).getByText('Петров Иван')).toBeInTheDocument();
+   });
+ 
++  it('отображает вкладку объектов с адресом и координатами', async () => {
++    renderCollectionsPage();
++
++    const objectsTab = screen.getByRole('tab', { name: 'Объект' });
++    fireEvent.click(objectsTab);
++
++    const objectsPanel = await screen.findByTestId('tab-content-objects');
++    const headers = within(objectsPanel).getAllByTestId('column-header');
++
++    expect(headers.map((header) => header.textContent)).toEqual(
++      expect.arrayContaining(['Название', 'Адрес', 'Координаты', 'ID']),
++    );
++
++    const firstRow = within(objectsPanel).getByTestId('data-table-row-0');
++    expect(within(firstRow).getByText('Склад Левый берег')).toBeInTheDocument();
++    expect(within(firstRow).getByText('Киев, Береговая 1')).toBeInTheDocument();
++    expect(within(firstRow).getByText('50.5, 30.6')).toBeInTheDocument();
++
++    fireEvent.click(firstRow);
++
++    await screen.findByText('Информация об объекте');
++    expect(screen.getByPlaceholderText('Адрес объекта')).toHaveValue(
++      'Киев, Береговая 1',
++    );
++    expect(screen.getByPlaceholderText('Широта')).toHaveValue('50.5');
++    expect(screen.getByPlaceholderText('Долгота')).toHaveValue('30.6');
++  });
++
+   it('показывает подсказку, если департамент сохраняют без отделов', async () => {
+     const { parseErrorMessage } = jest.requireActual(
+       '../../services/collections',
+diff --git a/apps/web/src/pages/Settings/CollectionsPage.tsx b/apps/web/src/pages/Settings/CollectionsPage.tsx
+index e30abac..bff1f52 100644
+--- a/apps/web/src/pages/Settings/CollectionsPage.tsx
++++ b/apps/web/src/pages/Settings/CollectionsPage.tsx
+@@ -31,8 +31,10 @@ import {
+   updateCollectionItem,
+   removeCollectionItem,
+   CollectionItem,
++  toCollectionObject,
++  fetchCollectionObjects,
+ } from '../../services/collections';
+-import CollectionForm from './CollectionForm';
++import CollectionForm, { CollectionFormState } from './CollectionForm';
+ import ConfirmDialog from '../../components/ConfirmDialog';
+ import EmployeeCardForm from '../../components/EmployeeCardForm';
+ import Modal from '../../components/Modal';
+@@ -45,6 +47,7 @@ import StoragePage from '../Storage';
+ import HealthCheckTab from './HealthCheckTab';
+ import {
+   collectionColumns,
++  collectionObjectColumns,
+   type CollectionTableRow,
+ } from '../../columns/collectionColumns';
+ import { settingsUserColumns } from '../../columns/settingsUserColumns';
+@@ -86,6 +89,7 @@ import {
+   DocumentTextIcon,
+   RectangleStackIcon,
+   ShieldCheckIcon,
++  MapPinIcon,
+ } from '@heroicons/react/24/outline';
+ 
+ const moduleTabs = [
+@@ -148,6 +152,11 @@ const types = [
+     label: 'Должность',
+     description: 'Роли и рабочие позиции',
+   },
++  {
++    key: 'objects',
++    label: 'Объект',
++    description: 'Адреса и координаты площадок',
++  },
+   {
+     key: 'employees',
+     label: 'Сотрудник',
+@@ -196,6 +205,15 @@ const emptyUser: UserFormData = {
+   positionId: '',
+ };
+ 
++const emptyItemForm: ItemForm = {
++  name: '',
++  value: '',
++  meta: undefined,
++  address: '',
++  latitude: '',
++  longitude: '',
++};
++
+ const tabIcons: Record<
+   CollectionKey,
+   React.ComponentType<React.SVGProps<SVGSVGElement>>
+@@ -203,6 +221,7 @@ const tabIcons: Record<
+   departments: BuildingOffice2Icon,
+   divisions: Squares2X2Icon,
+   positions: IdentificationIcon,
++  objects: MapPinIcon,
+   employees: UserGroupIcon,
+   fleets: TruckIcon,
+   users: KeyIcon,
+@@ -232,11 +251,7 @@ const renderBadgeList = (items: string[]) => {
+   );
+ };
+ 
+-interface ItemForm {
+-  _id?: string;
+-  name: string;
+-  value: string;
+-}
++type ItemForm = CollectionFormState & { meta?: CollectionItem['meta'] };
+ 
+ const normalizeId = (value: string) => {
+   const trimmed = value.trim();
+@@ -905,7 +920,9 @@ const USER_DELETE_ERROR = 'Не удалось удалить пользоват
+ const EMPLOYEE_DELETE_SUCCESS = 'Сотрудник удалён';
+ const EMPLOYEE_DELETE_ERROR = 'Не удалось удалить сотрудника';
+ 
+-type CollectionColumn = (typeof collectionColumns)[number];
++type CollectionColumn =
++  | (typeof collectionColumns)[number]
++  | (typeof collectionObjectColumns)[number];
+ 
+ const hasAccessorKey = (
+   column: CollectionColumn,
+@@ -930,7 +947,7 @@ export default function CollectionsPage() {
+   const [searchDrafts, setSearchDrafts] = useState<
+     Record<CollectionKey, string>
+   >(() => createInitialQueries());
+-  const [form, setForm] = useState<ItemForm>({ name: '', value: '' });
++  const [form, setForm] = useState<ItemForm>(emptyItemForm);
+   const [hint, setHint] = useState('');
+   const [allDepartments, setAllDepartments] = useState<CollectionItem[]>([]);
+   const [allDivisions, setAllDivisions] = useState<CollectionItem[]>([]);
+@@ -1016,6 +1033,14 @@ export default function CollectionsPage() {
+     return { readonly, notice };
+   }, [selectedCollection]);
+ 
++  const selectedObjectDetails = useMemo(
++    () =>
++      selectedCollection?.type === 'objects'
++        ? toCollectionObject(selectedCollection)
++        : null,
++    [selectedCollection],
++  );
++
+   const breadcrumbs = useMemo(
+     () => [
+       { label: t('nav.settings'), href: '/settings' },
+@@ -1091,6 +1116,14 @@ export default function CollectionsPage() {
+         setHint('');
+         return;
+       }
++      if (active === 'objects') {
++        const { items: loadedItems, total: loadedTotal } =
++          await fetchCollectionObjects(currentQuery, page, limit);
++        setItems(loadedItems);
++        setTotal(loadedTotal);
++        setHint('');
++        return;
++      }
+       const d = (await fetchCollectionItems(
+         active,
+         currentQuery,
+@@ -1347,7 +1380,7 @@ export default function CollectionsPage() {
+     if (active !== 'users' && active !== 'tasks') {
+       void load();
+       if (active !== 'fleets') {
+-        setForm({ name: '', value: '' });
++        setForm(emptyItemForm);
+       }
+     } else {
+       setHint('');
+@@ -1385,10 +1418,34 @@ export default function CollectionsPage() {
+ 
+   const openCollectionModal = (item?: CollectionItem) => {
+     if (item) {
+-      setForm({ _id: item._id, name: item.name, value: item.value });
++      if (item.type === 'objects') {
++        const object = toCollectionObject(item);
++        setForm({
++          _id: object._id,
++          name: object.name,
++          value: object.address,
++          meta: object.meta,
++          address: object.address,
++          latitude:
++            object.latitude !== undefined
++              ? object.latitude.toString()
++              : '',
++          longitude:
++            object.longitude !== undefined
++              ? object.longitude.toString()
++              : '',
++        });
++      } else {
++        setForm({
++          _id: item._id,
++          name: item.name,
++          value: item.value,
++          meta: item.meta,
++        });
++      }
+       setSelectedCollection(item);
+     } else {
+-      setForm({ name: '', value: '' });
++      setForm(emptyItemForm);
+       setSelectedCollection(null);
+     }
+     setCollectionModalOpen(true);
+@@ -1397,7 +1454,7 @@ export default function CollectionsPage() {
+   const closeCollectionModal = () => {
+     setCollectionModalOpen(false);
+     setSelectedCollection(null);
+-    setForm({ name: '', value: '' });
++    setForm(emptyItemForm);
+   };
+ 
+   const mapUserToForm = (user?: User): UserFormData => ({
+@@ -1571,8 +1628,32 @@ export default function CollectionsPage() {
+       return;
+     }
+     let valueToSave = form.value;
++    let metaToSave: Record<string, unknown> | undefined;
+     if (active === 'departments') {
+       valueToSave = safeParseIds(form.value).join(',');
++    } else if (active === 'objects') {
++      const address = (form.address ?? form.value ?? '').trim();
++      if (!address) {
++        setHint('Укажите адрес объекта.');
++        return;
++      }
++      valueToSave = address;
++      const latitude = parseCoordinateInput(form.latitude);
++      const longitude = parseCoordinateInput(form.longitude);
++      const meta: Record<string, unknown> = {
++        ...(form.meta ?? {}),
++        address,
++      };
++      if (latitude !== undefined) {
++        meta.latitude = latitude;
++      }
++      if (longitude !== undefined) {
++        meta.longitude = longitude;
++      }
++      if (latitude !== undefined || longitude !== undefined) {
++        meta.location = { lat: latitude, lng: longitude };
++      }
++      metaToSave = meta;
+     } else {
+       valueToSave = form.value.trim();
+       if (!valueToSave) {
+@@ -1582,20 +1663,17 @@ export default function CollectionsPage() {
+     }
+     try {
+       let saved: CollectionItem | null = null;
++      const payload = {
++        name: trimmedName,
++        value: valueToSave,
++        ...(metaToSave ? { meta: metaToSave } : {}),
++      };
+       if (form._id) {
+-        saved = await updateCollectionItem(
+-          form._id,
+-          {
+-            name: trimmedName,
+-            value: valueToSave,
+-          },
+-          { collectionType: active },
+-        );
+-      } else {
+-        saved = await createCollectionItem(active, {
+-          name: trimmedName,
+-          value: valueToSave,
++        saved = await updateCollectionItem(form._id, payload, {
++          collectionType: active,
+         });
++      } else {
++        saved = await createCollectionItem(active, payload);
+       }
+       if (!saved) {
+         throw new Error('Сервер не вернул сохранённый элемент');
+@@ -1764,10 +1842,25 @@ export default function CollectionsPage() {
+           ? formatCollectionRawValue(divisionName)
+           : SETTINGS_BADGE_EMPTY;
+       }
++      if (type === 'objects') {
++        const object = toCollectionObject(item);
++        const coordinates = formatCoordinates(object.latitude, object.longitude);
++        if (coordinates !== SETTINGS_BADGE_EMPTY) {
++          return coordinates;
++        }
++        const address = object.address?.trim();
++        return address || SETTINGS_BADGE_EMPTY;
++      }
+       const formatted = formatCollectionRawValue(item.value ?? '');
+       return formatted || SETTINGS_BADGE_EMPTY;
+     },
+-    [allDepartments, allDivisions, departmentMap, divisionMap],
++    [
++      allDepartments,
++      allDivisions,
++      departmentMap,
++      divisionMap,
++      formatCoordinates,
++    ],
+   );
+ 
+   const formatMetaSummary = useCallback((meta?: CollectionItem['meta']) => {
+@@ -1776,12 +1869,35 @@ export default function CollectionsPage() {
+     return summary || SETTINGS_BADGE_EMPTY;
+   }, []);
+ 
++  const formatCoordinates = useCallback(
++    (latitude?: number, longitude?: number) => {
++      const parts: string[] = [];
++      if (typeof latitude === 'number' && Number.isFinite(latitude)) {
++        parts.push(latitude.toString());
++      }
++      if (typeof longitude === 'number' && Number.isFinite(longitude)) {
++        parts.push(longitude.toString());
++      }
++      if (!parts.length) return SETTINGS_BADGE_EMPTY;
++      return parts.join(', ');
++    },
++    [],
++  );
++
++  const parseCoordinateInput = useCallback((value?: string) => {
++    if (!value) return undefined;
++    const trimmed = value.trim();
++    if (!trimmed) return undefined;
++    const parsed = Number.parseFloat(trimmed);
++    return Number.isFinite(parsed) ? parsed : undefined;
++  }, []);
++
+   const copyIdLabel = t('collections.actions.copyId');
+   const copiedIdLabel = t('collections.actions.copiedId');
+ 
+-  const localizedCollectionColumns = useMemo(
+-    () =>
+-      collectionColumns.map((column) => {
++  const localizeColumns = useCallback(
++    (columns: CollectionColumn[]) =>
++      columns.map((column) => {
+         if (!hasAccessorKey(column)) {
+           return column;
+         }
+@@ -1825,6 +1941,16 @@ export default function CollectionsPage() {
+               ...column,
+               header: t('collections.table.columns.meta'),
+             };
++          case 'address':
++            return {
++              ...column,
++              header: t('collections.table.columns.address'),
++            };
++          case 'coordinates':
++            return {
++              ...column,
++              header: t('collections.table.columns.coordinates'),
++            };
+           default:
+             return column;
+         }
+@@ -1832,6 +1958,16 @@ export default function CollectionsPage() {
+     [copiedIdLabel, copyIdLabel, t],
+   );
+ 
++  const localizedCollectionColumns = useMemo(
++    () => localizeColumns(collectionColumns),
++    [localizeColumns],
++  );
++
++  const localizedObjectColumns = useMemo(
++    () => localizeColumns(collectionObjectColumns),
++    [localizeColumns],
++  );
++
+   const collectionSearchPlaceholder = t('collections.search.placeholder');
+   const collectionSearchHint = t('collections.search.hint');
+   const collectionSearchCta = t('collections.actions.search');
+@@ -1968,6 +2104,62 @@ export default function CollectionsPage() {
+     [allDivisions],
+   );
+ 
++  const renderObjectValueField = useCallback(
++    (
++      currentForm: ItemForm,
++      handleChange: (next: ItemForm) => void,
++      options?: { readonly?: boolean },
++    ) => {
++      const readonly = options?.readonly;
++      const addressValue = currentForm.address ?? currentForm.value;
++      return (
++        <div className="space-y-2">
++          <input
++            className="h-10 w-full rounded border px-3"
++            value={addressValue}
++            placeholder="Адрес объекта"
++            onChange={(event) =>
++              handleChange({
++                ...currentForm,
++                address: event.target.value,
++                value: event.target.value,
++              })
++            }
++            required
++            disabled={readonly}
++          />
++          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
++            <input
++              className="h-10 w-full rounded border px-3"
++              value={currentForm.latitude ?? ''}
++              placeholder="Широта"
++              onChange={(event) =>
++                handleChange({
++                  ...currentForm,
++                  latitude: event.target.value,
++                })
++              }
++              disabled={readonly}
++            />
++            <input
++              className="h-10 w-full rounded border px-3"
++              value={currentForm.longitude ?? ''}
++              placeholder="Долгота"
++              onChange={(event) =>
++                handleChange({
++                  ...currentForm,
++                  longitude: event.target.value,
++                })
++              }
++              disabled={readonly}
++            />
++          </div>
++        </div>
++      );
++    },
++    [],
++  );
++
+   const totalPages = Math.ceil(total / limit) || 1;
+   const filteredUsers = useMemo(() => {
+     const trimmed = userQuery.trim();
+@@ -2390,14 +2582,29 @@ export default function CollectionsPage() {
+             {types.map((type) => {
+               const isActiveTab = type.key === active;
+               const rows: CollectionTableRow[] = isActiveTab
+-                ? items.map((item) => ({
+-                    ...item,
+-                    displayValue: getItemDisplayValue(
+-                      item,
+-                      type.key as CollectionKey,
+-                    ),
+-                    metaSummary: formatMetaSummary(item.meta),
+-                  }))
++                ? items.map((item) => {
++                    if (type.key === 'objects') {
++                      const object = toCollectionObject(item);
++                      return {
++                        ...item,
++                        address: object.address,
++                        coordinates: formatCoordinates(
++                          object.latitude,
++                          object.longitude,
++                        ),
++                        displayValue: object.address || SETTINGS_BADGE_EMPTY,
++                        metaSummary: formatMetaSummary(item.meta),
++                      };
++                    }
++                    return {
++                      ...item,
++                      displayValue: getItemDisplayValue(
++                        item,
++                        type.key as CollectionKey,
++                      ),
++                      metaSummary: formatMetaSummary(item.meta),
++                    };
++                  })
+                 : [];
+               const columnsForType =
+                 type.key === 'departments'
+@@ -2406,7 +2613,9 @@ export default function CollectionsPage() {
+                     ? divisionColumns
+                     : type.key === 'positions'
+                       ? positionColumns
+-                      : localizedCollectionColumns;
++                      : type.key === 'objects'
++                        ? localizedObjectColumns
++                        : localizedCollectionColumns;
+ 
+               if (type.key === 'users') {
+                 const showEmpty = paginatedUsers.length === 0;
+@@ -2644,6 +2853,50 @@ export default function CollectionsPage() {
+                       </div>
+                     </dl>
+                   </>
++                ) : selectedCollection.type === 'objects' &&
++                  selectedObjectDetails ? (
++                  <>
++                    <h3 className="text-base font-semibold">Информация об объекте</h3>
++                    <dl className="mt-2 space-y-3 text-sm">
++                      <div className="flex justify-between gap-4">
++                        <dt className="font-medium text-slate-500">ID</dt>
++                        <dd className="text-right text-slate-900">
++                          {selectedCollection._id}
++                        </dd>
++                      </div>
++                      <div className="flex justify-between gap-4">
++                        <dt className="font-medium text-slate-500">Название</dt>
++                        <dd className="text-right text-slate-900">
++                          {selectedCollection.name}
++                        </dd>
++                      </div>
++                      <div className="flex justify-between gap-4">
++                        <dt className="font-medium text-slate-500">Адрес</dt>
++                        <dd className="text-right text-slate-900">
++                          {selectedObjectDetails.address || '—'}
++                        </dd>
++                      </div>
++                      <div className="flex justify-between gap-4">
++                        <dt className="font-medium text-slate-500">Координаты</dt>
++                        <dd className="text-right text-slate-900">
++                          {formatCoordinates(
++                            selectedObjectDetails.latitude,
++                            selectedObjectDetails.longitude,
++                          )}
++                        </dd>
++                      </div>
++                      <div>
++                        <dt className="font-medium text-slate-500">Meta</dt>
++                        <dd className="mt-1">
++                          <pre className="max-h-48 overflow-auto rounded bg-white p-2 text-xs text-slate-800">
++                            {selectedCollection.meta
++                              ? JSON.stringify(selectedCollection.meta, null, 2)
++                              : '{}'}
++                          </pre>
++                        </dd>
++                      </div>
++                    </dl>
++                  </>
+                 ) : (
+                   <>
+                     <h3 className="text-base font-semibold">
+@@ -2694,7 +2947,7 @@ export default function CollectionsPage() {
+               onChange={setForm}
+               onSubmit={submit}
+               onDelete={remove}
+-              onReset={() => setForm({ name: '', value: '' })}
++              onReset={() => setForm(emptyItemForm)}
+               valueLabel={
+                 active === 'departments'
+                   ? 'Отделы'
+@@ -2702,7 +2955,9 @@ export default function CollectionsPage() {
+                     ? 'Департамент'
+                     : active === 'positions'
+                       ? 'Отдел'
+-                      : undefined
++                      : active === 'objects'
++                        ? 'Адрес'
++                        : undefined
+               }
+               renderValueField={
+                 active === 'departments'
+@@ -2711,7 +2966,9 @@ export default function CollectionsPage() {
+                     ? renderDivisionValueField
+                     : active === 'positions'
+                       ? renderPositionValueField
+-                      : undefined
++                      : active === 'objects'
++                        ? renderObjectValueField
++                        : undefined
+               }
+               readonly={selectedCollectionInfo.readonly}
+               readonlyNotice={selectedCollectionInfo.notice}
+diff --git a/apps/web/src/services/collections.test.ts b/apps/web/src/services/collections.test.ts
+index 5f654a8..c396e49 100644
+--- a/apps/web/src/services/collections.test.ts
++++ b/apps/web/src/services/collections.test.ts
+@@ -2,7 +2,14 @@
+ // Назначение файла: проверяет загрузку всех страниц коллекций
+ // Основные модули: jest, fetchAllCollectionItems
+ import authFetch from '../utils/authFetch';
+-import { fetchAllCollectionItems } from './collections';
++import {
++  fetchAllCollectionItems,
++  fetchCollectionObjects,
++  createCollectionObject,
++  updateCollectionObject,
++  toCollectionObject,
++  type CollectionItem,
++} from './collections';
+ 
+ jest.mock('../utils/authFetch', () => ({
+   __esModule: true,
+@@ -62,4 +69,89 @@ describe('fetchAllCollectionItems', () => {
+     expect(result).toHaveLength(1);
+     expect(mockedAuthFetch).toHaveBeenCalledTimes(1);
+   });
++
++  it('приводит адрес и координаты из meta.location', () => {
++    const item: CollectionItem = {
++      _id: 'obj-1',
++      type: 'objects',
++      name: 'Склад',
++      value: '',
++      meta: { address: 'ул. Тестовая, 1', location: { lat: 10.1, lng: 20.2 } },
++    };
++
++    const normalized = toCollectionObject(item);
++
++    expect(normalized.address).toBe('ул. Тестовая, 1');
++    expect(normalized.latitude).toBe(10.1);
++    expect(normalized.longitude).toBe(20.2);
++  });
++
++  it('загружает объекты с координатами', async () => {
++    mockedAuthFetch.mockResolvedValue(
++      createResponse({
++        items: [
++          {
++            _id: 'obj-2',
++            type: 'objects',
++            name: 'Офис',
++            value: 'Киев, Крещатик 1',
++            meta: { latitude: 50.45, longitude: 30.523 },
++          },
++        ],
++        total: 1,
++      }),
++    );
++
++    const result = await fetchCollectionObjects('офис', 2, 5);
++
++    expect(mockedAuthFetch).toHaveBeenCalledWith(
++      '/api/v1/collections?type=objects&page=2&limit=5&search=%D0%BE%D1%84%D0%B8%D1%81',
++    );
++    expect(result.items[0].address).toBe('Киев, Крещатик 1');
++    expect(result.items[0].latitude).toBe(50.45);
++    expect(result.items[0].longitude).toBe(30.523);
++    expect(result.total).toBe(1);
++  });
++
++  it('создаёт объект с адресом и координатами', async () => {
++    mockedAuthFetch.mockResolvedValue(createResponse({ _id: 'new-object' }));
++
++    await createCollectionObject({
++      name: 'Склад север',
++      address: 'Днепр, улица Тестовая 5',
++      latitude: 48.45,
++      longitude: 35.05,
++    });
++
++    const [, options] = mockedAuthFetch.mock.calls[0];
++    const payload = JSON.parse((options as RequestInit).body as string);
++
++    expect(payload.type).toBe('objects');
++    expect(payload.name).toBe('Склад север');
++    expect(payload.value).toBe('Днепр, улица Тестовая 5');
++    expect(payload.meta).toEqual({
++      address: 'Днепр, улица Тестовая 5',
++      latitude: 48.45,
++      longitude: 35.05,
++      location: { lat: 48.45, lng: 35.05 },
++    });
++  });
++
++  it('обновляет объект и очищает координаты при пустых значениях', async () => {
++    mockedAuthFetch.mockResolvedValue(createResponse({ _id: 'obj-3' }));
++
++    await updateCollectionObject('obj-3', {
++      name: 'База',
++      address: 'Харьков, ул. Примерная 10',
++    });
++
++    const [, options] = mockedAuthFetch.mock.calls[0];
++    const payload = JSON.parse((options as RequestInit).body as string);
++
++    expect(payload.name).toBe('База');
++    expect(payload.value).toBe('Харьков, ул. Примерная 10');
++    expect(payload.meta).toEqual({
++      address: 'Харьков, ул. Примерная 10',
++    });
++  });
+ });
+diff --git a/apps/web/src/services/collections.ts b/apps/web/src/services/collections.ts
+index 11cea84..31d324c 100644
+--- a/apps/web/src/services/collections.ts
++++ b/apps/web/src/services/collections.ts
+@@ -26,6 +26,10 @@ export interface CollectionItemMeta {
+   required?: boolean;
+   order?: number;
+   virtual?: boolean;
++  address?: string;
++  latitude?: number;
++  longitude?: number;
++  location?: { lat?: number; lng?: number };
+   tg_theme_url?: string;
+   tg_chat_id?: string;
+   tg_topic_id?: number;
+@@ -43,6 +47,27 @@ export interface CollectionItem {
+   meta?: CollectionItemMeta;
+ }
+ 
++export interface CollectionObjectMeta extends CollectionItemMeta {
++  address?: string;
++  latitude?: number;
++  longitude?: number;
++  location?: { lat?: number; lng?: number };
++}
++
++export interface CollectionObject extends CollectionItem {
++  address: string;
++  latitude?: number;
++  longitude?: number;
++  meta?: CollectionObjectMeta;
++}
++
++export type CollectionObjectPayload = {
++  name: string;
++  address: string;
++  latitude?: number;
++  longitude?: number;
++};
++
+ type ProblemValidationError = {
+   msg?: string;
+   message?: string;
+@@ -190,6 +215,56 @@ export const parseErrorMessage = (
+   return fallback;
+ };
+ 
++const normalizeCoordinate = (value: unknown): number | undefined => {
++  const numeric =
++    typeof value === 'string'
++      ? Number.parseFloat(value)
++      : typeof value === 'number'
++        ? value
++        : Number.NaN;
++  return Number.isFinite(numeric) ? numeric : undefined;
++};
++
++const buildObjectMeta = (
++  address: string,
++  latitude?: number,
++  longitude?: number,
++): CollectionObjectMeta | undefined => {
++  const meta: CollectionObjectMeta = {};
++  if (address) {
++    meta.address = address;
++  }
++  if (latitude !== undefined || longitude !== undefined) {
++    meta.location = { lat: latitude, lng: longitude };
++  }
++  if (latitude !== undefined) {
++    meta.latitude = latitude;
++  }
++  if (longitude !== undefined) {
++    meta.longitude = longitude;
++  }
++  return Object.keys(meta).length ? meta : undefined;
++};
++
++export const toCollectionObject = (item: CollectionItem): CollectionObject => {
++  const meta = (item.meta ?? {}) as CollectionObjectMeta;
++  const address =
++    typeof meta.address === 'string' && meta.address.trim().length
++      ? meta.address.trim()
++      : item.value.trim();
++  const latitude =
++    normalizeCoordinate(meta.latitude ?? meta.location?.lat) ?? undefined;
++  const longitude =
++    normalizeCoordinate(meta.longitude ?? meta.location?.lng) ?? undefined;
++  return {
++    ...item,
++    address,
++    latitude,
++    longitude,
++    meta,
++  };
++};
++
+ export const fetchCollectionItems = async (
+   type: string,
+   search = '',
+@@ -255,6 +330,31 @@ export const fetchAllCollectionItems = async (
+   return aggregated;
+ };
+ 
++export const fetchCollectionObjects = async (
++  search = '',
++  page = 1,
++  limit = 10,
++): Promise<{ items: CollectionObject[]; total: number }> => {
++  const response = (await fetchCollectionItems(
++    'objects',
++    search,
++    page,
++    limit,
++  )) as { items?: CollectionItem[]; total?: number };
++  const items = Array.isArray(response.items)
++    ? response.items.map(toCollectionObject)
++    : [];
++  return { items, total: response.total ?? items.length };
++};
++
++export const fetchAllCollectionObjects = async (
++  search = '',
++  limit = 200,
++): Promise<CollectionObject[]> => {
++  const items = await fetchAllCollectionItems('objects', search, limit);
++  return items.map(toCollectionObject);
++};
++
+ export const createCollectionItem = (
+   type: string,
+   data: { name: string; value: string; meta?: Record<string, unknown> },
+@@ -303,3 +403,33 @@ export const removeCollectionItem = async (id: string) => {
+   }
+   return r.json();
+ };
++
++const buildObjectPayload = (
++  data: CollectionObjectPayload,
++): { name: string; value: string; meta?: CollectionObjectMeta } => {
++  const trimmedAddress = data.address.trim();
++  const latitude = normalizeCoordinate(data.latitude);
++  const longitude = normalizeCoordinate(data.longitude);
++  const meta = buildObjectMeta(trimmedAddress, latitude, longitude);
++  return {
++    name: data.name.trim(),
++    value: trimmedAddress,
++    meta,
++  };
++};
++
++export const createCollectionObject = (payload: CollectionObjectPayload) =>
++  createCollectionItem('objects', buildObjectPayload(payload));
++
++export const updateCollectionObject = (
++  id: string,
++  payload: CollectionObjectPayload,
++) =>
++  updateCollectionItem(
++    id,
++    buildObjectPayload(payload),
++    { collectionType: 'objects' },
++  );
++
++export const removeCollectionObject = (id: string) =>
++  removeCollectionItem(id);

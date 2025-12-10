@@ -26,6 +26,10 @@ export interface CollectionItemMeta {
   required?: boolean;
   order?: number;
   virtual?: boolean;
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  location?: { lat?: number; lng?: number };
   tg_theme_url?: string;
   tg_chat_id?: string;
   tg_topic_id?: number;
@@ -42,6 +46,27 @@ export interface CollectionItem {
   value: string;
   meta?: CollectionItemMeta;
 }
+
+export interface CollectionObjectMeta extends CollectionItemMeta {
+  address?: string;
+  latitude?: number;
+  longitude?: number;
+  location?: { lat?: number; lng?: number };
+}
+
+export interface CollectionObject extends CollectionItem {
+  address: string;
+  latitude?: number;
+  longitude?: number;
+  meta?: CollectionObjectMeta;
+}
+
+export type CollectionObjectPayload = {
+  name: string;
+  address: string;
+  latitude?: number;
+  longitude?: number;
+};
 
 type ProblemValidationError = {
   msg?: string;
@@ -190,6 +215,56 @@ export const parseErrorMessage = (
   return fallback;
 };
 
+const normalizeCoordinate = (value: unknown): number | undefined => {
+  const numeric =
+    typeof value === 'string'
+      ? Number.parseFloat(value)
+      : typeof value === 'number'
+        ? value
+        : Number.NaN;
+  return Number.isFinite(numeric) ? numeric : undefined;
+};
+
+const buildObjectMeta = (
+  address: string,
+  latitude?: number,
+  longitude?: number,
+): CollectionObjectMeta | undefined => {
+  const meta: CollectionObjectMeta = {};
+  if (address) {
+    meta.address = address;
+  }
+  if (latitude !== undefined || longitude !== undefined) {
+    meta.location = { lat: latitude, lng: longitude };
+  }
+  if (latitude !== undefined) {
+    meta.latitude = latitude;
+  }
+  if (longitude !== undefined) {
+    meta.longitude = longitude;
+  }
+  return Object.keys(meta).length ? meta : undefined;
+};
+
+export const toCollectionObject = (item: CollectionItem): CollectionObject => {
+  const meta = (item.meta ?? {}) as CollectionObjectMeta;
+  const address =
+    typeof meta.address === 'string' && meta.address.trim().length
+      ? meta.address.trim()
+      : item.value.trim();
+  const latitude =
+    normalizeCoordinate(meta.latitude ?? meta.location?.lat) ?? undefined;
+  const longitude =
+    normalizeCoordinate(meta.longitude ?? meta.location?.lng) ?? undefined;
+  return {
+    ...item,
+    address,
+    latitude,
+    longitude,
+    meta,
+  };
+};
+
 export const fetchCollectionItems = async (
   type: string,
   search = '',
@@ -255,6 +330,31 @@ export const fetchAllCollectionItems = async (
   return aggregated;
 };
 
+export const fetchCollectionObjects = async (
+  search = '',
+  page = 1,
+  limit = 10,
+): Promise<{ items: CollectionObject[]; total: number }> => {
+  const response = (await fetchCollectionItems(
+    'objects',
+    search,
+    page,
+    limit,
+  )) as { items?: CollectionItem[]; total?: number };
+  const items = Array.isArray(response.items)
+    ? response.items.map(toCollectionObject)
+    : [];
+  return { items, total: response.total ?? items.length };
+};
+
+export const fetchAllCollectionObjects = async (
+  search = '',
+  limit = 200,
+): Promise<CollectionObject[]> => {
+  const items = await fetchAllCollectionItems('objects', search, limit);
+  return items.map(toCollectionObject);
+};
+
 export const createCollectionItem = (
   type: string,
   data: { name: string; value: string; meta?: Record<string, unknown> },
@@ -303,3 +403,30 @@ export const removeCollectionItem = async (id: string) => {
   }
   return r.json();
 };
+
+const buildObjectPayload = (
+  data: CollectionObjectPayload,
+): { name: string; value: string; meta?: CollectionObjectMeta } => {
+  const trimmedAddress = data.address.trim();
+  const latitude = normalizeCoordinate(data.latitude);
+  const longitude = normalizeCoordinate(data.longitude);
+  const meta = buildObjectMeta(trimmedAddress, latitude, longitude);
+  return {
+    name: data.name.trim(),
+    value: trimmedAddress,
+    meta,
+  };
+};
+
+export const createCollectionObject = (payload: CollectionObjectPayload) =>
+  createCollectionItem('objects', buildObjectPayload(payload));
+
+export const updateCollectionObject = (
+  id: string,
+  payload: CollectionObjectPayload,
+) =>
+  updateCollectionItem(id, buildObjectPayload(payload), {
+    collectionType: 'objects',
+  });
+
+export const removeCollectionObject = (id: string) => removeCollectionItem(id);

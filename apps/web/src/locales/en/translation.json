@@ -32,6 +32,8 @@
       "columns": {
         "name": "Name",
         "value": "Value",
+        "address": "Address",
+        "coordinates": "Coordinates",
         "relations": "Related data",
         "type": "Type",
         "id": "ID",

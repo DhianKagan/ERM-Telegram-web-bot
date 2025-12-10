@@ -1,0 +1,5382 @@
+diff --git a/apps/web/src/pages/Logistics.test.tsx b/apps/web/src/pages/Logistics.test.tsx
+index 00bf984..5097636 100644
+--- a/apps/web/src/pages/Logistics.test.tsx
++++ b/apps/web/src/pages/Logistics.test.tsx
+@@ -1,1180 +1,132 @@
+ /** @jest-environment jsdom */
+-// Назначение: тесты страницы логистики с отображением техники и треков
+-// Основные модули: React, @testing-library/react, MapLibre GL-моки
++// Назначение: тесты карточек маршрутных планов без карты и геометрии
++// Основные модули: React, @testing-library/react
+ 
+ import '@testing-library/jest-dom';
+ import React from 'react';
+-import {
+-  MemoryRouter,
+-  RouterProvider,
+-  createMemoryRouter,
+-} from 'react-router-dom';
+-import {
+-  act,
+-  fireEvent,
+-  render,
+-  screen,
+-  waitFor,
+-  within,
+-} from '@testing-library/react';
+-import LogisticsPage from './Logistics';
+-import { MAP_ADDRESSES_PMTILES_URL } from '../config/map';
+-import { taskStateController } from '../controllers/taskStateController';
+-import type { LogisticsEvent, RoutePlan } from 'shared';
++import { MemoryRouter } from 'react-router-dom';
++import { fireEvent, render, screen, waitFor } from '@testing-library/react';
++import type { RoutePlan } from 'shared';
+ 
+-const runtime = globalThis as typeof globalThis & { Request?: typeof Request };
+-if (typeof runtime.Request === 'undefined') {
+-  class StubRequest {
+-    url: string;
+-    constructor(input: string, _init?: unknown) {
+-      this.url = String(input);
+-    }
+-  }
+-  runtime.Request = StubRequest as unknown as typeof Request;
+-}
+-jest.mock('../config/map', () => ({
+-  MAP_ATTRIBUTION: 'test attribution',
+-  MAP_ANIMATION_SPEED_KMH: 60,
+-  MAP_DEFAULT_CENTER: [30, 50],
+-  MAP_DEFAULT_ZOOM: 6,
+-  MAP_UKRAINE_BOUNDS: [
+-    [22, 44],
+-    [41.5, 52.5],
+-  ],
+-  MAP_STYLE: 'pmtiles://style.pmtiles',
+-  MAP_STYLE_MODE: 'pmtiles',
+-  MAP_STYLE_IS_DEFAULT: false,
+-  MAP_ADDRESSES_PMTILES_URL: 'pmtiles://test.pmtiles',
+-}));
+-jest.mock('react-i18next', () => {
+-  const translate = (key: string, options?: Record<string, unknown>) => {
+-    if (key === 'logistics.selectedVehicle') {
+-      return `Выбран транспорт: ${options?.name ?? ''}`.trim();
+-    }
+-    if (key === 'logistics.linksLabel') {
+-      return `Маршрут ${options?.index ?? ''}`.trim();
+-    }
+-    if (key === 'logistics.planRouteTitle') {
+-      return `Маршрут ${options?.index ?? ''}`.trim();
+-    }
+-    if (key === 'logistics.planRouteSummary') {
+-      return `Задач: ${options?.tasks ?? ''}, остановок: ${options?.stops ?? ''}`.trim();
+-    }
+-    if (key === 'logistics.planRouteDistance') {
+-      return `Расстояние: ${options?.distance ?? ''}`.trim();
+-    }
+-    if (key === 'logistics.planRouteDuration') {
+-      return `Время: ${options?.duration ?? ''}`.trim();
+-    }
+-    const dictionary: Record<string, string> = {
+-      loading: 'Загрузка...',
+-      reset: 'Сбросить',
+-      refresh: 'Обновить',
+-      'logistics.title': 'Логистика',
+-      'logistics.pageLead':
+-        'Планируйте маршруты, управляйте автопарком и отслеживайте задачи на одной карте.',
+-      'logistics.transport': 'Транспорт',
+-      'logistics.unselectedVehicle': 'Не выбран',
+-      'logistics.refreshFleet': 'Обновить автопарк',
+-      'logistics.noVehicles': 'Транспорт не найден',
+-      'logistics.loadError': 'Не удалось загрузить транспорт автопарка',
+-      'logistics.adminOnly': 'Автопарк доступен только администраторам',
+-      'logistics.noAccess': 'Нет доступа к автопарку',
+-      'logistics.optimize': 'Просчёт логистики',
+-      'logistics.mapPanelTitle': 'Карта маршрутов',
+-      'logistics.mapPanelSummary':
+-        'Включайте нужные слои, выбирайте алгоритм и запускайте оптимизацию прямо на карте.',
+-      'logistics.planSectionTitle': 'Маршрутный план',
+-      'logistics.planSummary': 'Итоги плана',
+-      'logistics.planStatus': 'Статус',
+-      'logistics.planStatusValue.draft': 'Черновик',
+-      'logistics.planStatusValue.approved': 'Утверждён',
+-      'logistics.planStatusValue.completed': 'Завершён',
+-      'logistics.planReload': 'Обновить план',
+-      'logistics.planClear': 'Сбросить план',
+-      'logistics.planApprove': 'Опубликовать',
+-      'logistics.planComplete': 'Завершить',
+-      'logistics.planTitleLabel': 'Название маршрутного плана',
+-      'logistics.planNotesLabel': 'Примечания',
+-      'logistics.planTotalDistance': 'Общее расстояние',
+-      'logistics.planTotalRoutes': 'Маршрутов',
+-      'logistics.planTotalTasks': 'Задач',
+-      'logistics.planTotalStops': 'Остановок',
+-      'logistics.planRouteEmpty': 'Нет задач',
+-      'logistics.planDriver': 'Водитель',
+-      'logistics.planVehicle': 'Транспорт',
+-      'logistics.planRouteNotes': 'Заметки по маршруту',
+-      'logistics.planTaskUp': 'Вверх',
+-      'logistics.planTaskDown': 'Вниз',
+-      'logistics.planSaved': 'Сохранено',
+-      'logistics.planSaveError': 'Ошибка сохранения',
+-      'logistics.planPublished': 'Опубликовано',
+-      'logistics.planCompleted': 'Завершено',
+-      'logistics.planStatusError': 'Ошибка статуса',
+-      'logistics.planLoadError': 'Ошибка загрузки',
+-      'logistics.planDraftCreated': 'Черновик создан',
+-      'logistics.planEmpty': 'Нет плана',
+-      'logistics.planNoDistance': 'нет данных',
+-      'logistics.planOptimizeError': 'Ошибка оптимизации',
+-      'logistics.tasksHeading': 'Задачи',
+-      'logistics.metaTitle': 'Логистика — ERM',
+-      'logistics.metaDescription':
+-        'Планирование маршрутов, управление автопарком и анализ доставок по агрегированным данным.',
+-      'logistics.geozonesTitle': 'Геозоны',
+-      'logistics.geozonesDraw': 'Нарисовать зону',
+-      'logistics.geozonesDrawing': 'Рисуем…',
+-      'logistics.geozonesHint':
+-        'Выберите геозоны, чтобы ограничить задачи на карте.',
+-      'logistics.geozonesDescription':
+-        'Геозоны ограничивают задачи выбранными районами. Отключите, если нужно видеть все адреса.',
+-      'logistics.geozonesToggleLabel': 'Геозоны',
+-      'logistics.geozonesDisabled': 'Фильтрация по зонам выключена.',
+-      'logistics.geozonesDisabledHint':
+-        'Включите переключатель выше, чтобы снова показывать зоны.',
+-      'logistics.geozonesEmpty': 'Геозоны пока не созданы',
+-      'logistics.geozoneDefaultName': 'Зона {{index}}',
+-      'logistics.geozoneRemove': 'Удалить',
+-      'logistics.geozoneStatusActive': 'Активна',
+-      'logistics.geozoneStatusInactive': 'Неактивна',
+-      'logistics.geozoneArea': 'Площадь: {{value}}',
+-      'logistics.geozonePerimeter': 'Периметр: {{value}}',
+-      'logistics.geozoneBuffer': 'Буфер: {{value}}',
+-      'logistics.viewModeLabel': 'Режим карты',
+-      'logistics.layersTitle': 'Слои карты',
+-      'logistics.layersSummary':
+-        'Настройте легенду карты по статусам, транспорту и типам задач.',
+-      'logistics.layerTasks': 'Задачи',
+-      'logistics.layerOptimization': 'Оптимизация',
+-      'logistics.viewModePlanar': '2D',
+-      'logistics.viewModeTilted': 'Перспектива',
+-      'logistics.legendTitle': 'Легенда',
+-      'logistics.legendCount': '({{count}})',
+-      'logistics.legendStart': 'Старт задачи',
+-      'logistics.legendFinish': 'Финиш задачи',
+-      'logistics.legendMovement': 'Движение по маршруту',
+-      'logistics.vehicleTasksCount': 'Задач: {{count}}',
+-      'logistics.vehicleMileage': 'Пробег: {{value}} км',
+-      'logistics.vehicleCountLabel': 'Машины',
+-      'logistics.vehicleCountAria': 'Количество машин',
+-      'logistics.optimizeMethodLabel': 'Метод',
+-      'logistics.optimizeMethodAria': 'Метод оптимизации',
+-    };
+-    if (dictionary[key]) {
+-      let template = dictionary[key];
+-      if (options) {
+-        template = template.replace(/\{\{\s*(\w+)\s*\}\}/g, (_, token) => {
+-          if (Object.prototype.hasOwnProperty.call(options, token)) {
+-            const value = options[token];
+-            return value === undefined || value === null ? '' : String(value);
+-          }
+-          return `{{${token}}}`;
+-        });
+-      }
+-      return template;
+-    }
+-    if (options && typeof options.defaultValue === 'string') {
+-      return options.defaultValue;
+-    }
+-    return key;
+-  };
+-  const i18n = { language: 'ru' };
+-  return {
+-    useTranslation: () => ({ t: translate, i18n }),
+-  };
+-});
+-jest.mock('maplibre-gl/dist/maplibre-gl.css', () => ({}), { virtual: true });
+-jest.mock('maplibre-gl-draw/dist/maplibre-gl-draw.css', () => ({}), {
+-  virtual: true,
+-});
+-jest.mock('pmtiles', () => ({
+-  Protocol: jest.fn(() => ({ tile: jest.fn() })),
+-}));
+-
+-function buildMapInstance(options?: {
+-  center?: [number, number];
+-  zoom?: number;
+-  pitch?: number;
+-  bearing?: number;
+-}) {
+-  const sources = new Map<string, { setData: jest.Mock }>();
+-  const layers = new Map<string, any>();
+-  const handlers = new Map<string, Set<(...args: any[]) => void>>();
+-  const styleLayers: Array<{ id: string }> = [
+-    { id: 'road-label' },
+-    { id: 'settlement-major-label' },
+-  ];
+-  const viewState = {
+-    center: Array.isArray(options?.center)
+-      ? [options.center[0], options.center[1]]
+-      : [0, 0],
+-    zoom: typeof options?.zoom === 'number' ? options.zoom : 6,
+-    pitch: typeof options?.pitch === 'number' ? options.pitch : 0,
+-    bearing: typeof options?.bearing === 'number' ? options.bearing : 0,
+-  };
+-  const getKey = (event: string, layerId?: string) =>
+-    layerId ? `${event}:${layerId}` : event;
+-  const getHandlers = (event: string, layerId?: string) => {
+-    const key = getKey(event, layerId);
+-    let bucket = handlers.get(key);
+-    if (!bucket) {
+-      bucket = new Set();
+-      handlers.set(key, bucket);
+-    }
+-    return bucket;
+-  };
+-  const instance: any = {
+-    on: jest.fn(
+-      (
+-        event: string,
+-        layerOrHandler: string | ((...args: any[]) => void),
+-        maybeHandler?: (...args: any[]) => void,
+-      ) => {
+-        let layerId: string | undefined;
+-        let handler: (...args: any[]) => void;
+-        if (typeof layerOrHandler === 'string') {
+-          layerId = layerOrHandler;
+-          handler = maybeHandler as (...args: any[]) => void;
+-        } else {
+-          handler = layerOrHandler;
+-        }
+-        getHandlers(event, layerId).add(handler);
+-        if (event === 'load') {
+-          act(() => {
+-            handler({});
+-          });
+-        }
+-        return instance;
+-      },
+-    ),
+-    off: jest.fn(
+-      (
+-        event: string,
+-        layerOrHandler: string | ((...args: any[]) => void),
+-        maybeHandler?: (...args: any[]) => void,
+-      ) => {
+-        let layerId: string | undefined;
+-        let handler: (...args: any[]) => void;
+-        if (typeof layerOrHandler === 'string') {
+-          layerId = layerOrHandler;
+-          handler = maybeHandler as (...args: any[]) => void;
+-        } else {
+-          handler = layerOrHandler;
+-        }
+-        getHandlers(event, layerId).delete(handler);
+-        return instance;
+-      },
+-    ),
+-    addControl: jest.fn(),
+-    addSource: jest.fn((id: string) => {
+-      const source = { setData: jest.fn() };
+-      sources.set(id, source);
+-      return source;
+-    }),
+-    addLayer: jest.fn((layer: { id: string }, beforeId?: string) => {
+-      layers.set(layer.id, layer);
+-      const existingIndex = styleLayers.findIndex(
+-        (entry) => entry.id === layer.id,
+-      );
+-      if (existingIndex !== -1) {
+-        styleLayers.splice(existingIndex, 1);
+-      }
+-      const beforeIndex = beforeId
+-        ? styleLayers.findIndex((entry) => entry.id === beforeId)
+-        : -1;
+-      const layerEntry = { id: layer.id };
+-      if (beforeIndex >= 0) {
+-        styleLayers.splice(beforeIndex, 0, layerEntry);
+-      } else {
+-        styleLayers.push(layerEntry);
+-      }
+-    }),
+-    addImage: jest.fn(),
+-    getSource: jest.fn((id: string) => sources.get(id)),
+-    getLayer: jest.fn((id: string) => layers.get(id)),
+-    hasImage: jest.fn(() => false),
+-    setLayoutProperty: jest.fn(),
+-    getStyle: jest.fn(() => ({
+-      layers: styleLayers.map((entry) => ({ id: entry.id })),
+-    })),
+-    moveLayer: jest.fn((layerId: string, beforeId?: string) => {
+-      const currentIndex = styleLayers.findIndex(
+-        (entry) => entry.id === layerId,
+-      );
+-      if (currentIndex === -1) {
+-        return;
+-      }
+-      const [entry] = styleLayers.splice(currentIndex, 1);
+-      if (!beforeId) {
+-        styleLayers.push(entry);
+-        return;
+-      }
+-      const targetIndex = styleLayers.findIndex((item) => item.id === beforeId);
+-      if (targetIndex === -1) {
+-        styleLayers.push(entry);
+-        return;
+-      }
+-      styleLayers.splice(targetIndex, 0, entry);
+-    }),
+-    remove: jest.fn(),
+-    resize: jest.fn(),
+-    easeTo: jest.fn(
+-      (params?: {
+-        center?: [number, number];
+-        zoom?: number;
+-        pitch?: number;
+-        bearing?: number;
+-      }) => {
+-        if (params?.center) {
+-          viewState.center = [params.center[0], params.center[1]];
+-        }
+-        if (typeof params?.zoom === 'number') {
+-          viewState.zoom = params.zoom;
+-        }
+-        if (typeof params?.pitch === 'number') {
+-          viewState.pitch = params.pitch;
+-        }
+-        if (typeof params?.bearing === 'number') {
+-          viewState.bearing = params.bearing;
+-        }
+-      },
+-    ),
+-    setPitch: jest.fn((value: number) => {
+-      viewState.pitch = value;
+-    }),
+-    setBearing: jest.fn((value: number) => {
+-      viewState.bearing = value;
+-    }),
+-    getZoom: jest.fn(() => viewState.zoom),
+-    getCenter: jest.fn(() => ({
+-      lng: viewState.center[0],
+-      lat: viewState.center[1],
+-    })),
+-    getPitch: jest.fn(() => viewState.pitch),
+-    getBearing: jest.fn(() => viewState.bearing),
+-    getCanvas: jest.fn(() => ({ style: { cursor: '' } })),
+-    dragRotate: { enable: jest.fn(), disable: jest.fn() },
+-    touchZoomRotate: {
+-      enableRotation: jest.fn(),
+-      disableRotation: jest.fn(),
+-    },
+-  };
+-  instance.__handlers = handlers;
+-  instance.__emit = (event: string, payload: any, layerId?: string) => {
+-    for (const handler of getHandlers(event, layerId)) {
+-      handler(payload);
+-    }
+-  };
+-  return instance;
+-}
+-
+-jest.mock(
+-  'maplibre-gl',
+-  () => {
+-    const Marker = jest.fn(() => ({
+-      setLngLat: jest.fn().mockReturnThis(),
+-      addTo: jest.fn().mockReturnThis(),
+-      remove: jest.fn(),
+-    }));
+-    const NavigationControl = jest.fn();
+-    const AttributionControl = jest.fn();
+-    const Map = jest.fn((options?: Record<string, unknown>) =>
+-      buildMapInstance(
+-        options as {
+-          center?: [number, number];
+-          zoom?: number;
+-          pitch?: number;
+-          bearing?: number;
+-        },
+-      ),
+-    );
+-    const addProtocol = jest.fn();
+-    const module = {
+-      __esModule: true,
+-      default: {
+-        Map,
+-        Marker,
+-        NavigationControl,
+-        AttributionControl,
+-        addProtocol,
+-      },
+-      Map,
+-      Marker,
+-      NavigationControl,
+-      AttributionControl,
+-      addProtocol,
+-    };
+-    return module;
+-  },
+-  { virtual: true },
+-);
+-
+-const drawChangeMode = jest.fn();
+-const drawDelete = jest.fn();
+-const optimizeRouteMock = jest.fn().mockResolvedValue(null);
+-const resolveWithAct = <T,>(value: T) =>
+-  new Promise<T>((resolve) => {
+-    act(() => resolve(value));
+-  });
+-
+-jest.mock(
+-  'maplibre-gl-draw',
+-  () => {
+-    const constructor = jest.fn(
+-      (options?: { styles?: Array<{ paint?: Record<string, unknown> }> }) => {
+-        if (!options?.styles) {
+-          console.error(
+-            'line-dasharray выражение должно использовать literal для совместимости с MapLibre.',
+-          );
+-        } else {
+-          for (const style of options.styles) {
+-            const paint = style?.paint as Record<string, unknown> | undefined;
+-            const dashArray = paint?.['line-dasharray'];
+-            if (
+-              Array.isArray(dashArray) &&
+-              dashArray.some(
+-                (entry) =>
+-                  Array.isArray(entry) &&
+-                  entry.length > 0 &&
+-                  typeof entry[0] === 'number',
+-              )
+-            ) {
+-              console.error(
+-                'line-dasharray выражение должно использовать literal для совместимости с MapLibre.',
+-              );
+-              break;
+-            }
+-          }
+-        }
+-        return {
+-          changeMode: drawChangeMode,
+-          delete: drawDelete,
+-          get: jest.fn(() => null),
+-        };
+-      },
+-    );
+-    return constructor;
+-  },
+-  { virtual: true },
+-);
++import Logistics from './Logistics';
+ 
+-const taskTableBatches: any[][] = [];
+-
+-const mockTasks = [
+-  {
+-    _id: 't1',
+-    id: 't1',
+-    title: 'Задача 1',
+-    status: 'Новая',
+-    startCoordinates: { lat: 50, lng: 30 },
+-    finishCoordinates: { lat: 51, lng: 31 },
+-    logistics_details: {
+-      transport_type: 'Легковой',
+-      start_location: 'Київ',
+-      end_location: 'Львів',
+-    },
+-  },
+-  {
+-    _id: 't2',
+-    id: 't2',
+-    title: 'Задача 2',
+-    status: 'В работе',
+-    startCoordinates: { lat: 55, lng: 35 },
+-    finishCoordinates: { lat: 55.5, lng: 35.5 },
+-    logistics_details: {
+-      transport_type: '',
+-    },
+-    transport_type: 'Грузовой',
+-    start_location: 'Дніпро',
+-    end_location: 'Харків',
+-  },
+-  {
+-    _id: 't4',
+-    id: 't4',
+-    title: 'Задача 4',
+-    status: 'Новая',
+-    startCoordinates: { lat: 49.5, lng: 25.6 },
+-    finishCoordinates: { lat: 49.9, lng: 26.1 },
+-    logistics_details: {
+-      transport_type: 'Без транспорта',
+-      start_location: 'Тернопіль',
+-      end_location: 'Хмельницький',
+-    },
+-  },
+-  {
+-    _id: 't3',
+-    id: 't3',
+-    title: 'Задача 3',
+-    status: 'Отменена',
+-    logistics_details: {
+-      transport_type: 'Легковой',
+-    },
+-  },
+-];
+-
+-jest.mock('../components/TaskTable', () => {
+-  function MockTaskTable({ tasks, onDataChange }: any) {
+-    const signatureRef = React.useRef<string | null>(null);
+-    React.useEffect(() => {
+-      const signature = JSON.stringify(tasks);
+-      if (signatureRef.current === signature) return;
+-      signatureRef.current = signature;
+-      taskTableBatches.push(tasks);
+-      onDataChange(tasks);
+-    }, [tasks, onDataChange]);
+-    return React.createElement('div', { 'data-testid': 'task-table' });
+-  }
+-  return { __esModule: true, default: MockTaskTable };
+-});
+-
+-const fetchTasksMock = jest.fn(() => resolveWithAct(mockTasks));
++const listRoutePlansMock = jest.fn();
++const addToastMock = jest.fn();
+ 
+-jest.mock('../services/tasks', () => ({
+-  fetchTasks: (...args: unknown[]) => fetchTasksMock(...args),
++jest.mock('../services/routePlans', () => ({
++  listRoutePlans: (...args: unknown[]) => listRoutePlansMock(...args),
+ }));
+ 
+-jest.mock('../services/osrm', () =>
+-  jest.fn().mockResolvedValue([
+-    [30, 50],
+-    [31, 51],
+-  ]),
+-);
++jest.mock('../context/useToast', () => ({
++  useToast: () => ({ addToast: addToastMock }),
++}));
+ 
+-jest.mock('../services/optimizer', () => ({
+-  __esModule: true,
+-  default: (...args: unknown[]) => optimizeRouteMock(...args),
++jest.mock('../context/useAuth', () => ({
++  useAuth: () => ({ user: { role: 'user' } }),
+ }));
+ 
+-jest.mock('../services/logisticsEvents', () => {
+-  const listeners = new Set<(event: unknown) => void>();
+-  return {
+-    __esModule: true,
+-    subscribeLogisticsEvents: jest.fn((listener: (event: unknown) => void) => {
+-      listeners.add(listener);
+-      return () => {
+-        listeners.delete(listener);
+-      };
+-    }),
+-    __count() {
+-      return listeners.size;
+-    },
+-    __emit(event: unknown) {
+-      listeners.forEach((listener) => listener(event));
+-    },
+-    __clear() {
+-      listeners.clear();
+-    },
+-  };
+-});
++jest.mock('../components/Breadcrumbs', () => (props: { items: Array<{ label: string }> }) => (
++  <nav aria-label="breadcrumbs">{props.items.map((item) => item.label).join(' / ')}</nav>
++));
+ 
+-const logisticsEventsMock = jest.requireMock('../services/logisticsEvents') as {
+-  subscribeLogisticsEvents: jest.Mock<
+-    () => void,
+-    [(event: LogisticsEvent) => void]
+-  >;
+-  __emit: (event: LogisticsEvent) => void;
+-  __count: () => number;
+-  __clear: () => void;
+-};
++jest.mock('../components/SkeletonCard', () => () => <div data-testid="skeleton">Загрузка…</div>);
+ 
+-const listRoutePlansMock = jest.fn();
+-const updateRoutePlanMock = jest.fn();
+-const changeRoutePlanStatusMock = jest.fn();
+-
+-jest.mock('../services/routePlans', () => ({
+-  listRoutePlans: (...args: unknown[]) => listRoutePlansMock(...args),
+-  updateRoutePlan: (...args: unknown[]) => updateRoutePlanMock(...args),
+-  changeRoutePlanStatus: (...args: unknown[]) =>
+-    changeRoutePlanStatusMock(...args),
++jest.mock('@/components/ui/button', () => ({
++  Button: ({ children, ...rest }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
++    <button type="button" {...rest}>
++      {children}
++    </button>
++  ),
+ }));
+ 
+-const draftPlan: RoutePlan = {
++const basePlan: RoutePlan = {
+   id: 'plan-1',
+-  title: 'Черновик маршрута',
++  title: 'Маршрут 1',
+   status: 'draft',
+-  suggestedBy: null,
+-  method: 'angle',
+-  count: 1,
+-  notes: null,
++  notes: 'Доставка оборудования',
+   metrics: {
+-    totalDistanceKm: 24.5,
++    totalDistanceKm: null,
+     totalRoutes: 1,
+-    totalTasks: 1,
++    totalTasks: 2,
+     totalStops: 2,
++    totalEtaMinutes: null,
++    totalLoad: null,
+   },
+   routes: [
+     {
+       id: 'route-1',
+-      order: 0,
+-      vehicleId: null,
+-      vehicleName: null,
+-      driverId: null,
+-      driverName: null,
++      order: 1,
++      vehicleId: 'v-1',
++      vehicleName: 'Фургон',
++      driverId: 1,
++      driverName: 'Иван',
+       tasks: [
+-        {
+-          taskId: 't1',
+-          order: 0,
+-          title: 'Задача 1',
+-          start: { lat: 50, lng: 30 },
+-          finish: { lat: 51, lng: 31 },
+-          startAddress: 'Старт',
+-          finishAddress: 'Финиш',
+-          distanceKm: 12.3,
+-        },
+-      ],
+-      stops: [
+-        {
+-          order: 0,
+-          kind: 'start',
+-          taskId: 't1',
+-          coordinates: { lat: 50, lng: 30 },
+-          address: 'Старт',
+-        },
+-        {
+-          order: 1,
+-          kind: 'finish',
+-          taskId: 't1',
+-          coordinates: { lat: 51, lng: 31 },
+-          address: 'Финиш',
+-        },
++        { taskId: 't-1', order: 1, title: 'Забрать посылку' },
++        { taskId: 't-2', order: 2, title: 'Доставить клиенту' },
+       ],
+-      metrics: { distanceKm: 12.3, tasks: 1, stops: 2 },
+-      routeLink: 'https://example.com',
+-      notes: null,
++      stops: [],
+     },
+   ],
+-  tasks: ['t1'],
+-  createdAt: '2024-01-01T00:00:00.000Z',
+-  updatedAt: '2024-01-01T00:00:00.000Z',
++  tasks: ['t-1', 't-2'],
++  createdAt: '2024-01-10T10:00:00.000Z',
++  updatedAt: '2024-01-10T10:00:00.000Z',
+ };
+ 
+-jest.mock('../context/useAuth', () => ({
+-  useAuth: () => ({ user: { telegram_id: 42, role: 'admin' } }),
+-}));
+-
+-jest.mock('../controllers/taskStateController', () => {
+-  const ReactActual = jest.requireActual<typeof import('react')>('react');
+-  const listeners = new Set<() => void>();
+-  const defaultKey = 'logistics:all';
+-  const resolveKey = (value?: string) => value ?? defaultKey;
+-  let snapshot: any[] = [];
+-  let meta = {
+-    key: defaultKey,
+-    pageSize: 0,
+-    total: 0,
+-    sort: 'desc' as const,
+-    updatedAt: Date.now(),
+-  };
+-  const notify = () => {
+-    listeners.forEach((listener) => listener());
+-  };
+-  const updateSnapshot = (rows: any[], key: string) => {
+-    snapshot = rows.map((task) => ({ ...task }));
+-    meta = {
+-      ...meta,
+-      key,
+-      pageSize: snapshot.length,
+-      total: snapshot.length,
+-      updatedAt: Date.now(),
+-    };
+-    notify();
+-  };
+-  const taskStateController = {
+-    subscribe(listener: () => void) {
+-      listeners.add(listener);
+-      return () => {
+-        listeners.delete(listener);
+-      };
+-    },
+-    clear() {
+-      snapshot = [];
+-      meta = {
+-        ...meta,
+-        pageSize: 0,
+-        total: 0,
+-        updatedAt: Date.now(),
+-      };
+-      notify();
+-    },
+-    setIndex(_key: string, list: any[]) {
+-      const key = resolveKey(_key);
+-      updateSnapshot(Array.isArray(list) ? list : [], key);
+-    },
+-    getIndexSnapshot(_key: string) {
+-      const key = resolveKey(_key);
+-      if (meta.key !== key) {
+-        return [];
+-      }
+-      return snapshot;
+-    },
+-    getIndexMetaSnapshot(_key: string) {
+-      const key = resolveKey(_key);
+-      if (meta.key !== key) {
+-        return {
+-          ...meta,
+-          key,
+-        };
+-      }
+-      return { ...meta };
+-    },
+-  };
+-  const useTaskIndex = (_key = defaultKey) => {
+-    const key = resolveKey(_key);
+-    const [value, setValue] = ReactActual.useState(() =>
+-      taskStateController.getIndexSnapshot(key),
+-    );
+-    ReactActual.useEffect(() => {
+-      const listener = () => {
+-        setValue([...taskStateController.getIndexSnapshot(key)]);
+-      };
+-      const unsubscribe = taskStateController.subscribe(listener);
+-      listener();
+-      return unsubscribe;
+-    }, [key]);
+-    return value;
+-  };
+-  const useTaskIndexMeta = (_key = defaultKey) => {
+-    const key = resolveKey(_key);
+-    const [value, setValue] = ReactActual.useState(() =>
+-      taskStateController.getIndexMetaSnapshot(key),
+-    );
+-    ReactActual.useEffect(() => {
+-      const listener = () => {
+-        setValue(taskStateController.getIndexMetaSnapshot(key));
+-      };
+-      const unsubscribe = taskStateController.subscribe(listener);
+-      listener();
+-      return unsubscribe;
+-    }, [key]);
+-    return value;
+-  };
+-  return {
+-    __esModule: true,
+-    taskStateController,
+-    useTaskIndex,
+-    useTaskIndexMeta,
+-  };
+-});
+-
+-jest.mock('../context/useTasks', () => {
+-  const { taskStateController } = jest.requireMock(
+-    '../controllers/taskStateController',
++const renderPage = async () => {
++  render(
++    <MemoryRouter>
++      <Logistics />
++    </MemoryRouter>,
+   );
+-  return {
+-    __esModule: true,
+-    default: () => ({
+-      controller: taskStateController,
+-      version: 0,
+-      refresh: jest.fn(),
+-      query: '',
+-      setQuery: jest.fn(),
+-      filters: {
+-        status: [],
+-        priority: [],
+-        from: '',
+-        to: '',
+-        taskTypes: [],
+-        assignees: [],
+-      },
+-      setFilters: jest.fn(),
+-      filterUsers: [],
+-      setFilterUsers: jest.fn(),
+-    }),
+-  };
+-});
+-
+-const renderWithEffects = async (element: React.ReactElement) => {
+-  let view: ReturnType<typeof render> | null = null;
+-  await act(async () => {
+-    view = render(element);
+-  });
+-  await act(async () => {
+-    await Promise.resolve();
+-  });
+-  return view as ReturnType<typeof render>;
++  await waitFor(() => expect(listRoutePlansMock).toHaveBeenCalled());
+ };
+ 
+-beforeAll(() => {
+-  if (!globalThis.crypto) {
+-    Object.defineProperty(globalThis, 'crypto', {
+-      value: { randomUUID: () => 'test-uuid' },
+-      configurable: true,
+-    });
+-  } else if (typeof globalThis.crypto.randomUUID !== 'function') {
+-    (globalThis.crypto as Crypto).randomUUID = () => 'test-uuid';
+-  }
+-  const mockContext = {
+-    scale: jest.fn(),
+-    clearRect: jest.fn(),
+-    beginPath: jest.fn(),
+-    arc: jest.fn(),
+-    fill: jest.fn(),
+-    stroke: jest.fn(),
+-    fillStyle: '',
+-    strokeStyle: '',
+-    lineWidth: 0,
+-    font: '',
+-    textAlign: 'center',
+-    textBaseline: 'middle',
+-    fillText: jest.fn(),
+-    getImageData: jest.fn(() => ({
+-      data: new Uint8ClampedArray(4),
+-      width: 1,
+-      height: 1,
+-    })),
+-  } as unknown as CanvasRenderingContext2D;
+-  const canvasPrototype = HTMLCanvasElement.prototype as any;
+-  if (typeof canvasPrototype.getContext !== 'function') {
+-    canvasPrototype.getContext = () => mockContext;
+-  } else {
+-    jest
+-      .spyOn(canvasPrototype, 'getContext')
+-      .mockImplementation(() => mockContext);
+-  }
+-});
+-
+-describe('LogisticsPage', () => {
+-  jest.setTimeout(20000);
+-  const originalConsoleError = console.error;
+-  let consoleErrorSpy: jest.SpyInstance;
+-
+-  beforeAll(() => {
+-    consoleErrorSpy = jest
+-      .spyOn(console, 'error')
+-      .mockImplementation((...args) => {
+-        const [message] = args;
+-        if (
+-          typeof message === 'string' &&
+-          message.includes('not wrapped in act')
+-        ) {
+-          return;
+-        }
+-        originalConsoleError(...args);
+-      });
+-  });
+-
+-  afterAll(() => {
+-    consoleErrorSpy.mockRestore();
+-  });
+-
++describe('Logistics page (карточки)', () => {
+   beforeEach(() => {
+-    jest.clearAllMocks();
+-    window.localStorage.clear();
+-    logisticsEventsMock.__clear();
+-    fetchTasksMock.mockImplementation(() => resolveWithAct(mockTasks));
+-    taskStateController.clear();
+-    taskTableBatches.length = 0;
+     listRoutePlansMock.mockReset();
+-    listRoutePlansMock.mockImplementation(
+-      (status?: string, page?: number, limit?: number) => {
+-        const payload =
+-          status === 'draft'
+-            ? {
+-                items: [draftPlan],
+-                total: 1,
+-                page: page ?? 1,
+-                limit: limit ?? 1,
+-              }
+-            : { items: [], total: 0, page: page ?? 1, limit: limit ?? 1 };
+-        return resolveWithAct(payload);
+-      },
+-    );
+-    updateRoutePlanMock.mockReset();
+-    changeRoutePlanStatusMock.mockReset();
+-    optimizeRouteMock.mockReset();
+-    optimizeRouteMock.mockImplementation(() => resolveWithAct(null));
+-    updateRoutePlanMock.mockImplementation(() => resolveWithAct(draftPlan));
+-    changeRoutePlanStatusMock.mockImplementation(() =>
+-      resolveWithAct({
+-        ...draftPlan,
+-        status: 'approved',
+-      }),
+-    );
+-  });
+-
+-  it('подключает слой адресов поверх дорожных подписей и под крупными метками', async () => {
+-    await renderWithEffects(
+-      <MemoryRouter future={{ v7_relativeSplatPath: true }}>
+-        <LogisticsPage />
+-      </MemoryRouter>,
+-    );
+-
+-    const mapModule = jest.requireMock('maplibre-gl');
+-    const mapCreation = mapModule.Map.mock.results.at(-1);
+-    const mapInstance = (mapCreation?.value ?? null) as any;
+-    expect(mapInstance).toBeTruthy();
+-
+-    await waitFor(() => {
+-      expect(mapInstance.addSource).toHaveBeenCalledWith(
+-        'logistics-addresses',
+-        expect.objectContaining({
+-          type: 'vector',
+-          url: MAP_ADDRESSES_PMTILES_URL,
+-        }),
+-      );
+-    });
+-
+-    const addressLayerCall = mapInstance.addLayer.mock.calls.find(
+-      (call: any[]) => call[0]?.id === 'logistics-addresses-labels',
+-    );
+-    expect(addressLayerCall).toBeTruthy();
+-    const [layerSpec, beforeId] = addressLayerCall!;
+-    expect(beforeId).toBe('settlement-major-label');
+-    expect(layerSpec).toMatchObject({
+-      type: 'symbol',
+-      minzoom: 17,
+-      layout: {
+-        'text-field': ['get', 'housenumber'],
+-        'text-size': 13,
+-        'text-ignore-placement': false,
+-      },
+-      paint: {
+-        'text-halo-width': 1.2,
+-        'text-halo-blur': 0.6,
+-      },
+-    });
+-
+-    const finalOrder = mapInstance
+-      .getStyle()
+-      .layers.map((layer: { id: string }) => layer.id);
+-    const roadIndex = finalOrder.indexOf('road-label');
+-    const addressIndex = finalOrder.indexOf('logistics-addresses-labels');
+-    const majorIndex = finalOrder.indexOf('settlement-major-label');
+-
+-    expect(roadIndex).toBeGreaterThanOrEqual(0);
+-    expect(majorIndex).toBeGreaterThanOrEqual(0);
+-    expect(roadIndex).toBeLessThan(addressIndex);
+-    expect(addressIndex).toBeLessThan(majorIndex);
++    addToastMock.mockReset();
+   });
+ 
+-  it('перезагружает данные при событии logistics.init', async () => {
+-    await renderWithEffects(
+-      <MemoryRouter future={{ v7_relativeSplatPath: true }}>
+-        <LogisticsPage />
+-      </MemoryRouter>,
+-    );
++  it('отображает карточки с основными данными маршрутного плана', async () => {
++    listRoutePlansMock.mockResolvedValue({ items: [basePlan], total: 1 });
+ 
+-    await waitFor(() => expect(fetchTasksMock).toHaveBeenCalled());
+-    await waitFor(() =>
+-      expect(listRoutePlansMock).toHaveBeenCalledWith('draft', 1, 1),
+-    );
+-    expect(logisticsEventsMock.__count()).toBeGreaterThan(0);
++    await renderPage();
+ 
+-    fetchTasksMock.mockClear();
+-    listRoutePlansMock.mockClear();
+-
+-    act(() => {
+-      logisticsEventsMock.__emit({ type: 'logistics.init' } as LogisticsEvent);
+-    });
+-
+-    await waitFor(() => expect(fetchTasksMock).toHaveBeenCalled());
+-    await waitFor(() =>
+-      expect(listRoutePlansMock).toHaveBeenCalledWith('draft', 1, 1),
+-    );
++    expect(await screen.findByText('Маршрутные планы')).toBeInTheDocument();
++    expect(screen.getByText('Маршрут 1')).toBeInTheDocument();
++    expect(screen.getByText('Новый')).toBeInTheDocument();
++    expect(screen.getByText('Иван')).toBeInTheDocument();
++    expect(screen.getByText('Фургон')).toBeInTheDocument();
++    expect(screen.getByText('Забрать посылку')).toBeInTheDocument();
++    expect(screen.getByText('Доставить клиенту')).toBeInTheDocument();
+   });
+ 
+-  it('сохраняет карту и слои при открытом диалоге задачи', async () => {
+-    const router = createMemoryRouter(
+-      [{ path: '/logistics', element: <LogisticsPage /> }],
+-      { initialEntries: ['/logistics?task=t1'] },
+-    );
+-
+-    await renderWithEffects(<RouterProvider router={router} />);
+-
+-    const mapModule = jest.requireMock('maplibre-gl');
+-    const mapCreation = mapModule.Map.mock.results.at(-1);
+-    const mapInstance = (mapCreation?.value ?? null) as any;
+-    expect(mapInstance).toBeTruthy();
+-
+-    await waitFor(() => {
+-      expect(mapModule.Map).toHaveBeenCalledTimes(1);
+-      expect(mapInstance.addSource).toHaveBeenCalled();
+-    });
+-
+-    const initialSources = {
+-      routes: mapInstance.getSource('logistics-task-routes'),
+-      clusters: mapInstance.getSource('logistics-task-markers'),
++  it('фильтрует карточки по статусу', async () => {
++    const approvedPlan: RoutePlan = {
++      ...basePlan,
++      id: 'plan-2',
++      title: 'Маршрут 2',
++      status: 'approved',
+     };
+-    const initialLayers = mapInstance
+-      .getStyle()
+-      .layers.map((layer: { id: string }) => layer.id);
+-
+-    await act(async () => {
+-      await router.navigate('/logistics');
+-    });
++    listRoutePlansMock.mockResolvedValue({ items: [basePlan, approvedPlan], total: 2 });
+ 
+-    await waitFor(() => expect(mapModule.Map).toHaveBeenCalledTimes(1));
+-    expect(mapInstance.remove).not.toHaveBeenCalled();
+-    expect(mapInstance.getSource('logistics-task-routes')).toBe(
+-      initialSources.routes,
+-    );
+-    expect(mapInstance.getSource('logistics-task-markers')).toBe(
+-      initialSources.clusters,
+-    );
+-    expect(
+-      mapInstance.getStyle().layers.map((layer: { id: string }) => layer.id),
+-    ).toEqual(initialLayers);
+-  });
++    await renderPage();
+ 
+-  it('перезагружает задачи и план при событии tasks.changed', async () => {
+-    await renderWithEffects(
+-      <MemoryRouter future={{ v7_relativeSplatPath: true }}>
+-        <LogisticsPage />
+-      </MemoryRouter>,
+-    );
+-
+-    await waitFor(() => expect(fetchTasksMock).toHaveBeenCalled());
+-    await waitFor(() =>
+-      expect(listRoutePlansMock).toHaveBeenCalledWith('draft', 1, 1),
+-    );
+-    await waitFor(() =>
+-      expect(logisticsEventsMock.subscribeLogisticsEvents).toHaveBeenCalled(),
+-    );
+-    expect(logisticsEventsMock.__count()).toBeGreaterThan(0);
+-    fetchTasksMock.mockClear();
+-    listRoutePlansMock.mockClear();
+-
+-    await act(async () => {
+-      logisticsEventsMock.__emit({ type: 'tasks.changed' } as LogisticsEvent);
+-      await Promise.resolve();
+-    });
+-
+-    await waitFor(() => expect(fetchTasksMock).toHaveBeenCalled());
+-    await waitFor(() =>
+-      expect(listRoutePlansMock).toHaveBeenCalledWith('draft', 1, 1),
+-    );
+-  });
+-
+-  it('сохраняет и восстанавливает состояние карты и слоёв', async () => {
+-    const router = createMemoryRouter(
+-      [
+-        { path: '/logistics', element: <LogisticsPage /> },
+-        { path: '*', element: <LogisticsPage /> },
+-      ],
+-      {
+-        initialEntries: ['/logistics'],
+-        future: { v7_relativeSplatPath: true },
+-      },
+-    );
+-
+-    const mapModule = jest.requireMock('maplibre-gl');
+-    const firstRender = await renderWithEffects(
+-      <RouterProvider router={router} />,
+-    );
+-
+-    await waitFor(() => expect(mapModule.Map).toHaveBeenCalled());
+-
+-    const mapInstance = (mapModule.Map.mock.results.at(-1)?.value ??
+-      null) as any;
+-    expect(mapInstance).toBeTruthy();
+-
+-    const tasksToggle = await screen.findByLabelText('Задачи');
+-    const optimizedToggle = screen.getByLabelText('Оптимизация');
+-    expect(tasksToggle).toBeChecked();
+-    expect(optimizedToggle).toBeChecked();
+-
+-    fireEvent.click(tasksToggle);
+-    expect(tasksToggle).not.toBeChecked();
+-
+-    act(() => {
+-      mapInstance.easeTo({
+-        center: [12, 48],
+-        zoom: 9,
+-        pitch: 25,
+-        bearing: 10,
+-      });
+-      mapInstance.__emit('moveend', {});
+-      mapInstance.__emit('pitchend', {});
+-      mapInstance.__emit('rotateend', {});
+-    });
+-
+-    fireEvent.click(screen.getByRole('button', { name: 'Перспектива' }));
++    fireEvent.change(screen.getByLabelText('Статус'), { target: { value: 'approved' } });
+ 
+     await waitFor(() => {
+-      expect(window.localStorage.getItem('logistics:map-state')).toBeTruthy();
+-    });
+-
+-    const savedLayers = JSON.parse(
+-      window.localStorage.getItem('logistics:layer-visibility') ?? '{}',
+-    );
+-    expect(savedLayers).toMatchObject({ tasks: false, optimized: true });
+-
+-    const savedMapState = JSON.parse(
+-      window.localStorage.getItem('logistics:map-state') ?? '{}',
+-    );
+-    expect(savedMapState).toMatchObject({
+-      center: [12, 48],
+-      zoom: 9,
+-      pitch: 55,
+-      bearing: 28,
+-      viewMode: 'perspective',
++      expect(screen.queryByText('Маршрут 1')).not.toBeInTheDocument();
++      expect(screen.getByText('Маршрут 2')).toBeInTheDocument();
++      expect(screen.getByText('В работе')).toBeInTheDocument();
+     });
+-
+-    firstRender.unmount();
+-    mapModule.Map.mockClear();
+-
+-    const secondRouter = createMemoryRouter(
+-      [
+-        { path: '/logistics', element: <LogisticsPage /> },
+-        { path: '*', element: <LogisticsPage /> },
+-      ],
+-      {
+-        initialEntries: ['/logistics'],
+-        future: { v7_relativeSplatPath: true },
+-      },
+-    );
+-
+-    await renderWithEffects(<RouterProvider router={secondRouter} />);
+-
+-    await waitFor(() => expect(mapModule.Map).toHaveBeenCalled());
+-
+-    const mapCall = mapModule.Map.mock.calls.at(-1)?.[0] as
+-      | Record<string, unknown>
+-      | undefined;
+-    expect(mapCall?.center).toEqual([12, 48]);
+-    expect(mapCall?.zoom).toBe(9);
+-    expect(mapCall?.pitch).toBe(55);
+-    expect(mapCall?.bearing).toBe(28);
+-
+-    const restoredTasksToggle = await screen.findByLabelText('Задачи');
+-    expect(restoredTasksToggle).not.toBeChecked();
+-    const perspectiveButton = screen.getByRole('button', {
+-      name: 'Перспектива',
+-    });
+-    expect(perspectiveButton).toHaveAttribute('aria-pressed', 'true');
+   });
+ 
+-  it('переключает карту и список на мобильной ширине и задаёт адаптивную высоту карты', async () => {
+-    await renderWithEffects(
+-      <MemoryRouter future={{ v7_relativeSplatPath: true }}>
+-        <LogisticsPage />
+-      </MemoryRouter>,
+-    );
+-
+-    const mapContainer = await waitFor(() =>
+-      document.getElementById('logistics-map'),
+-    );
+-
+-    expect(mapContainer).toBeTruthy();
+-    expect(mapContainer?.className).toContain('h-[46vh]');
+-    expect(mapContainer?.className).toContain('sm:h-[56vh]');
+-    expect(mapContainer?.className).toContain('xl:h-[72vh]');
+-
+-    const mapSection = screen.getByTestId('logistics-map-panel');
+-    const tasksCard = screen.getByTestId('logistics-tasks-card');
+-    const mapTab = screen.getByRole('button', { name: 'Карта' });
+-    const listTab = screen.getByRole('button', { name: 'Список' });
+-
+-    expect(mapSection.className).not.toContain('hidden');
+-    expect(tasksCard.className).toContain('hidden');
+-
+-    fireEvent.click(listTab);
+-
+-    expect(mapSection.className).toContain('hidden');
+-    expect(tasksCard.className).not.toContain('hidden');
++  it('показывает сообщение об ошибке при недоступности сервиса', async () => {
++    listRoutePlansMock.mockRejectedValueOnce(new Error('network error'));
+ 
+-    fireEvent.click(mapTab);
++    await renderPage();
+ 
+-    expect(mapSection.className).not.toContain('hidden');
+-    expect(tasksCard.className).toContain('hidden');
++    expect(await screen.findByRole('alert')).toHaveTextContent('network error');
++    expect(addToastMock).toHaveBeenCalled();
+   });
+ });
+diff --git a/apps/web/src/pages/Logistics.tsx b/apps/web/src/pages/Logistics.tsx
+index 2edc6b0..a1a7ef5 100644
+--- a/apps/web/src/pages/Logistics.tsx
++++ b/apps/web/src/pages/Logistics.tsx
+@@ -1,3841 +1,235 @@
+-// Страница отображения логистики с картой, маршрутами и фильтрами
+-// Основные модули: React, MapLibre GL, i18next
++// Страница отображения маршрутных планов в виде карточек
++// Основные модули: React, listRoutePlans, компоненты интерфейса
+ import React from 'react';
+-import { ChevronDown, ChevronUp } from 'lucide-react';
+-import fetchRouteGeometry, { clearRouteCache } from '../services/osrm';
+-import { fetchTasks } from '../services/tasks';
+-import optimizeRoute from '../services/optimizer';
++import type { RoutePlan, RoutePlanRoute, RoutePlanStatus, RoutePlanTaskRef } from 'shared';
++
+ import { Button } from '@/components/ui/button';
+-import { Input } from '@/components/ui/input';
+-import TaskTable from '../components/TaskTable';
+-import { useTranslation } from 'react-i18next';
+-import { useToast } from '../context/useToast';
+-import mapLibrary, {
+-  type AttributionControl,
+-  type ExpressionSpecification,
+-  type GeoJSONSource,
+-  type Listener,
+-  type LngLatBoundsLike,
+-  type MapInstance,
+-  type MapLayerMouseEvent,
+-  attachMapStyleFallback,
+-  registerPmtilesProtocol,
+-  RASTER_FALLBACK_STYLE,
+-} from '../utils/mapLibrary';
+-import { findFirstVectorSourceId } from '../utils/vectorSource';
+-import type * as GeoJSON from 'geojson';
+-import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
++import Breadcrumbs from '../components/Breadcrumbs';
++import SkeletonCard from '../components/SkeletonCard';
+ import { useAuth } from '../context/useAuth';
+-import useTasks from '../context/useTasks';
+-import useI18nRef from '../hooks/useI18nRef';
+-import { subscribeLogisticsEvents } from '../services/logisticsEvents';
+-import {
+-  MAP_ATTRIBUTION,
+-  MAP_ANIMATION_SPEED_KMH,
+-  MAP_DEFAULT_CENTER,
+-  MAP_DEFAULT_ZOOM,
+-  MAP_UKRAINE_BOUNDS,
+-  MAP_STYLE,
+-  MAP_STYLE_DEFAULT_URL,
+-  MAP_STYLE_MODE,
+-  MAP_STYLE_IS_DEFAULT,
+-  MAP_ADDRESSES_PMTILES_URL,
+-  MAP_ADDRESSES_PMTILES_SOURCE,
+-} from '../config/map';
+-import { insert3dBuildingsLayer } from '../utils/insert3dBuildingsLayer';
+-import {
+-  TASK_STATUSES,
+-  type Coords,
+-  type RoutePlan,
+-  type RoutePlanStatus,
+-} from 'shared';
+-import {
+-  listRoutePlans,
+-  updateRoutePlan,
+-  changeRoutePlanStatus,
+-  type RoutePlanUpdatePayload,
+-} from '../services/routePlans';
+-import type { TaskRow } from '../columns/taskColumns';
+-import haversine from '../utils/haversine';
+-
+-type RouteTask = TaskRow & {
+-  startCoordinates?: Coords;
+-  finishCoordinates?: Coords;
+-};
+-
+-const TASK_STATUS_COLORS: Record<string, string> = {
+-  Новая: '#0ea5e9',
+-  'В работе': '#f97316',
+-  Выполнена: '#22c55e',
+-  Отменена: '#ef4444',
+-};
+-
+-type LayerVisibilityState = {
+-  tasks: boolean;
+-  optimized: boolean;
+-};
+-
+-type GlobalRuntime = {
+-  process?: { env?: Record<string, string | undefined> };
+-};
+-
+-const getNodeEnv = (): string | undefined => {
+-  if (typeof globalThis !== 'object' || globalThis === null) {
+-    return undefined;
+-  }
+-  const runtime = globalThis as GlobalRuntime;
+-  return runtime.process?.env?.NODE_ENV;
+-};
+-
+-const DEFAULT_LAYER_VISIBILITY: LayerVisibilityState = {
+-  tasks: true,
+-  optimized: true,
+-};
+-
+-const LOGISTICS_EVENT_DEBOUNCE_MS = getNodeEnv() === 'test' ? 0 : 400;
+-
+-const ROUTE_FETCH_CONCURRENCY = 4;
+-
+-type TaskRouteStatusKey = RoutePlanStatus | 'unassigned';
+-type RouteStatusFilterKey = TaskRouteStatusKey | 'vehicle';
+-
+-const ROUTE_STATUS_ORDER: RouteStatusFilterKey[] = [
+-  'draft',
+-  'approved',
+-  'completed',
+-  'unassigned',
+-  'vehicle',
+-];
+-
+-const ROUTE_STATUS_COLORS: Record<RouteStatusFilterKey, string> = {
+-  draft: '#6366f1',
+-  approved: '#22c55e',
+-  completed: '#0f172a',
+-  unassigned: '#f97316',
+-  vehicle: '#0891b2',
+-};
+-
+-const ROUTE_STATUS_LABELS: Record<RouteStatusFilterKey, string> = {
+-  draft: 'Черновик',
+-  approved: 'Утверждён',
+-  completed: 'Завершён',
+-  unassigned: 'Без маршрута',
+-  vehicle: 'Транспорт',
+-};
+-
+-const getRouteStatusColor = (status: RouteStatusFilterKey): string =>
+-  ROUTE_STATUS_COLORS[status] ?? '#0f172a';
+-
+-const buildClusterStatusExpression = (status: TaskRouteStatusKey) => [
+-  '+',
+-  [
+-    'case',
+-    [
+-      'all',
+-      ['==', ['get', 'entity'], 'task'],
+-      ['==', ['get', 'routeStatus'], status],
+-    ],
+-    1,
+-    0,
+-  ],
+-  0,
+-];
++import { useToast } from '../context/useToast';
++import { listRoutePlans } from '../services/routePlans';
+ 
+-const CLUSTER_STATUS_PROPERTIES: Record<
+-  TaskRouteStatusKey,
+-  ExpressionSpecification
+-> = {
+-  draft: buildClusterStatusExpression('draft'),
+-  approved: buildClusterStatusExpression('approved'),
+-  completed: buildClusterStatusExpression('completed'),
+-  unassigned: buildClusterStatusExpression('unassigned'),
++const STATUS_LABELS: Record<RoutePlanStatus | 'cancelled', string> = {
++  draft: 'Новый',
++  approved: 'В работе',
++  completed: 'Выполнен',
++  cancelled: 'Отменен',
+ };
+ 
+-const TRANSPORT_TYPE_COLORS: Record<string, string> = {
+-  Легковой: '#0ea5e9',
+-  Грузовой: '#f97316',
+-  Спецтехника: '#7c3aed',
+-  Пеший: '#22c55e',
+-  'Без транспорта': '#9ca3af',
+-  default: '#475569',
++const STATUS_STYLES: Record<RoutePlanStatus | 'cancelled', string> = {
++  draft: 'bg-blue-100 text-blue-800',
++  approved: 'bg-amber-100 text-amber-800',
++  completed: 'bg-emerald-100 text-emerald-800',
++  cancelled: 'bg-rose-100 text-rose-800',
+ };
+ 
+-const TASK_TYPE_COLOR_PALETTE = [
+-  '#7c3aed',
+-  '#f97316',
+-  '#06b6d4',
+-  '#16a34a',
+-  '#ec4899',
+-  '#facc15',
+-  '#9333ea',
+-  '#0ea5e9',
++const STATUS_OPTIONS: Array<{ value: RoutePlanStatus | 'cancelled' | 'all'; label: string }> = [
++  { value: 'all', label: 'Все' },
++  { value: 'draft', label: STATUS_LABELS.draft },
++  { value: 'approved', label: STATUS_LABELS.approved },
++  { value: 'completed', label: STATUS_LABELS.completed },
++  { value: 'cancelled', label: STATUS_LABELS.cancelled },
+ ];
+ 
+-const VEHICLE_TASK_TYPE_KEY = 'vehicle';
+-const VEHICLE_TASK_TYPE_LABEL = 'Транспорт';
+-
+-type StoredMapState = {
+-  center: [number, number];
+-  zoom: number;
+-  pitch: number;
+-  bearing: number;
+-  viewMode: 'planar' | 'perspective';
+-};
+-
+-const LAYER_VISIBILITY_STORAGE_KEY = 'logistics:layer-visibility';
+-const MAP_STATE_STORAGE_KEY = 'logistics:map-state';
+-
+-const readFromStorage = <T,>(key: string): T | null => {
+-  if (typeof window === 'undefined') {
+-    return null;
+-  }
++const formatDate = (value?: string): string => {
++  if (!value) return '—';
+   try {
+-    const value = window.localStorage.getItem(key);
+-    if (!value) {
+-      return null;
+-    }
+-    return JSON.parse(value) as T;
++    return new Intl.DateTimeFormat('ru-RU', {
++      year: 'numeric',
++      month: 'long',
++      day: 'numeric',
++      hour: '2-digit',
++      minute: '2-digit',
++    }).format(new Date(value));
+   } catch {
+-    return null;
++    return value;
+   }
+ };
+ 
+-const saveToStorage = <T,>(key: string, payload: T): void => {
+-  if (typeof window === 'undefined') {
+-    return;
+-  }
+-  try {
+-    window.localStorage.setItem(key, JSON.stringify(payload));
+-  } catch {
+-    /* пропускаем ошибки записи в localStorage */
+-  }
+-};
+-
+-const getPersistedLayerVisibility = (): LayerVisibilityState | null => {
+-  const stored = readFromStorage<Partial<LayerVisibilityState>>(
+-    LAYER_VISIBILITY_STORAGE_KEY,
+-  );
+-  if (!stored) {
+-    return null;
+-  }
+-  const tasks = typeof stored.tasks === 'boolean' ? stored.tasks : undefined;
+-  const optimized =
+-    typeof stored.optimized === 'boolean' ? stored.optimized : undefined;
+-  if (tasks === undefined || optimized === undefined) {
+-    return null;
+-  }
+-  return { tasks, optimized };
+-};
+-
+-const getPersistedMapState = (): StoredMapState | null => {
+-  const stored = readFromStorage<Partial<StoredMapState>>(
+-    MAP_STATE_STORAGE_KEY,
+-  );
+-  if (!stored) {
+-    return null;
+-  }
+-  const center =
+-    Array.isArray(stored.center) &&
+-    stored.center.length === 2 &&
+-    stored.center.every(
+-      (value) => typeof value === 'number' && !Number.isNaN(value),
+-    )
+-      ? (stored.center as [number, number])
+-      : null;
+-  const zoom =
+-    typeof stored.zoom === 'number' && Number.isFinite(stored.zoom)
+-      ? stored.zoom
+-      : null;
+-  const pitch =
+-    typeof stored.pitch === 'number' && Number.isFinite(stored.pitch)
+-      ? stored.pitch
+-      : null;
+-  const bearing =
+-    typeof stored.bearing === 'number' && Number.isFinite(stored.bearing)
+-      ? stored.bearing
+-      : null;
+-  const viewMode =
+-    stored.viewMode === 'planar' || stored.viewMode === 'perspective'
+-      ? stored.viewMode
+-      : null;
+-  if (
+-    !center ||
+-    zoom === null ||
+-    pitch === null ||
+-    bearing === null ||
+-    viewMode === null
+-  ) {
+-    return null;
+-  }
+-  return { center, zoom, pitch, bearing, viewMode };
+-};
+-
+-const saveLayerVisibility = (value: LayerVisibilityState): void => {
+-  saveToStorage(LAYER_VISIBILITY_STORAGE_KEY, value);
+-};
+-
+-const saveMapState = (value: StoredMapState): void => {
+-  saveToStorage(MAP_STATE_STORAGE_KEY, value);
+-};
+-
+-const TASK_SOURCE_ID = 'logistics-task-routes';
+-const TASK_LAYER_ID = 'logistics-task-routes-line';
+-const TASK_CLUSTER_SOURCE_ID = 'logistics-task-markers';
+-const TASK_CLUSTER_LAYER_ID = 'logistics-task-clusters';
+-const TASK_CLUSTER_COUNT_LAYER_ID = 'logistics-task-cluster-count';
+-const TASK_POINTS_LAYER_ID = 'logistics-task-points';
+-const TASK_ANIMATION_SOURCE_ID = 'logistics-task-animation';
+-const TASK_ANIMATION_LAYER_ID = 'logistics-task-animation-symbol';
+-const OPT_SOURCE_ID = 'logistics-optimized-routes';
+-const OPT_LAYER_ID = 'logistics-optimized-routes-line';
+-const ADDRESS_SOURCE_ID = 'logistics-addresses';
+-const ADDRESS_LAYER_ID = 'logistics-addresses-labels';
+-const ADDRESS_VECTOR_SOURCE_URL = MAP_ADDRESSES_PMTILES_URL;
+-const HAS_ADDRESS_VECTOR_SOURCE = Boolean(ADDRESS_VECTOR_SOURCE_URL);
+-const ADDRESS_VECTOR_SOURCE_LAYER = 'addresses';
+-const MAJOR_LABEL_LAYER_CANDIDATES = [
+-  'settlement-subdivision-label',
+-  'settlement-major-label',
+-  'settlement-neighbourhood-label',
+-  'airport-label',
+-  'poi-label',
+-  'transit-label',
+-];
+-const ROAD_LABEL_LAYER_CANDIDATES = [
+-  'road-label',
+-  'road-number-shield',
+-  'bridge-street-minor-label',
+-  'street-label',
+-];
+-
+-type AnyLayerSpecification = Parameters<MapInstance['addLayer']>[0];
+-type LineLayerSpecification = Extract<AnyLayerSpecification, { type: 'line' }>;
+-type SymbolLayerSpecification = Extract<
+-  AnyLayerSpecification,
+-  { type: 'symbol' }
+->;
+-type CircleLayerSpecification = Extract<
+-  AnyLayerSpecification,
+-  { type: 'circle' }
+->;
+-
+-const TASK_START_SYMBOL = '⬤';
+-const TASK_FINISH_SYMBOL = '⦿';
+-const ANIMATION_SYMBOL = '▶';
+-const ROUTE_SPEED_KM_PER_SEC = MAP_ANIMATION_SPEED_KMH / 3600;
+-
+-const EXCLUDED_TASK_STATUSES = new Set(
+-  ['Выполнена', 'Отменена', 'completed', 'cancelled', 'canceled', 'done'].map(
+-    (value) => value.toLowerCase(),
+-  ),
+-);
+-
+-const shouldSkipTaskByStatus = (status: unknown): boolean => {
+-  if (typeof status !== 'string') {
+-    return false;
+-  }
+-  const normalized = status.trim().toLowerCase();
+-  if (!normalized) {
+-    return false;
+-  }
+-  return EXCLUDED_TASK_STATUSES.has(normalized);
+-};
+-
+-type CollapsibleCardProps = {
+-  title: React.ReactNode;
+-  description?: React.ReactNode;
+-  children: React.ReactNode;
+-  actions?: React.ReactNode;
+-  defaultOpen?: boolean;
+-  toggleLabels?: { collapse: string; expand: string };
+-};
+-
+-const CollapsibleCard: React.FC<CollapsibleCardProps> = ({
+-  title,
+-  description,
+-  children,
+-  actions,
+-  defaultOpen = true,
+-  toggleLabels,
+-}) => {
+-  const [open, setOpen] = React.useState(defaultOpen);
+-  const collapseLabel = toggleLabels?.collapse ?? 'Свернуть блок';
+-  const expandLabel = toggleLabels?.expand ?? 'Развернуть блок';
+-  const ariaLabel = open ? collapseLabel : expandLabel;
+-
+-  React.useEffect(() => {
+-    setOpen(defaultOpen);
+-  }, [defaultOpen]);
+-
+-  return (
+-    <section className="rounded-lg border bg-white/85 shadow-sm">
+-      <header className="flex flex-wrap items-start justify-between gap-3 border-b px-4 py-3">
+-        <div className="space-y-1">
+-          <h3 className="text-sm font-semibold uppercase text-muted-foreground">
+-            {title}
+-          </h3>
+-          {description ? (
+-            <p className="text-xs text-muted-foreground">{description}</p>
+-          ) : null}
+-        </div>
+-        <div className="flex flex-wrap items-center gap-2">
+-          {actions}
+-          <button
+-            type="button"
+-            className="inline-flex items-center gap-1 rounded border border-slate-200 px-2 py-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground transition hover:bg-slate-50"
+-            onClick={() => setOpen((value) => !value)}
+-            aria-expanded={open}
+-            aria-label={ariaLabel}
+-          >
+-            <span className="sr-only">{ariaLabel}</span>
+-            {open ? (
+-              <ChevronUp className="size-4" aria-hidden="true" />
+-            ) : (
+-              <ChevronDown className="size-4" aria-hidden="true" />
+-            )}
+-          </button>
+-        </div>
+-      </header>
+-      {open ? <div className="space-y-3 px-4 py-3">{children}</div> : null}
+-    </section>
+-  );
+-};
+-
+-const findExistingLayerId = (
+-  map: MapInstance,
+-  candidates: readonly string[],
+-): string | undefined => {
+-  const style = typeof map.getStyle === 'function' ? map.getStyle() : undefined;
+-  const layers = style?.layers ?? [];
+-  return candidates.find((candidate) =>
+-    layers.some((layer) => layer.id === candidate),
+-  );
+-};
+-
+-const ensureAddressesLayerOrder = (map: MapInstance) => {
+-  if (typeof map.getStyle !== 'function') {
+-    return;
+-  }
+-  const style = map.getStyle();
+-  const layers = style?.layers ?? [];
+-  const addressLayerIndex = layers.findIndex(
+-    (layer) => layer.id === ADDRESS_LAYER_ID,
+-  );
+-  if (addressLayerIndex === -1) {
+-    return;
+-  }
+-  const roadLayerId = findExistingLayerId(map, ROAD_LABEL_LAYER_CANDIDATES);
+-  if (roadLayerId && typeof map.moveLayer === 'function') {
+-    const refreshedStyle = map.getStyle();
+-    const refreshedLayers = refreshedStyle?.layers ?? [];
+-    const roadIndex = refreshedLayers.findIndex(
+-      (layer) => layer.id === roadLayerId,
+-    );
+-    if (roadIndex !== -1) {
+-      const nextLayer = refreshedLayers
+-        .slice(roadIndex + 1)
+-        .find((layer) => layer.id !== ADDRESS_LAYER_ID);
+-      if (nextLayer?.id) {
+-        map.moveLayer(ADDRESS_LAYER_ID, nextLayer.id);
+-      } else {
+-        map.moveLayer(ADDRESS_LAYER_ID);
++const collectTasks = (routes: RoutePlanRoute[]): string[] => {
++  const names = new Set<string>();
++  routes.forEach((route) => {
++    route.tasks.forEach((task: RoutePlanTaskRef) => {
++      const label = task.title?.trim() || task.taskId;
++      if (label) {
++        names.add(label);
+       }
+-    }
+-  }
+-  const majorLabelId = findExistingLayerId(map, MAJOR_LABEL_LAYER_CANDIDATES);
+-  if (majorLabelId && typeof map.moveLayer === 'function') {
+-    map.moveLayer(ADDRESS_LAYER_ID, majorLabelId);
+-  }
+-};
+-const MIN_ROUTE_DISTANCE_KM = 0.01;
+-
+-const createEmptyCollection = <
+-  T extends GeoJSON.Geometry = GeoJSON.Geometry,
+->(): GeoJSON.FeatureCollection<T> => ({
+-  type: 'FeatureCollection',
+-  features: [],
+-});
+-
+-const toKey = (value: string): string => value.trim().toLowerCase();
+-
+-const normalizeTransportType = (raw: string): string => {
+-  const value = raw.trim();
+-  if (!value) return 'Без транспорта';
+-  const lowered = value.toLowerCase();
+-  if (lowered.startsWith('лег')) return 'Легковой';
+-  if (lowered.startsWith('груз')) return 'Грузовой';
+-  if (lowered.includes('спец')) return 'Спецтехника';
+-  if (lowered.includes('пеш')) return 'Пеший';
+-  return value;
+-};
+-
+-const normalizeTaskType = (raw: string): string => {
+-  const value = raw.trim();
+-  if (!value) return 'Задача';
+-  if (value.length === 1) {
+-    return value.toUpperCase();
+-  }
+-  const lower = value.toLowerCase();
+-  return lower.charAt(0).toUpperCase() + lower.slice(1);
+-};
+-
+-const getTransportColor = (transportType: string): string => {
+-  const normalized = normalizeTransportType(transportType);
+-  return (
+-    TRANSPORT_TYPE_COLORS[normalized as keyof typeof TRANSPORT_TYPE_COLORS] ??
+-    TRANSPORT_TYPE_COLORS.default
+-  );
+-};
+-
+-const hexToRgb = (
+-  value: string,
+-): { r: number; g: number; b: number } | null => {
+-  const normalized = value.startsWith('#') ? value.slice(1) : value;
+-  if (normalized.length === 3) {
+-    const [r, g, b] = normalized.split('');
+-    return {
+-      r: parseInt(r + r, 16),
+-      g: parseInt(g + g, 16),
+-      b: parseInt(b + b, 16),
+-    };
+-  }
+-  if (normalized.length === 6) {
+-    return {
+-      r: parseInt(normalized.slice(0, 2), 16),
+-      g: parseInt(normalized.slice(2, 4), 16),
+-      b: parseInt(normalized.slice(4, 6), 16),
+-    };
+-  }
+-  return null;
+-};
+-
+-const getContrastTextColor = (background: string): string => {
+-  const rgb = hexToRgb(background);
+-  if (!rgb) return '#ffffff';
+-  const luminance = 0.299 * rgb.r + 0.587 * rgb.g + 0.114 * rgb.b;
+-  return luminance > 186 ? '#0f172a' : '#ffffff';
+-};
+-
+-const createMarkerImage = (
+-  fill: string,
+-  stroke: string,
+-  text: string,
+-  textColor: string,
+-  accent?: string,
+-): ImageData | null => {
+-  if (typeof document === 'undefined') {
+-    return null;
+-  }
+-  const size = 96;
+-  const devicePixelRatio =
+-    typeof window !== 'undefined' && window.devicePixelRatio
+-      ? window.devicePixelRatio
+-      : 1;
+-  const scale = devicePixelRatio > 1 ? 2 : 1;
+-  const canvas = document.createElement('canvas');
+-  canvas.width = size * scale;
+-  canvas.height = size * scale;
+-  const context = canvas.getContext('2d');
+-  if (!context) return null;
+-  context.scale(scale, scale);
+-  const center = size / 2;
+-  const radius = center - 4;
+-  context.clearRect(0, 0, size, size);
+-  context.beginPath();
+-  context.arc(center, center, radius, 0, Math.PI * 2);
+-  context.fillStyle = fill;
+-  context.fill();
+-  context.lineWidth = 6;
+-  context.strokeStyle = stroke;
+-  context.stroke();
+-  if (accent) {
+-    context.beginPath();
+-    context.arc(center, center, radius * 0.55, 0, Math.PI * 2);
+-    context.lineWidth = 4;
+-    context.strokeStyle = accent;
+-    context.stroke();
+-  }
+-  if (text) {
+-    context.fillStyle = textColor;
+-    context.font = "bold 32px 'Open Sans', 'Arial Unicode MS', sans-serif";
+-    context.textAlign = 'center';
+-    context.textBaseline = 'middle';
+-    context.fillText(text.slice(0, 2), center, center);
+-  }
+-  return context.getImageData(0, 0, size * scale, size * scale);
+-};
+-
+-const buildMarkerIconId = (
+-  taskTypeKey: string,
+-  routeStatusKey: string,
+-  transportKey: string,
+-  role: string,
+-): string =>
+-  ['marker', taskTypeKey, routeStatusKey, transportKey, role]
+-    .map((part) => part.replace(/\s+/g, '-').toLowerCase())
+-    .join('-');
+-
+-const ensureMarkerIcon = (
+-  map: MapInstance,
+-  cache: Set<string>,
+-  iconId: string,
+-  fill: string,
+-  stroke: string,
+-  text: string,
+-  textColor: string,
+-  accent?: string,
+-) => {
+-  if (!iconId || cache.has(iconId) || map.hasImage(iconId)) {
+-    cache.add(iconId);
+-    return;
+-  }
+-  const image = createMarkerImage(fill, stroke, text, textColor, accent);
+-  if (image) {
+-    map.addImage(iconId, image, { pixelRatio: 2 });
+-    cache.add(iconId);
+-  }
+-};
+-
+-const toPosition = (coords?: Coords | null): [number, number] | null => {
+-  if (!coords) return null;
+-  const { lat, lng } = coords;
+-  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+-    return null;
+-  }
+-  return [lng, lat];
+-};
+-
+-const hasCoords = (coords?: Coords | null) => Boolean(toPosition(coords));
+-
+-type Semaphore = {
+-  run: <T>(task: () => Promise<T>) => Promise<T>;
+-};
+-
+-const createSemaphore = (limit: number): Semaphore => {
+-  const queue: Array<() => void> = [];
+-  let active = 0;
+-  const normalizedLimit = Number.isFinite(limit) && limit > 0 ? limit : 1;
+-
+-  const release = () => {
+-    active -= 1;
+-    const next = queue.shift();
+-    if (next) {
+-      next();
+-    }
+-  };
+-
+-  const acquire = () =>
+-    new Promise<void>((resolve) => {
+-      const tryAcquire = () => {
+-        if (active < normalizedLimit) {
+-          active += 1;
+-          resolve();
+-        } else {
+-          queue.push(tryAcquire);
+-        }
+-      };
+-      tryAcquire();
+     });
+-
+-  const run = async <T,>(task: () => Promise<T>): Promise<T> => {
+-    await acquire();
+-    try {
+-      return await task();
+-    } finally {
+-      release();
+-    }
+-  };
+-
+-  return { run };
+-};
+-
+-const normalizeLocation = (value: unknown): string => {
+-  if (typeof value !== 'string') {
+-    return '';
+-  }
+-  const trimmed = value.trim();
+-  return trimmed;
+-};
+-
+-const resolveLocation = (primary: unknown, fallback: unknown): string => {
+-  const primaryValue = normalizeLocation(primary);
+-  if (primaryValue) {
+-    return primaryValue;
+-  }
+-  return normalizeLocation(fallback);
+-};
+-
+-type AnimatedRoute = {
+-  taskId: string;
+-  title: string;
+-  color: string;
+-  coordinates: GeoJSON.Position[];
+-  cumulative: number[];
+-  total: number;
+-  progress: number;
+-};
+-
+-type LogisticsDetails = {
+-  transport_type?: string | null;
+-  start_location?: string | null;
+-  end_location?: string | null;
+-};
+-
+-const getTaskTransportType = (task: RouteTask): string => {
+-  const details = (task as Record<string, unknown>).logistics_details as
+-    | LogisticsDetails
+-    | undefined;
+-  const detailValue =
+-    typeof details?.transport_type === 'string'
+-      ? details.transport_type.trim()
+-      : '';
+-  const inlineValue =
+-    typeof (task as Record<string, unknown>).transport_type === 'string'
+-      ? ((task as Record<string, unknown>).transport_type as string).trim()
+-      : '';
+-  const value = detailValue || inlineValue;
+-  return normalizeTransportType(value);
+-};
+-
+-const getTaskTypeLabel = (task: RouteTask): string => {
+-  const raw =
+-    typeof (task as Record<string, unknown>).task_type === 'string'
+-      ? ((task as Record<string, unknown>).task_type as string)
+-      : typeof (task as Record<string, unknown>).type === 'string'
+-        ? ((task as Record<string, unknown>).type as string)
+-        : '';
+-  return normalizeTaskType(raw);
+-};
+-
+-const getTaskTypeInitial = (label: string): string => {
+-  if (!label) return 'З';
+-  const trimmed = label.trim();
+-  if (!trimmed) return 'З';
+-  return trimmed.charAt(0).toUpperCase();
++  });
++  return Array.from(names);
+ };
+ 
+-const toLatLng = (
+-  position: GeoJSON.Position,
+-): { lat: number; lng: number } => ({
+-  lng: position[0],
+-  lat: position[1],
+-});
+-
+-const computeBearing = (
+-  from: GeoJSON.Position,
+-  to: GeoJSON.Position,
+-): number => {
+-  const fromLat = (from[1] * Math.PI) / 180;
+-  const toLat = (to[1] * Math.PI) / 180;
+-  const deltaLng = ((to[0] - from[0]) * Math.PI) / 180;
+-  const y = Math.sin(deltaLng) * Math.cos(toLat);
+-  const x =
+-    Math.cos(fromLat) * Math.sin(toLat) -
+-    Math.sin(fromLat) * Math.cos(toLat) * Math.cos(deltaLng);
+-  const radians = Math.atan2(y, x);
+-  const degrees = (radians * 180) / Math.PI;
+-  return (degrees + 360) % 360;
++const collectDrivers = (routes: RoutePlanRoute[]): string => {
++  const drivers = new Set<string>();
++  routes.forEach((route) => {
++    if (route.driverName) {
++      drivers.add(route.driverName);
++    }
++  });
++  return drivers.size > 0 ? Array.from(drivers).join(', ') : 'Не назначен';
+ };
+ 
+-const createAnimatedRoute = (
+-  coordinates: GeoJSON.Position[],
+-  color: string,
+-  taskId: string,
+-  title: string,
+-): AnimatedRoute | null => {
+-  if (coordinates.length < 2) {
+-    return null;
+-  }
+-  const cumulative: number[] = [0];
+-  let total = 0;
+-  for (let index = 1; index < coordinates.length; index += 1) {
+-    const prev = coordinates[index - 1];
+-    const next = coordinates[index];
+-    const distance = haversine(toLatLng(prev), toLatLng(next));
+-    total += distance;
+-    cumulative.push(total);
+-  }
+-  if (total < MIN_ROUTE_DISTANCE_KM) {
+-    return null;
+-  }
+-  return {
+-    taskId,
+-    title,
+-    color,
+-    coordinates,
+-    cumulative,
+-    total,
+-    progress: 0,
+-  };
++const collectVehicles = (routes: RoutePlanRoute[]): string => {
++  const vehicles = new Set<string>();
++  routes.forEach((route) => {
++    if (route.vehicleName) {
++      vehicles.add(route.vehicleName);
++    }
++  });
++  return vehicles.size > 0 ? Array.from(vehicles).join(', ') : 'Не назначено';
+ };
+ 
+-const getAnimationPoint = (
+-  route: AnimatedRoute,
+-  distance: number,
+-): { position: GeoJSON.Position; bearing: number } => {
+-  const capped = Math.max(0, Math.min(distance, route.total));
+-  const { cumulative, coordinates } = route;
+-  let segmentIndex = 0;
+-  for (let index = 0; index < cumulative.length - 1; index += 1) {
+-    if (capped >= cumulative[index] && capped <= cumulative[index + 1]) {
+-      segmentIndex = index;
+-      break;
+-    }
++const normalizeStatus = (status?: RoutePlanStatus | string): RoutePlanStatus | 'cancelled' => {
++  if (status === 'draft' || status === 'approved' || status === 'completed') {
++    return status;
+   }
+-  const start = coordinates[segmentIndex];
+-  const end = coordinates[segmentIndex + 1] ?? coordinates[segmentIndex];
+-  const segmentStart = cumulative[segmentIndex];
+-  const segmentEnd = cumulative[segmentIndex + 1] ?? route.total;
+-  const segmentDistance = segmentEnd - segmentStart;
+-  const t = segmentDistance > 0 ? (capped - segmentStart) / segmentDistance : 0;
+-  const lng = start[0] + (end[0] - start[0]) * t;
+-  const lat = start[1] + (end[1] - start[1]) * t;
+-  return {
+-    position: [lng, lat],
+-    bearing: computeBearing(start, end),
+-  };
++  return 'cancelled';
+ };
+ 
+-const MAP_CENTER_LNG_LAT: [number, number] = [
+-  MAP_DEFAULT_CENTER[0],
+-  MAP_DEFAULT_CENTER[1],
+-];
+-const UKRAINE_BOUNDS: LngLatBoundsLike = MAP_UKRAINE_BOUNDS;
+-const isRasterFallback = MAP_STYLE_MODE !== 'pmtiles';
+-const shouldShowMapFallbackNotice = isRasterFallback && MAP_STYLE_IS_DEFAULT;
+-const shouldWarnAddressConfig = MAP_ADDRESSES_PMTILES_SOURCE !== 'env';
+-
+-export default function LogisticsPage() {
+-  const { t, i18n } = useTranslation();
++export default function Logistics() {
++  const [plans, setPlans] = React.useState<RoutePlan[]>([]);
++  const [loading, setLoading] = React.useState(true);
++  const [error, setError] = React.useState<string | null>(null);
++  const [statusFilter, setStatusFilter] = React.useState<RoutePlanStatus | 'cancelled' | 'all'>('all');
+   const { addToast } = useToast();
+-  const collapseToggleLabels = React.useMemo(
+-    () => ({
+-      collapse: t('logistics.collapseSection', {
+-        defaultValue: 'Свернуть блок',
+-      }),
+-      expand: t('logistics.expandSection', {
+-        defaultValue: 'Развернуть блок',
+-      }),
+-    }),
+-    [t],
+-  );
+-  const tRef = useI18nRef(t);
+-  const language = i18n.language;
+-  const [sorted, setSorted] = React.useState<RouteTask[]>([]);
+-  const [allRouteTasks, setAllRouteTasks] = React.useState<RouteTask[]>([]);
+-  const [vehicles, setVehicles] = React.useState(1);
+-  const [method, setMethod] = React.useState('angle');
+-  const [links, setLinks] = React.useState<string[]>([]);
+-  const [showOnlyMissingCoords, setShowOnlyMissingCoords] =
+-    React.useState(false);
+-  const [plan, setPlan] = React.useState<RoutePlan | null>(null);
+-  const [planDraft, setPlanDraft] = React.useState<RoutePlan | null>(null);
+-  const [planMessage, setPlanMessage] = React.useState('');
+-  const [planMessageTone, setPlanMessageTone] = React.useState<
+-    'neutral' | 'error' | 'success'
+-  >('neutral');
+-  const [planLoading, setPlanLoading] = React.useState(false);
+-  const mapRef = React.useRef<MapInstance | null>(null);
+-  const attributionControlRef = React.useRef<AttributionControl | null>(null);
+-  const attributionAddedRef = React.useRef(false);
+-  const mapContainerRef = React.useRef<HTMLDivElement | null>(null);
+-  const osrmWarningShownRef = React.useRef(false);
+-  const routeCacheSignatureRef = React.useRef('');
+-  const persistedLayerVisibilityRef = React.useRef<LayerVisibilityState | null>(
+-    getPersistedLayerVisibility(),
+-  );
+-  const persistedMapStateRef = React.useRef<StoredMapState | null>(
+-    getPersistedMapState(),
+-  );
+-  React.useEffect(() => {
+-    if (isRasterFallback) {
+-      console.warn(
+-        'Используется временный растровый слой OpenStreetMap. Подключите локальные PMTiles, чтобы вернуть полный стиль.',
+-      );
+-      return;
+-    }
+-    if (!HAS_ADDRESS_VECTOR_SOURCE) {
+-      console.warn(
+-        'Адресные плитки не подключены. Слой домовых номеров будет пропущен.',
+-      );
+-    }
+-  }, []);
+-  const addressLayerNotice = React.useMemo(() => {
+-    if (MAP_ADDRESSES_PMTILES_SOURCE === 'missing') {
+-      return {
+-        tone: 'error' as const,
+-        text: t('logistics.addressLayerMissing', {
+-          defaultValue:
+-            'Слой номеров домов недоступен: добавьте файл public/tiles/addresses.pmtiles и установите VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles.',
+-        }),
+-      };
+-    }
+-    if (MAP_ADDRESSES_PMTILES_SOURCE === 'local') {
+-      return {
+-        tone: 'warning' as const,
+-        text: t('logistics.addressLayerLocalFallback', {
+-          defaultValue:
+-            'Используется локальный файл адресов из public/tiles/addresses.pmtiles. Для продакшн-сборки обязательно установите VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles.',
+-        }),
+-      };
+-    }
+-    return null;
+-  }, [t]);
+-  const addressLayerNoticeClassName = addressLayerNotice
+-    ? addressLayerNotice.tone === 'error'
+-      ? 'rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900'
+-      : 'rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900'
+-    : '';
+-  const [mapViewMode, setMapViewMode] = React.useState<
+-    'planar' | 'perspective'
+-  >(persistedMapStateRef.current?.viewMode ?? 'planar');
+-  const routeAnimationRef = React.useRef<{
+-    frameId: number | null;
+-    lastTimestamp: number | null;
+-    routes: AnimatedRoute[];
+-  }>({ frameId: null, lastTimestamp: null, routes: [] });
+-  const initialMapStateAppliedRef = React.useRef(false);
+-  const [layerVisibility, setLayerVisibility] =
+-    React.useState<LayerVisibilityState>(
+-      persistedLayerVisibilityRef.current ?? DEFAULT_LAYER_VISIBILITY,
+-    );
+-  const [mapReady, setMapReady] = React.useState(false);
+-  const [mobileView, setMobileView] = React.useState<'map' | 'list'>('map');
+-  const [hiddenTaskTypes, setHiddenTaskTypes] = React.useState<string[]>([]);
+-  const [hiddenRouteStatuses, setHiddenRouteStatuses] = React.useState<
+-    RouteStatusFilterKey[]
+-  >([]);
+-  const [hiddenTransportTypes, setHiddenTransportTypes] = React.useState<
+-    string[]
+-  >([]);
+-  const [clusterSelection, setClusterSelection] = React.useState<{
+-    ids: string[];
+-    center: GeoJSON.Position | null;
+-  } | null>(null);
+-  const [optimizedRoutesGeoJSON, setOptimizedRoutesGeoJSON] = React.useState<
+-    GeoJSON.FeatureCollection<GeoJSON.LineString>
+-  >(createEmptyCollection<GeoJSON.LineString>());
+-  const [page, setPage] = React.useState(0);
+-  const markerIconCacheRef = React.useRef<Set<string>>(new Set());
+-  const navigate = useNavigate();
+-  const location = useLocation();
+-  const [params] = useSearchParams();
+-  const hasDialog = params.has('task') || params.has('newTask');
+   const { user } = useAuth();
+-  const { controller } = useTasks();
+-  const role = user?.role ?? null;
+-  React.useEffect(() => {
+-    saveLayerVisibility(layerVisibility);
+-  }, [layerVisibility]);
+-  const hiddenTaskTypesSet = React.useMemo(
+-    () => new Set(hiddenTaskTypes),
+-    [hiddenTaskTypes],
+-  );
+-  const hiddenRouteStatusesSet = React.useMemo(
+-    () => new Set(hiddenRouteStatuses),
+-    [hiddenRouteStatuses],
+-  );
+-  const hiddenTransportTypesSet = React.useMemo(
+-    () => new Set(hiddenTransportTypes),
+-    [hiddenTransportTypes],
+-  );
+-  const selectedTaskIdsSet = React.useMemo(
+-    () => new Set(clusterSelection?.ids ?? []),
+-    [clusterSelection],
+-  );
+ 
+-  const filteredTasksByZone = React.useMemo(
+-    () => allRouteTasks,
+-    [allRouteTasks],
+-  );
+-
+-  const taskRouteStatusMap = React.useMemo(() => {
+-    const map = new Map<string, TaskRouteStatusKey>();
+-    const registerPlan = (source: RoutePlan | null) => {
+-      if (!source) return;
+-      const status: RoutePlanStatus = source.status ?? 'draft';
+-      source.routes.forEach((route) => {
+-        route.tasks.forEach((taskRef) => {
+-          const idCandidate =
+-            typeof taskRef.taskId === 'string'
+-              ? taskRef.taskId
+-              : typeof (taskRef as Record<string, unknown>).task_id === 'string'
+-                ? ((taskRef as Record<string, unknown>).task_id as string)
+-                : null;
+-          if (!idCandidate) return;
+-          map.set(idCandidate, status);
+-        });
+-      });
+-    };
+-    registerPlan(planDraft ?? null);
+-    if (plan) {
+-      registerPlan(plan);
+-    }
+-    return map;
+-  }, [plan, planDraft]);
+-
+-  const categoryFilteredTasks = React.useMemo(() => {
+-    return filteredTasksByZone.filter((task) => {
+-      const routeStatus = (taskRouteStatusMap.get(task._id) ??
+-        'unassigned') as RouteStatusFilterKey;
+-      if (hiddenRouteStatusesSet.has(routeStatus)) {
+-        return false;
+-      }
+-      const transportLabel = getTaskTransportType(task);
+-      const transportKey = toKey(transportLabel);
+-      if (hiddenTransportTypesSet.has(transportKey)) {
+-        return false;
+-      }
+-      const typeLabel = getTaskTypeLabel(task);
+-      const typeKey = toKey(typeLabel);
+-      if (hiddenTaskTypesSet.has(typeKey)) {
+-        return false;
+-      }
+-      return true;
+-    });
+-  }, [
+-    filteredTasksByZone,
+-    hiddenRouteStatusesSet,
+-    hiddenTaskTypesSet,
+-    hiddenTransportTypesSet,
+-    taskRouteStatusMap,
+-  ]);
+-
+-  const taskStatus = React.useMemo(() => {
+-    const counts: Record<string, number> = {};
+-    categoryFilteredTasks.forEach((task) => {
+-      const rawStatus =
+-        typeof task.status === 'string' && task.status.trim()
+-          ? task.status.trim()
+-          : 'Новая';
+-      counts[rawStatus] = (counts[rawStatus] ?? 0) + 1;
+-    });
+-    return counts;
+-  }, [categoryFilteredTasks]);
+-
+-  const geocodingQueue = React.useMemo(() => {
+-    return categoryFilteredTasks.filter((task) => {
+-      const details = (task as Record<string, unknown>).logistics_details as
+-        | LogisticsDetails
+-        | undefined;
+-      const startLocation = resolveLocation(
+-        details?.start_location,
+-        (task as Record<string, unknown>).start_location,
+-      );
+-      const endLocation = resolveLocation(
+-        details?.end_location,
+-        (task as Record<string, unknown>).end_location,
+-      );
+-      const startMissing =
+-        Boolean(startLocation) && !hasCoords(task.startCoordinates);
+-      const finishMissing =
+-        Boolean(endLocation) && !hasCoords(task.finishCoordinates);
+-      return startMissing || finishMissing;
+-    });
+-  }, [categoryFilteredTasks]);
+-
+-  React.useEffect(() => {
+-    if (showOnlyMissingCoords && geocodingQueue.length === 0) {
+-      setShowOnlyMissingCoords(false);
+-      setPage(0);
+-    }
+-  }, [geocodingQueue.length, showOnlyMissingCoords]);
+-
+-  const routeStatusMetadata = React.useMemo(() => {
+-    const entries = new Map<
+-      RouteStatusFilterKey,
+-      { count: number; color: string }
+-    >();
+-    ROUTE_STATUS_ORDER.forEach((key) => {
+-      entries.set(key, { count: 0, color: getRouteStatusColor(key) });
+-    });
+-    filteredTasksByZone.forEach((task) => {
+-      const statusKey = (taskRouteStatusMap.get(task._id) ??
+-        'unassigned') as RouteStatusFilterKey;
+-      const entry = entries.get(statusKey);
+-      if (entry) {
+-        entry.count += 1;
+-      } else {
+-        entries.set(statusKey, {
+-          count: 1,
+-          color: getRouteStatusColor(statusKey),
+-        });
+-      }
+-    });
+-    return entries;
+-  }, [filteredTasksByZone, taskRouteStatusMap]);
+-
+-  const transportMetadata = React.useMemo(() => {
+-    const entries = new Map<
+-      string,
+-      { label: string; count: number; color: string }
+-    >();
+-    filteredTasksByZone.forEach((task) => {
+-      const label = getTaskTransportType(task);
+-      const normalized = normalizeTransportType(label);
+-      const key = toKey(normalized);
+-      const color = getTransportColor(normalized);
+-      const entry = entries.get(key);
+-      if (entry) {
+-        entry.count += 1;
+-      } else {
+-        entries.set(key, { label: normalized, count: 1, color });
+-      }
+-    });
+-    return entries;
+-  }, [filteredTasksByZone]);
+-
+-  const taskTypeMetadata = React.useMemo(() => {
+-    const counts = new Map<string, { label: string; count: number }>();
+-    filteredTasksByZone.forEach((task) => {
+-      const label = getTaskTypeLabel(task);
+-      const key = toKey(label);
+-      const entry = counts.get(key);
+-      if (entry) {
+-        entry.count += 1;
+-      } else {
+-        counts.set(key, { label, count: 1 });
+-      }
+-    });
+-    const sortedKeys = Array.from(counts.keys()).sort();
+-    const entries = new Map<
+-      string,
+-      { label: string; count: number; color: string }
+-    >();
+-    sortedKeys.forEach((key, index) => {
+-      const meta = counts.get(key);
+-      if (!meta) return;
+-      const color =
+-        TASK_TYPE_COLOR_PALETTE[index % TASK_TYPE_COLOR_PALETTE.length];
+-      entries.set(key, { label: meta.label, count: meta.count, color });
+-    });
+-    return entries;
+-  }, [filteredTasksByZone]);
+-
+-  const routeStatusEntries = React.useMemo(
+-    () =>
+-      ROUTE_STATUS_ORDER.map((key) => ({
+-        key,
+-        count: routeStatusMetadata.get(key)?.count ?? 0,
+-        color: getRouteStatusColor(key),
+-      })),
+-    [routeStatusMetadata],
+-  );
+-
+-  const transportEntries = React.useMemo(
+-    () =>
+-      Array.from(transportMetadata.entries())
+-        .sort((a, b) => a[1].label.localeCompare(b[1].label))
+-        .map(([key, value]) => ({ key, ...value })),
+-    [transportMetadata],
+-  );
+-
+-  const taskTypeEntries = React.useMemo(
+-    () =>
+-      Array.from(taskTypeMetadata.entries()).map(([key, value]) => ({
+-        key,
+-        ...value,
+-      })),
+-    [taskTypeMetadata],
+-  );
+-
+-  const taskPointsGeoJSON = React.useMemo(() => {
+-    const features: GeoJSON.Feature<GeoJSON.Point>[] = [];
+-    const appendFeature = (
+-      coordinates: [number, number],
+-      properties: GeoJSON.GeoJsonProperties,
+-    ) => {
+-      features.push({
+-        type: 'Feature',
+-        geometry: { type: 'Point', coordinates },
+-        properties,
+-      });
+-    };
+-    categoryFilteredTasks.forEach((task) => {
+-      const routeStatus = (taskRouteStatusMap.get(task._id) ??
+-        'unassigned') as TaskRouteStatusKey;
+-      const routeStatusKey: RouteStatusFilterKey = routeStatus;
+-      const routeColor = getRouteStatusColor(routeStatusKey);
+-      const transportLabel = getTaskTransportType(task);
+-      const transportKey = toKey(transportLabel);
+-      const transportColor = getTransportColor(transportLabel);
+-      const typeLabel = getTaskTypeLabel(task);
+-      const typeKey = toKey(typeLabel);
+-      const typeColor = taskTypeMetadata.get(typeKey)?.color ?? '#334155';
+-      const iconText = getTaskTypeInitial(typeLabel);
+-      const textColor = getContrastTextColor(transportColor);
+-      const title = task.title ?? task._id;
+-      const label = title.length > 28 ? `${title.slice(0, 25)}…` : title;
+-      const isSelected = selectedTaskIdsSet.has(task._id);
+-      const start = toPosition(task.startCoordinates);
+-      const finish = toPosition(task.finishCoordinates);
+-      if (start) {
+-        const iconId = buildMarkerIconId(
+-          typeKey,
+-          routeStatusKey,
+-          transportKey,
+-          'start',
+-        );
+-        appendFeature(start, {
+-          entity: 'task',
+-          taskId: task._id,
+-          title,
+-          label,
+-          routeStatus: routeStatusKey,
+-          transportType: transportLabel,
+-          taskType: typeLabel,
+-          pointRole: 'start',
+-          iconId,
+-          iconFill: transportColor,
+-          iconStroke: routeColor,
+-          iconText,
+-          iconTextColor: textColor,
+-          iconAccent: typeColor,
+-          selected: isSelected,
+-        });
+-      }
+-      if (finish) {
+-        const iconId = buildMarkerIconId(
+-          typeKey,
+-          routeStatusKey,
+-          transportKey,
+-          'finish',
+-        );
+-        appendFeature(finish, {
+-          entity: 'task',
+-          taskId: task._id,
+-          title,
+-          label,
+-          routeStatus: routeStatusKey,
+-          transportType: transportLabel,
+-          taskType: typeLabel,
+-          pointRole: 'finish',
+-          iconId,
+-          iconFill: transportColor,
+-          iconStroke: routeColor,
+-          iconText,
+-          iconTextColor: textColor,
+-          iconAccent: typeColor,
+-          selected: isSelected,
+-        });
+-      }
+-    });
+-    return {
+-      type: 'FeatureCollection' as const,
+-      features,
+-    } satisfies GeoJSON.FeatureCollection<GeoJSON.Point>;
+-  }, [
+-    categoryFilteredTasks,
+-    hiddenRouteStatusesSet,
+-    hiddenTaskTypesSet,
+-    hiddenTransportTypesSet,
+-    selectedTaskIdsSet,
+-    taskRouteStatusMap,
+-    taskTypeMetadata,
+-  ]);
+-
+-  React.useEffect(() => {
+-    if (!mapReady) return;
+-    const map = mapRef.current;
+-    if (!map) return;
+-    const source = map.getSource(TASK_CLUSTER_SOURCE_ID) as
+-      | GeoJSONSource
+-      | undefined;
+-    if (!source) return;
+-    taskPointsGeoJSON.features.forEach((feature) => {
+-      const iconId = feature.properties?.iconId;
+-      if (typeof iconId !== 'string' || !iconId) return;
+-      const fill =
+-        typeof feature.properties?.iconFill === 'string'
+-          ? (feature.properties.iconFill as string)
+-          : '#2563eb';
+-      const stroke =
+-        typeof feature.properties?.iconStroke === 'string'
+-          ? (feature.properties.iconStroke as string)
+-          : '#0f172a';
+-      const text =
+-        typeof feature.properties?.iconText === 'string'
+-          ? (feature.properties.iconText as string)
+-          : '';
+-      const textColor =
+-        typeof feature.properties?.iconTextColor === 'string'
+-          ? (feature.properties.iconTextColor as string)
+-          : getContrastTextColor(fill);
+-      const accent =
+-        typeof feature.properties?.iconAccent === 'string'
+-          ? (feature.properties.iconAccent as string)
+-          : undefined;
+-      ensureMarkerIcon(
+-        map,
+-        markerIconCacheRef.current,
+-        iconId,
+-        fill,
+-        stroke,
+-        text,
+-        textColor,
+-        accent,
+-      );
+-    });
+-    const data = layerVisibility.tasks
+-      ? taskPointsGeoJSON
+-      : createEmptyCollection();
+-    source.setData(data);
+-  }, [layerVisibility.tasks, mapReady, taskPointsGeoJSON]);
+-
+-  const legendItems = React.useMemo(() => {
+-    const base = TASK_STATUSES.map((status) => ({
+-      key: status,
+-      label: status,
+-      color: TASK_STATUS_COLORS[status] ?? '#2563eb',
+-      count: taskStatus[status] ?? 0,
+-    }));
+-    const extraStatuses = Object.keys(taskStatus).filter(
+-      (status) => !TASK_STATUSES.includes(status),
+-    );
+-    if (extraStatuses.length) {
+-      extraStatuses.forEach((status) => {
+-        base.push({
+-          key: status,
+-          label: status,
+-          color: TASK_STATUS_COLORS[status] ?? '#2563eb',
+-          count: taskStatus[status] ?? 0,
+-        });
+-      });
+-    }
+-    return base;
+-  }, [taskStatus]);
+-
+-  const displayedTasks = React.useMemo(() => {
+-    const source = showOnlyMissingCoords
+-      ? geocodingQueue
+-      : categoryFilteredTasks;
+-    if (!selectedTaskIdsSet.size) {
+-      return source;
+-    }
+-    return source.filter((task) => selectedTaskIdsSet.has(task._id));
+-  }, [
+-    categoryFilteredTasks,
+-    geocodingQueue,
+-    selectedTaskIdsSet,
+-    showOnlyMissingCoords,
+-  ]);
+-
+-  const displayedSignature = React.useMemo(
+-    () =>
+-      JSON.stringify(
+-        displayedTasks.map((task) => [
+-          task._id,
+-          task.status,
+-          task.updatedAt ?? null,
+-        ]),
+-      ),
+-    [displayedTasks],
+-  );
+-
+-  const lastSyncedSignatureRef = React.useRef<string>('');
+-
+-  React.useEffect(() => {
+-    if (!clusterSelection) return;
+-    const ids = new Set(clusterSelection.ids);
+-    const stillPresent = categoryFilteredTasks.some((task) =>
+-      ids.has(task._id),
+-    );
+-    if (!stillPresent) {
+-      setClusterSelection(null);
+-    }
+-  }, [categoryFilteredTasks, clusterSelection]);
+-
+-  const stopRouteAnimation = React.useCallback(() => {
+-    const controller = routeAnimationRef.current;
+-    if (controller.frameId !== null) {
+-      cancelAnimationFrame(controller.frameId);
+-      controller.frameId = null;
+-    }
+-    controller.lastTimestamp = null;
+-  }, []);
+-
+-  const runRouteAnimation = React.useCallback(() => {
+-    stopRouteAnimation();
+-    if (!mapReady) {
+-      return;
+-    }
+-    const controller = routeAnimationRef.current;
+-    if (!controller.routes.length) {
+-      return;
+-    }
+-    const map = mapRef.current;
+-    if (!map) {
+-      return;
+-    }
+-    const source = map.getSource(TASK_ANIMATION_SOURCE_ID) as
+-      | GeoJSONSource
+-      | undefined;
+-    if (!source) {
+-      return;
+-    }
+-    const initialFeatures = controller.routes.map((route) => {
+-      const { position, bearing } = getAnimationPoint(route, route.progress);
+-      return {
+-        type: 'Feature' as const,
+-        geometry: { type: 'Point' as const, coordinates: position },
+-        properties: {
+-          color: route.color,
+-          taskId: route.taskId,
+-          title: route.title,
+-          bearing,
+-          icon: ANIMATION_SYMBOL,
+-        },
+-      } satisfies GeoJSON.Feature<GeoJSON.Point>;
+-    });
+-    source.setData({
+-      type: 'FeatureCollection',
+-      features: initialFeatures,
+-    });
+-    const step = (timestamp: number) => {
+-      const controllerState = routeAnimationRef.current;
+-      const mapInstance = mapRef.current;
+-      if (!mapInstance) {
+-        stopRouteAnimation();
+-        return;
+-      }
+-      const animationSource = mapInstance.getSource(
+-        TASK_ANIMATION_SOURCE_ID,
+-      ) as GeoJSONSource | undefined;
+-      if (!animationSource) {
+-        stopRouteAnimation();
+-        return;
+-      }
+-      const lastTimestamp = controllerState.lastTimestamp;
+-      controllerState.lastTimestamp = timestamp;
+-      const delta =
+-        lastTimestamp != null ? (timestamp - lastTimestamp) / 1000 : 0;
+-      const features: GeoJSON.Feature<GeoJSON.Point>[] = [];
+-      controllerState.routes.forEach((route) => {
+-        if (route.total <= 0) {
+-          return;
+-        }
+-        route.progress =
+-          (route.progress + delta * ROUTE_SPEED_KM_PER_SEC) % route.total;
+-        const { position, bearing } = getAnimationPoint(route, route.progress);
+-        features.push({
+-          type: 'Feature',
+-          geometry: { type: 'Point', coordinates: position },
+-          properties: {
+-            color: route.color,
+-            taskId: route.taskId,
+-            title: route.title,
+-            bearing,
+-            icon: ANIMATION_SYMBOL,
+-          },
+-        });
+-      });
+-      animationSource.setData({
+-        type: 'FeatureCollection',
+-        features,
+-      });
+-      controllerState.frameId = requestAnimationFrame(step);
+-    };
+-    controller.frameId = requestAnimationFrame(step);
+-  }, [mapReady, stopRouteAnimation]);
+-
+-  React.useEffect(() => {
+-    if (lastSyncedSignatureRef.current === displayedSignature) {
+-      return;
+-    }
+-    lastSyncedSignatureRef.current = displayedSignature;
+-    setSorted(displayedTasks);
+-    const rawTelegramId = user?.telegram_id;
+-    const userId =
+-      rawTelegramId === undefined || rawTelegramId === null
+-        ? undefined
+-        : Number(rawTelegramId) || undefined;
+-    controller.setIndex('logistics:all', displayedTasks, {
+-      kind: 'task',
+-      mine: false,
+-      userId,
+-      pageSize: displayedTasks.length,
+-      total: displayedTasks.length,
+-      sort: 'desc',
+-    });
+-  }, [controller, displayedSignature, displayedTasks, user]);
+-
+-  const clonePlan = React.useCallback(
+-    (value: RoutePlan | null) =>
+-      value ? (JSON.parse(JSON.stringify(value)) as RoutePlan) : null,
+-    [],
+-  );
+-
+-  const applyPlan = React.useCallback(
+-    (next: RoutePlan | null) => {
+-      setPlan(next);
+-      setPlanDraft(clonePlan(next));
+-      const newLinks = next
+-        ? next.routes
+-            .map((route) => route.routeLink)
+-            .filter((link): link is string => Boolean(link))
+-        : [];
+-      setLinks(newLinks);
+-    },
+-    [clonePlan],
+-  );
+-
+-  const loadPlan = React.useCallback(async () => {
+-    setPlanLoading(true);
+-    setPlanMessage('');
+-    setPlanMessageTone('neutral');
+-    try {
+-      const drafts = await listRoutePlans('draft', 1, 1);
+-      if (drafts.items.length > 0) {
+-        applyPlan(drafts.items[0]);
+-        return;
+-      }
+-      const latest = await listRoutePlans(undefined, 1, 1);
+-      if (latest.items.length > 0) {
+-        applyPlan(latest.items[0]);
+-        return;
+-      }
+-      applyPlan(null);
+-      setPlanMessage(tRef.current('logistics.planEmpty'));
+-    } catch (error) {
+-      const message =
+-        error instanceof Error
+-          ? error.message
+-          : tRef.current('logistics.planLoadError');
+-      setPlanMessage(message);
+-      setPlanMessageTone('error');
+-    } finally {
+-      setPlanLoading(false);
+-    }
+-  }, [applyPlan]);
+-
+-  const buildUpdatePayload = React.useCallback(
+-    (source: RoutePlan): RoutePlanUpdatePayload => ({
+-      title: source.title,
+-      notes: source.notes ?? null,
+-      routes: source.routes.map((route) => ({
+-        id: route.id,
+-        order: route.order,
+-        vehicleId: route.vehicleId ?? null,
+-        vehicleName: route.vehicleName ?? null,
+-        driverId: route.driverId ?? null,
+-        driverName: route.driverName ?? null,
+-        notes: route.notes ?? null,
+-        tasks: route.tasks.map((task) => task.taskId),
+-      })),
+-    }),
+-    [],
+-  );
+-
+-  const updateRouteDraft = React.useCallback(
+-    (
+-      routeIndex: number,
+-      updater: (
+-        route: RoutePlan['routes'][number],
+-      ) => RoutePlan['routes'][number],
+-    ) => {
+-      setPlanDraft((current) => {
+-        if (!current) return current;
+-        const routes = current.routes.map((route, idx) =>
+-          idx === routeIndex ? updater(route) : route,
+-        );
+-        return { ...current, routes };
+-      });
+-    },
+-    [],
+-  );
+-
+-  const handlePlanTitleChange = React.useCallback((value: string) => {
+-    setPlanDraft((current) =>
+-      current ? { ...current, title: value } : current,
+-    );
+-  }, []);
+-
+-  const handlePlanNotesChange = React.useCallback((value: string) => {
+-    setPlanDraft((current) =>
+-      current ? { ...current, notes: value } : current,
+-    );
+-  }, []);
+-
+-  const handleDriverNameChange = React.useCallback(
+-    (routeIndex: number, value: string) => {
+-      updateRouteDraft(routeIndex, (route) => ({
+-        ...route,
+-        driverName: value,
+-      }));
+-    },
+-    [updateRouteDraft],
+-  );
+-
+-  const handleVehicleNameChange = React.useCallback(
+-    (routeIndex: number, value: string) => {
+-      updateRouteDraft(routeIndex, (route) => ({
+-        ...route,
+-        vehicleName: value,
+-      }));
+-    },
+-    [updateRouteDraft],
+-  );
+-
+-  const handleRouteNotesChange = React.useCallback(
+-    (routeIndex: number, value: string) => {
+-      updateRouteDraft(routeIndex, (route) => ({
+-        ...route,
+-        notes: value || null,
+-      }));
+-    },
+-    [updateRouteDraft],
+-  );
+-
+-  const handleMoveTask = React.useCallback(
+-    (routeIndex: number, taskIndex: number, direction: number) => {
+-      setPlanDraft((current) => {
+-        if (!current) return current;
+-        const routes = current.routes.map((route, idx) => {
+-          if (idx !== routeIndex) return route;
+-          const tasks = [...route.tasks];
+-          const targetIndex = taskIndex + direction;
+-          if (targetIndex < 0 || targetIndex >= tasks.length) {
+-            return route;
+-          }
+-          const [task] = tasks.splice(taskIndex, 1);
+-          tasks.splice(targetIndex, 0, task);
+-          return {
+-            ...route,
+-            tasks: tasks.map((item, order) => ({ ...item, order })),
+-          };
+-        });
+-        return { ...current, routes };
+-      });
+-    },
+-    [],
+-  );
+-
+-  const handleRouteStatusVisibilityChange = React.useCallback(
+-    (status: RouteStatusFilterKey, visible: boolean) => {
+-      setHiddenRouteStatuses((prev) => {
+-        const next = new Set(prev);
+-        if (visible) {
+-          next.delete(status);
+-        } else {
+-          next.add(status);
+-        }
+-        return Array.from(next);
+-      });
+-    },
+-    [],
+-  );
+-
+-  const handleTransportVisibilityChange = React.useCallback(
+-    (key: string, visible: boolean) => {
+-      setHiddenTransportTypes((prev) => {
+-        const next = new Set(prev);
+-        if (visible) {
+-          next.delete(key);
+-        } else {
+-          next.add(key);
+-        }
+-        return Array.from(next);
+-      });
+-    },
+-    [],
+-  );
+-
+-  const handleTaskTypeVisibilityChange = React.useCallback(
+-    (key: string, visible: boolean) => {
+-      setHiddenTaskTypes((prev) => {
+-        const next = new Set(prev);
+-        if (visible) {
+-          next.delete(key);
+-        } else {
+-          next.add(key);
+-        }
+-        return Array.from(next);
+-      });
+-    },
+-    [],
+-  );
+-
+-  const handleClearClusterSelection = React.useCallback(() => {
+-    setClusterSelection(null);
+-  }, []);
+-
+-  const handleSavePlan = React.useCallback(async () => {
+-    if (!planDraft) return;
+-    setPlanLoading(true);
+-    try {
+-      const payload = buildUpdatePayload(planDraft);
+-      const updated = await updateRoutePlan(planDraft.id, payload);
+-      applyPlan(updated);
+-      setPlanMessage(tRef.current('logistics.planSaved'));
+-      setPlanMessageTone('success');
+-    } catch (error) {
+-      const message =
+-        error instanceof Error
+-          ? error.message
+-          : tRef.current('logistics.planSaveError');
+-      setPlanMessage(message);
+-      setPlanMessageTone('error');
+-    } finally {
+-      setPlanLoading(false);
+-    }
+-  }, [planDraft, buildUpdatePayload, applyPlan]);
+-
+-  const handleApprovePlan = React.useCallback(async () => {
+-    if (!planDraft) return;
+-    setPlanLoading(true);
++  const loadPlans = React.useCallback(async () => {
++    setLoading(true);
++    setError(null);
+     try {
+-      const updated = await changeRoutePlanStatus(planDraft.id, 'approved');
+-      applyPlan(updated);
+-      setPlanMessage(tRef.current('logistics.planPublished'));
+-      setPlanMessageTone('success');
+-    } catch (error) {
+-      const message =
+-        error instanceof Error
+-          ? error.message
+-          : tRef.current('logistics.planStatusError');
+-      setPlanMessage(message);
+-      setPlanMessageTone('error');
++      const data = await listRoutePlans();
++      setPlans(Array.isArray(data.items) ? data.items : []);
++    } catch (err) {
++      const message = err instanceof Error ? err.message : 'Не удалось загрузить маршрутные планы';
++      setError(message);
++      addToast(message);
+     } finally {
+-      setPlanLoading(false);
++      setLoading(false);
+     }
+-  }, [planDraft, applyPlan]);
+-
+-  const handleCompletePlan = React.useCallback(async () => {
+-    if (!planDraft) return;
+-    setPlanLoading(true);
+-    try {
+-      const updated = await changeRoutePlanStatus(planDraft.id, 'completed');
+-      applyPlan(updated);
+-      setPlanMessage(tRef.current('logistics.planCompleted'));
+-      setPlanMessageTone('success');
+-    } catch (error) {
+-      const message =
+-        error instanceof Error
+-          ? error.message
+-          : tRef.current('logistics.planStatusError');
+-      setPlanMessage(message);
+-      setPlanMessageTone('error');
+-    } finally {
+-      setPlanLoading(false);
+-    }
+-  }, [planDraft, applyPlan]);
+-
+-  const handleReloadPlan = React.useCallback(async () => {
+-    setPlanMessage('');
+-    setPlanMessageTone('neutral');
+-    await loadPlan();
+-  }, [loadPlan]);
+-
+-  const handleClearPlan = React.useCallback(() => {
+-    applyPlan(null);
+-    setPlanMessage(tRef.current('logistics.planEmpty'));
+-    setPlanMessageTone('neutral');
+-  }, [applyPlan]);
+-
+-  React.useEffect(() => {
+-    void loadPlan();
+-  }, [loadPlan]);
++  }, [addToast]);
+ 
+   React.useEffect(() => {
+-    const translate = tRef.current;
+-    const title = translate('logistics.metaTitle');
+-    const description = translate('logistics.metaDescription');
+-    const image = '/hero/logistics.png';
++    void loadPlans();
++  }, [loadPlans]);
+ 
+-    document.title = title;
+-
+-    const ensureMeta = (
+-      attribute: 'name' | 'property',
+-      name: string,
+-      value: string,
+-    ) => {
+-      let element = document.querySelector<HTMLMetaElement>(
+-        `meta[${attribute}="${name}"]`,
+-      );
+-      if (!element) {
+-        element = document.createElement('meta');
+-        element.setAttribute(attribute, name);
+-        document.head.appendChild(element);
+-      }
+-      element.setAttribute('content', value);
+-    };
+-
+-    ensureMeta('name', 'description', description);
+-    ensureMeta('property', 'og:title', title);
+-    ensureMeta('property', 'og:description', description);
+-    ensureMeta('property', 'og:image', image);
+-  }, [language]);
+-
+-  const openTask = React.useCallback(
+-    (id: string) => {
+-      const params = new URLSearchParams(location.search);
+-      params.set('task', id);
+-      navigate({ search: params.toString() }, { replace: true });
+-    },
+-    [location, navigate],
+-  );
+-
+-  const filterRouteTasks = React.useCallback((input: RouteTask[]) => {
+-    const result: RouteTask[] = [];
+-    input.forEach((task) => {
+-      const taskStatus =
+-        (typeof task.status === 'string' ? task.status : undefined) ??
+-        (typeof (task as Record<string, unknown>).status === 'string'
+-          ? ((task as Record<string, unknown>).status as string)
+-          : undefined);
+-      if (shouldSkipTaskByStatus(taskStatus)) {
+-        return;
+-      }
+-      const transportType = getTaskTransportType(task);
+-
+-      const details = (task as Record<string, unknown>).logistics_details as
+-        | LogisticsDetails
+-        | undefined;
+-
+-      const startLocation = resolveLocation(
+-        details?.start_location,
+-        (task as Record<string, unknown>).start_location,
+-      );
+-      const endLocation = resolveLocation(
+-        details?.end_location,
+-        (task as Record<string, unknown>).end_location,
+-      );
+-
+-      const hasCoordinates =
+-        hasCoords(task.startCoordinates) || hasCoords(task.finishCoordinates);
+-      const hasAddresses = Boolean(startLocation) || Boolean(endLocation);
+-
+-      if (!hasCoordinates && !hasAddresses) {
+-        return;
+-      }
+-
+-      const enrichedDetails: LogisticsDetails = {
+-        ...(details ?? {}),
+-      };
+-      if (!enrichedDetails.transport_type) {
+-        enrichedDetails.transport_type = transportType;
+-      }
+-      if (!enrichedDetails.start_location && startLocation) {
+-        enrichedDetails.start_location = startLocation;
+-      }
+-      if (!enrichedDetails.end_location && endLocation) {
+-        enrichedDetails.end_location = endLocation;
+-      }
+-
+-      const enrichedTask: RouteTask = {
+-        ...task,
+-        logistics_details: enrichedDetails,
+-      };
+-      const taskRecord = enrichedTask as Record<string, unknown>;
+-      if (!taskRecord.transport_type) {
+-        taskRecord.transport_type = transportType;
+-      }
+-      if (startLocation && !taskRecord.start_location) {
+-        taskRecord.start_location = startLocation;
+-      }
+-      if (endLocation && !taskRecord.end_location) {
+-        taskRecord.end_location = endLocation;
+-      }
+-
+-      result.push(enrichedTask);
+-    });
+-    return result;
+-  }, []);
+-
+-  const load = React.useCallback(() => {
+-    const rawTelegramId = user?.telegram_id;
+-    const userId =
+-      rawTelegramId === undefined || rawTelegramId === null
+-        ? undefined
+-        : Number(rawTelegramId) || undefined;
+-    fetchTasks({}, userId, true).then((data: unknown) => {
+-      const listSource = Array.isArray(data)
+-        ? data
+-        : typeof data === 'object' && data !== null
+-          ? ((data as Record<string, unknown>).items ??
+-            (data as Record<string, unknown>).tasks ??
+-            (data as Record<string, unknown>).data ??
+-            [])
+-          : [];
+-      const raw = Array.isArray(listSource) ? listSource : [];
+-      const mapped: Array<RouteTask | null> = raw.map((item) => {
+-        if (typeof item !== 'object' || item === null) {
+-          return null;
+-        }
+-        const task = item as Record<string, unknown> &
+-          RouteTask & { id?: string };
+-        const identifier = String(task._id ?? task.id ?? '').trim();
+-        if (!identifier) {
+-          return null;
+-        }
+-        return {
+-          ...task,
+-          id: identifier,
+-          _id: identifier,
+-        } satisfies RouteTask;
+-      });
+-      const list = mapped.filter((task): task is RouteTask => Boolean(task));
+-      const filtered = filterRouteTasks(list);
+-      setAllRouteTasks(filtered);
+-    });
+-  }, [controller, filterRouteTasks, user]);
+-
+-  const refreshAll = React.useCallback(() => {
+-    load();
+-  }, [load]);
+-
+-  React.useEffect(() => {
+-    const pending = {
+-      tasks: false,
+-      plan: false,
+-    };
+-    let isActive = true;
+-    let timer: ReturnType<typeof setTimeout> | null = null;
+-
+-    const clearTimer = () => {
+-      if (timer !== null) {
+-        clearTimeout(timer);
+-        timer = null;
+-      }
+-    };
+-
+-    const flush = () => {
+-      timer = null;
+-      if (!isActive) {
+-        pending.tasks = false;
+-        pending.plan = false;
+-        return;
+-      }
+-      const shouldRefreshTasks = pending.tasks;
+-      const shouldRefreshPlan = pending.plan;
+-      pending.tasks = false;
+-      pending.plan = false;
+-
+-      if (shouldRefreshTasks) {
+-        load();
+-      }
+-      if (shouldRefreshPlan) {
+-        void loadPlan();
+-      }
+-    };
+-
+-    const schedule = () => {
+-      if (timer !== null) {
+-        return;
+-      }
+-      if (LOGISTICS_EVENT_DEBOUNCE_MS <= 0) {
+-        flush();
+-        return;
+-      }
+-      timer = setTimeout(flush, LOGISTICS_EVENT_DEBOUNCE_MS);
+-    };
+-
+-    const unsubscribe = subscribeLogisticsEvents((event) => {
+-      switch (event.type) {
+-        case 'logistics.init':
+-          pending.tasks = false;
+-          pending.plan = false;
+-          load();
+-          void loadPlan();
+-          return;
+-        case 'tasks.changed':
+-          pending.tasks = false;
+-          pending.plan = false;
+-          load();
+-          void loadPlan();
+-          return;
+-        case 'route-plan.updated':
+-        case 'route-plan.removed':
+-          pending.plan = false;
+-          void loadPlan();
+-          return;
+-        default:
+-          return;
+-      }
+-      schedule();
+-    });
+-
+-    return () => {
+-      isActive = false;
+-      clearTimer();
+-      unsubscribe();
+-    };
+-  }, [load, loadPlan]);
+-
+-  const calculate = React.useCallback(async () => {
+-    const ids = sorted.map((t) => t._id);
+-    if (!ids.length) {
+-      applyPlan(null);
+-      setPlanMessage(tRef.current('logistics.planEmpty'));
+-      setPlanMessageTone('neutral');
+-      return;
+-    }
+-    setPlanLoading(true);
+-    setPlanMessage('');
+-    setPlanMessageTone('neutral');
+-    try {
+-      const result = await optimizeRoute(ids, vehicles, method);
+-      if (!result) {
+-        applyPlan(null);
+-        setPlanMessage(tRef.current('logistics.planEmpty'));
+-        return;
+-      }
+-      applyPlan(result);
+-      setPlanMessage(tRef.current('logistics.planDraftCreated'));
+-      setPlanMessageTone('success');
+-    } catch (error) {
+-      const message =
+-        error instanceof Error
+-          ? error.message
+-          : tRef.current('logistics.planOptimizeError');
+-      setPlanMessage(message);
+-      setPlanMessageTone('error');
+-    } finally {
+-      setPlanLoading(false);
+-    }
+-  }, [applyPlan, method, sorted, vehicles]);
+-
+-  const formatDistance = React.useCallback(
+-    (value: number | null | undefined) => {
+-      if (typeof value === 'number' && Number.isFinite(value)) {
+-        return `${value.toFixed(1)} ${tRef.current('km')}`;
+-      }
+-      return tRef.current('logistics.planNoDistance');
+-    },
+-    [],
+-  );
+-
+-  const formatDuration = React.useCallback(
+-    (value: number | null | undefined) => {
+-      if (typeof value === 'number' && Number.isFinite(value) && value > 0) {
+-        const totalMinutes = Math.round(value);
+-        const hours = Math.floor(totalMinutes / 60);
+-        const minutes = totalMinutes % 60;
+-        const parts: string[] = [];
+-        if (hours > 0) {
+-          parts.push(
+-            tRef.current('logistics.etaHours', {
+-              count: hours,
+-            }),
+-          );
+-        }
+-        if (minutes > 0 || hours === 0) {
+-          parts.push(
+-            tRef.current('logistics.etaMinutes', {
+-              count: minutes,
+-            }),
+-          );
+-        }
+-        return parts.join(' ');
+-      }
+-      return tRef.current('logistics.planNoEta');
+-    },
+-    [],
+-  );
+-
+-  const formatAreaMetric = React.useCallback(
+-    (value: number | null | undefined) => {
+-      if (typeof value !== 'number' || !Number.isFinite(value)) {
+-        return '—';
+-      }
+-      if (value >= 1) {
+-        return `${new Intl.NumberFormat(language, {
+-          maximumFractionDigits: 2,
+-        }).format(value)} км²`;
+-      }
+-      const hectares = value * 100;
+-      if (hectares >= 1) {
+-        return `${new Intl.NumberFormat(language, {
+-          maximumFractionDigits: 1,
+-        }).format(hectares)} га`;
+-      }
+-      const squareMeters = value * 1_000_000;
+-      return `${new Intl.NumberFormat(language, {
+-        maximumFractionDigits: 0,
+-      }).format(squareMeters)} м²`;
+-    },
+-    [language],
+-  );
+-
+-  const formatPerimeterMetric = React.useCallback(
+-    (value: number | null | undefined) => {
+-      if (typeof value !== 'number' || !Number.isFinite(value)) {
+-        return '—';
+-      }
+-      if (value >= 1) {
+-        return `${new Intl.NumberFormat(language, {
+-          maximumFractionDigits: 2,
+-        }).format(value)} км`;
+-      }
+-      const meters = value * 1000;
+-      return `${new Intl.NumberFormat(language, {
+-        maximumFractionDigits: 0,
+-      }).format(meters)} м`;
+-    },
+-    [language],
+-  );
+-
+-  const formatBufferMetric = React.useCallback(
+-    (value: number | null | undefined) => {
+-      if (typeof value !== 'number' || !Number.isFinite(value)) {
+-        return '—';
+-      }
+-      return `${new Intl.NumberFormat(language, {
+-        maximumFractionDigits: 0,
+-      }).format(value)} м`;
+-    },
+-    [language],
+-  );
+-
+-  const planMessageClass = React.useMemo(() => {
+-    if (planMessageTone === 'error') {
+-      return 'text-sm text-red-600';
+-    }
+-    if (planMessageTone === 'success') {
+-      return 'text-sm text-emerald-600';
+-    }
+-    return 'text-sm text-muted-foreground';
+-  }, [planMessageTone]);
+-
+-  const planStatus: RoutePlanStatus =
+-    planDraft?.status ?? plan?.status ?? 'draft';
+-  const planStatusLabel = t(`logistics.planStatusValue.${planStatus}`);
+-  const isPlanEditable = planStatus !== 'completed';
+-  const planRoutes = planDraft?.routes ?? [];
+-  const totalStops = React.useMemo(() => {
+-    if (typeof planDraft?.metrics?.totalStops === 'number') {
+-      return planDraft.metrics.totalStops;
+-    }
+-    if (!planDraft) {
+-      return 0;
+-    }
+-    return planDraft.routes.reduce((acc, route) => acc + route.stops.length, 0);
+-  }, [planDraft]);
+-  const planTotalRoutes = planDraft?.metrics?.totalRoutes ?? planRoutes.length;
+-  const planTotalTasks =
+-    planDraft?.metrics?.totalTasks ?? planDraft?.tasks.length ?? 0;
+-
+-  const reset = React.useCallback(() => {
+-    setOptimizedRoutesGeoJSON(createEmptyCollection<GeoJSON.LineString>());
+-    setLinks([]);
+-  }, []);
+-
+-  React.useEffect(() => {
+-    load();
+-  }, [load, location.key]);
+-
+-  React.useEffect(() => {
+-    setPage(0);
+-  }, [displayedSignature]);
+-
+-  React.useEffect(() => {
+-    if (mapRef.current) return;
+-
+-    let cancelled = false;
+-    let map: MapInstance | null = null;
+-    let detachStyleFallback: () => void = () => {};
+-    let ensureBuildingsLayer: (() => void) | null = null;
+-    let handleLoad: (() => void) | null = null;
+-    let ensureAddressLayer: (() => Promise<void>) | null = null;
+-
+-    const initMap = async () => {
+-      let pmtilesReady = false;
+-      if (MAP_STYLE_MODE === 'pmtiles') {
+-        try {
+-          pmtilesReady = await registerPmtilesProtocol();
+-          if (pmtilesReady) {
+-            console.info(
+-              'Протокол PMTiles зарегистрирован, инициализируем карту с векторным стилем.',
+-            );
+-          } else {
+-            console.warn(
+-              'Протокол PMTiles не зарегистрирован, будет использован запасной стиль карты.',
+-            );
+-          }
+-        } catch (error) {
+-          console.error('Ошибка регистрации протокола PMTiles.', error);
+-        }
+-        if (cancelled) {
+-          return;
+-        }
+-      }
+-      if (cancelled || mapRef.current) {
+-        return;
+-      }
+-      const styleForMap =
+-        MAP_STYLE_MODE === 'pmtiles' && !pmtilesReady
+-          ? MAP_STYLE_DEFAULT_URL
+-          : MAP_STYLE;
+-      const container = mapContainerRef.current;
+-      if (!container) {
+-        return;
+-      }
+-      const initialMapState = persistedMapStateRef.current;
+-      const mapInstance = new mapLibrary.Map({
+-        container,
+-        style: styleForMap,
+-        center: initialMapState?.center ?? MAP_CENTER_LNG_LAT,
+-        zoom: initialMapState?.zoom ?? MAP_DEFAULT_ZOOM,
+-        pitch: initialMapState?.pitch ?? 0,
+-        bearing: initialMapState?.bearing ?? 0,
+-        minZoom: 5,
+-        maxZoom: 22,
+-        maxBounds: UKRAINE_BOUNDS,
+-        attributionControl: false,
+-      });
+-      map = mapInstance;
+-      mapRef.current = mapInstance;
+-      detachStyleFallback = attachMapStyleFallback(mapInstance, {
+-        initialStyle: styleForMap,
+-        fallbackUrl: RASTER_FALLBACK_STYLE,
+-        vectorFallbackUrl: MAP_STYLE_DEFAULT_URL,
+-      });
+-      if (typeof mapInstance.dragRotate?.disable === 'function') {
+-        mapInstance.dragRotate.disable();
+-      }
+-      if (typeof mapInstance.touchZoomRotate?.disableRotation === 'function') {
+-        mapInstance.touchZoomRotate.disableRotation();
+-      }
+-      const navigation = new mapLibrary.NavigationControl({
+-        showCompass: false,
+-      });
+-      mapInstance.addControl(navigation, 'top-right');
+-      if (!attributionControlRef.current) {
+-        attributionControlRef.current = new mapLibrary.AttributionControl({
+-          compact: true,
+-          customAttribution: MAP_ATTRIBUTION,
+-        });
+-      }
+-      if (!attributionAddedRef.current && attributionControlRef.current) {
+-        mapInstance.addControl(attributionControlRef.current, 'bottom-right');
+-        attributionAddedRef.current = true;
+-      }
+-      ensureBuildingsLayer = () => {
+-        if (
+-          typeof mapInstance.isStyleLoaded === 'function' &&
+-          !mapInstance.isStyleLoaded()
+-        ) {
+-          return;
+-        }
+-        insert3dBuildingsLayer(mapInstance);
+-      };
+-      ensureAddressLayer = async () => {
+-        if (isRasterFallback) {
+-          return;
+-        }
+-        const addressTilesUrl = MAP_ADDRESSES_PMTILES_URL;
+-        if (!addressTilesUrl) {
+-          console.warn(
+-            'Адресные плитки не подключены: укажите VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles и разместите файл в public/tiles.',
+-          );
+-          return;
+-        }
+-        if (mapInstance.getSource(ADDRESS_SOURCE_ID)) {
+-          ensureAddressesLayerOrder(mapInstance);
+-          return;
+-        }
+-        const requiresPmtiles =
+-          addressTilesUrl.startsWith('pmtiles://') ||
+-          addressTilesUrl.endsWith('.pmtiles');
+-        if (requiresPmtiles) {
+-          const registered = await registerPmtilesProtocol();
+-          if (!registered) {
+-            console.warn(
+-              'Адресные плитки не подключены: протокол pmtiles недоступен, источник будет пропущен.',
+-            );
+-            return;
+-          }
+-        }
+-        const availableVectorSourceId = findFirstVectorSourceId(mapInstance);
+-        if (!availableVectorSourceId) {
+-          console.warn(
+-            'Не удалось найти векторные источники стиля — адресные подписи будут пропущены.',
+-          );
+-          return;
+-        }
+-        mapInstance.addSource(ADDRESS_SOURCE_ID, {
+-          type: 'vector',
+-          url: addressTilesUrl,
+-        });
+-        const addressLayer: SymbolLayerSpecification = {
+-          id: ADDRESS_LAYER_ID,
+-          type: 'symbol',
+-          source: ADDRESS_SOURCE_ID,
+-          'source-layer': ADDRESS_VECTOR_SOURCE_LAYER,
+-          minzoom: 17,
+-          layout: {
+-            'text-field': ['get', 'housenumber'],
+-            'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+-            'text-size': 13,
+-            'text-letter-spacing': 0.02,
+-            'text-allow-overlap': false,
+-            'text-ignore-placement': false,
+-            'text-padding': 2,
+-          },
+-          paint: {
+-            'text-color': '#0f172a',
+-            'text-halo-color': '#f8fafc',
+-            'text-halo-width': 1.2,
+-            'text-halo-blur': 0.6,
+-          },
+-        };
+-        const beforeLayerId = findExistingLayerId(
+-          mapInstance,
+-          MAJOR_LABEL_LAYER_CANDIDATES,
+-        );
+-        mapInstance.addLayer(addressLayer, beforeLayerId);
+-        ensureAddressesLayerOrder(mapInstance);
+-      };
+-      handleLoad = () => {
+-        ensureBuildingsLayer?.();
+-        void ensureAddressLayer?.();
+-        mapInstance.addSource(OPT_SOURCE_ID, {
+-          type: 'geojson',
+-          data: createEmptyCollection(),
+-        });
+-        const optimizedLayer: LineLayerSpecification = {
+-          id: OPT_LAYER_ID,
+-          type: 'line',
+-          source: OPT_SOURCE_ID,
+-          layout: {
+-            'line-cap': 'round',
+-            'line-join': 'round',
+-          },
+-          paint: {
+-            'line-color': ['get', 'color'],
+-            'line-width': 4,
+-            'line-dasharray': [1.5, 1.5],
+-            'line-opacity': 0.8,
+-          },
+-        };
+-        mapInstance.addLayer(optimizedLayer);
+-        mapInstance.addSource(TASK_SOURCE_ID, {
+-          type: 'geojson',
+-          data: createEmptyCollection(),
+-        });
+-        const taskLineLayer: LineLayerSpecification = {
+-          id: TASK_LAYER_ID,
+-          type: 'line',
+-          source: TASK_SOURCE_ID,
+-          layout: {
+-            'line-cap': 'round',
+-            'line-join': 'round',
+-          },
+-          paint: {
+-            'line-color': ['get', 'color'],
+-            'line-width': 3,
+-            'line-opacity': 0.85,
+-          },
+-        };
+-        mapInstance.addLayer(taskLineLayer);
+-        mapInstance.addSource(TASK_CLUSTER_SOURCE_ID, {
+-          type: 'geojson',
+-          data: createEmptyCollection(),
+-          cluster: true,
+-          clusterRadius: 60,
+-          clusterMaxZoom: 14,
+-          clusterProperties: {
+-            draft: CLUSTER_STATUS_PROPERTIES.draft,
+-            approved: CLUSTER_STATUS_PROPERTIES.approved,
+-            completed: CLUSTER_STATUS_PROPERTIES.completed,
+-            unassigned: CLUSTER_STATUS_PROPERTIES.unassigned,
+-          },
+-        });
+-        const clusterLayer: CircleLayerSpecification = {
+-          id: TASK_CLUSTER_LAYER_ID,
+-          type: 'circle',
+-          source: TASK_CLUSTER_SOURCE_ID,
+-          filter: ['has', 'point_count'],
+-          paint: {
+-            'circle-color': [
+-              'case',
+-              [
+-                'all',
+-                ['>=', ['get', 'completed'], ['get', 'approved']],
+-                ['>=', ['get', 'completed'], ['get', 'draft']],
+-                ['>=', ['get', 'completed'], ['get', 'unassigned']],
+-              ],
+-              ROUTE_STATUS_COLORS.completed,
+-              [
+-                'all',
+-                ['>=', ['get', 'approved'], ['get', 'draft']],
+-                ['>=', ['get', 'approved'], ['get', 'unassigned']],
+-              ],
+-              ROUTE_STATUS_COLORS.approved,
+-              ['>=', ['get', 'draft'], ['get', 'unassigned']],
+-              ROUTE_STATUS_COLORS.draft,
+-              ROUTE_STATUS_COLORS.unassigned,
+-            ],
+-            'circle-radius': [
+-              'interpolate',
+-              ['linear'],
+-              ['zoom'],
+-              8,
+-              16,
+-              12,
+-              22,
+-              14,
+-              30,
+-            ],
+-            'circle-opacity': 0.82,
+-            'circle-stroke-width': 1.6,
+-            'circle-stroke-color': '#f8fafc',
+-          },
+-        };
+-        mapInstance.addLayer(clusterLayer);
+-        const clusterCountLayer: SymbolLayerSpecification = {
+-          id: TASK_CLUSTER_COUNT_LAYER_ID,
+-          type: 'symbol',
+-          source: TASK_CLUSTER_SOURCE_ID,
+-          filter: ['has', 'point_count'],
+-          layout: {
+-            'text-field': ['get', 'point_count_abbreviated'],
+-            'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+-            'text-size': 12,
+-          },
+-          paint: {
+-            'text-color': '#0f172a',
+-            'text-halo-color': '#ffffff',
+-            'text-halo-width': 1.2,
+-          },
+-        };
+-        mapInstance.addLayer(clusterCountLayer);
+-        const pointsLayer: SymbolLayerSpecification = {
+-          id: TASK_POINTS_LAYER_ID,
+-          type: 'symbol',
+-          source: TASK_CLUSTER_SOURCE_ID,
+-          filter: ['!', ['has', 'point_count']],
+-          layout: {
+-            'icon-image': ['get', 'iconId'],
+-            'icon-size': [
+-              'case',
+-              ['boolean', ['get', 'selected'], false],
+-              0.8,
+-              0.65,
+-            ],
+-            'icon-allow-overlap': true,
+-            'icon-ignore-placement': true,
+-            'text-field': ['coalesce', ['get', 'label'], ''],
+-            'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+-            'text-size': 10,
+-            'text-offset': [0, 1.4],
+-            'text-anchor': 'top',
+-            'text-optional': true,
+-          },
+-          paint: {
+-            'icon-opacity': 0.95,
+-            'text-color': '#0f172a',
+-            'text-halo-color': '#ffffff',
+-            'text-halo-width': 0.9,
+-          },
+-        };
+-        mapInstance.addLayer(pointsLayer);
+-        mapInstance.addSource(TASK_ANIMATION_SOURCE_ID, {
+-          type: 'geojson',
+-          data: createEmptyCollection(),
+-        });
+-        const animationLayer: SymbolLayerSpecification = {
+-          id: TASK_ANIMATION_LAYER_ID,
+-          type: 'symbol',
+-          source: TASK_ANIMATION_SOURCE_ID,
+-          layout: {
+-            'text-field': ['get', 'icon'],
+-            'text-size': 20,
+-            'text-font': ['Open Sans Bold', 'Arial Unicode MS Bold'],
+-            'text-allow-overlap': true,
+-            'text-ignore-placement': true,
+-            'text-rotate': ['get', 'bearing'],
+-          },
+-          paint: {
+-            'text-color': ['get', 'color'],
+-            'text-halo-color': 'rgba(17, 24, 39, 0.55)',
+-            'text-halo-width': 1.2,
+-          },
+-        };
+-        mapInstance.addLayer(animationLayer);
+-        setMapReady(true);
+-      };
+-      mapInstance.on('styledata', ensureBuildingsLayer);
+-      mapInstance.on('load', handleLoad);
+-    };
+-
+-    void initMap();
+-
+-    return () => {
+-      cancelled = true;
+-      detachStyleFallback();
+-      if (map && typeof map.off === 'function') {
+-        if (ensureBuildingsLayer) {
+-          map.off('styledata', ensureBuildingsLayer);
+-        }
+-        if (handleLoad) {
+-          map.off('load', handleLoad);
+-        }
+-      }
+-      setMapReady(false);
+-      setIsDrawing(false);
+-      drawRef.current = null;
+-      stopRouteAnimation();
+-      if (map) {
+-        map.remove();
+-      }
+-      mapRef.current = null;
+-      attributionAddedRef.current = false;
+-    };
+-  }, [stopRouteAnimation]);
+-
+-  const persistMapState = React.useCallback(() => {
+-    if (!mapReady) return;
+-    const map = mapRef.current;
+-    if (!map) return;
+-    const center = typeof map.getCenter === 'function' ? map.getCenter() : null;
+-    if (!center || Number.isNaN(center.lng) || Number.isNaN(center.lat)) {
+-      return;
+-    }
+-    const zoom =
+-      typeof map.getZoom === 'function' ? map.getZoom() : MAP_DEFAULT_ZOOM;
+-    const pitch = typeof map.getPitch === 'function' ? map.getPitch() : 0;
+-    const bearing = typeof map.getBearing === 'function' ? map.getBearing() : 0;
+-    saveMapState({
+-      center: [center.lng, center.lat],
+-      zoom,
+-      pitch,
+-      bearing,
+-      viewMode: mapViewMode,
+-    });
+-  }, [mapReady, mapViewMode]);
+-
+-  React.useEffect(() => {
+-    if (!mapReady) return;
+-    const map = mapRef.current;
+-    if (!map || typeof map.on !== 'function' || typeof map.off !== 'function') {
+-      return;
+-    }
+-    const events: Array<[string, Listener]> = [
+-      ['moveend', persistMapState],
+-      ['zoomend', persistMapState],
+-      ['rotateend', persistMapState],
+-      ['pitchend', persistMapState],
+-    ];
+-    events.forEach(([event, handler]) => map.on(event, handler));
+-    return () => {
+-      events.forEach(([event, handler]) => map.off(event, handler));
+-    };
+-  }, [mapReady, persistMapState]);
+-
+-  React.useEffect(() => {
+-    if (!mapReady) return;
+-    const map = mapRef.current;
+-    if (!map) return;
+-    const persistedMapState = persistedMapStateRef.current;
+-    const shouldUsePersisted =
+-      !initialMapStateAppliedRef.current &&
+-      persistedMapState &&
+-      persistedMapState.viewMode === mapViewMode;
+-    const targetPitch =
+-      shouldUsePersisted && persistedMapState
+-        ? persistedMapState.pitch
+-        : mapViewMode === 'perspective'
+-          ? 55
+-          : 0;
+-    const targetBearing =
+-      shouldUsePersisted && persistedMapState
+-        ? persistedMapState.bearing
+-        : mapViewMode === 'perspective'
+-          ? 28
+-          : 0;
+-    initialMapStateAppliedRef.current = true;
+-    const enableRotation = () => {
+-      if (typeof map.dragRotate?.enable === 'function') {
+-        map.dragRotate.enable();
+-      }
+-      if (typeof map.touchZoomRotate?.enableRotation === 'function') {
+-        map.touchZoomRotate.enableRotation();
+-      }
+-    };
+-    const disableRotation = () => {
+-      if (typeof map.dragRotate?.disable === 'function') {
+-        map.dragRotate.disable();
+-      }
+-      if (typeof map.touchZoomRotate?.disableRotation === 'function') {
+-        map.touchZoomRotate.disableRotation();
+-      }
+-    };
+-    if (mapViewMode === 'perspective') {
+-      enableRotation();
+-      if (typeof map.easeTo === 'function') {
+-        map.easeTo({
+-          pitch: targetPitch,
+-          bearing: targetBearing,
+-          duration: 600,
+-        });
+-      } else {
+-        map.setPitch(targetPitch);
+-        map.setBearing(targetBearing);
+-      }
+-    } else {
+-      if (typeof map.easeTo === 'function') {
+-        map.easeTo({
+-          pitch: targetPitch,
+-          bearing: targetBearing,
+-          duration: 400,
+-        });
+-      } else {
+-        map.setPitch(targetPitch);
+-        map.setBearing(targetBearing);
+-      }
+-      disableRotation();
+-    }
+-  }, [mapReady, mapViewMode]);
+-
+-  React.useEffect(() => {
+-    if (!mapReady) return;
+-    persistMapState();
+-  }, [mapReady, mapViewMode, persistMapState]);
+-
+-  React.useEffect(() => {
+-    if (!mapReady) return;
+-    const map = mapRef.current;
+-    if (!map) return;
+-    const routesSource = map.getSource(TASK_SOURCE_ID) as
+-      | GeoJSONSource
+-      | undefined;
+-    const animationSource = map.getSource(TASK_ANIMATION_SOURCE_ID) as
+-      | GeoJSONSource
+-      | undefined;
+-    if (!routesSource || !animationSource) {
+-      return;
+-    }
+-    if (!layerVisibility.tasks || !sorted.length) {
+-      routesSource.setData(createEmptyCollection());
+-      animationSource.setData(createEmptyCollection());
+-      routeAnimationRef.current.routes = [];
+-      stopRouteAnimation();
+-      return;
+-    }
+-    let cancelled = false;
+-    const semaphore = createSemaphore(ROUTE_FETCH_CONCURRENCY);
+-    const routeCandidates = sorted.flatMap((task) => {
+-      if (!task.startCoordinates || !task.finishCoordinates) {
+-        return [];
+-      }
+-      const startPosition = toPosition(task.startCoordinates);
+-      const finishPosition = toPosition(task.finishCoordinates);
+-      if (!startPosition || !finishPosition) {
+-        return [];
+-      }
+-      return [
+-        {
+-          task,
+-          start: task.startCoordinates,
+-          finish: task.finishCoordinates,
+-        },
+-      ];
+-    });
+-    const cacheSignature = JSON.stringify(
+-      routeCandidates.map((candidate) => ({
+-        id: candidate.task._id,
+-        status: candidate.task.status,
+-        start: candidate.start,
+-        finish: candidate.finish,
+-      })),
+-    );
+-    if (routeCacheSignatureRef.current !== cacheSignature) {
+-      clearRouteCache();
+-      routeCacheSignatureRef.current = cacheSignature;
+-    }
+-    (async () => {
+-      const lineFeatures: GeoJSON.Feature<GeoJSON.LineString>[] = [];
+-      const animationRoutes: AnimatedRoute[] = [];
+-      const results = await Promise.allSettled(
+-        routeCandidates.map((candidate) =>
+-          semaphore.run(async () => {
+-            const geometry = await fetchRouteGeometry(
+-              candidate.start,
+-              candidate.finish,
+-            );
+-            return { task: candidate.task, geometry };
+-          }),
+-        ),
+-      );
+-      if (cancelled) return;
+-      let osrmFailed = false;
+-      for (const result of results) {
+-        if (cancelled) break;
+-        if (result.status !== 'fulfilled') {
+-          osrmFailed = true;
+-          continue;
+-        }
+-        const { task, geometry } = result.value;
+-        if (!geometry) continue;
+-        const statusKey =
+-          typeof task.status === 'string' ? task.status.trim() : '';
+-        const routeColor = TASK_STATUS_COLORS[statusKey] ?? '#2563eb';
+-        const coordinates = geometry as GeoJSON.Position[];
+-        lineFeatures.push({
+-          type: 'Feature',
+-          geometry: {
+-            type: 'LineString',
+-            coordinates,
+-          },
+-          properties: {
+-            color: routeColor,
+-            taskId: task._id,
+-            title: task.title ?? task._id,
+-          },
+-        });
+-        const animatedRoute = createAnimatedRoute(
+-          coordinates,
+-          routeColor,
+-          task._id,
+-          task.title ?? task._id,
+-        );
+-        if (animatedRoute) {
+-          animationRoutes.push(animatedRoute);
+-        }
+-      }
+-      if (cancelled) return;
+-      routesSource.setData({
+-        type: 'FeatureCollection',
+-        features: lineFeatures,
+-      });
+-      routeAnimationRef.current.routes = animationRoutes;
+-      routeAnimationRef.current.lastTimestamp = null;
+-      if (!animationRoutes.length) {
+-        animationSource.setData(createEmptyCollection());
+-        stopRouteAnimation();
+-      } else {
+-        runRouteAnimation();
+-      }
+-      if (osrmFailed && !osrmWarningShownRef.current) {
+-        addToast(
+-          'Сервис маршрутизации временно недоступен, показаны доступные данные.',
+-          'error',
+-        );
+-        osrmWarningShownRef.current = true;
+-      }
+-      if (!osrmFailed) {
+-        osrmWarningShownRef.current = false;
+-      }
+-    })();
+-    return () => {
+-      cancelled = true;
+-      stopRouteAnimation();
+-    };
+-  }, [
+-    layerVisibility.tasks,
+-    mapReady,
+-    addToast,
+-    runRouteAnimation,
+-    sorted,
+-    stopRouteAnimation,
+-  ]);
+-
+-  React.useEffect(() => {
+-    if (!layerVisibility.optimized || !planDraft) {
+-      setOptimizedRoutesGeoJSON(createEmptyCollection<GeoJSON.LineString>());
+-      return;
+-    }
+-    const colors = ['#ef4444', '#22c55e', '#f97316'];
+-    const features: GeoJSON.Feature<GeoJSON.LineString>[] = [];
+-    planDraft.routes.forEach((route, idx) => {
+-      const coordinates: GeoJSON.Position[] = [];
+-      route.tasks.forEach((task) => {
+-        const start = toPosition(task.start);
+-        const finish = toPosition(task.finish);
+-        if (start) {
+-          coordinates.push(start);
+-        }
+-        if (finish) {
+-          coordinates.push(finish);
+-        }
+-      });
+-      if (coordinates.length < 2) {
+-        return;
+-      }
+-      features.push({
+-        type: 'Feature',
+-        geometry: {
+-          type: 'LineString',
+-          coordinates,
+-        },
+-        properties: {
+-          color: colors[idx % colors.length],
+-          routeId: route.id,
+-        },
+-      });
+-    });
+-    setOptimizedRoutesGeoJSON({
+-      type: 'FeatureCollection',
+-      features,
+-    });
+-  }, [layerVisibility.optimized, planDraft]);
+-
+-  React.useEffect(() => {
+-    if (!mapReady) return;
+-    const map = mapRef.current;
+-    if (!map) return;
+-    const source = map.getSource(OPT_SOURCE_ID) as GeoJSONSource | undefined;
+-    if (!source) return;
+-    source.setData(optimizedRoutesGeoJSON);
+-  }, [mapReady, optimizedRoutesGeoJSON]);
+-
+-  React.useEffect(() => {
+-    if (!mapReady) return;
+-    const map = mapRef.current;
+-    if (!map) return;
+-    const setVisibility = (layerId: string, visible: boolean) => {
+-      if (!map.getLayer(layerId)) return;
+-      map.setLayoutProperty(
+-        layerId,
+-        'visibility',
+-        visible ? 'visible' : 'none',
+-      );
+-    };
+-    setVisibility(TASK_LAYER_ID, layerVisibility.tasks);
+-    setVisibility(TASK_CLUSTER_LAYER_ID, layerVisibility.tasks);
+-    setVisibility(TASK_CLUSTER_COUNT_LAYER_ID, layerVisibility.tasks);
+-    setVisibility(TASK_POINTS_LAYER_ID, layerVisibility.tasks);
+-    setVisibility(TASK_ANIMATION_LAYER_ID, layerVisibility.tasks);
+-    setVisibility(OPT_LAYER_ID, layerVisibility.optimized);
+-  }, [layerVisibility.optimized, layerVisibility.tasks, mapReady]);
+-
+-  React.useEffect(() => {
+-    if (!mapReady) return;
+-    const map = mapRef.current;
+-    if (!map) return;
+-    const source = map.getSource(TASK_CLUSTER_SOURCE_ID) as
+-      | GeoJSONSource
+-      | undefined;
+-    if (!source) return;
+-    const handlePointClick = (event: MapLayerMouseEvent) => {
+-      const feature = event.features?.[0];
+-      if (!feature) return;
+-      const entity = feature.properties?.entity;
+-      const taskId = feature.properties?.taskId;
+-      if (typeof taskId === 'string' && taskId) {
+-        openTask(taskId);
+-      }
+-    };
+-    const handlePointClickListener: Listener = (event) =>
+-      handlePointClick(event as MapLayerMouseEvent);
+-    const handleClusterClick = (event: MapLayerMouseEvent) => {
+-      const feature = event.features?.[0];
+-      if (!feature) return;
+-      const clusterId = feature.properties?.cluster_id;
+-      if (typeof clusterId !== 'number') {
+-        return;
+-      }
+-      const coordinates =
+-        feature.geometry && feature.geometry.type === 'Point'
+-          ? (feature.geometry.coordinates as GeoJSON.Position)
+-          : null;
+-      source.getClusterExpansionZoom(
+-        clusterId,
+-        (error: Error | null, zoom: number) => {
+-          if (!error && typeof zoom === 'number' && coordinates) {
+-            map.easeTo({ center: coordinates, zoom, duration: 600 });
+-          }
+-        },
+-      );
+-      const total =
+-        typeof feature.properties?.point_count === 'number'
+-          ? (feature.properties.point_count as number)
+-          : 0;
+-      const limit = Math.min(Math.max(total, 1), 50);
+-      const collected = new Set<string>();
+-      const gatherLeaves = (offset: number) => {
+-        source.getClusterLeaves(
+-          clusterId,
+-          limit,
+-          offset,
+-          (
+-            err: Error | null,
+-            features: GeoJSON.Feature<
+-              GeoJSON.Geometry,
+-              GeoJSON.GeoJsonProperties
+-            >[],
+-          ) => {
+-            if (err || !features) {
+-              return;
+-            }
+-            features.forEach((item) => {
+-              if (item.properties?.entity === 'task') {
+-                const taskId = item.properties?.taskId;
+-                if (typeof taskId === 'string' && taskId) {
+-                  collected.add(taskId);
+-                }
+-              }
+-            });
+-            if (features.length === limit && offset + features.length < total) {
+-              gatherLeaves(offset + features.length);
+-            } else {
+-              const ids = Array.from(collected);
+-              setClusterSelection(
+-                ids.length ? { ids, center: coordinates ?? null } : null,
+-              );
+-            }
+-          },
+-        );
+-      };
+-      gatherLeaves(0);
+-    };
+-    const handleClusterClickListener: Listener = (event) =>
+-      handleClusterClick(event as MapLayerMouseEvent);
+-    const setCursor = (cursor: string) => {
+-      const canvas = map.getCanvas();
+-      canvas.style.cursor = cursor;
+-    };
+-    const handleEnter: Listener = () => setCursor('pointer');
+-    const handleLeave: Listener = () => setCursor('');
+-    map.on('click', TASK_POINTS_LAYER_ID, handlePointClickListener);
+-    map.on('mouseenter', TASK_POINTS_LAYER_ID, handleEnter);
+-    map.on('mouseleave', TASK_POINTS_LAYER_ID, handleLeave);
+-    map.on('click', TASK_CLUSTER_LAYER_ID, handleClusterClickListener);
+-    map.on('mouseenter', TASK_CLUSTER_LAYER_ID, handleEnter);
+-    map.on('mouseleave', TASK_CLUSTER_LAYER_ID, handleLeave);
+-    return () => {
+-      map.off('click', TASK_POINTS_LAYER_ID, handlePointClickListener);
+-      map.off('mouseenter', TASK_POINTS_LAYER_ID, handleEnter);
+-      map.off('mouseleave', TASK_POINTS_LAYER_ID, handleLeave);
+-      map.off('click', TASK_CLUSTER_LAYER_ID, handleClusterClickListener);
+-      map.off('mouseenter', TASK_CLUSTER_LAYER_ID, handleEnter);
+-      map.off('mouseleave', TASK_CLUSTER_LAYER_ID, handleLeave);
+-    };
+-    }, [mapReady, openTask]);
+-
+-  React.useEffect(() => {
+-    if (!mapReady) return;
+-    const map = mapRef.current;
+-    const container = mapContainerRef.current;
+-    if (!map) return;
+-    if (typeof map.resize === 'function') {
+-      map.resize();
+-    }
+-    if (!container || typeof ResizeObserver === 'undefined') {
+-      return;
+-    }
+-    let frameId: number | null = null;
+-    const observer = new ResizeObserver((entries) => {
+-      const entry = entries[0];
+-      if (!entry || typeof map.resize !== 'function') {
+-        return;
+-      }
+-      const { width, height } = entry.contentRect;
+-      if (width <= 0 || height <= 0) {
+-        return;
+-      }
+-      if (frameId !== null) {
+-        cancelAnimationFrame(frameId);
+-      }
+-      frameId = requestAnimationFrame(() => {
+-        map.resize();
+-      });
+-    });
+-    observer.observe(container);
+-    return () => {
+-      observer.disconnect();
+-      if (frameId !== null) {
+-        cancelAnimationFrame(frameId);
+-      }
+-    };
+-  }, [hasDialog, mapReady]);
++  const filteredPlans = React.useMemo(() => {
++    if (statusFilter === 'all') return plans;
++    return plans.filter((plan) => normalizeStatus(plan.status) === statusFilter);
++  }, [plans, statusFilter]);
+ 
+   return (
+-    <div className="space-y-4 lg:space-y-6">
+-      <header className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
++    <div className="space-y-6">
++      <Breadcrumbs
++        items={[
++          { label: 'Логистика', href: '/logistics' },
++          { label: 'Маршрутные планы' },
++        ]}
++      />
++      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+         <div className="space-y-1">
+-          <h2 className="text-2xl font-semibold">{t('logistics.title')}</h2>
+-          <p className="max-w-3xl text-sm text-muted-foreground">
+-            {t('logistics.pageLead', {
+-              defaultValue:
+-                'Планируйте маршруты между точками задач и контролируйте старт и финиш на одной карте.',
+-            })}
++          <h2 className="text-xl font-semibold">Маршрутные планы</h2>
++          <p className="max-w-2xl text-sm text-muted-foreground">
++            Просматривайте планы доставки без привязки к карте: задачи, назначенные водители и транспорт, статус и детали плана.
+           </p>
+         </div>
+-        <div className="flex flex-wrap items-center gap-2">
+-          <Button
+-            type="button"
+-            size="sm"
+-            variant="outline"
+-            onClick={refreshAll}
+-          >
+-            {t('refresh')}
+-          </Button>
+-          <Button
+-            type="button"
+-            size="sm"
+-            variant="outline"
+-            onClick={handleReloadPlan}
+-            disabled={planLoading}
+-          >
+-            {planLoading ? t('loading') : t('logistics.planReload')}
++        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
++          <label className="flex flex-col text-sm font-medium text-foreground" htmlFor="logistics-status-filter">
++            Статус
++            <select
++              id="logistics-status-filter"
++              className="mt-1 min-w-[160px] rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-accentPrimary focus:outline-none"
++              value={statusFilter}
++              onChange={(event) => setStatusFilter(event.target.value as RoutePlanStatus | 'cancelled' | 'all')}
++            >
++              {STATUS_OPTIONS.map((option) => (
++                <option key={option.value} value={option.value}>
++                  {option.label}
++                </option>
++              ))}
++            </select>
++          </label>
++          <Button onClick={() => void loadPlans()} disabled={loading} variant="outline" className="sm:self-end">
++            {loading ? 'Обновляем…' : 'Обновить'}
+           </Button>
+         </div>
+-      </header>
+-      {shouldShowMapFallbackNotice ? (
+-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+-          {t('logistics.mapFallbackWarning', {
+-            defaultValue:
+-              'Карта использует временные растровые тайлы OpenStreetMap. Подключите локальные PMTiles в public/tiles, чтобы активировать детализированный стиль.',
+-          })}
+-        </div>
+-      ) : null}
+-      {shouldWarnAddressConfig && addressLayerNotice ? (
+-        <div className={addressLayerNoticeClassName}>
+-          {addressLayerNotice.text}
++      </div>
++      {user?.role !== 'admin' && user?.role !== 'manager' && (
++        <p className="text-sm text-muted-foreground">
++          Управление маршрутными планами доступно администраторам и менеджерам. Остальные пользователи могут просматривать список.
++        </p>
++      )}
++      {error && (
++        <div className="rounded-lg border border-destructive bg-destructive/10 p-3 text-sm text-destructive" role="alert">
++          {error}
+         </div>
+-      ) : null}
+-      {geocodingQueue.length ? (
+-        <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700">
+-          <div className="flex flex-wrap items-center justify-between gap-2">
+-            <span className="font-semibold">
+-              {t('logistics.noGeoPointTitle', {
+-                defaultValue: 'Задачи без геоточки',
+-              })}
+-            </span>
+-            <span className="text-xs text-muted-foreground">
+-              {t('logistics.noGeoPointHint', {
+-                defaultValue: 'Адрес сохранён, задача ожидает геокодирования.',
+-              })}
+-            </span>
+-          </div>
+-          <div className="mt-2 flex flex-wrap gap-2">
+-            {geocodingQueue.slice(0, 6).map((task) => {
+-              const label =
+-                typeof task.title === 'string' && task.title.trim()
+-                  ? task.title.trim()
+-                  : task._id;
+-              return (
+-                <span
+-                  key={task._id}
+-                  className="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-800"
+-                >
+-                  <span
+-                    className="inline-flex h-2.5 w-2.5 rounded-full bg-amber-500"
+-                    aria-hidden
+-                  />
+-                  <span className="whitespace-nowrap">{label}</span>
+-                  <span className="text-[11px] uppercase tracking-wide text-amber-700">
+-                    {t('logistics.noGeoPointLabel', {
+-                      defaultValue: 'без геоточки',
+-                    })}
+-                  </span>
+-                </span>
+-              );
+-            })}
+-            {geocodingQueue.length > 6 ? (
+-              <span className="text-xs text-muted-foreground">
+-                +{geocodingQueue.length - 6}
+-              </span>
+-            ) : null}
+-          </div>
+-          <div className="mt-3 flex flex-wrap items-center gap-2">
+-            <span className="text-xs text-slate-600">
+-              {t('logistics.noGeoPointFilterHint', {
+-                defaultValue:
+-                  'Эти задачи скрыты на карте — покажите их в списке для назначения координат.',
+-              })}
+-            </span>
+-            <Button
+-              type="button"
+-              size="xs"
+-              variant={showOnlyMissingCoords ? 'default' : 'outline'}
+-              onClick={() => {
+-                setShowOnlyMissingCoords((prev) => !prev);
+-                setPage(0);
+-              }}
+-            >
+-              {showOnlyMissingCoords
+-                ? t('logistics.showAllTasks', {
+-                    defaultValue: 'Показать все задачи',
+-                  })
+-                : t('logistics.showMissingCoordsOnly', {
+-                    defaultValue: 'Только без координат',
+-                  })}
+-            </Button>
+-          </div>
++      )}
++      {loading ? (
++        <SkeletonCard />
++      ) : filteredPlans.length === 0 ? (
++        <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
++          Маршрутные планы отсутствуют.
+         </div>
+-      ) : null}
+-      <div className="grid gap-4 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+-        <div className="space-y-4">
+-          <CollapsibleCard
+-            title={t('logistics.planSectionTitle')}
+-            description={t('logistics.planSummary')}
+-            actions={
+-              <div className="flex flex-wrap items-center gap-2 text-xs">
+-                <span className="font-semibold uppercase text-muted-foreground">
+-                  {t('logistics.planStatus')}
+-                </span>
+-                <span className="inline-flex items-center rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-slate-700">
+-                  {planStatusLabel}
+-                </span>
+-                {planLoading ? (
+-                  <span className="text-xs text-muted-foreground">
+-                    {t('loading')}
+-                  </span>
+-                ) : null}
+-              </div>
+-            }
+-            toggleLabels={collapseToggleLabels}
+-          >
+-            <div className="flex flex-wrap items-center gap-2">
+-              <Button
+-                type="button"
+-                size="sm"
+-                variant="outline"
+-                onClick={handleReloadPlan}
+-                disabled={planLoading}
+-              >
+-                {planLoading ? t('loading') : t('logistics.planReload')}
+-              </Button>
+-              <Button
+-                type="button"
+-                size="sm"
+-                variant="outline"
+-                onClick={handleClearPlan}
+-                disabled={planLoading}
++      ) : (
++        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
++          {filteredPlans.map((plan) => {
++            const status = normalizeStatus(plan.status);
++            const tasks = collectTasks(plan.routes ?? []);
++            const drivers = collectDrivers(plan.routes ?? []);
++            const vehicles = collectVehicles(plan.routes ?? []);
++            const statusLabel = STATUS_LABELS[status];
++            const statusColor = STATUS_STYLES[status];
++
++            return (
++              <article
++                key={plan.id}
++                className="flex h-full flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-sm"
+               >
+-                {t('logistics.planClear')}
+-              </Button>
+-              <Button
+-                type="button"
+-                size="sm"
+-                onClick={handleSavePlan}
+-                disabled={!planDraft || !isPlanEditable || planLoading}
+-              >
+-                {t('save')}
+-              </Button>
+-              {planDraft?.status === 'draft' ? (
+-                <Button
+-                  type="button"
+-                  size="sm"
+-                  variant="success"
+-                  onClick={handleApprovePlan}
+-                  disabled={planLoading}
+-                >
+-                  {t('logistics.planApprove')}
+-                </Button>
+-              ) : null}
+-              {planDraft?.status === 'approved' ? (
+-                <Button
+-                  type="button"
+-                  size="sm"
+-                  variant="success"
+-                  onClick={handleCompletePlan}
+-                  disabled={planLoading}
+-                >
+-                  {t('logistics.planComplete')}
+-                </Button>
+-              ) : null}
+-            </div>
+-            {planDraft ? (
+-              <div className="space-y-4">
+-                <div className="grid gap-4 md:grid-cols-2">
+-                  <label className="flex flex-col gap-1 text-sm">
+-                    <span className="font-medium">
+-                      {t('logistics.planTitleLabel')}
+-                    </span>
+-                    <Input
+-                      value={planDraft.title}
+-                      onChange={(event) =>
+-                        handlePlanTitleChange(event.target.value)
+-                      }
+-                      disabled={!isPlanEditable || planLoading}
+-                    />
+-                  </label>
+-                  <label className="flex flex-col gap-1 text-sm">
+-                    <span className="font-medium">
+-                      {t('logistics.planNotesLabel')}
+-                    </span>
+-                    <textarea
+-                      value={planDraft.notes ?? ''}
+-                      onChange={(event) =>
+-                        handlePlanNotesChange(event.target.value)
+-                      }
+-                      className="min-h-[96px] rounded border px-3 py-2 text-sm"
+-                      disabled={!isPlanEditable || planLoading}
+-                    />
+-                  </label>
+-                </div>
+-                <div className="space-y-2">
+-                  <h4 className="text-sm font-semibold uppercase text-muted-foreground">
+-                    {t('logistics.planSummary')}
+-                  </h4>
+-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+-                    <div className="rounded border bg-white/70 px-3 py-2 text-sm shadow-sm">
+-                      <div className="text-xs uppercase text-muted-foreground">
+-                        {t('logistics.planTotalDistance')}
+-                      </div>
+-                      <div className="font-semibold">
+-                        {formatDistance(
+-                          planDraft.metrics?.totalDistanceKm ?? null,
+-                        )}
+-                      </div>
+-                    </div>
+-                    <div className="rounded border bg-white/70 px-3 py-2 text-sm shadow-sm">
+-                      <div className="text-xs uppercase text-muted-foreground">
+-                        {t('logistics.planTotalRoutes')}
+-                      </div>
+-                      <div className="font-semibold">{planTotalRoutes}</div>
+-                    </div>
+-                    <div className="rounded border bg-white/70 px-3 py-2 text-sm shadow-sm">
+-                      <div className="text-xs uppercase text-muted-foreground">
+-                        {t('logistics.planTotalTasks')}
+-                      </div>
+-                      <div className="font-semibold">{planTotalTasks}</div>
+-                    </div>
+-                    <div className="rounded border bg-white/70 px-3 py-2 text-sm shadow-sm">
+-                      <div className="text-xs uppercase text-muted-foreground">
+-                        {t('logistics.planTotalStops')}
+-                      </div>
+-                      <div className="font-semibold">{totalStops}</div>
+-                    </div>
+-                  </div>
+-                </div>
+-                <div className="space-y-3">
+-                  {planRoutes.map((route, routeIndex) => {
+-                    const displayIndex =
+-                      typeof route.order === 'number' &&
+-                      Number.isFinite(route.order)
+-                        ? route.order + 1
+-                        : routeIndex + 1;
+-                    const routeStops =
+-                      route.metrics?.stops ?? route.stops.length;
+-                    return (
+-                      <div
+-                        key={route.id || `${routeIndex}`}
+-                        className="space-y-3 rounded border bg-white/70 px-3 py-3 shadow-sm"
+-                      >
+-                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+-                          <div>
+-                            <h4 className="text-base font-semibold">
+-                              {t('logistics.planRouteTitle', {
+-                                index: displayIndex,
+-                              })}
+-                            </h4>
+-                            <div className="text-xs text-muted-foreground">
+-                              {t('logistics.planRouteSummary', {
+-                                tasks: route.tasks.length,
+-                                stops: routeStops,
+-                              })}
+-                            </div>
+-                          </div>
+-                          <div className="text-xs text-muted-foreground">
+-                            {t('logistics.planRouteDistance', {
+-                              distance: formatDistance(
+-                                route.metrics?.distanceKm ?? null,
+-                              ),
+-                            })}
+-                          </div>
+-                        </div>
+-                        <div className="grid gap-3 md:grid-cols-2">
+-                          <label className="flex flex-col gap-1 text-sm">
+-                            <span className="font-medium">
+-                              {t('logistics.planDriver')}
+-                            </span>
+-                            <Input
+-                              value={route.driverName ?? ''}
+-                              onChange={(event) =>
+-                                handleDriverNameChange(
+-                                  routeIndex,
+-                                  event.target.value,
+-                                )
+-                              }
+-                              disabled={!isPlanEditable || planLoading}
+-                            />
+-                          </label>
+-                          <label className="flex flex-col gap-1 text-sm">
+-                            <span className="font-medium">
+-                              {t('logistics.planVehicle')}
+-                            </span>
+-                            <Input
+-                              value={route.vehicleName ?? ''}
+-                              onChange={(event) =>
+-                                handleVehicleNameChange(
+-                                  routeIndex,
+-                                  event.target.value,
+-                                )
+-                              }
+-                              disabled={!isPlanEditable || planLoading}
+-                            />
+-                          </label>
+-                          <label className="md:col-span-2 flex flex-col gap-1 text-sm">
+-                            <span className="font-medium">
+-                              {t('logistics.planRouteNotes')}
+-                            </span>
+-                            <textarea
+-                              value={route.notes ?? ''}
+-                              onChange={(event) =>
+-                                handleRouteNotesChange(
+-                                  routeIndex,
+-                                  event.target.value,
+-                                )
+-                              }
+-                              className="min-h-[80px] rounded border px-3 py-2 text-sm"
+-                              disabled={!isPlanEditable || planLoading}
+-                            />
+-                          </label>
+-                        </div>
+-                        <div className="space-y-2">
+-                          <h5 className="text-sm font-semibold uppercase text-muted-foreground">
+-                            {t('logistics.planTasksTitle')}
+-                          </h5>
+-                          <ul className="space-y-2">
+-                            {route.tasks.length ? (
+-                              route.tasks.map((taskRef, taskIndex) => {
+-                                const task = displayedTasks.find(
+-                                  (item) => item._id === taskRef.taskId,
+-                                );
+-                                if (!task) {
+-                                  return null;
+-                                }
+-                                return (
+-                                  <li
+-                                    key={`${route.id}-${taskRef.taskId}-${taskIndex}`}
+-                                    className="rounded border bg-white/60 px-3 py-2 text-sm shadow-sm"
+-                                  >
+-                                    <div className="flex flex-wrap items-start justify-between gap-2">
+-                                      <div>
+-                                        <button
+-                                          type="button"
+-                                          className="text-left font-medium text-accentPrimary hover:underline"
+-                                          onClick={() => openTask(task)}
+-                                        >
+-                                          {task.title || task._id}
+-                                        </button>
+-                                        <div className="text-xs text-muted-foreground">
+-                                          {task.address ||
+-                                            t('logistics.planRouteNoAddress')}
+-                                        </div>
+-                                      </div>
+-                                      <div className="flex gap-1">
+-                                        <Button
+-                                          type="button"
+-                                          size="xs"
+-                                          variant="outline"
+-                                          onClick={() =>
+-                                            handleMoveTask(
+-                                              routeIndex,
+-                                              taskIndex,
+-                                              -1,
+-                                            )
+-                                          }
+-                                          disabled={taskIndex === 0}
+-                                        >
+-                                          {t('logistics.planTaskUp')}
+-                                        </Button>
+-                                        <Button
+-                                          type="button"
+-                                          size="xs"
+-                                          variant="outline"
+-                                          onClick={() =>
+-                                            handleMoveTask(
+-                                              routeIndex,
+-                                              taskIndex,
+-                                              1,
+-                                            )
+-                                          }
+-                                          disabled={
+-                                            taskIndex === route.tasks.length - 1
+-                                          }
+-                                        >
+-                                          {t('logistics.planTaskDown')}
+-                                        </Button>
+-                                      </div>
+-                                    </div>
+-                                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+-                                      <span>
+-                                        {t('logistics.planRouteDistance', {
+-                                          distance: formatDistance(
+-                                            taskRef.distanceKm ?? null,
+-                                          ),
+-                                        })}
+-                                      </span>
+-                                      <span>
+-                                        {t('logistics.planRouteDuration', {
+-                                          duration: formatDuration(
+-                                            taskRef.durationMinutes ?? null,
+-                                          ),
+-                                        })}
+-                                      </span>
+-                                    </div>
+-                                  </li>
+-                                );
+-                              })
+-                            ) : (
+-                              <li className="rounded border border-dashed bg-white/60 px-3 py-2 text-sm text-muted-foreground">
+-                                {t('logistics.planRouteEmpty')}
+-                              </li>
+-                            )}
+-                          </ul>
+-                        </div>
+-                      </div>
+-                    );
+-                  })}
+-                </div>
+-                {planMessage ? (
+-                  <div className={planMessageClass}>{planMessage}</div>
+-                ) : null}
+-              </div>
+-            ) : (
+-              <div className={planMessageClass}>
+-                {planLoading
+-                  ? t('loading')
+-                  : planMessage || t('logistics.planEmpty')}
+-              </div>
+-            )}
+-          </CollapsibleCard>
+-          <div className="flex flex-wrap gap-2 sm:hidden">
+-            <Button
+-              type="button"
+-              size="sm"
+-              variant={mobileView === 'map' ? 'default' : 'outline'}
+-              onClick={() => setMobileView('map')}
+-              aria-pressed={mobileView === 'map'}
+-            >
+-              {t('logistics.mapMobileTab', { defaultValue: 'Карта' })}
+-            </Button>
+-            <Button
+-              type="button"
+-              size="sm"
+-              variant={mobileView === 'list' ? 'default' : 'outline'}
+-              onClick={() => setMobileView('list')}
+-              aria-pressed={mobileView === 'list'}
+-            >
+-              {t('logistics.listMobileTab', { defaultValue: 'Список' })}
+-            </Button>
+-          </div>
+-          <section
+-            data-testid="logistics-map-panel"
+-            className={`space-y-4 rounded-lg border bg-white/90 p-4 shadow-sm ${mobileView === 'map' ? '' : 'hidden sm:block'}`}
+-          >
+-            <div className="flex flex-wrap items-start justify-between gap-3">
+-              <div className="space-y-1">
+-                <h3 className="text-lg font-semibold">
+-                  {t('logistics.mapPanelTitle', {
+-                    defaultValue: 'Карта маршрутов',
+-                  })}
+-                </h3>
+-                <p className="text-sm text-muted-foreground">
+-                  {t('logistics.mapPanelSummary', {
+-                    defaultValue:
+-                      'Включайте нужные слои, выбирайте алгоритм и запускайте оптимизацию прямо на карте.',
+-                  })}
+-                </p>
+-              </div>
+-            </div>
+-            <div
+-              ref={mapContainerRef}
+-              id="logistics-map"
+-              className={`relative block w-full overflow-hidden rounded-xl border border-slate-200 bg-slate-50 shadow-inner min-h-[260px] sm:min-h-[340px] lg:min-h-[440px] h-[46vh] sm:h-[56vh] lg:h-[64vh] xl:h-[72vh]`}
+-            >
+-              {hasDialog ? (
+-                <div
+-                  aria-hidden="true"
+-                  className="pointer-events-auto absolute inset-0 z-10 bg-white/70 backdrop-blur-sm"
+-                />
+-              ) : null}
+-            </div>
+-            <details className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 text-sm">
+-              <summary className="cursor-pointer select-none text-sm font-semibold text-slate-700">
+-                {t('logistics.mapControlsTitle', {
+-                  defaultValue: 'Настройки карты',
+-                })}
+-              </summary>
+-              <div className="mt-3 space-y-3 text-sm">
+-                <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+-                  <label className="inline-flex items-center gap-2">
+-                    <input
+-                      type="checkbox"
+-                      className="size-4"
+-                      checked={layerVisibility.tasks}
+-                      onChange={(event) =>
+-                        setLayerVisibility((prev) => ({
+-                          ...prev,
+-                          tasks: event.target.checked,
+-                        }))
+-                      }
+-                    />
+-                    <span>{t('logistics.layerTasks')}</span>
+-                  </label>
+-                  <label className="inline-flex items-center gap-2">
+-                    <input
+-                      type="checkbox"
+-                      className="size-4"
+-                      checked={layerVisibility.optimized}
+-                      onChange={(event) =>
+-                        setLayerVisibility((prev) => ({
+-                          ...prev,
+-                          optimized: event.target.checked,
+-                        }))
+-                      }
+-                    />
+-                    <span>{t('logistics.layerOptimization')}</span>
+-                  </label>
+-                </div>
+-                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+-                  <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
+-                    <label className="flex items-center gap-2">
+-                      <span className="text-xs font-medium uppercase text-muted-foreground">
+-                        {t('logistics.vehicleCountLabel')}
+-                      </span>
+-                      <select
+-                        value={vehicles}
+-                        onChange={(event) =>
+-                          setVehicles(Number(event.target.value))
+-                        }
+-                        className="h-8 rounded border px-2 text-sm"
+-                        aria-label={t('logistics.vehicleCountAria')}
+-                      >
+-                        <option value={1}>1</option>
+-                        <option value={2}>2</option>
+-                        <option value={3}>3</option>
+-                      </select>
+-                    </label>
+-                    <label className="flex items-center gap-2">
+-                      <span className="text-xs font-medium uppercase text-muted-foreground">
+-                        {t('logistics.optimizeMethodLabel')}
+-                      </span>
+-                      <select
+-                        value={method}
+-                        onChange={(event) => setMethod(event.target.value)}
+-                        className="h-8 rounded border px-2 text-sm"
+-                        aria-label={t('logistics.optimizeMethodAria')}
+-                      >
+-                        <option value="angle">angle</option>
+-                        <option value="trip">trip</option>
+-                      </select>
+-                    </label>
+-                  </div>
+-                  <div className="flex flex-wrap justify-end gap-2 sm:justify-start">
+-                    <Button type="button" size="sm" onClick={calculate}>
+-                      {t('logistics.optimize')}
+-                    </Button>
+-                    <Button type="button" size="sm" onClick={reset}>
+-                      {t('reset')}
+-                    </Button>
+-                    <Button type="button" size="sm" onClick={refreshAll}>
+-                      {t('refresh')}
+-                    </Button>
++                <div className="flex items-start justify-between gap-3">
++                  <div>
++                    <p className="text-xs text-muted-foreground">Создан: {formatDate(plan.createdAt)}</p>
++                    <h3 className="text-lg font-semibold leading-6">{plan.title}</h3>
+                   </div>
+-                </div>
+-              </div>
+-            </details>
+-            {clusterSelection?.ids.length ? (
+-              <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-dashed border-slate-300 bg-white/70 px-3 py-2 text-xs text-slate-600">
+-                <span>
+-                  {t('logistics.clusterSelectionSummary', {
+-                    count: clusterSelection.ids.length,
+-                    defaultValue: `В кластере задач: ${clusterSelection.ids.length}`,
+-                  })}
+-                </span>
+-                <Button
+-                  type="button"
+-                  size="xs"
+-                  variant="outline"
+-                  onClick={handleClearClusterSelection}
+-                >
+-                  {t('clear')}
+-                </Button>
+-              </div>
+-            ) : null}
+-          </section>
+-          <div
+-            className={mobileView === 'list' ? '' : 'hidden sm:block'}
+-            data-testid="logistics-tasks-card"
+-          >
+-            <CollapsibleCard
+-              title={t('logistics.tasksHeading')}
+-              description={t('logistics.tasksActiveOnly', {
+-                defaultValue:
+-                  'Показываются только активные задачи без завершённых и отменённых статусов.',
+-              })}
+-              toggleLabels={collapseToggleLabels}
+-            >
+-              <TaskTable
+-                tasks={displayedTasks}
+-                onDataChange={(rows) => setSorted(rows as RouteTask[])}
+-                onRowClick={openTask}
+-                page={page}
+-                pageCount={Math.max(1, Math.ceil(displayedTasks.length / 25))}
+-                onPageChange={setPage}
+-              />
+-            </CollapsibleCard>
+-          </div>
+-        </div>
+-        <aside className="space-y-4">
+-          <CollapsibleCard
+-            title={t('logistics.layersTitle')}
+-            description={t('logistics.layersSummary', {
+-              defaultValue:
+-                'Настройте легенду карты по статусам, транспорту и типам задач.',
+-            })}
+-            toggleLabels={collapseToggleLabels}
+-          >
+-            <div className="space-y-3 border-t border-dashed border-slate-200 pt-3 text-sm">
+-              <fieldset className="space-y-2">
+-                <legend className="text-xs font-semibold uppercase text-muted-foreground">
+-                  {t('logistics.layerRouteStatuses', {
+-                    defaultValue: 'Статусы маршрутов',
+-                  })}
+-                </legend>
+-                <ul className="space-y-1">
+-                  {routeStatusEntries.map(({ key, count, color }) => {
+-                    const visible = !hiddenRouteStatusesSet.has(key);
+-                    const label = t(`logistics.routeStatus.${key}`, {
+-                      defaultValue: ROUTE_STATUS_LABELS[key],
+-                    });
+-                    return (
+-                      <li
+-                        key={key}
+-                        className="flex items-center justify-between gap-2"
+-                      >
+-                        <label className="flex flex-1 items-center gap-2">
+-                          <input
+-                            type="checkbox"
+-                            className="size-4"
+-                            checked={visible}
+-                            onChange={(event) =>
+-                              handleRouteStatusVisibilityChange(
+-                                key,
+-                                event.target.checked,
+-                              )
+-                            }
+-                          />
+-                          <span className="flex items-center gap-2">
+-                            <span
+-                              className="inline-block size-3 rounded-full"
+-                              style={{ backgroundColor: color }}
+-                              aria-hidden="true"
+-                            />
+-                            <span>{label}</span>
+-                          </span>
+-                        </label>
+-                        <span className="text-xs text-muted-foreground">
+-                          {t('logistics.legendCount', {
+-                            count,
+-                            defaultValue: `(${count})`,
+-                          })}
+-                        </span>
+-                      </li>
+-                    );
+-                  })}
+-                </ul>
+-              </fieldset>
+-              <fieldset className="space-y-2">
+-                <legend className="text-xs font-semibold uppercase text-muted-foreground">
+-                  {t('logistics.layerTransports', {
+-                    defaultValue: 'Типы транспорта',
+-                  })}
+-                </legend>
+-                <ul className="space-y-1">
+-                  {transportEntries.map(({ key, label, count, color }) => {
+-                    const visible = !hiddenTransportTypesSet.has(key);
+-                    return (
+-                      <li
+-                        key={key}
+-                        className="flex items-center justify-between gap-2"
+-                      >
+-                        <label className="flex flex-1 items-center gap-2">
+-                          <input
+-                            type="checkbox"
+-                            className="size-4"
+-                            checked={visible}
+-                            onChange={(event) =>
+-                              handleTransportVisibilityChange(
+-                                key,
+-                                event.target.checked,
+-                              )
+-                            }
+-                          />
+-                          <span className="flex items-center gap-2">
+-                            <span
+-                              className="inline-block size-3 rounded-full"
+-                              style={{ backgroundColor: color }}
+-                              aria-hidden="true"
+-                            />
+-                            <span>{label}</span>
+-                          </span>
+-                        </label>
+-                        <span className="text-xs text-muted-foreground">
+-                          {t('logistics.legendCount', {
+-                            count,
+-                            defaultValue: `(${count})`,
+-                          })}
+-                        </span>
+-                      </li>
+-                    );
+-                  })}
+-                </ul>
+-              </fieldset>
+-              <fieldset className="space-y-2">
+-                <legend className="text-xs font-semibold uppercase text-muted-foreground">
+-                  {t('logistics.layerTaskTypes', {
+-                    defaultValue: 'Типы задач',
+-                  })}
+-                </legend>
+-                <ul className="space-y-1">
+-                  {taskTypeEntries.map(({ key, label, count, color }) => {
+-                    const visible = !hiddenTaskTypesSet.has(key);
+-                    return (
+-                      <li
+-                        key={key}
+-                        className="flex items-center justify-between gap-2"
+-                      >
+-                        <label className="flex flex-1 items-center gap-2">
+-                          <input
+-                            type="checkbox"
+-                            className="size-4"
+-                            checked={visible}
+-                            onChange={(event) =>
+-                              handleTaskTypeVisibilityChange(
+-                                key,
+-                                event.target.checked,
+-                              )
+-                            }
+-                          />
+-                          <span className="flex items-center gap-2">
+-                            <span
+-                              className="inline-block size-3 rounded-full"
+-                              style={{ backgroundColor: color }}
+-                              aria-hidden="true"
+-                            />
+-                            <span>{label}</span>
+-                          </span>
+-                        </label>
+-                        <span className="text-xs text-muted-foreground">
+-                          {t('logistics.legendCount', {
+-                            count,
+-                            defaultValue: `(${count})`,
+-                          })}
+-                        </span>
+-                      </li>
+-                    );
+-                  })}
+-                </ul>
+-              </fieldset>
+-            </div>
+-            <div className="space-y-1 border-t border-dashed border-slate-200 pt-2">
+-              <span className="text-xs font-medium uppercase text-muted-foreground">
+-                {t('logistics.viewModeLabel')}
+-              </span>
+-              <div className="flex gap-2">
+-                <Button
+-                  type="button"
+-                  size="xs"
+-                  variant={mapViewMode === 'planar' ? 'default' : 'outline'}
+-                  onClick={() => setMapViewMode('planar')}
+-                  aria-pressed={mapViewMode === 'planar'}
+-                >
+-                  {t('logistics.viewModePlanar')}
+-                </Button>
+-                <Button
+-                  type="button"
+-                  size="xs"
+-                  variant={
+-                    mapViewMode === 'perspective' ? 'default' : 'outline'
+-                  }
+-                  onClick={() =>
+-                    !isRasterFallback && setMapViewMode('perspective')
+-                  }
+-                  aria-pressed={mapViewMode === 'perspective'}
+-                  disabled={isRasterFallback}
+-                >
+-                  {t('logistics.viewModeTilted')}
+-                </Button>
+-              </div>
+-            </div>
+-            {!!links.length && (
+-              <div className="space-y-1 text-sm">
+-                {links.map((url, index) => (
+-                  <a
+-                    key={`${index}-${url}`}
+-                    href={url}
+-                    target="_blank"
+-                    rel="noopener noreferrer"
+-                    className="text-accentPrimary underline"
+-                  >
+-                    {t('logistics.linksLabel', { index: index + 1 })}
+-                  </a>
+-                ))}
+-              </div>
+-            )}
+-          </CollapsibleCard>
+-          <CollapsibleCard
+-            title={t('logistics.legendTitle')}
+-            description={t('logistics.legendDescription', {
+-              defaultValue:
+-                'Заливка маркера соответствует типу транспорта, обводка — статусу маршрута, внутреннее кольцо — типу задачи. Размер и цвет кластера показывают преобладающую категорию.',
+-            })}
+-            toggleLabels={collapseToggleLabels}
+-          >
+-            <div className="space-y-3 text-sm">
+-              <ul className="flex flex-col gap-2 sm:grid sm:grid-cols-2">
+-                <li className="flex items-center gap-2">
+-                  <span
+-                    className="legend-symbol legend-symbol--start"
+-                    aria-hidden="true"
+-                  >
+-                    {TASK_START_SYMBOL}
+-                  </span>
+-                  <span>{t('logistics.legendStart')}</span>
+-                </li>
+-                <li className="flex items-center gap-2">
+-                  <span
+-                    className="legend-symbol legend-symbol--finish"
+-                    aria-hidden="true"
+-                  >
+-                    {TASK_FINISH_SYMBOL}
+-                  </span>
+-                  <span>{t('logistics.legendFinish')}</span>
+-                </li>
+-                <li className="flex items-center gap-2">
+                   <span
+-                    className="legend-symbol legend-symbol--movement"
+-                    aria-hidden="true"
++                    className={`rounded-full px-3 py-1 text-xs font-semibold leading-5 ${statusColor}`}
++                    aria-label={`Статус: ${statusLabel}`}
+                   >
+-                    {ANIMATION_SYMBOL}
++                    {statusLabel}
+                   </span>
+-                  <span>{t('logistics.legendMovement')}</span>
+-                </li>
+-              </ul>
+-              <div className="space-y-1">
+-                <div className="text-xs font-semibold uppercase text-muted-foreground">
+-                  {t('logistics.legendStatusesHeading', {
+-                    defaultValue: 'Статусы задач',
+-                  })}
+                 </div>
+-                <ul className="space-y-2">
+-                  {legendItems.map((item) => (
+-                    <li
+-                      key={item.key}
+-                      className="flex items-center justify-between gap-2"
+-                    >
+-                      <span className="flex items-center gap-2">
+-                        <span
+-                          className="legend-color"
+-                          style={{ backgroundColor: item.color }}
+-                          aria-hidden="true"
+-                        />
+-                        <span>{item.label}</span>
+-                      </span>
+-                      {item.count ? (
+-                        <span className="text-xs text-muted-foreground">
+-                          {t('logistics.legendCount', {
+-                            count: item.count,
+-                            defaultValue: `(${item.count})`,
+-                          })}
+-                        </span>
+-                      ) : null}
+-                    </li>
+-                  ))}
+-                </ul>
+-              </div>
+-            </div>
+-          </CollapsibleCard>
+-        </aside>
+-      </div>
++                {plan.notes && (
++                  <p className="text-sm text-foreground" aria-label="Описание плана">
++                    {plan.notes}
++                  </p>
++                )}
++                <div className="space-y-1 text-sm text-foreground">
++                  <p>
++                    <span className="font-medium">Водитель: </span>
++                    {drivers}
++                  </p>
++                  <p>
++                    <span className="font-medium">Авто: </span>
++                    {vehicles}
++                  </p>
++                </div>
++                <div className="space-y-2">
++                  <p className="text-sm font-medium text-foreground">Задачи</p>
++                  {tasks.length > 0 ? (
++                    <ul className="list-disc space-y-1 pl-5 text-sm text-foreground">
++                      {tasks.map((task) => (
++                        <li key={task}>{task}</li>
++                      ))}
++                    </ul>
++                  ) : (
++                    <p className="text-sm text-muted-foreground">Задачи не назначены</p>
++                  )}
++                </div>
++              </article>
++            );
++          })}
++        </div>
++      )}
+     </div>
+   );
+ }
+diff --git a/apps/web/src/services/routePlans.ts b/apps/web/src/services/routePlans.ts
+index de89b70..f76a192 100644
+--- a/apps/web/src/services/routePlans.ts
++++ b/apps/web/src/services/routePlans.ts
+@@ -1,9 +1,46 @@
+ // Назначение: HTTP-запросы для работы с маршрутными планами.
+ // Основные модули: authFetch, shared
+ 
+-import type { RoutePlan, RoutePlanStatus } from 'shared';
++import type { RoutePlan, RoutePlanRoute, RoutePlanStatus } from 'shared';
+ import authFetch from '../utils/authFetch';
+ 
++const normalizeRoutes = (routes?: RoutePlanRoute[]): RoutePlanRoute[] => {
++  if (!Array.isArray(routes)) return [];
++  return routes.map((route) => ({
++    ...route,
++    tasks: Array.isArray(route.tasks) ? route.tasks : [],
++    stops: Array.isArray(route.stops) ? route.stops : [],
++    metrics: route.metrics ?? {},
++  }));
++};
++
++const normalizePlan = (plan: RoutePlan): RoutePlan => {
++  const routes = normalizeRoutes(plan.routes);
++  const tasks = Array.isArray(plan.tasks) ? plan.tasks : [];
++  const totalStops = routes.reduce((sum, route) => sum + (route.stops?.length ?? 0), 0);
++  const totalTasks =
++    plan.metrics?.totalTasks ?? (tasks.length || routes.reduce((sum, route) => sum + route.tasks.length, 0));
++
++  return {
++    ...plan,
++    routes,
++    tasks,
++    metrics: plan.metrics ?? {
++      totalDistanceKm: null,
++      totalRoutes: routes.length,
++      totalTasks,
++      totalStops,
++      totalEtaMinutes: null,
++      totalLoad: null,
++    },
++  };
++};
++
++type RoutePlanListResponsePayload = {
++  items?: RoutePlan[];
++  total?: number;
++};
++
+ export interface RoutePlanUpdatePayload {
+   title?: string;
+   notes?: string | null;
+@@ -37,7 +74,10 @@ export async function listRoutePlans(
+   if (!response.ok) {
+     throw new Error('Не удалось загрузить маршрутные планы');
+   }
+-  return (await response.json()) as RoutePlanListResponse;
++  const payload = (await response.json()) as RoutePlanListResponsePayload;
++  const items = Array.isArray(payload.items) ? payload.items.map(normalizePlan) : [];
++  const total = typeof payload.total === 'number' ? payload.total : items.length;
++  return { items, total };
+ }
+ 
+ export async function getRoutePlan(id: string): Promise<RoutePlan> {
+@@ -46,7 +86,7 @@ export async function getRoutePlan(id: string): Promise<RoutePlan> {
+     throw new Error('Маршрутный план не найден');
+   }
+   const data = await response.json();
+-  return data.plan as RoutePlan;
++  return normalizePlan(data.plan as RoutePlan);
+ }
+ 
+ export async function updateRoutePlan(
+@@ -62,7 +102,7 @@ export async function updateRoutePlan(
+     throw new Error('Не удалось сохранить маршрутный план');
+   }
+   const data = await response.json();
+-  return data.plan as RoutePlan;
++  return normalizePlan(data.plan as RoutePlan);
+ }
+ 
+ export async function changeRoutePlanStatus(
+@@ -78,7 +118,7 @@ export async function changeRoutePlanStatus(
+     throw new Error('Не удалось обновить статус маршрутного плана');
+   }
+   const data = await response.json();
+-  return data.plan as RoutePlan;
++  return normalizePlan(data.plan as RoutePlan);
+ }
+ 
+ export async function deleteRoutePlan(id: string): Promise<void> {

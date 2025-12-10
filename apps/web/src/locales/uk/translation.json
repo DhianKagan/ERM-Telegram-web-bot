@@ -21,6 +21,8 @@
       "columns": {
         "name": "Назва",
         "value": "Значення",
+        "address": "Адреса",
+        "coordinates": "Координати",
         "relations": "Пов'язані дані",
         "type": "Тип",
         "id": "ID",

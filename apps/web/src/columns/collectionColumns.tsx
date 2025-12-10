@@ -6,6 +6,8 @@ import type { CollectionItem } from '../services/collections';
 export interface CollectionTableRow extends CollectionItem {
   displayValue: string;
   metaSummary: string;
+  address?: string;
+  coordinates?: string;
 }
 
 export const collectionColumns: ColumnDef<CollectionTableRow>[] = [
@@ -38,5 +40,28 @@ export const collectionColumns: ColumnDef<CollectionTableRow>[] = [
     accessorKey: 'metaSummary',
     header: 'Доп. сведения',
     meta: { minWidth: '10rem', maxWidth: '24rem' },
+  },
+];
+
+export const collectionObjectColumns: ColumnDef<CollectionTableRow>[] = [
+  {
+    accessorKey: 'name',
+    header: 'Название',
+    meta: { minWidth: '8rem', maxWidth: '16rem' },
+  },
+  {
+    accessorKey: 'address',
+    header: 'Адрес',
+    meta: { minWidth: '10rem', maxWidth: '20rem' },
+  },
+  {
+    accessorKey: 'coordinates',
+    header: 'Координаты',
+    meta: { minWidth: '8rem', maxWidth: '14rem' },
+  },
+  {
+    accessorKey: '_id',
+    header: 'Идентификатор',
+    meta: { minWidth: '10rem', maxWidth: '16rem' },
   },
 ];

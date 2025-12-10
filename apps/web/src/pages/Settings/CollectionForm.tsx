@@ -5,22 +5,26 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import ConfirmDialog from '../../components/ConfirmDialog';
 
-interface ItemForm {
+export interface CollectionFormState {
   _id?: string;
   name: string;
   value: string;
+  meta?: Record<string, unknown>;
+  address?: string;
+  latitude?: string;
+  longitude?: string;
 }
 
 interface Props {
-  form: ItemForm;
-  onChange: (form: ItemForm) => void;
+  form: CollectionFormState;
+  onChange: (form: CollectionFormState) => void;
   onSubmit: () => void;
   onDelete: () => void;
   onReset: () => void;
   valueLabel?: string;
   renderValueField?: (
-    form: ItemForm,
-    onChange: (form: ItemForm) => void,
+    form: CollectionFormState,
+    onChange: (form: CollectionFormState) => void,
     options?: { readonly?: boolean },
   ) => React.ReactNode;
   readonly?: boolean;

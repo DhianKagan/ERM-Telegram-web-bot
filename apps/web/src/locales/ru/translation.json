@@ -32,6 +32,8 @@
       "columns": {
         "name": "Название",
         "value": "Значение",
+        "address": "Адрес",
+        "coordinates": "Координаты",
         "relations": "Связанные данные",
         "type": "Тип",
         "id": "ID",

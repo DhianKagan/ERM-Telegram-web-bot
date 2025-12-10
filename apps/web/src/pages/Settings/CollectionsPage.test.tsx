@@ -40,13 +40,18 @@ const extractHeaderText = (header: unknown): string => {
   return '';
 };
 
-jest.mock('../../services/collections', () => ({
-  fetchCollectionItems: jest.fn(),
-  fetchAllCollectionItems: jest.fn(),
-  createCollectionItem: jest.fn(),
-  updateCollectionItem: jest.fn(),
-  removeCollectionItem: jest.fn(),
-}));
+jest.mock('../../services/collections', () => {
+  const actual = jest.requireActual('../../services/collections');
+  return {
+    ...actual,
+    fetchCollectionItems: jest.fn(),
+    fetchAllCollectionItems: jest.fn(),
+    fetchCollectionObjects: jest.fn(),
+    createCollectionItem: jest.fn(),
+    updateCollectionItem: jest.fn(),
+    removeCollectionItem: jest.fn(),
+  };
+});
 
 jest.mock('../../services/users', () => ({
   fetchUsers: jest.fn().mockResolvedValue([]),
@@ -221,11 +226,48 @@ jest.mock('./CollectionForm', () => ({
     form,
     onChange,
     onSubmit,
+    onDelete,
+    onReset,
+    renderValueField,
     readonly,
   }: {
-    form: { _id?: string; name: string; value?: string };
-    onChange: (next: { _id?: string; name: string; value?: string }) => void;
+    form: {
+      _id?: string;
+      name: string;
+      value?: string;
+      address?: string;
+      latitude?: string;
+      longitude?: string;
+    };
+    onChange: (next: {
+      _id?: string;
+      name: string;
+      value?: string;
+      address?: string;
+      latitude?: string;
+      longitude?: string;
+    }) => void;
     onSubmit: () => void;
+    onDelete?: () => void;
+    onReset?: () => void;
+    renderValueField?: (
+      form: {
+        _id?: string;
+        name: string;
+        value?: string;
+        address?: string;
+        latitude?: string;
+        longitude?: string;
+      },
+      onChange: (next: {
+        _id?: string;
+        name: string;
+        value?: string;
+        address?: string;
+        latitude?: string;
+        longitude?: string;
+      }) => void,
+    ) => React.ReactNode;
     readonly?: boolean;
     readonlyNotice?: string;
   }) => (
@@ -249,20 +291,32 @@ jest.mock('./CollectionForm', () => ({
         }
         disabled={readonly}
       />
-      <input
-        data-testid="collection-value"
-        id="test-collection-value"
-        name="collectionValue"
-        value={form?.value ?? ''}
-        onChange={(event) =>
-          onChange({
-            ...(form ?? { name: '', value: '' }),
-            value: event.target.value,
-          })
-        }
-        disabled={readonly}
-      />
+      <div data-testid="collection-value">
+        {renderValueField ? (
+          renderValueField(form, onChange, { readonly })
+        ) : (
+          <input
+            data-testid="collection-value"
+            id="test-collection-value"
+            name="collectionValue"
+            value={form?.value ?? ''}
+            onChange={(event) =>
+              onChange({
+                ...(form ?? { name: '', value: '' }),
+                value: event.target.value,
+              })
+            }
+            disabled={readonly}
+          />
+        )}
+      </div>
       <button type="submit">Сохранить</button>
+      <button type="button" onClick={onReset}>
+        Очистить
+      </button>
+      <button type="button" onClick={onDelete}>
+        Удалить
+      </button>
     </form>
   ),
 }));
@@ -277,6 +331,9 @@ describe('CollectionsPage', () => {
   >;
   const mockedFetchAll = fetchAllCollectionItems as jest.MockedFunction<
     typeof fetchAllCollectionItems
+  >;
+  const mockedFetchObjects = fetchCollectionObjects as jest.MockedFunction<
+    typeof fetchCollectionObjects
   >;
   const mockedCreate = createCollectionItem as jest.MockedFunction<
     typeof createCollectionItem
@@ -324,6 +381,24 @@ describe('CollectionsPage', () => {
       },
       финансы: { items: [], total: 0 },
     },
+    objects: {
+      '': {
+        items: [
+          {
+            _id: 'obj-1',
+            type: 'objects',
+            name: 'Склад Левый берег',
+            value: '',
+            meta: {
+              address: 'Киев, Береговая 1',
+              latitude: 50.5,
+              longitude: 30.6,
+            },
+          },
+        ],
+        total: 1,
+      },
+    },
     employees: {
       '': {
         items: [
@@ -352,6 +427,7 @@ describe('CollectionsPage', () => {
   beforeEach(() => {
     mockedFetch.mockReset();
     mockedFetchAll.mockReset();
+    mockedFetchObjects.mockReset();
     mockedCreate.mockReset();
     mockedFetchUsers.mockReset();
     mockedFetch.mockImplementation(async (type: string, search = '') => {
@@ -363,6 +439,12 @@ describe('CollectionsPage', () => {
       const byType = dataset[type] ?? {};
       const defaultEntry = byType[''] ?? { items: [] };
       return (defaultEntry.items ?? []) as CollectionItem[];
+    });
+    mockedFetchObjects.mockImplementation(async (search = '') => {
+      const byType = dataset.objects ?? {};
+      const key = search || '';
+      const entry = byType[key] ?? byType[''] ?? { items: [], total: 0 };
+      return entry;
     });
     mockedFetchUsers.mockResolvedValue([]);
   });
@@ -900,6 +982,34 @@ describe('CollectionsPage', () => {
 
     await waitFor(() => expect(rowsContainer.children).toHaveLength(1));
     expect(within(employeesPanel).getByText('Петров Иван')).toBeInTheDocument();
+  });
+
+  it('отображает вкладку объектов с адресом и координатами', async () => {
+    renderCollectionsPage();
+
+    const objectsTab = screen.getByRole('tab', { name: 'Объект' });
+    fireEvent.click(objectsTab);
+
+    const objectsPanel = await screen.findByTestId('tab-content-objects');
+    const headers = within(objectsPanel).getAllByTestId('column-header');
+
+    expect(headers.map((header) => header.textContent)).toEqual(
+      expect.arrayContaining(['Название', 'Адрес', 'Координаты', 'ID']),
+    );
+
+    const firstRow = within(objectsPanel).getByTestId('data-table-row-0');
+    expect(within(firstRow).getByText('Склад Левый берег')).toBeInTheDocument();
+    expect(within(firstRow).getByText('Киев, Береговая 1')).toBeInTheDocument();
+    expect(within(firstRow).getByText('50.5, 30.6')).toBeInTheDocument();
+
+    fireEvent.click(firstRow);
+
+    await screen.findByText('Информация об объекте');
+    expect(screen.getByPlaceholderText('Адрес объекта')).toHaveValue(
+      'Киев, Береговая 1',
+    );
+    expect(screen.getByPlaceholderText('Широта')).toHaveValue('50.5');
+    expect(screen.getByPlaceholderText('Долгота')).toHaveValue('30.6');
   });
 
   it('показывает подсказку, если департамент сохраняют без отделов', async () => {

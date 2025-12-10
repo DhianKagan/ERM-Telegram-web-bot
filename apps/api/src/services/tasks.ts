@@ -6,8 +6,8 @@ import { parsePointInput, LatLng } from '../utils/geo';
 import { logger } from '../services/wgLogEngine';
 
 /**
- * TaskData — частичный объект задачи. Используем тип TaskDocument из модели,
- * но разрешаем частичные данные для операций create/update.
+ * TaskData — частичный объект задачи. Используем TaskDocument для полей схемы.
+ * startCoordinates/finishCoordinates остаются информационными (если присутствуют).
  */
 export type TaskData = Partial<TaskDocument> & {
   completed_at?: string | Date | null;
@@ -57,8 +57,8 @@ function normalizeTaskCoordinates(data: TaskData): void {
     if (data.startCoordinates) {
       const parsed = parsePointInput(data.startCoordinates);
       if (parsed) {
-        // keep the normalized form
-        data.startCoordinates = parsed as unknown as TaskDocument['startCoordinates'];
+        // keep normalized form
+        data.startCoordinates = parsed as TaskDocument['startCoordinates'];
       } else {
         logger.warn({ val: data.startCoordinates }, 'normalizeTaskCoordinates: unable to parse startCoordinates');
         data.startCoordinates = undefined;
@@ -67,7 +67,7 @@ function normalizeTaskCoordinates(data: TaskData): void {
     if (data.finishCoordinates) {
       const parsed = parsePointInput(data.finishCoordinates);
       if (parsed) {
-        data.finishCoordinates = parsed as unknown as TaskDocument['finishCoordinates'];
+        data.finishCoordinates = parsed as TaskDocument['finishCoordinates'];
       } else {
         logger.warn({ val: data.finishCoordinates }, 'normalizeTaskCoordinates: unable to parse finishCoordinates');
         data.finishCoordinates = undefined;
@@ -81,14 +81,14 @@ function normalizeTaskCoordinates(data: TaskData): void {
 }
 
 /**
- * applyRouteInfo — упрощено: **не** строим маршрут и не считаем расстояние.
+ * applyRouteInfo — упрощено: не строим маршрут и не считаем расстояние.
  * Если координаты присутствуют — они сохраняются (как информация).
  * Поля route_distance_km и google_route_url сбрасываются.
  */
 async function applyRouteInfo(data: TaskData = {}): Promise<void> {
   normalizeTaskCoordinates(data);
 
-  // We intentionally avoid generating route links or distances.
+  // intentionally do not calculate or set google_route_url / route_distance_km
   data.google_route_url = undefined;
   data.route_distance_km = null;
 }

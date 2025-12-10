@@ -108,21 +108,24 @@ if (geocoderProvider === 'openrouteservice' && !geocoderApiKey) {
   );
 }
 
+// --- Изменённая логика: ROUTING_URL теперь опционален ---
+// Если переменной нет или формат некорректный — маршрутизация отключается и логируется.
 const routingUrlRaw = (process.env.ROUTING_URL || '').trim();
+let routingBaseUrl: string | undefined;
 if (!routingUrlRaw) {
-  throw new Error('ROUTING_URL обязателен для задач маршрутизации');
-}
-
-let routingBaseUrl: string;
-try {
-  const parsed = new URL(routingUrlRaw);
-  routingBaseUrl = parsed.toString();
-} catch (error) {
-  throw new Error(
-    `ROUTING_URL имеет неверный формат: ${String(
-      error instanceof Error ? error.message : error,
-    )}`,
-  );
+  logger.info('ROUTING_URL не задан; функциональность маршрутизации отключена');
+  routingBaseUrl = undefined;
+} else {
+  try {
+    const parsed = new URL(routingUrlRaw);
+    routingBaseUrl = parsed.toString();
+  } catch (error) {
+    logger.warn(
+      { error },
+      'ROUTING_URL имеет неверный формат; функциональность маршрутизации отключена',
+    );
+    routingBaseUrl = undefined;
+  }
 }
 
 const osrmAlgorithmRaw = (process.env.OSRM_ALGORITHM || '').trim();

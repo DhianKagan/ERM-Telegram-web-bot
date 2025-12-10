@@ -117,22 +117,13 @@ export async function buildApp(): Promise<express.Express> {
   app.use(cookieParser());
   app.use(compression());
 
-  // --- START: static tiles and map style handling ---
-  // Serve /tiles from public/tiles if it exists (pmtiles, maplibre-style.json, sprites, etc.)
-  try {
-    const tilesDir = path.join(pub, 'tiles');
-    const st = await fs.stat(tilesDir);
-    if (st && st.isDirectory()) {
-      console.log('Serving /tiles from', tilesDir);
-      // cache for 1 day; change if needed
-      app.use('/tiles', express.static(tilesDir, { maxAge: '1d' }));
-    } else {
-      console.warn('No /tiles directory found at', tilesDir);
-    }
-  } catch (e) {
-    console.warn('No /tiles directory (public/tiles) to serve:', (e as Error).message);
-  }
-  // --- END static tiles handling ---
+  // NOTE: tiles are not used in this deployment.
+  // Removed serving of /tiles (public/tiles) because this project instance
+  // does not provide local tile files. If in future you want to enable
+  // local tiles, restore the static serving here and ensure files exist
+  // under apps/api/public/tiles or apps/web/public/tiles copied to apps/api/public.
+  //
+  // (original code performed a stat on pub/tiles and used express.static if present)
 
   const domain =
     process.env.NODE_ENV === 'production'

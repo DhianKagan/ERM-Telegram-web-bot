@@ -2637,7 +2637,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     if (createdLabel) parts.push(createdLabel);
     return parts.join(' ').trim();
   }, [created, requestId, t]);
-  const handleBackdropClick = React.useCallback(
+    const handleBackdropClick = React.useCallback(
     (event: React.MouseEvent<HTMLElement>) => {
       if (event.target === event.currentTarget) {
         onClose();
@@ -2646,12 +2646,18 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     [onClose],
   );
 
-  const startQueryLength = start.trim().length;
-  const finishQueryLength = end.trim().length;
-
+  // Не обращаемся к DOM при SSR:
   if (typeof document === 'undefined') {
     return null;
   }
+
+  // Берём значения полей (если они есть) — защищённый доступ к DOM.
+  // Поля могут быть опциональны (если форма не содержит адресов), поэтому
+  // безопасно подставляем длину 0.
+  const startEl = document.getElementById('task-start') as HTMLInputElement | null;
+  const endEl = document.getElementById('task-end') as HTMLInputElement | null;
+  const startQueryLength = startEl ? startEl.value.trim().length : 0;
+  const finishQueryLength = endEl ? endEl.value.trim().length : 0;
 
   return createPortal(
     <div className="fixed inset-0 z-[1000]">

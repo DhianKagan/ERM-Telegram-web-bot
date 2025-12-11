@@ -1,3 +1,4 @@
+// apps/api/src/utils/taskPoints.ts
 // Назначение: нормализация точек маршрута задачи и синхронизация со старыми полями координат.
 // Основные модули: utils/geo, db/model
 import type { TaskDocument, TaskPoint } from '../db/model';

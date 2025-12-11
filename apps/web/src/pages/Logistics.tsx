@@ -14,6 +14,7 @@ import SkeletonCard from '../components/SkeletonCard';
 import { useAuth } from '../context/useAuth';
 import { useToast } from '../context/useToast';
 import { listRoutePlans } from '../services/routePlans';
+import { ACCESS_ADMIN, ACCESS_MANAGER, hasAccess } from '../utils/access';
 
 const STATUS_LABELS: Record<RoutePlanStatus | 'cancelled', string> = {
   draft: 'Новый',
@@ -136,6 +137,10 @@ export default function Logistics() {
     );
   }, [plans, statusFilter]);
 
+  const access = typeof user?.access === 'number' ? user.access : 0;
+  const isAdmin = user?.role === 'admin' || hasAccess(access, ACCESS_ADMIN);
+  const isManager = hasAccess(access, ACCESS_MANAGER);
+
   return (
     <div className="space-y-6">
       <Breadcrumbs
@@ -185,7 +190,7 @@ export default function Logistics() {
           </Button>
         </div>
       </div>
-      {user?.role !== 'admin' && user?.role !== 'manager' && (
+      {!isAdmin && !isManager && (
         <p className="text-sm text-muted-foreground">
           Управление маршрутными планами доступно администраторам и менеджерам.
           Остальные пользователи могут просматривать список.

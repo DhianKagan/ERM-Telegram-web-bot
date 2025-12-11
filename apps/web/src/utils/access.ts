@@ -11,8 +11,11 @@ export function hasAccess(mask: number | undefined, required: number): boolean {
     return false;
   }
   let effectiveMask = mask;
-  if ((mask & ACCESS_TASK_DELETE) === ACCESS_TASK_DELETE) {
+  if ((effectiveMask & ACCESS_TASK_DELETE) === ACCESS_TASK_DELETE) {
     effectiveMask |= ACCESS_ADMIN | ACCESS_MANAGER;
+  }
+  if ((effectiveMask & (ACCESS_ADMIN | ACCESS_MANAGER)) !== 0) {
+    effectiveMask |= ACCESS_USER;
   }
   return (effectiveMask & required) === required;
 }

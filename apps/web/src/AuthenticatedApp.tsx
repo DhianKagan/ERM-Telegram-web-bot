@@ -1,7 +1,7 @@
 // Назначение файла: оболочка авторизованной части приложения и маршрутизация после входа.
 // Основные модули: React, React Router, контексты приложения.
 import React, { Suspense, lazy } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import Sidebar from './layouts/Sidebar';
 import Header from './layouts/Header';
@@ -187,11 +187,15 @@ export default function AuthenticatedApp({
 }: {
   alert: React.ReactNode;
 }) {
+  const location = useLocation();
   return (
     <Suspense fallback={null}>
       <ThemeProviderLazy>
         <Suspense fallback={null}>
-          <ErrorBoundary fallback={<div>Произошла ошибка</div>}>
+          <ErrorBoundary
+            fallback={<div>Произошла ошибка</div>}
+            resetKeys={[location.pathname]}
+          >
             <SidebarProvider>
               <TasksProvider>
                 <AppShell />

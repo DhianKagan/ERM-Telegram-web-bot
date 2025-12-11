@@ -10,7 +10,12 @@ const registerPmtilesProtocol = async (): Promise<boolean> => {
 
 // attachMapStyleFallback: keep a minimal implementation so imports keep working.
 // Returns a detach function.
-export const attachMapStyleFallback = (_map: unknown, _options: unknown = {}): (() => void) => {
+export const attachMapStyleFallback = (
+  map: unknown,
+  options: unknown = {},
+): (() => void) => {
+  void map;
+  void options;
   // noop - no fallback wiring
   return () => {};
 };

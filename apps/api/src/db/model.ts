@@ -1,3 +1,4 @@
+// apps/api/src/db/model.ts
 // Модели MongoDB. Подключение выполняет модуль connection.ts
 // Основные модули: mongoose, slugify, connection
 import mongoose, { Schema, Document, Types } from 'mongoose';
@@ -22,6 +23,8 @@ if (process.env.NODE_ENV !== 'test') {
     process.exit(1);
   });
 }
+
+/* ---------- Вспомогательные интерфейсы/схемы ---------- */
 
 export interface ChecklistItem {
   text?: string;
@@ -127,6 +130,8 @@ const workSchema = new Schema<Work>(
   { _id: false },
 );
 
+/* ---------- Основные типы ---------- */
+
 export interface Coordinates {
   lat: number;
   lng: number;
@@ -190,6 +195,8 @@ const historySchema = new Schema<HistoryEntry>(
   { _id: false },
 );
 
+/* ---------- Архив истории ---------- */
+
 export interface TaskHistoryArchiveEntry {
   taskId: Types.ObjectId;
   entries: HistoryEntry[];
@@ -218,6 +225,8 @@ const taskHistoryArchiveSchema = new Schema<TaskHistoryArchiveDocument>(
   { timestamps: false },
 );
 
+/* ---------- Task ---------- */
+
 export type TaskKind = 'task' | 'request';
 
 export interface TaskAttrs {
@@ -244,7 +253,8 @@ export interface TaskAttrs {
   due_date?: Date;
   remind_at?: Date;
   location?: string;
-  // согласованы с shared: допускаем null там, где это может приходить
+
+  // Согласовано с shared: допускаем null там, где это может приходить
   start_location?: string | null;
   start_location_link?: string | null;
   startCoordinates?: Coordinates | null;
@@ -340,7 +350,6 @@ const taskSchema = new Schema<TaskDocument>(
     title: { type: String, required: true },
     slug: String,
     task_description: { type: String, maxlength: 4096 },
-    // Тип задачи пополнился вариантами строительства, ремонта и заявок
     task_type: {
       type: String,
       enum: [
@@ -377,15 +386,12 @@ const taskSchema = new Schema<TaskDocument>(
       },
     ],
     google_route_url: String,
-    // Расстояние маршрута в километрах
     route_distance_km: Number,
-    // Список узлов маршрута для анализа
     route_nodes: [Number],
     assigned_user_id: Number,
     controller_user_id: Number,
     controllers: [Number],
     assignees: [Number],
-    // Принадлежность задачи проекту
     project: String,
     priority: {
       type: String,
@@ -437,8 +443,6 @@ const taskSchema = new Schema<TaskDocument>(
     cargo_volume_m3: Number,
     cargo_weight_kg: Number,
     logistics_enabled: { type: Boolean, default: false },
-
-    // Способ оплаты допускает отсутствие оплаты
     payment_method: {
       type: String,
       enum: ['Наличные', 'Карта', 'Безнал', 'Без оплаты'],
@@ -449,7 +453,6 @@ const taskSchema = new Schema<TaskDocument>(
       default: 0,
       min: 0,
     },
-
     telegram_topic_id: Number,
     telegram_message_id: Number,
     telegram_status_message_id: Number,
@@ -470,7 +473,6 @@ const taskSchema = new Schema<TaskDocument>(
     telegram_message_cleanup: Schema.Types.Mixed,
     deadline_reminder_sent_at: Date,
     time_spent: { type: Number, default: 0 },
-    // Произвольные поля хранятся как объект
     custom: Schema.Types.Mixed,
     history: [historySchema],
     history_overflow_count: { type: Number, default: 0 },
@@ -480,6 +482,7 @@ const taskSchema = new Schema<TaskDocument>(
   { timestamps: true },
 );
 
+/* пред- и пост-хуки — оставляем как есть и корректно работаем с объектами */
 taskSchema.pre('init', (doc: Record<string, unknown>) => {
   if (doc && typeof doc.priority === 'string') {
     const normalized = normalizePriorityValue(doc.priority);
@@ -567,13 +570,13 @@ taskSchema.pre<TaskDocument>('save', async function (this: TaskDocument) {
   this.slug = slugify(this.title, { lower: true, strict: true });
 });
 
+/* ---------- Роли / Пользователи / Логи / пр. ---------- */
+
 export interface RoleAttrs {
   name?: string;
   permissions?: (string | number)[];
 }
-
 export interface RoleDocument extends RoleAttrs, Document {}
-
 const roleSchema = new Schema<RoleDocument>({
   name: String,
   permissions: [String],
@@ -597,80 +600,114 @@ export interface UserAttrs {
   positionId?: Types.ObjectId;
   is_bot?: boolean;
 }
-
 export interface UserDocument extends UserAttrs, Document {}
 
 const userSchema = new Schema<UserDocument>({
   telegram_id: Number,
   username: String,
-  // Полное имя пользователя для отображения в интерфейсе
   name: String,
-  // Номер телефона для связи
   phone: String,
-  // Альтернативный номер телефона
   mobNumber: String,
-  // Email используется для совместимости со старым индексом в базе.
-  // Сохраняем уникальное значение на основе telegram_id.
   email: { type: String, unique: true },
-  // Роль пользователя хранится строкой, по умолчанию обычный пользователь
   role: { type: String, enum: ['user', 'admin', 'manager'], default: 'user' },
-  // Маска доступа: 1 - пользователь, 2 - администратор, 4 - менеджер
   access: { type: Number, default: 1 },
   roleId: { type: Schema.Types.ObjectId, ref: 'Role' },
   departmentId: { type: Schema.Types.ObjectId, ref: 'CollectionItem' },
   divisionId: { type: Schema.Types.ObjectId, ref: 'CollectionItem' },
   positionId: { type: Schema.Types.ObjectId, ref: 'CollectionItem' },
-  // Настройка получения напоминаний планировщиком
   receive_reminders: { type: Boolean, default: true },
-  // Дата прохождения верификации через Bot API
   verified_at: Date,
-  // Флаг Telegram-аккаунта бота для отключения личных уведомлений
   is_bot: { type: Boolean, default: false },
 });
 
-export interface LogAttrs {
-  message?: string;
-  // уровень логирования; console.log сохраняет уровень `log`
-  level?: 'debug' | 'info' | 'warn' | 'error' | 'log';
+/* ---------- File (загрузка файлов) ---------- */
+
+export interface FileAttrs {
+  taskId?: Types.ObjectId;
+  userId: number;
+  name: string;
+  path: string;
+  thumbnailPath?: string;
+  type: string;
+  size: number;
+  uploadedAt: Date;
+  draftId?: Types.ObjectId;
 }
+export interface FileDocument extends FileAttrs, Document {}
 
-export interface LogDocument extends LogAttrs, Document {}
+const fileSchema = new Schema<FileDocument>({
+  taskId: { type: Schema.Types.ObjectId, ref: 'Task' },
+  draftId: { type: Schema.Types.ObjectId, ref: 'TaskDraft', default: null },
+  userId: { type: Number, required: true },
+  name: { type: String, required: true },
+  path: { type: String, required: true },
+  thumbnailPath: String,
+  type: { type: String, required: true },
+  size: { type: Number, required: true },
+  uploadedAt: { type: Date, default: Date.now },
+});
+fileSchema.index({ draftId: 1 }, { name: 'files_draft_id_idx' });
 
-const logSchema = new Schema<LogDocument>(
+/* ---------- TaskDraft ---------- */
+
+export interface TaskDraftAttrs {
+  userId: number;
+  kind: 'task' | 'request';
+  payload: Record<string, unknown>;
+  attachments?: Attachment[];
+}
+export interface TaskDraftDocument extends TaskDraftAttrs, Document {}
+
+const taskDraftSchema = new Schema<TaskDraftDocument>(
   {
-    message: String,
-    // уровень логирования; console.log сохраняет уровень `log`
-    level: {
-      type: String,
-      enum: ['debug', 'info', 'warn', 'error', 'log'],
-      default: 'info',
-    },
+    userId: { type: Number, required: true },
+    kind: { type: String, enum: ['task', 'request'], required: true },
+    payload: { type: Schema.Types.Mixed, default: {} },
+    attachments: [attachmentSchema],
+  },
+  { timestamps: true },
+);
+taskDraftSchema.index({ userId: 1, kind: 1 }, { unique: true, name: 'task_drafts_user_kind_unique' });
+
+/* ---------- TaskTemplate ---------- */
+
+export interface TaskTemplateAttrs {
+  name: string;
+  data: Record<string, unknown>;
+}
+export interface TaskTemplateDocument extends TaskTemplateAttrs, Document {}
+
+const taskTemplateSchema = new Schema<TaskTemplateDocument>(
+  {
+    name: { type: String, required: true },
+    data: Schema.Types.Mixed,
   },
   { timestamps: true },
 );
 
-export const Task = mongoose.model<TaskDocument>('Task', taskSchema);
+/* ---------- Экспорт моделей ---------- */
 
+export const Task = mongoose.model<TaskDocument>('Task', taskSchema);
 export const TaskHistoryArchive = mongoose.model<TaskHistoryArchiveDocument>(
   'TaskHistoryArchive',
   taskHistoryArchiveSchema,
 );
-// Отдельная коллекция для архивных задач
-export const Archive = mongoose.model<TaskDocument>(
-  'Archive',
-  taskSchema,
-  'archives',
-);
+export const Archive = mongoose.model<TaskDocument>('Archive', taskSchema, 'archives');
+
 export const Role = mongoose.model<RoleDocument>('Role', roleSchema);
-// Коллекция пользователей бота отличается от AuthUser и хранится отдельно
-// Название коллекции меняем на `telegram_users`, чтобы избежать конфликтов
-// с историческими индексами, которые могли остаться в `users`
-export const User = mongoose.model<UserDocument>(
-  'User',
-  userSchema,
-  'telegram_users',
-);
-export const Log = mongoose.model<LogDocument>('Log', logSchema);
+export const User = mongoose.model<UserDocument>('User', userSchema, 'telegram_users');
+
+export const File = mongoose.model<FileDocument>('File', fileSchema);
+
+export const TaskDraft = mongoose.model<TaskDraftDocument>('TaskDraft', taskDraftSchema);
+export const TaskTemplate = mongoose.model<TaskTemplateDocument>('TaskTemplate', taskTemplateSchema);
+
+export const Log = mongoose.model('Log', new Schema({
+  message: String,
+  level: { type: String, enum: ['debug','info','warn','error','log'], default: 'info' },
+}, { timestamps: true }));
+
+/* ---------- ShortLink (оставлено) ---------- */
 
 export interface ShortLinkAttrs {
   slug: string;
@@ -680,7 +717,6 @@ export interface ShortLinkAttrs {
   created_at?: Date;
   updated_at?: Date;
 }
-
 export interface ShortLinkDocument extends ShortLinkAttrs, Document {}
 
 const shortLinkSchema = new Schema<ShortLinkDocument>(
@@ -695,17 +731,7 @@ const shortLinkSchema = new Schema<ShortLinkDocument>(
   },
 );
 
-shortLinkSchema.index(
-  { slug: 1 },
-  { unique: true, name: 'short_link_slug_unique' },
-);
+shortLinkSchema.index({ slug: 1 }, { unique: true, name: 'short_link_slug_unique' });
+shortLinkSchema.index({ url: 1 }, { unique: true, name: 'short_link_url_unique' });
 
-shortLinkSchema.index(
-  { url: 1 },
-  { unique: true, name: 'short_link_url_unique' },
-);
-
-export const ShortLink = mongoose.model<ShortLinkDocument>(
-  'ShortLink',
-  shortLinkSchema,
-);
+export const ShortLink = mongoose.model<ShortLinkDocument>('ShortLink', shortLinkSchema);

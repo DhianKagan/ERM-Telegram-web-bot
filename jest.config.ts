@@ -18,9 +18,6 @@ const config: Config = {
     '^@/(.*)$': '<rootDir>/apps/web/src/$1',
     '^shared$': '<rootDir>/packages/shared/src',
     '^shared/(.*)$': '<rootDir>/packages/shared/src/$1',
-    '^pmtiles$': '<rootDir>/tests/stubs/pmtiles.ts',
-    '^maplibre-gl$': '<rootDir>/tests/stubs/maplibre-gl.ts',
-    '^maplibre-gl-draw$': '@mapbox/mapbox-gl-draw',
   },
   setupFiles: [
     '<rootDir>/tests/setupMongoMemoryServer.ts',

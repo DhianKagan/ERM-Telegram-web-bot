@@ -4,7 +4,7 @@
  * Назначение файла: конфигурация Vite для мини-приложения.
  * Основные модули: vite, @vitejs/plugin-react, @vitejs/plugin-legacy.
  */
-import { defineConfig, loadEnv, type IndexHtmlTransformContext } from 'vite';
+import { defineConfig, type IndexHtmlTransformContext } from 'vite';
 import react from '@vitejs/plugin-react';
 import legacy from '@vitejs/plugin-legacy';
 import { resolve } from 'path';
@@ -88,44 +88,6 @@ const modulePreloadPattern = new RegExp(
 const fontPreloadPattern =
   /<link\s[^>]*rel=["'][^"']*preload[^"']*["'][^>]*href=["'][^"']*fonts\/fonts\.css["'][^>]*>/gi;
 
-type MapStyleMode = 'pmtiles' | 'raster';
-
-function normalizeMapStyleMode(
-  value: string | undefined,
-): MapStyleMode | undefined {
-  if (!value) {
-    return undefined;
-  }
-  const normalized = value.trim().toLowerCase();
-  if (['pmtiles', 'vector', 'tiles'].includes(normalized)) {
-    return 'pmtiles';
-  }
-  if (['raster', 'osm', 'fallback'].includes(normalized)) {
-    return 'raster';
-  }
-  return undefined;
-}
-
-function resolveBuildMapStyleMode(
-  env: Record<string, string | undefined>,
-  mode: string,
-): MapStyleMode {
-  const explicit = normalizeMapStyleMode(env.VITE_MAP_STYLE_MODE);
-  if (explicit) {
-    return explicit;
-  }
-  const pmtilesHint = env.VITE_USE_PMTILES?.trim();
-  if (pmtilesHint) {
-    const useFallback =
-      pmtilesHint === '0' || pmtilesHint.toLowerCase() === 'false';
-    return useFallback ? 'raster' : 'pmtiles';
-  }
-  const normalizedMode = mode.trim().toLowerCase();
-  const isProduction =
-    normalizedMode === 'production' || normalizedMode === 'production-build';
-  return isProduction ? 'pmtiles' : 'raster';
-}
-
 function filterModulePreloadLinks() {
   return {
     name: 'filter-modulepreload-links',
@@ -150,9 +112,7 @@ function filterModulePreloadLinks() {
 }
 
 // https://vite.dev/config/
-export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), '');
-  const mapStyleMode = resolveBuildMapStyleMode(env, mode);
+export default defineConfig(() => {
   const shouldOptimizeImages = process.env.SKIP_IMAGE_OPTIMIZER !== '1';
 
   return {
@@ -176,32 +136,11 @@ export default defineConfig(({ mode }) => {
       cspNonceDevPlugin(),
     ].filter(Boolean),
     resolve: {
-      alias: (() => {
-        const entries: Record<string, string> = {
-          '@': resolve(__dirname, 'src'),
-          shared: resolve(__dirname, '../../packages/shared/src'),
-          'react-intl': resolve(__dirname, 'src/stubs/react-intl.tsx'),
-        };
-
-        const mapLibreDrawModuleId = '@mapbox/mapbox-gl-draw';
-        const mapLibreDrawStylesId =
-          '@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css';
-
-        if (moduleExists(mapLibreDrawModuleId)) {
-          entries['maplibre-gl-draw'] =
-            requireModule.resolve(mapLibreDrawModuleId);
-        }
-
-        if (moduleExists(mapLibreDrawStylesId)) {
-          entries['maplibre-gl-draw/dist/maplibre-gl-draw.css'] =
-            requireModule.resolve(mapLibreDrawStylesId);
-        }
-
-        return entries;
-      })(),
-    },
-    define: {
-      __ERM_MAP_STYLE_MODE__: JSON.stringify(mapStyleMode),
+      alias: {
+        '@': resolve(__dirname, 'src'),
+        shared: resolve(__dirname, '../../packages/shared/src'),
+        'react-intl': resolve(__dirname, 'src/stubs/react-intl.tsx'),
+      },
     },
     build: {
       emptyOutDir: true,
@@ -235,11 +174,6 @@ export default defineConfig(({ mode }) => {
               'validator',
               'clsx',
               'class-variance-authority',
-            ]),
-            map: filterExistingModules([
-              'maplibre-gl',
-              'maplibre-gl-draw',
-              'pmtiles',
             ]),
           },
         },

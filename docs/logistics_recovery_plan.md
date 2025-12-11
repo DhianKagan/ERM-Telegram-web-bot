@@ -1,104 +1,91 @@
 # План стабилизации модуля «Логистика»
 
-Документ фиксирует приоритеты, конкретные изменения и проверки для восстановления карты (PMTiles/Protomaps) и SSE.
+Документ фиксирует приоритеты, ожидаемый состав работ и проверки для восстановления обмена логистическими данными без зависимости от карт.
 
 ## Приоритетная дорожная карта
 
-### Эпик 1. Доступность карты и слоёв (блокер)
+### Эпик 1. Поток событий
 
-- **Story 1.1**: Гарантировать регистрацию `pmtiles` до инициализации карты; логировать успех/отказ.
-- **Story 1.2**: Динамически определять первичный vector source и использовать его в 3D-слое и адресах.
-- **Story 1.3**: Улучшить fallback стилей с явным логом причины и URL.
+- Подробный лог открытия SSE и задержек heartbeat, фиксация readyState при ошибках.
+- Автоматический переход на поллинг при таймаутах или закрытии соединения, configurable-интервалы.
+- Повторное подключение с экспоненциальной паузой и метриками ошибок.
 
-### Эпик 2. Стабильность источников данных
+### Эпик 2. Согласованность маршрутов
 
-- **Story 2.1**: Безопасное добавление адресного слоя только при наличии URL и доступном `pmtiles`.
-- **Story 2.2**: Улучшить обработку ошибок SSE и fallback-поллинга: детальный лог `readyState/status`, таймаут открытия SSE и гарантированный переход на fallback.
+- Немедленное обновление списка задач и активного плана после событий `route-plan.updated`.
+- Защита от устаревших черновиков: валидация версии плана и очистка локального кэша по маске пользователя.
+- Контроль статуса пересчёта оптимизатора в интерфейсе, в том числе при повторном входе.
 
-### Эпик 3. Инфраструктура и отдача статики
+### Эпик 3. Инфраструктура SSE и кэшей
 
-- **Story 3.1**: Проверка MIME для CSS (`text/css`) на фронтовом CDN/прокси.
-- **Story 3.2**: Проверка заголовков SSE (`Content-Type: text/event-stream`, `Cache-Control: no-cache`, `Connection: keep-alive`) и HTTP/2 keep-alive без преждевременного закрытия.
+- Проверка заголовков `Content-Type`, `Cache-Control` и `Connection` для `/api/v1/logistics/events`.
+- Наблюдаемость ошибок HTTP/2 и таймаутов соединения, алерты на количество повторных подключений.
+- Ограничение TTL локальных кэшей маршрутов, явное сброс кэша после ручной чистки данных.
 
-## Готовые патчи (фрагменты)
+## Быстрые правки
 
-1. **Ожидание регистрации PMTiles перед созданием карты**
-
-   ```ts
-   const pmtilesReady = await registerPmtilesProtocol();
-   if (MAP_STYLE_MODE === 'pmtiles' && !pmtilesReady) {
-     console.warn('PMTiles протокол не зарегистрирован, возможны проблемы...');
-   }
-   const mapInstance = new mapLibrary.Map({ ... });
-   ```
-
-2. **Детектор основного векторного источника и использование в 3D-слое**
+1. Переключение на поллинг при сбое SSE:
 
    ```ts
-   import { detectPrimaryVectorSourceId } from './vectorSource';
+   const source = new EventSource('/api/v1/logistics/events');
+   const fallback = () => startPolling({ intervalMs: pollInterval });
+   const openTimeout = setTimeout(() => fallback(), 8000);
 
-   const vectorSourceId = detectPrimaryVectorSourceId(map);
-   if (!vectorSourceId) return null;
-   map.addLayer({ id: BUILDINGS_LAYER_ID, source: vectorSourceId, ... });
-   ```
-
-3. **Усиленный attachMapStyleFallback с детализацией причины**
-   ```ts
-   logger.warn('Не удалось загрузить кастомный стиль...', {
-     details,
-     initialStyle,
-     fallbackUrl,
+   source.addEventListener('open', () => clearTimeout(openTimeout));
+   source.addEventListener('error', (event) => {
+     logger.warn('SSE сбой', {
+       readyState: source.readyState,
+       type: event.type,
+     });
+     source.close();
+     fallback();
    });
-   logger.warn('Ошибка загрузки стиля карты', { url, status, message });
-   map.setStyle(fallbackUrl, { diff: false });
+   ```
+
+2. Защита версии маршрутного плана:
+
+   ```ts
+   if (serverVersion !== localVersion) {
+     clearLocalDraft();
+     refetchPlan();
+   }
+   ```
+
+3. Метрика недоступности потока:
+
+   ```ts
+   metrics.logisticsSseUnavailable.inc();
    ```
 
 ## PR-план
 
-- **Ветка**: `feature/logistics-map-stability`
-- **Название PR**: «Logistics: стабилизация PMTiles, fallback и адресных слоёв»
-- **Основные файлы**: `apps/web/src/pages/Logistics.tsx`, `apps/web/src/utils/insert3dBuildingsLayer.ts`, `apps/web/src/mapLibrary.ts`, `apps/web/src/services/logisticsEvents.ts`, `apps/web/src/utils/vectorSource.ts`, `docs/logistics_recovery_plan.md`.
-- **Ревью-чеклист**:
-  - PMTiles регистрируется до `new Map` и логирует успех/ошибку.
-  - 3D и адресные слои появляются при наличии vector источника; отсутствуют бесшумные пропуски.
-  - Fallback стиля пишет URL/статус в консоль и не затирает рабочий векторный стиль без причины.
-  - SSE ошибки ведут к fallback-поллингу с явным предупреждением.
+- **Ветка**: `feature/logistics-stream-stability`
+- **Название PR**: «Logistics: стабилизация событий и маршрутов»
+- **Основные файлы**: `apps/web/src/services/logisticsEvents.ts`, `apps/web/src/pages/Logistics.tsx`, `apps/web/src/pages/LogisticsPlan.tsx`, `apps/web/src/hooks/useLogistics.ts`, `docs/logistics_recovery_plan.md`.
 
 ## Тест-план
 
-- **Unit/интеграция (локально)**:
-  - `pnpm -F web test` — базовые тесты фронтенда.
-  - `pnpm lint` и `pnpm typecheck` — статический анализ.
-
+- **Unit/интеграция**: `pnpm -F web test`, `pnpm lint`, `pnpm typecheck`.
 - **Ручные проверки**:
-  1. Запустить фронт: `pnpm -F web run dev`.
-  2. Убедиться, что карта грузится без переключения на raster fallback (консоль без warn о стиле).
-  3. При установленном `VITE_MAP_ADDRESSES_PMTILES_URL=pmtiles://tiles/addresses.pmtiles` или наличии файла `apps/web/public/tiles/addresses.pmtiles` увидеть домовые номера на zoom ≥ 17; отсутствие файла и переменной фиксируется как ошибка конфигурации.
-  4. Проверить 3D-здания на zoom 15+ и что слой не пропадает при смене стиля.
-  5. Проверить SSE: в консоли нет `ERR_HTTP2_PROTOCOL_ERROR`; при отключении SSE (`VITE_DISABLE_SSE=1`) включается поллинг с интервалом `VITE_LOGISTICS_POLL_INTERVAL_MS`.
+  1. SSE соединение остаётся открытым не менее 15 секунд, heartbeats приходят регулярно.
+  2. При `VITE_DISABLE_SSE=1` включается поллинг с интервалом `VITE_LOGISTICS_POLL_INTERVAL_MS`.
+  3. Изменение плана через API мгновенно отражается на открытой странице без перезагрузки.
+  4. Разрыв SSE триггерит один fallback без роста числа одновременных подключений.
 
 ## DEV/DEVOPS чек-лист
 
-- **CSS MIME**: `curl -I https://<host>/js/index-*.css` — ожидаем `Content-Type: text/css`. В nginx: `types { text/css css; }` и `add_header Content-Type text/css;` для fallback.
-- **SSE/HTTP2**:
-  - `curl -v --http2 https://<host>/api/v1/logistics/events -H 'Accept: text/event-stream'` — ожидаем `HTTP/2 200`, заголовки `content-type: text/event-stream`, `cache-control: no-cache`, `connection: keep-alive`.
-  - `curl -v -N --http2 https://<host>/api/v1/logistics/events -H 'Accept: text/event-stream' --max-time 15` — поток должен оставаться открытым (нет `Empty reply from server`), приходит хотя бы один heartbeat за 15 секунд.
-  - `curl -v --http2 https://<host>/api/v1/logistics/events -H 'Accept: text/event-stream' --write-out '\ncode:%{response_code} time:%{time_total}\n' --max-time 10` — фиксируем код 200 и отсутствие раннего обрыва соединения.
+- `curl -v --http2 https://<host>/api/v1/logistics/events -H 'Accept: text/event-stream'` — код 200, корректные заголовки.
+- `curl -v -N --http2 https://<host>/api/v1/logistics/events -H 'Accept: text/event-stream' --max-time 15` — поток не закрывается до таймаута.
+- Логи Nginx/Ingress без `upstream prematurely closed connection` и `RST_STREAM`.
+- Метрики отказов поллинга/SSE отображаются в мониторинге и имеют алерты.
 
-## Клиентский fallback SSE
+## UX/адаптивность
 
-- Таймаут открытия SSE: если соединение не переходит в `open` за 8 секунд, клиент пишет предупреждение с `readyState`/`status` и включает fallback-поллинг.
-- Лог при ошибке SSE теперь дополнительно фиксирует `readyState` и, если доступен, `status` из EventSource/события.
-- **CORS/тайлы**: `curl -I https://<host>/<path>.pmtiles` и JSON стиля — проверка `Access-Control-Allow-Origin` и кода 200.
-
-## UX/адаптивность (технический план)
-
-- Карта остаётся главным элементом (занимает высоту экрана минус хедер). Панель задач — плавающая/сворачиваемая с управлением из кнопки на карте.
-- Мобильный режим: переключатель «Карта / Список», `flex-col` и скрытие вторичных панелей; крупные touch-таргеты (минимум 44px).
-- Риск: переполнение панелей на малых экранах — проверять clamp по высоте и `overflow-auto`.
+- Список задач и панель маршрутов остаются читаемыми на мобильных: минимальная высота интерактивных элементов 44 px, скроллинг в дополнительных панелях.
+- Изменения статуса плана отображаются тостами и индикатором синхронизации.
 
 ## Риски и откат
 
-- **Риск**: регистрация pmtiles может провалиться в сборках без `addProtocol`; mitigated логированием и сохранением raster fallback.
-- **Риск**: некорректный MIME на CDN блокирует CSS — проверяется curl; откат — вернуть предыдущую конфигурацию nginx/CDN.
-- **Откат**: `git revert <PR>` + перезапуск фронта; для nginx — откатить конфиг и перезагрузить сервис.
+- Риск: агрессивный поллинг перегружает API — смягчается бэкофом и лимитом одновременных запросов.
+- Риск: длительные SSE-запросы блокируются прокси — проверять keep-alive и таймауты на балансировщике.
+- Откат: `git revert <PR>` и перезапуск фронта/бота.

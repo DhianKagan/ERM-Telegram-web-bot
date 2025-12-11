@@ -9,10 +9,6 @@ import i18n from './i18n';
 // Глобальные стили приложения
 import './index.css';
 
-// Импорт CSS MapLibre здесь — только в клиентском entry.
-// Это предотвращает попытки сборщика/SSR обрабатывать CSS из maplibre в серверной среде.
-import 'maplibre-gl/dist/maplibre-gl.css';
-
 import { ensureWebpackNonce } from './utils/ensureWebpackNonce';
 
 (

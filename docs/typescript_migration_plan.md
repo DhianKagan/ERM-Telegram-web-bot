@@ -12,8 +12,7 @@
 | `scripts` и корневые конфиги | 3          |
 
 Переведены на TypeScript: `userLink`, `formatTask`, `validate`, `haversine`, `verifyInitData`, `accessMask`, `formatUser`, `setTokenCookie`, `rateLimiter`, `parseJwt`, `csrfToken`, `extractCoords` и `parseGoogleAddress`.
-Сервисы и утилита `authFetch` веб-клиента (`logs`, `maps`, `optimizer`, `roles`, `route`, `routes`, `tasks`, `osrm`) переписаны на TypeScript.
-Переведены сервис, контроллер и роут карт.
+Сервисы и утилита `authFetch` веб-клиента (`logs`, `optimizer`, `roles`, `route`, `routes`, `tasks`, `osrm`) переписаны на TypeScript.
 
 Серверный и клиентский код переведены на TypeScript; остались лишь конфигурационные файлы.
 Сервисы логов и пользователей используют интерфейсы репозитория без `any`.

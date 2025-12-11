@@ -9,6 +9,7 @@ import { syncTaskPoints } from '../utils/taskPoints';
 /**
  * TaskData — частичный объект задачи. Используем TaskDocument для полей схемы.
  * startCoordinates/finishCoordinates остаются информационными (если присутствуют).
+ * Явно добавляем поля, допускающие `null`, чтобы совместить с shared.Task.
  */
 export type TaskData = Partial<TaskDocument> & {
   completed_at?: string | Date | null;
@@ -19,6 +20,13 @@ export type TaskData = Partial<TaskDocument> & {
   route_distance_km?: number | null;
   due_date?: Date;
   remind_at?: Date;
+
+  // Явно согласуем nullable-поля (в shared они могут быть string | null)
+  start_location?: string | null;
+  end_location?: string | null;
+  start_location_link?: string | null;
+  end_location_link?: string | null;
+
   [key: string]: unknown;
 };
 
@@ -49,17 +57,11 @@ const prepareTaskPayload = (input: TaskData = {}): Partial<TaskDocument> => {
   return payload;
 };
 
-/**
- * Normalize coordinates fields in TaskData.
- * Coordinates are informational only — parsing is delegated to parsePointInput (shared.extractCoords).
- * If parsing fails, we clear the coordinate field (do not throw).
- */
 function normalizeTaskCoordinates(data: TaskData): void {
   try {
     if (data.startCoordinates) {
       const parsed = parsePointInput(data.startCoordinates);
       if (parsed) {
-        // keep normalized form
         data.startCoordinates = parsed as TaskDocument['startCoordinates'];
       } else {
         logger.warn(
@@ -88,11 +90,6 @@ function normalizeTaskCoordinates(data: TaskData): void {
   }
 }
 
-/**
- * applyRouteInfo — упрощено: не строим маршрут и не считаем расстояние.
- * Если координаты присутствуют — они сохраняются (как информация).
- * Поля route_distance_km и google_route_url сбрасываются.
- */
 async function applyRouteInfo(data: TaskData = {}): Promise<void> {
   syncTaskPoints(data as Partial<TaskDocument>);
   normalizeTaskCoordinates(data);

@@ -123,7 +123,7 @@ export const syncTaskPoints = (target: TaskPointTarget): void => {
       findByKind(normalizedPoints, ['start', 'via']) ?? normalizedPoints[0];
     const finishPoint =
       findLastByKind(normalizedPoints, ['finish', 'via', 'start']) ??
-      normalizedPoints.at(-1);
+      (normalizedPoints.length ? normalizedPoints[normalizedPoints.length - 1] : undefined);
 
     target.points = normalizedPoints as TaskDocument['points'];
     target.startCoordinates = startPoint?.coordinates ?? null;
@@ -178,7 +178,8 @@ export const extractLegacyCoordinates = (
   const normalized = normalizeTaskPoints(points);
   const start = findByKind(normalized, ['start', 'via']) ?? normalized[0];
   const finish =
-    findLastByKind(normalized, ['finish', 'via', 'start']) ?? normalized.at(-1);
+    findLastByKind(normalized, ['finish', 'via', 'start']) ??
+    (normalized.length ? normalized[normalized.length - 1] : undefined);
   return {
     start: start?.coordinates,
     finish: finish?.coordinates,

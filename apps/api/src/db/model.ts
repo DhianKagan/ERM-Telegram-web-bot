@@ -244,14 +244,15 @@ export interface TaskAttrs {
   due_date?: Date;
   remind_at?: Date;
   location?: string;
-  start_location?: string;
-  start_location_link?: string;
-  startCoordinates?: Coordinates;
-  end_location?: string;
-  end_location_link?: string;
-  finishCoordinates?: Coordinates;
+  // согласованы с shared: допускаем null там, где это может приходить
+  start_location?: string | null;
+  start_location_link?: string | null;
+  startCoordinates?: Coordinates | null;
+  end_location?: string | null;
+  end_location_link?: string | null;
+  finishCoordinates?: Coordinates | null;
   points?: TaskPoint[];
-  google_route_url?: string;
+  google_route_url?: string | null;
   route_distance_km?: number | null;
   route_nodes?: number[];
   assigned_user_id?: number;
@@ -698,6 +699,7 @@ shortLinkSchema.index(
   { slug: 1 },
   { unique: true, name: 'short_link_slug_unique' },
 );
+
 shortLinkSchema.index(
   { url: 1 },
   { unique: true, name: 'short_link_url_unique' },
@@ -706,89 +708,4 @@ shortLinkSchema.index(
 export const ShortLink = mongoose.model<ShortLinkDocument>(
   'ShortLink',
   shortLinkSchema,
-);
-
-// Коллекция загруженных файлов
-// Основные модули: mongoose
-export interface FileAttrs {
-  taskId?: Types.ObjectId;
-  userId: number;
-  name: string;
-  path: string;
-  thumbnailPath?: string;
-  type: string;
-  size: number;
-  uploadedAt: Date;
-  draftId?: Types.ObjectId;
-}
-
-export interface FileDocument extends FileAttrs, Document {}
-
-const fileSchema = new Schema<FileDocument>({
-  taskId: { type: Schema.Types.ObjectId, ref: 'Task' },
-  draftId: { type: Schema.Types.ObjectId, ref: 'TaskDraft', default: null },
-  userId: { type: Number, required: true },
-  name: { type: String, required: true },
-  path: { type: String, required: true },
-  thumbnailPath: String,
-  type: { type: String, required: true },
-  size: { type: Number, required: true },
-  uploadedAt: { type: Date, default: Date.now },
-});
-
-fileSchema.index({ draftId: 1 }, { name: 'files_draft_id_idx' });
-
-export const File = mongoose.model<FileDocument>('File', fileSchema);
-
-// Черновики задач сохраняют незавершённые формы
-// Основные модули: mongoose
-export interface TaskDraftAttrs {
-  userId: number;
-  kind: 'task' | 'request';
-  payload: Record<string, unknown>;
-  attachments?: Attachment[];
-}
-
-export interface TaskDraftDocument extends TaskDraftAttrs, Document {}
-
-const taskDraftSchema = new Schema<TaskDraftDocument>(
-  {
-    userId: { type: Number, required: true },
-    kind: { type: String, enum: ['task', 'request'], required: true },
-    payload: { type: Schema.Types.Mixed, default: {} },
-    attachments: [attachmentSchema],
-  },
-  { timestamps: true },
-);
-
-taskDraftSchema.index(
-  { userId: 1, kind: 1 },
-  { unique: true, name: 'task_drafts_user_kind_unique' },
-);
-
-export const TaskDraft = mongoose.model<TaskDraftDocument>(
-  'TaskDraft',
-  taskDraftSchema,
-);
-
-// Шаблон задачи хранит предустановленные поля
-// Основные модули: mongoose
-export interface TaskTemplateAttrs {
-  name: string;
-  data: Record<string, unknown>;
-}
-
-export interface TaskTemplateDocument extends TaskTemplateAttrs, Document {}
-
-const taskTemplateSchema = new Schema<TaskTemplateDocument>(
-  {
-    name: { type: String, required: true },
-    data: Schema.Types.Mixed,
-  },
-  { timestamps: true },
-);
-
-export const TaskTemplate = mongoose.model<TaskTemplateDocument>(
-  'TaskTemplate',
-  taskTemplateSchema,
 );

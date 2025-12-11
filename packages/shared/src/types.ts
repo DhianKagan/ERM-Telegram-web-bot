@@ -5,6 +5,14 @@ import type { Coords } from './mapUtils';
 
 export type PaymentMethod = 'Наличные' | 'Карта' | 'Безнал' | 'Без оплаты';
 
+export interface TaskPoint {
+  order: number;
+  kind: 'start' | 'via' | 'finish';
+  title?: string;
+  sourceUrl?: string;
+  coordinates?: Coords;
+}
+
 export interface Task {
   _id: string;
   title: string;
@@ -38,6 +46,13 @@ export interface Task {
   telegram_photos_chat_id?: string | number;
   telegram_photos_topic_id?: number;
   deadline_reminder_sent_at?: string;
+  points?: TaskPoint[];
+  startCoordinates?: Coords;
+  finishCoordinates?: Coords;
+  start_location?: string | null;
+  end_location?: string | null;
+  google_route_url?: string | null;
+  route_distance_km?: number | null;
   [key: string]: unknown;
 }
 
@@ -143,7 +158,7 @@ export type RoutePlanStatus = 'draft' | 'approved' | 'completed';
 
 export interface RoutePlanStop {
   order: number;
-  kind: 'start' | 'finish';
+  kind: 'start' | 'via' | 'finish';
   taskId: string;
   coordinates?: Coords;
   address?: string | null;

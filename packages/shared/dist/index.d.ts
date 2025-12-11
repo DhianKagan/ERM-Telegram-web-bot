@@ -34,6 +34,7 @@ export type {
   RoutePlanStop,
   RoutePlanTaskRef,
   RoutePlanStatus,
+  TaskPoint,
   LogisticsEvent,
   LogisticsHeartbeatEvent,
   LogisticsInitEvent,

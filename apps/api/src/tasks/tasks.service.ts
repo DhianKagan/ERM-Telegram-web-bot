@@ -19,6 +19,7 @@ import { extractAttachmentIds } from '../utils/attachments';
 import { resolveTaskTypeTopicId } from '../services/taskTypeSettings';
 import { ensureTaskLinksShort } from '../services/taskLinks';
 import type { Logistics } from '../db/model';
+import { syncTaskPoints } from '../utils/taskPoints';
 
 interface TasksRepository {
   createTask(
@@ -190,10 +191,12 @@ class TasksService {
   async create(data: Partial<TaskDocument> = {}, userId?: number) {
     const payload = data ?? {};
     applyIntakeRules(payload);
+    syncTaskPoints(payload);
     if (payload.due_date && !payload.remind_at)
       payload.remind_at = payload.due_date;
     this.applyCargoMetrics(payload);
     await this.applyGeocoding(payload);
+    syncTaskPoints(payload);
     await this.applyRouteInfo(payload);
     await ensureTaskLinksShort(payload);
     await this.applyTaskTypeTopic(payload);
@@ -255,8 +258,10 @@ class TasksService {
       (payload as Record<string, unknown>).deadline_reminder_sent_at =
         undefined;
     }
+    syncTaskPoints(payload);
     this.applyCargoMetrics(payload);
     await this.applyGeocoding(payload);
+    syncTaskPoints(payload);
     await this.applyRouteInfo(payload);
     await ensureTaskLinksShort(payload);
     await this.applyTaskTypeTopic(payload);
@@ -453,6 +458,7 @@ class TasksService {
         payload.completed_at = null;
       }
     }
+    syncTaskPoints(payload);
     await ensureTaskLinksShort(payload);
     await this.applyTaskTypeTopic(payload);
     await this.repo.bulkUpdate(ids, payload);

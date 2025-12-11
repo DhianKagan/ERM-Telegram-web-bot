@@ -1,10 +1,29 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Тесты сервиса задач
+import * as osrmClient from '../src/geo/osrm';
+import { generateRouteLink, type TaskPoint } from 'shared';
+import TasksService from '../src/tasks/tasks.service';
+import { writeLog } from '../src/services/wgLogEngine';
+import type { TaskDocument } from '../src/db/model';
+
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
 process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
 process.env.JWT_SECRET = 's';
 process.env.APP_URL = 'https://localhost';
+process.env.QUEUE_REDIS_URL = '';
+
+jest.mock('../src/config/queue', () => ({
+  queueConfig: {
+    enabled: false,
+    connection: null,
+    prefix: 'erm',
+    attempts: 3,
+    backoffMs: 5000,
+    jobTimeoutMs: 30000,
+    metricsIntervalMs: 15000,
+  },
+}));
 
 jest.mock('../src/services/route', () => ({
   clearRouteCache: jest.fn(),
@@ -18,10 +37,6 @@ jest.mock('../src/services/wgLogEngine', () => ({
   writeLog: jest.fn().mockResolvedValue(undefined),
 }));
 
-const osrmClient = require('../src/geo/osrm');
-const { generateRouteLink } = require('shared');
-const TasksService = require('../src/tasks/tasks.service.ts').default;
-const { writeLog } = require('../src/services/wgLogEngine');
 const mockedWriteLog = writeLog as jest.Mock;
 
 function createRepo() {
@@ -53,6 +68,37 @@ test('create заполняет ссылку и дистанцию', async () =>
   expect(osrmClient.getOsrmDistance).toHaveBeenCalled();
 });
 
+test('create использует points для маршрута и координат', async () => {
+  const repo = createRepo();
+  const service = new TasksService(repo);
+  const task = await service.create({
+    points: [
+      { order: 0, kind: 'start', coordinates: { lat: 10, lng: 20 } },
+      { order: 1, kind: 'finish', coordinates: { lat: 11, lng: 21 } },
+    ] satisfies TaskPoint[],
+  });
+  expect(repo.createTask).toHaveBeenCalled();
+  const expectedUrl = generateRouteLink(
+    { lat: 10, lng: 20 },
+    { lat: 11, lng: 21 },
+  );
+  expect(task.google_route_url).toBe(expectedUrl);
+  expect(task.startCoordinates).toEqual({ lat: 10, lng: 20 });
+  expect(task.finishCoordinates).toEqual({ lat: 11, lng: 21 });
+  expect(task.points).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        kind: 'start',
+        coordinates: { lat: 10, lng: 20 },
+      }),
+      expect.objectContaining({
+        kind: 'finish',
+        coordinates: { lat: 11, lng: 21 },
+      }),
+    ]),
+  );
+});
+
 test('update пересчитывает ссылку и дистанцию', async () => {
   const repo = createRepo();
   const service = new TasksService(repo);
@@ -73,7 +119,8 @@ test('update пересчитывает ссылку и дистанцию', asy
 test('update не падает без данных', async () => {
   const repo = createRepo();
   const service = new TasksService(repo);
-  const task = await service.update('1', undefined as any, 1);
+  const emptyPayload = undefined as unknown as Partial<TaskDocument>;
+  const task = await service.update('1', emptyPayload, 1);
   expect(repo.updateTask).toHaveBeenCalledWith('1', {}, 1);
   expect(task).toEqual({ _id: '1' });
 });
@@ -81,7 +128,8 @@ test('update не падает без данных', async () => {
 test('create не падает без данных', async () => {
   const repo = createRepo();
   const service = new TasksService(repo);
-  const task = await service.create(undefined as any);
+  const emptyPayload = undefined as unknown as Partial<TaskDocument>;
+  const task = await service.create(emptyPayload);
   expect(repo.createTask).toHaveBeenCalledWith({}, undefined);
   expect(task).toEqual({ id: '1' });
 });
@@ -107,7 +155,7 @@ test('create логирует fallback для вложений без userId', a
         size: 1,
       },
     ],
-  } as any);
+  });
   expect(mockedWriteLog).toHaveBeenCalledWith(
     'Создание задачи с вложениями без идентификатора пользователя, активирован fallback',
     'warn',
@@ -118,20 +166,25 @@ test('create логирует fallback для вложений без userId', a
 test('bulk выставляет completed_at для финальных статусов', async () => {
   const repo = createRepo();
   const service = new TasksService(repo);
-  await service.bulk(['1'], { status: 'Выполнена' } as any);
+  const payload: Partial<TaskDocument> = { status: 'Выполнена' };
+  await service.bulk(['1'], payload);
   expect(repo.bulkUpdate).toHaveBeenCalledTimes(1);
-  const payload = repo.bulkUpdate.mock.calls[0][1];
-  expect(payload.status).toBe('Выполнена');
-  expect(payload.completed_at).toBeInstanceOf(Date);
+  const callPayload = repo.bulkUpdate.mock.calls[0][1];
+  expect(callPayload.status).toBe('Выполнена');
+  expect(callPayload.completed_at).toBeInstanceOf(Date);
 });
 
 test('bulk сбрасывает completed_at при возврате статуса', async () => {
   const repo = createRepo();
   const service = new TasksService(repo);
   const date = new Date();
-  await service.bulk(['1'], { status: 'В работе', completed_at: date } as any);
+  const payload: Partial<TaskDocument> = {
+    status: 'В работе',
+    completed_at: date,
+  };
+  await service.bulk(['1'], payload);
   expect(repo.bulkUpdate).toHaveBeenCalledTimes(1);
-  const payload = repo.bulkUpdate.mock.calls[0][1];
-  expect(payload.status).toBe('В работе');
-  expect(payload.completed_at).toBeNull();
+  const callPayload = repo.bulkUpdate.mock.calls[0][1];
+  expect(callPayload.status).toBe('В работе');
+  expect(callPayload.completed_at).toBeNull();
 });

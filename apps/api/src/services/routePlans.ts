@@ -16,7 +16,7 @@ import {
   type RoutePlanDocument,
   type RoutePlanRouteEntry,
 } from '../db/models/routePlan';
-import { Task } from '../db/model';
+import { Task, type TaskPoint } from '../db/model';
 import { chatId } from '../config';
 import { call as telegramCall } from './telegramApi';
 import { getUser } from '../db/queries';
@@ -24,6 +24,10 @@ import {
   notifyRoutePlanRemoved,
   notifyRoutePlanUpdated,
 } from './logisticsEvents';
+import {
+  normalizeTaskPoints,
+  extractLegacyCoordinates,
+} from '../utils/taskPoints';
 
 const TITLE_MAX_LENGTH = 120;
 const NOTES_MAX_LENGTH = 1024;
@@ -38,6 +42,8 @@ interface TaskSource {
   finishCoordinates?: { lat?: number; lng?: number } | null;
   start_location?: string | null;
   end_location?: string | null;
+  points?: TaskPoint[] | null;
+  google_route_url?: string | null;
   route_distance_km?: number | null;
 }
 
@@ -205,7 +211,7 @@ const ensureTaskMap = async (
   }
   const docs = await Task.find({ _id: { $in: Array.from(missing) } })
     .select(
-      'title startCoordinates finishCoordinates start_location end_location route_distance_km',
+      'title startCoordinates finishCoordinates start_location end_location route_distance_km points google_route_url',
     )
     .lean<TaskSource[]>();
   for (const doc of docs) {
@@ -219,6 +225,40 @@ const ensureTaskMap = async (
 
 const sanitizeAddress = (value: unknown): string | null =>
   normalizeString(value, ADDRESS_MAX_LENGTH);
+
+const normalizeUrl = (value: unknown): string | null => {
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+};
+
+const buildLegacyPoints = (task: TaskSource): TaskPoint[] => {
+  const points: TaskPoint[] = [];
+  const start = cloneCoords(task.startCoordinates ?? null);
+  const finish = cloneCoords(task.finishCoordinates ?? null);
+  const sourceUrl = normalizeUrl(task.google_route_url) ?? undefined;
+
+  if (start) {
+    points.push({
+      order: points.length,
+      kind: 'start',
+      coordinates: start,
+      title: sanitizeAddress(task.start_location) ?? undefined,
+      sourceUrl,
+    });
+  }
+  if (finish) {
+    points.push({
+      order: points.length,
+      kind: 'finish',
+      coordinates: finish,
+      title: sanitizeAddress(task.end_location) ?? undefined,
+      sourceUrl,
+    });
+  }
+
+  return points;
+};
 
 const defaultTitle = (): string => {
   try {
@@ -283,9 +323,25 @@ async function buildRoutesFromInput(
       if (!objectId) continue;
       uniqueTaskIds.set(objectId.toHexString(), objectId);
 
-      const start = cloneCoords(task.startCoordinates ?? null);
-      const finish = cloneCoords(task.finishCoordinates ?? null);
+      const normalizedPoints = normalizeTaskPoints(task.points);
+      const points = normalizedPoints.length
+        ? normalizedPoints
+        : buildLegacyPoints(task);
+
+      const legacyCoords = extractLegacyCoordinates(points);
+      const start = cloneCoords(
+        legacyCoords.start ?? task.startCoordinates ?? null,
+      );
+      const finish = cloneCoords(
+        legacyCoords.finish ?? task.finishCoordinates ?? null,
+      );
       const distanceKm = roundDistance(task.route_distance_km ?? undefined);
+
+      const startPoint =
+        points.find((point) => point.kind === 'start') ?? points[0];
+      const finishPoint =
+        [...points].reverse().find((point) => point.kind === 'finish') ||
+        (points.length ? points[points.length - 1] : undefined);
 
       const taskEntry = {
         taskId: objectId,
@@ -293,31 +349,26 @@ async function buildRoutesFromInput(
         title: typeof task.title === 'string' ? task.title : undefined,
         start: start ? { ...start } : undefined,
         finish: finish ? { ...finish } : undefined,
-        startAddress: sanitizeAddress(task.start_location),
-        finishAddress: sanitizeAddress(task.end_location),
+        startAddress: sanitizeAddress(startPoint?.title ?? task.start_location),
+        finishAddress: sanitizeAddress(finishPoint?.title ?? task.end_location),
         distanceKm,
       };
       routeTasks.push(taskEntry);
 
-      if (start) {
+      for (const point of points) {
+        const coordinates = cloneCoords(point.coordinates ?? null);
+        if (!coordinates) continue;
+        const addressCandidate =
+          point.title ??
+          (point.kind === 'finish' ? task.end_location : task.start_location);
         stops.push({
           order: stops.length,
-          kind: 'start',
+          kind: point.kind,
           taskId: objectId,
-          coordinates: { ...start },
-          address: sanitizeAddress(task.start_location),
+          coordinates: { ...coordinates },
+          address: sanitizeAddress(addressCandidate),
         });
-        coordsForLink.push(start);
-      }
-      if (finish) {
-        stops.push({
-          order: stops.length,
-          kind: 'finish',
-          taskId: objectId,
-          coordinates: { ...finish },
-          address: sanitizeAddress(task.end_location),
-        });
-        coordsForLink.push(finish);
+        coordsForLink.push(coordinates);
       }
       if (typeof distanceKm === 'number') {
         routeDistance += distanceKm;

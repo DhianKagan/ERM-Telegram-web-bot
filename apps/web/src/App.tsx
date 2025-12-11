@@ -71,7 +71,10 @@ function AppContent({
   if (isAttachmentMenu) {
     return (
       <>
-        <ErrorBoundary fallback={<div>Произошла ошибка</div>}>
+        <ErrorBoundary
+          fallback={<div>Произошла ошибка</div>}
+          resetKeys={[location.pathname]}
+        >
           <Suspense fallback={<div>{t('loading')}</div>}>
             <AttachmentMenu />
           </Suspense>
@@ -93,7 +96,10 @@ function AppContent({
   if (!user) {
     return (
       <>
-        <ErrorBoundary fallback={<div>Произошла ошибка</div>}>
+        <ErrorBoundary
+          fallback={<div>Произошла ошибка</div>}
+          resetKeys={[location.pathname]}
+        >
           <LoginLayout />
         </ErrorBoundary>
         {alert}

@@ -1,10 +1,11 @@
 // Компонент границы ошибок для перехвата исключений и вывода запасного UI.
 // Основные модули: React.
-import React, { type ReactNode, useState } from 'react';
+import React, { type ReactNode, useEffect, useMemo, useState } from 'react';
 
 interface Props {
   fallback: ReactNode;
   children: ReactNode;
+  resetKeys?: ReadonlyArray<unknown>;
 }
 
 class InnerBoundary extends React.Component<{
@@ -20,8 +21,17 @@ class InnerBoundary extends React.Component<{
   }
 }
 
-export default function ErrorBoundary({ fallback, children }: Props) {
+export default function ErrorBoundary({
+  fallback,
+  children,
+  resetKeys = [],
+}: Props) {
   const [hasError, setHasError] = useState(false);
+  const deps = useMemo(() => resetKeys, [resetKeys]);
+
+  useEffect(() => {
+    setHasError(false);
+  }, deps);
 
   if (hasError) {
     return <>{fallback}</>;

@@ -1,26 +1,65 @@
 // apps/web/src/lib/mapLibrary.ts
-// Minimal createMap no-op for deployments without a real map.
-// If components call createMap, they will get a lightweight stub object
-// with commonly used methods (safe no-ops).
+// Minimal createMap no-op для окружений без карт.
+// Возвращает заглушку с безопасными методами.
 
-type MaybeString = string | undefined | null;
+type MapEventHandler = (event: unknown) => void;
+
+interface MapStub {
+  on: (eventName: string, handler?: MapEventHandler) => void;
+  off: (eventName: string, handler?: MapEventHandler) => void;
+  addControl: (control: unknown, position?: unknown) => void;
+  addSource: (id: string, source: unknown) => void;
+  addLayer: (layer: unknown, before?: string) => void;
+  hasImage: (id: string) => boolean;
+  addImage: (id: string, image: unknown) => void;
+  isStyleLoaded: () => boolean;
+  setStyle: (style: unknown, options?: unknown) => void;
+  remove: () => void;
+}
 
 export async function createMap(
-  _container: string | HTMLElement,
-  _opts?: { center?: [number, number]; zoom?: number },
-) {
-  // minimal stub map object with safe no-op methods used by the app
-  const stub = {
-    on: (_ev: string, _cb?: any) => {},
-    off: (_ev: string, _cb?: any) => {},
-    addControl: (_ctrl: any, _pos?: any) => {},
-    addSource: (_id: string, _src: any) => {},
-    addLayer: (_layer: any, _before?: string | undefined) => {},
-    hasImage: (_id: string) => false,
-    addImage: (_id: string, _img: any) => {},
+  container: string | HTMLElement,
+  options: { center?: [number, number]; zoom?: number } = {},
+): Promise<MapStub> {
+  void container;
+  void options;
+
+  const stub: MapStub = {
+    on: (eventName, handler) => {
+      void eventName;
+      void handler;
+    },
+    off: (eventName, handler) => {
+      void eventName;
+      void handler;
+    },
+    addControl: (control, position) => {
+      void control;
+      void position;
+    },
+    addSource: (id, source) => {
+      void id;
+      void source;
+    },
+    addLayer: (layer, before) => {
+      void layer;
+      void before;
+    },
+    hasImage: (id) => {
+      void id;
+      return false;
+    },
+    addImage: (id, image) => {
+      void id;
+      void image;
+    },
     isStyleLoaded: () => true,
-    setStyle: (_style: any, _opts?: any) => {},
+    setStyle: (style, opts) => {
+      void style;
+      void opts;
+    },
     remove: () => {},
   };
-  return stub as unknown as any;
+
+  return stub;
 }

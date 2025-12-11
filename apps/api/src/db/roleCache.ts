@@ -13,7 +13,14 @@ function normalizeRoleName(name: string): string {
 }
 
 async function loadRoleId(name: string): Promise<CacheValue> {
-  const role = await Role.findOne({ name }).select({ _id: 1 });
+  const normalized = normalizeRoleName(name);
+  if (!normalized) return null;
+
+  const role = await Role.findOneAndUpdate(
+    { name: normalized },
+    { $setOnInsert: { name: normalized, permissions: [] } },
+    { upsert: true, new: true, projection: { _id: 1 } },
+  );
   return role ? (role._id as Types.ObjectId) : null;
 }
 

@@ -63,6 +63,11 @@ import {
   finalizePendingUploads as finalizeTaskUploads,
   purgeTemporaryUploads as dropPendingUploads,
 } from './uploadFinalizer';
+import { syncTaskPoints } from '../utils/taskPoints';
+import {
+  prepareIncomingPoints,
+  TaskPointsValidationError,
+} from '../utils/taskPointsInput';
 import ReportGeneratorService from '../services/reportGenerator';
 
 type TelegramMessageCleanupMeta = {
@@ -369,6 +374,105 @@ export default class TasksController {
     }
     if (Array.isArray(task.assignees)) task.assignees.forEach(add);
     return recipients;
+  }
+
+  private sendPointsProblem(
+    error: TaskPointsValidationError,
+    req: Request,
+    res: Response,
+  ): void {
+    const title = 'Маршрут недопустим';
+    if (error.code === 'points_limit_exceeded') {
+      sendProblem(req, res, {
+        type: 'about:blank',
+        title,
+        status: 422,
+        detail: error.message,
+      });
+      return;
+    }
+
+    if (error.code === 'invalid_segment') {
+      const details =
+        (error.details as
+          | { reason?: string; index?: number; maxSegmentM?: number }
+          | undefined) ?? {};
+      let detail = 'Не удалось проверить сегменты маршрута';
+      if (details.reason === 'too_few_points') {
+        detail = 'Укажите минимум две точки с координатами';
+      } else if (details.reason === 'segment_too_long') {
+        const index = Number.isFinite(details.index)
+          ? Number(details.index) + 1
+          : undefined;
+        const boundary = Number.isFinite(details.maxSegmentM)
+          ? `${details.maxSegmentM} метров`
+          : 'допустимый предел';
+        if (index !== undefined) {
+          detail = `Сегмент между точками ${index} и ${index + 1} превышает ${boundary}`;
+        } else {
+          detail = `Расстояние между точками превышает ${boundary}`;
+        }
+      }
+      sendProblem(req, res, {
+        type: 'about:blank',
+        title,
+        status: 422,
+        detail,
+      });
+      return;
+    }
+
+    sendProblem(req, res, {
+      type: 'about:blank',
+      title,
+      status: 422,
+      detail: error.message,
+    });
+  }
+
+  private async applyPointsPayload(
+    payload: Partial<TaskDocument>,
+    req: Request,
+    res: Response,
+  ): Promise<boolean> {
+    try {
+      const preparedPoints = await prepareIncomingPoints(payload.points);
+      if (Array.isArray(payload.points) || preparedPoints.length) {
+        payload.points = preparedPoints as TaskDocument['points'];
+      }
+      return true;
+    } catch (error) {
+      if (error instanceof TaskPointsValidationError) {
+        this.sendPointsProblem(error, req, res);
+        return false;
+      }
+      throw error;
+    }
+  }
+
+  private normalizeTaskResponse(
+    task: TaskEx | TaskDocument | null,
+  ): TaskEx | null {
+    if (!task) {
+      return null;
+    }
+    const plain =
+      typeof (task as { toObject?: () => unknown }).toObject === 'function'
+        ? ((task as { toObject: () => unknown }).toObject() as TaskEx)
+        : ({ ...(task as Record<string, unknown>) } as TaskEx);
+
+    syncTaskPoints(
+      plain as TaskDocument & {
+        points?: unknown;
+        startCoordinates?: unknown;
+        finishCoordinates?: unknown;
+        start_location?: unknown;
+        end_location?: unknown;
+        google_route_url?: unknown;
+      },
+    );
+
+    return plain;
   }
 
   private isBotRecipientError(error: unknown): boolean {
@@ -2651,8 +2755,12 @@ export default class TasksController {
       }
       total = tasks.length;
     }
+    const normalizedTasks = tasks
+      .map((task) => this.normalizeTaskResponse(task))
+      .filter((task): task is TaskEx => Boolean(task));
+
     const ids = new Set<number>();
-    tasks.forEach((t) => {
+    normalizedTasks.forEach((t) => {
       (t.assignees || []).forEach((id: number) => ids.add(id));
       (t.controllers || []).forEach((id: number) => ids.add(id));
       if (t.created_by) ids.add(t.created_by);
@@ -2661,7 +2769,7 @@ export default class TasksController {
       (t.history || []).forEach((h) => ids.add(h.changed_by));
     });
     const users = await getUsersMap(Array.from(ids));
-    sendCached(req, res, { tasks, users, total });
+    sendCached(req, res, { tasks: normalizedTasks, users, total });
   };
 
   detail = async (req: Request, res: Response) => {
@@ -2685,7 +2793,8 @@ export default class TasksController {
       ids.add(task.transport_driver_id);
     (task.history || []).forEach((h) => ids.add(h.changed_by));
     const users = await getUsersMap(Array.from(ids));
-    res.json({ task, users });
+    const normalizedTask = this.normalizeTaskResponse(task);
+    res.json({ task: normalizedTask, users });
   };
 
   create = [
@@ -2720,6 +2829,10 @@ export default class TasksController {
         payload.assigned_user_id = allowed[0];
       } else {
         payload.kind = 'task';
+      }
+      if (!(await this.applyPointsPayload(payload, req, res))) {
+        await cleanupRequestUploads(req);
+        return;
       }
       let task: TaskDocument;
       try {
@@ -2758,7 +2871,8 @@ export default class TasksController {
       await writeLog(
         `Создана ${label.toLowerCase()} ${task._id} пользователем ${req.user!.id}/${req.user!.username}`,
       );
-      res.status(201).json(task);
+      const normalizedTask = this.normalizeTaskResponse(task);
+      res.status(201).json(normalizedTask);
       void this.notifyTaskCreated(task, actorId).catch((error) => {
         console.error(
           'Не удалось отправить уведомление о создании задачи',
@@ -2796,6 +2910,10 @@ export default class TasksController {
       payload.created_by = actorId;
       payload.assignees = allowed;
       payload.assigned_user_id = allowed[0];
+      if (!(await this.applyPointsPayload(payload, req, res))) {
+        await cleanupRequestUploads(req);
+        return;
+      }
       let task: TaskDocument;
       try {
         task = (await this.service.create(payload, actorId)) as TaskDocument;
@@ -2822,7 +2940,8 @@ export default class TasksController {
       await writeLog(
         `Создана заявка ${task._id} пользователем ${req.user!.id}/${req.user!.username}`,
       );
-      res.status(201).json(task);
+      const normalizedTask = this.normalizeTaskResponse(task);
+      res.status(201).json(normalizedTask);
       void this.notifyTaskCreated(task, actorId).catch((error) => {
         console.error(
           'Не удалось отправить уведомление о создании задачи',
@@ -2946,13 +3065,13 @@ export default class TasksController {
         });
         return;
       }
+      if (!(await this.applyPointsPayload(nextPayload, req, res))) {
+        await cleanupRequestUploads(req);
+        return;
+      }
       let task: TaskDocument | null;
       try {
-        task = await this.service.update(
-          req.params.id,
-          req.body as Partial<TaskDocument>,
-          actorId,
-        );
+        task = await this.service.update(req.params.id, nextPayload, actorId);
       } catch (error) {
         await cleanupRequestUploads(req);
         const err = error as { code?: string; message?: string };
@@ -3039,7 +3158,8 @@ export default class TasksController {
           changedFields,
         },
       );
-      res.json(task);
+      const normalizedTask = this.normalizeTaskResponse(task);
+      res.json(normalizedTask);
       const docId =
         typeof task._id === 'object' &&
         task._id !== null &&

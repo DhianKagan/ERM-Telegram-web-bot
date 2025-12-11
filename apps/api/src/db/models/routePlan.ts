@@ -62,7 +62,7 @@ export type RoutePlanDocument = HydratedDocument<RoutePlanAttrs>;
 const pointSchema = new Schema<RoutePlanStopEntry>(
   {
     order: { type: Number, required: true },
-    kind: { type: String, enum: ['start', 'finish'], required: true },
+    kind: { type: String, enum: ['start', 'via', 'finish'], required: true },
     taskId: { type: Schema.Types.ObjectId, ref: 'Task', required: true },
     coordinates: { lat: Number, lng: Number },
     address: String,
@@ -157,5 +157,6 @@ const routePlanSchema = new Schema<RoutePlanAttrs>(
 
 routePlanSchema.index({ status: 1, createdAt: -1 });
 routePlanSchema.index({ 'routes.tasks.taskId': 1 });
+routePlanSchema.index({ 'routes.stops.kind': 1 });
 
 export const RoutePlan = model<RoutePlanAttrs>('RoutePlan', routePlanSchema);

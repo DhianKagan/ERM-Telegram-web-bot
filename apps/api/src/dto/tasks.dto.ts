@@ -37,6 +37,46 @@ const statusList: readonly string[] = statusField?.options ?? [
   'Отменена',
 ];
 
+const allowedPointKinds = ['start', 'via', 'finish'] as const;
+
+const pointsRule = () =>
+  body('points')
+    .optional()
+    .isArray()
+    .custom((value) => {
+      if (!Array.isArray(value)) return false;
+      value.forEach((point, idx) => {
+        if (!point || typeof point !== 'object') {
+          throw new Error(`Точка ${idx + 1} должна быть объектом`);
+        }
+        const payload = point as Record<string, unknown>;
+        if (
+          payload.kind !== undefined &&
+          (typeof payload.kind !== 'string' ||
+            !allowedPointKinds.includes(
+              payload.kind.trim() as (typeof allowedPointKinds)[number],
+            ))
+        ) {
+          throw new Error(`Некорректный тип точки ${idx + 1}`);
+        }
+        if (payload.coordinates !== undefined) {
+          const coords = payload.coordinates as Record<string, unknown>;
+          const lat = Number(coords.lat);
+          const lng = Number(coords.lng);
+          const latValid =
+            coords.lat === undefined ||
+            (Number.isFinite(lat) && lat >= -90 && lat <= 90);
+          const lngValid =
+            coords.lng === undefined ||
+            (Number.isFinite(lng) && lng >= -180 && lng <= 180);
+          if (!latValid || !lngValid) {
+            throw new Error(`Некорректные координаты точки ${idx + 1}`);
+          }
+        }
+      });
+      return true;
+    });
+
 export class CreateTaskDto {
   static rules() {
     return [
@@ -85,6 +125,7 @@ export class CreateTaskDto {
       optionalFloatField('cargo_volume_m3'),
       optionalFloatField('cargo_weight_kg'),
       optionalFloatField('payment_amount'),
+      pointsRule(),
     ];
   }
 }
@@ -141,6 +182,7 @@ export class UpdateTaskDto {
       optionalFloatField('cargo_volume_m3'),
       optionalFloatField('cargo_weight_kg'),
       optionalFloatField('payment_amount'),
+      pointsRule(),
     ];
   }
 }

@@ -2,8 +2,9 @@
 import * as q from '../db/queries';
 import type { TaskDocument } from '../db/model';
 import { ensureTaskLinksShort } from './taskLinks';
-import { parsePointInput, LatLng } from '../utils/geo';
+import { parsePointInput } from '../utils/geo';
 import { logger } from '../services/wgLogEngine';
+import { syncTaskPoints } from '../utils/taskPoints';
 
 /**
  * TaskData — частичный объект задачи. Используем TaskDocument для полей схемы.
@@ -13,6 +14,7 @@ export type TaskData = Partial<TaskDocument> & {
   completed_at?: string | Date | null;
   startCoordinates?: unknown;
   finishCoordinates?: unknown;
+  points?: unknown;
   google_route_url?: string | null;
   route_distance_km?: number | null;
   due_date?: Date;
@@ -60,7 +62,10 @@ function normalizeTaskCoordinates(data: TaskData): void {
         // keep normalized form
         data.startCoordinates = parsed as TaskDocument['startCoordinates'];
       } else {
-        logger.warn({ val: data.startCoordinates }, 'normalizeTaskCoordinates: unable to parse startCoordinates');
+        logger.warn(
+          { val: data.startCoordinates },
+          'normalizeTaskCoordinates: unable to parse startCoordinates',
+        );
         data.startCoordinates = undefined;
       }
     }
@@ -69,7 +74,10 @@ function normalizeTaskCoordinates(data: TaskData): void {
       if (parsed) {
         data.finishCoordinates = parsed as TaskDocument['finishCoordinates'];
       } else {
-        logger.warn({ val: data.finishCoordinates }, 'normalizeTaskCoordinates: unable to parse finishCoordinates');
+        logger.warn(
+          { val: data.finishCoordinates },
+          'normalizeTaskCoordinates: unable to parse finishCoordinates',
+        );
         data.finishCoordinates = undefined;
       }
     }
@@ -86,6 +94,7 @@ function normalizeTaskCoordinates(data: TaskData): void {
  * Поля route_distance_km и google_route_url сбрасываются.
  */
 async function applyRouteInfo(data: TaskData = {}): Promise<void> {
+  syncTaskPoints(data as Partial<TaskDocument>);
   normalizeTaskCoordinates(data);
 
   // intentionally do not calculate or set google_route_url / route_distance_km
@@ -104,8 +113,11 @@ export const create = async (
   return q.createTask(payload, userId);
 };
 
-export const get = (filters: Record<string, unknown>, page: number, limit: number): Promise<unknown> =>
-  q.getTasks(filters, page, limit);
+export const get = (
+  filters: Record<string, unknown>,
+  page: number,
+  limit: number,
+): Promise<unknown> => q.getTasks(filters, page, limit);
 
 export const getById = (id: string): Promise<unknown> => q.getTask(id);
 
@@ -120,9 +132,16 @@ export const update = async (
   return q.updateTask(id, payload, userId);
 };
 
-export const addTime = (id: string, minutes: number, userId = 0): Promise<unknown> => q.addTime(id, minutes, userId);
+export const addTime = (
+  id: string,
+  minutes: number,
+  userId = 0,
+): Promise<unknown> => q.addTime(id, minutes, userId);
 
-export const bulk = async (ids: string[], data: TaskData = {}): Promise<unknown> => {
+export const bulk = async (
+  ids: string[],
+  data: TaskData = {},
+): Promise<unknown> => {
   const draft: TaskData = { ...(data ?? {}) };
   if (Object.prototype.hasOwnProperty.call(draft, 'status')) {
     const status = draft.status;
@@ -142,6 +161,8 @@ export const bulk = async (ids: string[], data: TaskData = {}): Promise<unknown>
   return q.bulkUpdate(ids, payload);
 };
 
-export const summary = (filters: Record<string, unknown>): Promise<unknown> => q.summary(filters);
+export const summary = (filters: Record<string, unknown>): Promise<unknown> =>
+  q.summary(filters);
 export const remove = (id: string): Promise<unknown> => q.deleteTask(id);
-export const mentioned = (userId: number): Promise<unknown> => q.listMentionedTasks(userId);
+export const mentioned = (userId: number): Promise<unknown> =>
+  q.listMentionedTasks(userId);

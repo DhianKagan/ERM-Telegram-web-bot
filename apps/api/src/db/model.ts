@@ -132,6 +132,14 @@ export interface Coordinates {
   lng: number;
 }
 
+export interface TaskPoint {
+  order: number;
+  kind: 'start' | 'via' | 'finish';
+  title?: string;
+  sourceUrl?: string;
+  coordinates?: Coordinates;
+}
+
 export interface Comment {
   author_id: number;
   text: string;
@@ -242,6 +250,7 @@ export interface TaskAttrs {
   end_location?: string;
   end_location_link?: string;
   finishCoordinates?: Coordinates;
+  points?: TaskPoint[];
   google_route_url?: string;
   route_distance_km?: number | null;
   route_nodes?: number[];
@@ -353,6 +362,19 @@ const taskSchema = new Schema<TaskDocument>(
     end_location: String,
     end_location_link: String,
     finishCoordinates: { lat: Number, lng: Number },
+    points: [
+      {
+        order: { type: Number, required: true },
+        kind: {
+          type: String,
+          enum: ['start', 'via', 'finish'],
+          required: true,
+        },
+        title: String,
+        sourceUrl: String,
+        coordinates: { lat: Number, lng: Number },
+      },
+    ],
     google_route_url: String,
     // Расстояние маршрута в километрах
     route_distance_km: Number,
@@ -463,6 +485,53 @@ taskSchema.pre('init', (doc: Record<string, unknown>) => {
     if (normalized) {
       doc.priority = normalized;
     }
+  }
+});
+
+taskSchema.pre<TaskDocument>('validate', function syncLegacyPoints() {
+  if (Array.isArray(this.points) && this.points.length) {
+    const startPoint =
+      this.points.find((p) => p.kind === 'start') ?? this.points[0];
+    const finishPoint =
+      [...this.points].reverse().find((p) => p.kind === 'finish') ??
+      this.points[this.points.length - 1];
+
+    if (startPoint?.coordinates) {
+      this.startCoordinates = startPoint.coordinates;
+      if (!this.start_location && startPoint.title) {
+        this.start_location = startPoint.title;
+      }
+    }
+    if (finishPoint?.coordinates) {
+      this.finishCoordinates = finishPoint.coordinates;
+      if (!this.end_location && finishPoint.title) {
+        this.end_location = finishPoint.title;
+      }
+    }
+    return;
+  }
+
+  const points: TaskPoint[] = [];
+  if (this.startCoordinates) {
+    points.push({
+      order: points.length,
+      kind: 'start',
+      coordinates: this.startCoordinates,
+      title: this.start_location ?? undefined,
+      sourceUrl: this.google_route_url ?? undefined,
+    });
+  }
+  if (this.finishCoordinates) {
+    points.push({
+      order: points.length,
+      kind: 'finish',
+      coordinates: this.finishCoordinates,
+      title: this.end_location ?? undefined,
+      sourceUrl: this.google_route_url ?? undefined,
+    });
+  }
+  if (points.length) {
+    this.points = points;
   }
 });
 

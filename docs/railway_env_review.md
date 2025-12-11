@@ -15,11 +15,11 @@
 - Используется внутренний адрес Railway "erm-mongodb.railway.internal" с указанием базы "test" и параметра "authSource=admin", что проходит валидацию конфигурации.
 - Пароль хранится в Railway; при необходимости можно добавить параметр "directConnection=true", но текущая строка уже валидна для приватной сети Railway.
 
-## URL-адреса и карта
+## URL-адреса и маршруты
 
-- APP_URL и COOKIE_DOMAIN указывают на "https://agromarket.up.railway.app", CORS_ORIGINS включает домен клиента и протокольный источник Protomaps.
-- ROUTING_URL направлен на базовый хост OSRM, VITE_ROUTING_URL — на конечную точку `/route/v1/driving`; карта использует стиль Protomaps и адресные плитки pmtiles://tiles/addresses.pmtiles.
-- CSP allowlist дополнен источниками "https://protomaps.github.io" и разрешением "blob:" для скриптов, поэтому загрузка стиля и шрифтов Protomaps не должна блокироваться.
+- APP_URL и COOKIE_DOMAIN указывают на "https://agromarket.up.railway.app", CORS_ORIGINS ограничен доменом клиента.
+- ROUTING_URL направлен на базовый хост OSRM, VITE_ROUTING_URL — на конечную точку `/route/v1/driving`.
+- CSP allowlist можно оставить пустым: внешние источники карты больше не используются.
 
 ## Порты
 
@@ -28,11 +28,11 @@
 ## Дополнительные параметры
 
 - SCHEDULE*CRON=*/1 \_ \* \* \* запускает планировщик ежеминутно; STORAGE_DIR=/storage и RAILWAY_DOCKERFILE_PATH=Dockerfile совпадают с инфраструктурой.
-- VITE\_\* значения для бота и карты синхронизированы между API и клиентом, что исключает рассинхронизацию CSP и фронтенда.
+- VITE\_\* значения для бота и маршрутизации синхронизированы между API и клиентом.
 
 ## Итог
 
 1. Очистите PORT и HOST_PORT в настройках Railway, чтобы использовался порт платформы.
 2. После очистки перезапустите сервис Railway, чтобы новый порт подтянулся из переменных платформы.
 3. Оставьте текущую строку MONGO_DATABASE_URL с authSource=admin и внутренним хостом; при переносе в публичный прокси добавьте "directConnection=true".
-4. Убедитесь, что карта использует те же URL и allowlist (Protomaps, pmtiles), а секреты заданы в панели Railway.
+4. Проверьте, что ROUTING_URL и VITE_ROUTING_URL совпадают и секреты заданы в панели Railway.

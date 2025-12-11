@@ -201,7 +201,6 @@
     "metaDescription": "Планирование маршрутов, управление автопарком и анализ доставок по агрегированным данным.",
     "planSectionTitle": "Маршрутный план",
     "planSummary": "Итоги плана",
-    "mapFallbackWarning": "Карта использует временные растровые тайлы OpenStreetMap. Добавьте basemap.pmtiles и addresses.pmtiles в public/tiles, чтобы вернуть детализированный стиль.",
     "planStatus": "Статус",
     "planStatusValue": {
       "draft": "Черновик",

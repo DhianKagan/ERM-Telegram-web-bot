@@ -12,12 +12,6 @@ type CSPConfig = NonNullable<
   Exclude<HelmetOptions['contentSecurityPolicy'], boolean>
 >;
 
-const DEFAULT_MAP_STYLE_URL = 'https://tiles.openfreemap.org/styles/liberty';
-
-const ensureEntry = (bucket: string[], value: string) => {
-  if (!bucket.includes(value)) bucket.push(value);
-};
-
 const parseList = (env?: string): string[] =>
   env
     ? env
@@ -27,53 +21,28 @@ const parseList = (env?: string): string[] =>
     : [];
 
 export default function applySecurity(app: express.Express): void {
-  const protomapsAssetsOrigin = 'https://protomaps.github.io';
   const reportOnly = process.env.CSP_REPORT_ONLY !== 'false';
   app.use((_, res, next) => {
     res.locals.cspNonce = crypto.randomBytes(16).toString('base64');
     next();
   });
 
-  const mapStyleUrl =
-    process.env.VITE_MAP_STYLE_URL && process.env.VITE_MAP_STYLE_URL.trim()
-      ? process.env.VITE_MAP_STYLE_URL.trim()
-      : DEFAULT_MAP_STYLE_URL;
-  let mapStyleOrigin: string | null = null;
-  try {
-    mapStyleOrigin = new URL(mapStyleUrl).origin;
-  } catch {
-    mapStyleOrigin = null;
-  }
   const connectSrc = [
     "'self'",
     'https://router.project-osrm.org',
     ...parseList(process.env.CSP_CONNECT_SRC_ALLOWLIST),
   ];
-  const protomapsOrigin = 'https://api.protomaps.com';
-  ensureEntry(connectSrc, protomapsAssetsOrigin);
-  ensureEntry(connectSrc, protomapsOrigin);
   try {
     connectSrc.push(new URL(config.routingUrl).origin);
   } catch {
     // Игнорируем некорректный routingUrl
   }
-  if (mapStyleOrigin) {
-    ensureEntry(connectSrc, mapStyleOrigin);
-  }
 
   const imgSrc = [
     "'self'",
     'data:',
-    'https://a.tile.openstreetmap.org',
-    'https://b.tile.openstreetmap.org',
-    'https://c.tile.openstreetmap.org',
     ...parseList(process.env.CSP_IMG_SRC_ALLOWLIST),
   ];
-  ensureEntry(imgSrc, protomapsOrigin);
-  ensureEntry(imgSrc, protomapsAssetsOrigin);
-  if (mapStyleOrigin) {
-    ensureEntry(imgSrc, mapStyleOrigin);
-  }
 
   type ResWithNonce = ServerResponse & { locals: { cspNonce: string } };
   const scriptSrc = [
@@ -91,10 +60,6 @@ export default function applySecurity(app: express.Express): void {
   ];
 
   const fontSrc = ["'self'", ...parseList(process.env.CSP_FONT_SRC_ALLOWLIST)];
-  ensureEntry(fontSrc, protomapsAssetsOrigin);
-  if (mapStyleOrigin) {
-    ensureEntry(fontSrc, mapStyleOrigin);
-  }
 
   const workerSrc = [
     "'self'",

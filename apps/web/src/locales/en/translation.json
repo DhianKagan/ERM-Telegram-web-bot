@@ -177,7 +177,6 @@
     "metaDescription": "Plan routes, manage fleet logistics, and review delivery progress from consolidated updates.",
     "planSectionTitle": "Route plan",
     "planSummary": "Plan summary",
-    "mapFallbackWarning": "The map currently uses temporary OpenStreetMap raster tiles. Provide public/tiles/basemap.pmtiles and addresses.pmtiles to restore the detailed vector style.",
     "planStatus": "Status",
     "planStatusValue": {
       "draft": "Draft",

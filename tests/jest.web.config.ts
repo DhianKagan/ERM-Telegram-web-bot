@@ -18,8 +18,6 @@ const config: Config = {
     '^@/(.*)$': '<rootDir>/apps/web/src/$1',
     '^shared$': '<rootDir>/packages/shared/src',
     '^shared/(.*)$': '<rootDir>/packages/shared/src/$1',
-    '^maplibre-gl$': 'maplibre-gl',
-    '^maplibre-gl-draw$': 'maplibre-gl-draw',
     '\\.(css|less|scss)$': '<rootDir>/tests/styleMock.ts',
   },
   testPathIgnorePatterns: ['<rootDir>/apps/web/src/types/'],

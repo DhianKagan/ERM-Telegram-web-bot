@@ -1879,22 +1879,8 @@ export default function CollectionsPage() {
     const summary = summarizeRecord(meta as Record<string, unknown>);
     return summary || SETTINGS_BADGE_EMPTY;
   }, []);
-//
-  const formatCoordinates = useCallback(
-    (latitude?: number, longitude?: number) => {
-      const parts: string[] = [];
-      if (typeof latitude === 'number' && Number.isFinite(latitude)) {
-        parts.push(latitude.toString());
-      }
-      if (typeof longitude === 'number' && Number.isFinite(longitude)) {
-        parts.push(longitude.toString());
-      }
-      if (!parts.length) return SETTINGS_BADGE_EMPTY;
-      return parts.join(', ');
-    },
-    [],
-  );
-//
+
+
   const parseCoordinateInput = useCallback((value?: string) => {
     if (!value) return undefined;
     const trimmed = value.trim();

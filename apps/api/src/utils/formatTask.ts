@@ -321,17 +321,19 @@ const emphasizeValue = (
   const prefix = emoji ? `${emoji} ` : '';
   return `*${prefix}${escaped}*`;
 };
-
+   // допускаем `null` для совместимости со shared.Task и прочими сервисами,
+  // где значения могут быть string | null | undefined
+  
 type TaskData = Task & {
   request_id?: string;
   task_number?: string;
   task_type?: string;
   due_date?: string | Date;
   start_date?: string | Date;
-  start_location?: string;
-  end_location?: string;
-  start_location_link?: string;
-  end_location_link?: string;
+  start_location?: string | null;
+  end_location?: string | null;
+  start_location_link?: string | null;
+  end_location_link?: string | null;
   transport_type?: string;
   payment_method?: Task['payment_method'];
   priority?: string;
@@ -341,6 +343,7 @@ type TaskData = Task & {
   created_by?: number;
   comments?: { author_id?: number; text?: string }[];
   task_description?: string;
+ 
 };
 
 const appUrlBase = configuredAppUrl.replace(/\/+$/, '');

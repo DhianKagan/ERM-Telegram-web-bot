@@ -462,7 +462,7 @@ export default class TasksController {
         : ({ ...(task as Record<string, unknown>) } as TaskEx);
 
     syncTaskPoints(
-      plain as TaskDocument & {
+      plain as unknown as TaskDocument & {
         points?: unknown;
         startCoordinates?: unknown;
         finishCoordinates?: unknown;

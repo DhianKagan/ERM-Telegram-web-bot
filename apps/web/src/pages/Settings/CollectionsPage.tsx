@@ -929,6 +929,7 @@ const hasAccessorKey = (
 ): column is CollectionColumn & { accessorKey: string } =>
   typeof (column as { accessorKey?: unknown }).accessorKey === 'string';
   
+const formatCoordinates = formatCoordinatesValue;  
 const formatCoordinatesValue = (latitude?: number, longitude?: number): string => {
   const parts: string[] = [];
   if (typeof latitude === 'number' && Number.isFinite(latitude)) {

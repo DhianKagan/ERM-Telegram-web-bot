@@ -928,7 +928,19 @@ const hasAccessorKey = (
   column: CollectionColumn,
 ): column is CollectionColumn & { accessorKey: string } =>
   typeof (column as { accessorKey?: unknown }).accessorKey === 'string';
-
+  
+const formatCoordinatesValue = (latitude?: number, longitude?: number): string => {
+  const parts: string[] = [];
+  if (typeof latitude === 'number' && Number.isFinite(latitude)) {
+    parts.push(latitude.toString());
+  }
+  if (typeof longitude === 'number' && Number.isFinite(longitude)) {
+    parts.push(longitude.toString());
+  }
+  if (!parts.length) return SETTINGS_BADGE_EMPTY;
+  return parts.join(', ');
+};
+  
 export default function CollectionsPage() {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();

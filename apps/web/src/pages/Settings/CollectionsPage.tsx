@@ -1852,7 +1852,7 @@ export default function CollectionsPage() {
       }
       if (type === 'objects') {
         const object = toCollectionObject(item);
-        const coordinates = formatCoordinates(
+        const coordinates = formatCoordinatesValue(
           object.latitude,
           object.longitude,
         );
@@ -1870,7 +1870,7 @@ export default function CollectionsPage() {
       allDivisions,
       departmentMap,
       divisionMap,
-      formatCoordinates,
+      formatCoordinatesValue,
     ],
   );
 
@@ -1879,7 +1879,7 @@ export default function CollectionsPage() {
     const summary = summarizeRecord(meta as Record<string, unknown>);
     return summary || SETTINGS_BADGE_EMPTY;
   }, []);
-
+//
   const formatCoordinates = useCallback(
     (latitude?: number, longitude?: number) => {
       const parts: string[] = [];
@@ -1894,7 +1894,7 @@ export default function CollectionsPage() {
     },
     [],
   );
-
+//
   const parseCoordinateInput = useCallback((value?: string) => {
     if (!value) return undefined;
     const trimmed = value.trim();

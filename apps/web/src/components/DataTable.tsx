@@ -178,25 +178,32 @@ const renderBadgeContent = (
 };
 
 const containerClasses = [
-  'relative w-full overflow-auto rounded-xl border border-border/70',
+  // Важно: отдельно скроллим по X, отдельно по Y — таблица перестаёт “ломать” сетку на узких экранах
+  'relative w-full overflow-x-auto overflow-y-auto rounded-xl border border-border/70',
   'bg-background shadow-sm dark:border-border/60',
 ].join(' ');
 
 const tableClasses = [
-  'min-w-full table-auto caption-bottom font-ui text-[12px] leading-tight',
+  // w-max + min-w-full → на широких экранах заполняет контейнер,
+  // а на узких не “сжимает” колонки до нечитаемого состояния (включается горизонтальный скролл).
+  'w-max min-w-full table-fixed caption-bottom font-ui text-[12px] leading-tight',
   'text-foreground dark:text-foreground sm:text-[13px]',
 ].join(' ');
 
 const headerCellClasses = [
-  'border-b border-border/70 px-1.5 py-1.5 text-left align-middle font-semibold',
+  // Sticky header: удобно в админке при скролле списка.
+  'sticky top-0 z-10 border-b border-border/70 px-1.5 py-2 text-left align-middle font-semibold',
+  'bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/70',
   'text-[11px] leading-snug text-foreground sm:px-2 sm:text-[13px]',
-  'whitespace-normal',
+  // Ключевая часть “наведения порядка”: больше не рвём строки в заголовках.
+  'whitespace-nowrap',
 ].join(' ');
 
 const bodyCellClasses = [
-  'relative z-[1] px-1.5 py-1.5 align-top text-[12px] leading-snug',
+  'relative z-[1] px-1.5 py-2 align-top text-[12px] leading-snug',
   'text-foreground sm:px-2 sm:text-sm',
-  'whitespace-normal',
+  // Ключевая часть: строки становятся компактными, а “длиннота” уходит в горизонтальный скролл.
+  'whitespace-nowrap',
 ].join(' ');
 
 const bodyRowClasses = [
@@ -207,7 +214,7 @@ const bodyRowClasses = [
   'dark:hover:odd:bg-slate-700 dark:hover:even:bg-slate-600',
 ].join(' ');
 
-const headerRowClasses = ['bg-muted/20 text-foreground'].join(' ');
+const headerRowClasses = ['text-foreground'].join(' ');
 
 export default function DataTable<T>({
   columns,
@@ -342,10 +349,7 @@ export default function DataTable<T>({
                       : Number.isFinite(baseSize)
                         ? `${baseSize}px`
                         : undefined;
-                  const headerClassName = [
-                    headerCellClasses,
-                    meta.headerClassName,
-                  ]
+                  const headerClassName = [headerCellClasses, meta.headerClassName]
                     .filter(Boolean)
                     .join(' ');
                   return (
@@ -388,8 +392,7 @@ export default function DataTable<T>({
               >
                 {row.getVisibleCells().map((cell) => {
                   const meta =
-                    (cell.column.columnDef.meta as ColumnMeta | undefined) ||
-                    {};
+                    (cell.column.columnDef.meta as ColumnMeta | undefined) || {};
                   const baseSize = cell.column.getSize();
                   const computedWidth =
                     typeof meta.width === 'string'

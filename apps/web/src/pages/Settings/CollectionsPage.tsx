@@ -929,7 +929,7 @@ const hasAccessorKey = (
 ): column is CollectionColumn & { accessorKey: string } =>
   typeof (column as { accessorKey?: unknown }).accessorKey === 'string';
   
-const formatCoordinates = formatCoordinatesValue;  
+ 
 const formatCoordinatesValue = (latitude?: number, longitude?: number): string => {
   const parts: string[] = [];
   if (typeof latitude === 'number' && Number.isFinite(latitude)) {
@@ -941,6 +941,7 @@ const formatCoordinatesValue = (latitude?: number, longitude?: number): string =
   if (!parts.length) return SETTINGS_BADGE_EMPTY;
   return parts.join(', ');
 };
+const formatCoordinates = formatCoordinatesValue; 
   
 export default function CollectionsPage() {
   const { t } = useTranslation();

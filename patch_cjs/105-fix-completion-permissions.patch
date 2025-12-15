@@ -1,0 +1,31 @@
+diff --git a/apps/api/src/db/queries.ts b/apps/api/src/db/queries.ts
+index 1d82e1f..5b9aabc 100644
+--- a/apps/api/src/db/queries.ts
++++ b/apps/api/src/db/queries.ts
+@@ -1212,13 +1212,6 @@ export async function updateTaskStatus(
+       allowCreatorCancellation = true;
+     }
+   }
+-  if (isCompletion && !isCreator) {
+-    const err = new Error(
+-      'Статус «Выполнена» может установить только создатель задачи.',
+-    );
+-    (err as Error & { code?: string }).code = 'TASK_STATUS_FORBIDDEN';
+-    throw err;
+-  }
+   if (
+     hasAssignments &&
+     !isExecutor &&
+diff --git a/apps/web/src/components/TaskDialog.tsx b/apps/web/src/components/TaskDialog.tsx
+index b42f9fd..c1d2d0a 100644
+--- a/apps/web/src/components/TaskDialog.tsx
++++ b/apps/web/src/components/TaskDialog.tsx
+@@ -976,7 +976,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+   const isTaskNew = initialStatus === 'Новая';
+   const canEditTask = canEditAll || isExecutor || (isCreator && isTaskNew);
+   const canChangeStatus = canEditAll || isExecutor || isCreator;
+-  const canFinalizeStatus = canEditAll || isCreator;
++  const canFinalizeStatus = canEditAll || isExecutor || isCreator;
+   const priorities = fields.find((f) => f.name === 'priority')?.options || [];
+   const transports =
+     fields.find((f) => f.name === 'transport_type')?.options || [];

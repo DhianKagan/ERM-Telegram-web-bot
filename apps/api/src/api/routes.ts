@@ -65,6 +65,9 @@ import {
   resolveShortLinkBySlug,
 } from '../services/shortLinks';
 
+// new imports for access check
+import { ACCESS_TASK_DELETE, hasAccess } from '../utils/accessMask';
+
 const validate = (validations: ValidationChain[]): RequestHandler[] => [
   ...validations,
   (req: Request, res: Response, next: NextFunction) => {
@@ -474,6 +477,7 @@ export default async function registerRoutes(
         });
         return;
       }
+      // actor validation: must be creator/assignee/controller
       const assigneeIds = new Set<number>();
       const controllerIds = new Set<number>();
       const mainAssignee = Number(task.assigned_user_id);
@@ -519,7 +523,7 @@ export default async function registerRoutes(
           req.params.id,
           req.body.status,
           userId,
-          { source: 'telegram' },
+          { source: 'telegram' }, // no adminOverride from tma by design
         );
         if (!updated) {
           sendProblem(req, res, {
@@ -574,10 +578,17 @@ export default async function registerRoutes(
     ]),
     asyncHandler(async (req: Request, res: Response) => {
       try {
+        // compute adminOverride from logged user access mask
+        const user = (req as RequestWithUser).user;
+        const actorId = Number(user?.id ?? 0);
+        const actorAccess = Number(user?.access ?? 0);
+        const adminOverride = hasAccess(actorAccess, ACCESS_TASK_DELETE);
+
         const updated = await updateTaskStatus(
           req.params.id,
           req.body.status,
-          Number((req as RequestWithUser).user!.id),
+          actorId,
+          { source: 'web', adminOverride },
         );
         if (!updated) {
           sendProblem(req, res, {
@@ -588,7 +599,9 @@ export default async function registerRoutes(
           });
           return;
         }
-        await writeLog(`Статус задачи ${req.params.id} -> ${req.body.status}`);
+        await writeLog(
+          `Статус задачи ${req.params.id} -> ${req.body.status} пользователем ${actorId}`,
+        );
         res.json({ status: 'ok', completed_at: updated.completed_at ?? null });
       } catch (error) {
         const err = error as { message?: string; code?: string };

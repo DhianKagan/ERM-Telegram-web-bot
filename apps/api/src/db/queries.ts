@@ -691,9 +691,11 @@ const detectTaskKind = (
   return typeLabel === REQUEST_TYPE_NAME ? 'request' : 'task';
 };
 
-export interface UpdateTaskStatusOptions {
-  source?: 'web' | 'telegram';
-}
+export type UpdateTaskStatusOptions = {
+  source?: 'web' | 'telegram' | 'tma';
+  // pass true to allow admin override of terminal state rules
+  adminOverride?: boolean;
+};
 
 function normalizeObjectId(value: unknown): Types.ObjectId | null {
   if (value instanceof Types.ObjectId) {
@@ -1179,22 +1181,31 @@ export async function updateTaskStatus(
 ): Promise<TaskDocument | null> {
   const existing = await Task.findById(id);
   if (!existing) return null;
+
   const source = options.source ?? 'web';
   const currentStatus =
     typeof existing.status === 'string'
       ? (existing.status as TaskDocument['status'])
       : undefined;
+
   const assignedUserId = normalizeUserId(existing.assigned_user_id);
   const assignees = collectAssigneeIds(existing.assignees);
   const hasAssignments = assignedUserId !== null || assignees.length > 0;
+
   const isExecutor =
     (assignedUserId !== null && assignedUserId === userId) ||
     assignees.includes(userId);
+
   const creatorId = Number(existing.created_by);
   const isCreator = Number.isFinite(creatorId) && creatorId === userId;
+
   const isCancellation = status === 'Отменена';
   const isCompletion = status === 'Выполнена';
-  let allowCreatorCancellation = false;
+
+  // admin override flag (passed from routes.ts)
+  const adminOverride = !!options.adminOverride;
+
+  // Cancellation rules: only creator, only via web (existing behavior)
   if (isCancellation) {
     if (!isCreator) {
       const err = new Error(
@@ -1210,38 +1221,50 @@ export async function updateTaskStatus(
       (err as Error & { code?: string }).code = 'TASK_CANCEL_SOURCE_FORBIDDEN';
       throw err;
     }
-    allowCreatorCancellation = true;
   }
-  if (isCompletion && !isCreator) {
+
+  // If task already in terminal state, only adminOverride may change it
+  const terminalStatuses: TaskDocument['status'][] = ['Выполнена', 'Отменена'];
+  if (
+    typeof currentStatus === 'string' &&
+    terminalStatuses.includes(currentStatus)
+  ) {
+    // allow change only for adminOverride
+    if (!adminOverride) {
+      const err = new Error(
+        'Нельзя менять статус задачи, которая уже завершена или отменена.',
+      );
+      (err as Error & { code?: string }).code = 'TASK_STATUS_FORBIDDEN';
+      throw err;
+    }
+  }
+
+  // Completion rules: allow **creator OR executor** to set as completed
+  if (isCompletion && !(isCreator || isExecutor || adminOverride)) {
     const err = new Error(
-      'Статус «Выполнена» может установить только создатель задачи.',
+      'Статус «Выполнена» может установить только создатель или исполнитель задачи.',
     );
     (err as Error & { code?: string }).code = 'TASK_STATUS_FORBIDDEN';
     throw err;
   }
+
+  // If there are assignments, only creator/executor (or adminOverride) can change status
   if (
     hasAssignments &&
-    !isExecutor &&
-    !(isCancellation && allowCreatorCancellation) &&
-    !(isCompletion && isCreator)
+    !(isExecutor || isCreator || adminOverride) &&
+    !(isCancellation && isCreator) // keep original creator-cancellation allowance
   ) {
-    throw new Error('Нет прав на изменение статуса задачи');
+    const err = new Error('Нет прав на изменение статуса задачи');
+    (err as Error & { code?: string }).code = 'TASK_STATUS_FORBIDDEN';
+    throw err;
   }
-  if (isCompletion && currentStatus) {
-    const allowedCompletionSources: TaskDocument['status'][] = [
-      'Новая',
-      'В работе',
-      'Отменена',
-      'Выполнена',
-    ];
-    if (!allowedCompletionSources.includes(currentStatus)) {
-      const err = new Error(
-        'Статус «Выполнена» доступен только после этапа «В работе»',
-      );
-      (err as Error & { code?: string }).code = 'TASK_STATUS_INVALID';
-      throw err;
-    }
-  }
+
+  // (Optional) keep existing constraints about allowed previous statuses for completion.
+  // The user requested to allow creator/executor to change to any status from any status,
+  // so we skip strict "allowedCompletionSources" check. If you want to enforce a transition
+  // matrix, add it here and throw TASK_STATUS_INVALID when not allowed.
+
+  // Terminal / in-progress timestamps logic (preserve existing behavior)
   const isCompleted = status === 'Выполнена' || status === 'Отменена';
   const hasInProgressValue = existing.in_progress_at instanceof Date;
   const needsInProgressStart = status === 'В работе' && !hasInProgressValue;
@@ -1250,6 +1273,7 @@ export async function updateTaskStatus(
   const hasCompletedValue = existing.completed_at instanceof Date;
   const needsCompletedSet = isCompleted && !hasCompletedValue;
   const needsCompletedReset = !isCompleted && hasCompletedValue;
+
   if (
     existing.status === status &&
     !needsInProgressStart &&
@@ -1259,19 +1283,25 @@ export async function updateTaskStatus(
   ) {
     return existing;
   }
+
   const update: Partial<TaskDocument> = { status };
+
   if (status === 'В работе') {
     update.in_progress_at = existing.in_progress_at ?? new Date();
   } else if (status === 'Новая' && needsInProgressReset) {
     update.in_progress_at = null;
   }
+
   if (isCompleted) {
     update.completed_at = existing.completed_at ?? new Date();
   } else if (needsCompletedReset) {
     update.completed_at = null;
   }
+
+  // Preserve original call that records the change and returns the task
   return updateTask(id, update, userId);
 }
+
 
 export interface TaskFilters {
   status?: string | string[];

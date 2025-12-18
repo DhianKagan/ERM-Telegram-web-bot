@@ -79,7 +79,7 @@ export default function Tasks() {
           value={text}
           onChange={(e) => setText(e.target.value)}
           required
-          className="focus:border-accentPrimary h-10 flex-1 rounded-lg border border-gray-300 bg-gray-100 px-3 text-sm placeholder-gray-500 focus:outline-none"
+          className="h-10 flex-1 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-sm text-[var(--color-muted)] placeholder-[var(--color-muted)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-400)]"
           placeholder="Описание"
         />
         <Button type="submit" className="xsm:w-full">

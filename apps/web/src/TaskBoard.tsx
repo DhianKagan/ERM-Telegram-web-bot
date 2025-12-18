@@ -6,7 +6,6 @@ import { DragDropContext, Draggable, Droppable } from '@hello-pangea/dnd';
 import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/components/ui/button';
-import { buttonVariants } from '@/components/ui/button-variants';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import TaskCard from './components/TaskCard';
@@ -319,23 +318,22 @@ export default function TaskBoard() {
 
   return (
     <div className="space-y-6 p-4">
-      <div className="flex flex-col gap-2 md:flex-row">
-        <Link
-          to="/tasks"
-          className={cn(buttonVariants({ variant: 'outline' }))}
-        >
-          Таблица
-        </Link>
-        <Button
-          onClick={() => {
-            const next = new URLSearchParams(params);
-            next.set('newTask', '1');
-            next.delete('task');
-            setParams(next);
-          }}
-        >
-          Новая задача
-        </Button>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="secondary">
+            <Link to="/tasks">Таблица</Link>
+          </Button>
+          <Button
+            onClick={() => {
+              const next = new URLSearchParams(params);
+              next.set('newTask', '1');
+              next.delete('task');
+              setParams(next);
+            }}
+          >
+            Новая задача
+          </Button>
+        </div>
       </div>
       <section className="space-y-4 rounded border border-border bg-card/60 p-4 shadow-sm">
         <header className="flex flex-col gap-1">
@@ -347,7 +345,7 @@ export default function TaskBoard() {
           </p>
         </header>
         <form
-          className="flex flex-col gap-3 md:flex-row md:flex-wrap"
+          className="ui-filter-row"
           onSubmit={(event) => {
             event.preventDefault();
             const nextFilters = { ...formState };
@@ -355,76 +353,82 @@ export default function TaskBoard() {
             updateParamsWithFilters(nextFilters);
           }}
         >
-          <div className="flex min-w-[12rem] flex-col gap-1">
-            <label
-              htmlFor="kanban-search"
-              className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
-            >
-              {t('kanban.filters.searchLabel')}
-            </label>
-            <Input
-              id="kanban-search"
-              value={formState.search}
-              onChange={(event) => {
-                const next = event.target.value;
-                setFormState((prev) => ({ ...prev, search: next }));
-              }}
-              placeholder={t('kanban.filters.searchPlaceholder') ?? ''}
-            />
+          <div className="ui-filter-row__inputs">
+            <div className="flex min-w-[12rem] flex-col gap-1">
+              <label
+                htmlFor="kanban-search"
+                className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+              >
+                {t('kanban.filters.searchLabel')}
+              </label>
+              <Input
+                id="kanban-search"
+                value={formState.search}
+                onChange={(event) => {
+                  const next = event.target.value;
+                  setFormState((prev) => ({ ...prev, search: next }));
+                }}
+                placeholder={t('kanban.filters.searchPlaceholder') ?? ''}
+              />
+            </div>
+            <div className="flex min-w-[10rem] flex-col gap-1">
+              <label
+                htmlFor="kanban-transport"
+                className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+              >
+                {t('kanban.filters.transportLabel')}
+              </label>
+              <select
+                id="kanban-transport"
+                value={formState.transport}
+                onChange={(event) => {
+                  const next = event.target.value as TransportFilter;
+                  setFormState((prev) => ({ ...prev, transport: next }));
+                }}
+                className="h-10 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-sm text-[var(--color-muted)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-400)]"
+              >
+                <option value="any">{t('kanban.filters.transportAny')}</option>
+                <option value="car">{t('kanban.filters.transportCar')}</option>
+                <option value="truck">
+                  {t('kanban.filters.transportTruck')}
+                </option>
+                <option value="none">
+                  {t('kanban.filters.transportNone')}
+                </option>
+              </select>
+            </div>
+            <div className="flex min-w-[10rem] flex-col gap-1">
+              <label
+                htmlFor="kanban-sort"
+                className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
+              >
+                {t('kanban.filters.sortLabel')}
+              </label>
+              <select
+                id="kanban-sort"
+                value={formState.sort}
+                onChange={(event) => {
+                  const next = event.target.value as SortOption;
+                  setFormState((prev) => ({ ...prev, sort: next }));
+                }}
+                className="h-10 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-sm text-[var(--color-muted)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-400)]"
+              >
+                <option value="title_asc">
+                  {t('kanban.filters.sortTitleAsc')}
+                </option>
+                <option value="title_desc">
+                  {t('kanban.filters.sortTitleDesc')}
+                </option>
+              </select>
+            </div>
           </div>
-          <div className="flex min-w-[10rem] flex-col gap-1">
-            <label
-              htmlFor="kanban-transport"
-              className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
-            >
-              {t('kanban.filters.transportLabel')}
-            </label>
-            <select
-              id="kanban-transport"
-              value={formState.transport}
-              onChange={(event) => {
-                const next = event.target.value as TransportFilter;
-                setFormState((prev) => ({ ...prev, transport: next }));
-              }}
-              className="h-9 rounded-md border border-input bg-background px-2 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="any">{t('kanban.filters.transportAny')}</option>
-              <option value="car">{t('kanban.filters.transportCar')}</option>
-              <option value="truck">
-                {t('kanban.filters.transportTruck')}
-              </option>
-              <option value="none">{t('kanban.filters.transportNone')}</option>
-            </select>
-          </div>
-          <div className="flex min-w-[10rem] flex-col gap-1">
-            <label
-              htmlFor="kanban-sort"
-              className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
-            >
-              {t('kanban.filters.sortLabel')}
-            </label>
-            <select
-              id="kanban-sort"
-              value={formState.sort}
-              onChange={(event) => {
-                const next = event.target.value as SortOption;
-                setFormState((prev) => ({ ...prev, sort: next }));
-              }}
-              className="h-9 rounded-md border border-input bg-background px-2 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            >
-              <option value="title_asc">
-                {t('kanban.filters.sortTitleAsc')}
-              </option>
-              <option value="title_desc">
-                {t('kanban.filters.sortTitleDesc')}
-              </option>
-            </select>
-          </div>
-          <div className="flex items-end gap-2">
-            <Button type="submit">{t('kanban.filters.apply')}</Button>
+          <div className="ui-filter-row__actions">
+            <Button type="submit" variant="secondary">
+              {t('kanban.filters.apply')}
+            </Button>
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               onClick={() => {
                 const next = { ...DEFAULT_FILTERS };
                 setFormState(next);

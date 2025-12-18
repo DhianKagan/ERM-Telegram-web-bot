@@ -8,9 +8,9 @@ import { type Task } from 'shared';
 import {
   DeadlineCountdownBadge,
   fallbackBadgeClass,
-  getStatusBadgeClass,
   getTypeBadgeClass,
 } from '../columns/taskColumns';
+import StatusBadge, { mapStatusTone } from './ui/StatusBadge';
 
 interface TaskCardProps {
   task: Task & {
@@ -147,8 +147,7 @@ export default function TaskCard({ task, onOpen }: TaskCardProps) {
   const completedAt = resolveCompletedAt(task);
   const taskNumber = buildTaskNumber(task);
   const taskId = normalizeTaskId(task);
-  const statusClass =
-    getStatusBadgeClass(task.status) ?? `${fallbackBadgeClass} uppercase`;
+  const statusTone = mapStatusTone(task.status);
   const typeLabel = resolveTypeLabel(task);
   const typeClass = typeLabel
     ? (getTypeBadgeClass(typeLabel) ?? `${fallbackBadgeClass} normal-case`)
@@ -192,7 +191,7 @@ export default function TaskCard({ task, onOpen }: TaskCardProps) {
         <span className={secondaryTextClass}>{taskNumber}</span>
       ) : null}
       <div className="flex flex-wrap items-center gap-1.5">
-        <span className={statusClass}>{task.status}</span>
+        <StatusBadge status={task.status ?? ''} tone={statusTone} />
         {typeLabel ? <span className={typeClass}>{typeLabel}</span> : null}
         <DeadlineCountdownBadge
           startValue={startDate ?? undefined}

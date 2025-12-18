@@ -1,0 +1,999 @@
+diff --git a/apps/api/src/api/routes.ts b/apps/api/src/api/routes.ts
+index 4e17772..087163e 100644
+--- a/apps/api/src/api/routes.ts
++++ b/apps/api/src/api/routes.ts
+@@ -56,6 +56,7 @@ import {
+   writeLog,
+   listMentionedTasks,
+   getTask,
++  getUser,
+ } from '../services/service';
+ import container from '../di';
+ import { TOKENS } from '../di/tokens';
+@@ -66,7 +67,7 @@ import {
+ } from '../services/shortLinks';
+ 
+ // new imports for access check
+-import { ACCESS_TASK_DELETE, hasAccess } from '../utils/accessMask';
++import { ACCESS_ADMIN, ACCESS_TASK_DELETE, hasAccess } from '../utils/accessMask';
+ 
+ const validate = (validations: ValidationChain[]): RequestHandler[] => [
+   ...validations,
+@@ -477,6 +478,11 @@ export default async function registerRoutes(
+         });
+         return;
+       }
++      const dbUser = await getUser(userId);
++      const accessMask = Number(dbUser?.access ?? 0);
++      const adminOverride =
++        hasAccess(accessMask, ACCESS_TASK_DELETE) ||
++        hasAccess(accessMask, ACCESS_ADMIN);
+       // actor validation: must be creator/assignee/controller
+       const assigneeIds = new Set<number>();
+       const controllerIds = new Set<number>();
+@@ -509,7 +515,7 @@ export default async function registerRoutes(
+       if (Number.isFinite(creatorId)) {
+         actorIds.add(creatorId);
+       }
+-      if (!actorIds.has(userId)) {
++      if (!actorIds.has(userId) && !adminOverride) {
+         sendProblem(req, res, {
+           type: 'about:blank',
+           title: 'Доступ запрещён',
+@@ -523,7 +529,7 @@ export default async function registerRoutes(
+           req.params.id,
+           req.body.status,
+           userId,
+-          { source: 'telegram' }, // no adminOverride from tma by design
++          { source: 'telegram', adminOverride },
+         );
+         if (!updated) {
+           sendProblem(req, res, {
+@@ -582,7 +588,9 @@ export default async function registerRoutes(
+         const user = (req as RequestWithUser).user;
+         const actorId = Number(user?.id ?? 0);
+         const actorAccess = Number(user?.access ?? 0);
+-        const adminOverride = hasAccess(actorAccess, ACCESS_TASK_DELETE);
++        const adminOverride =
++          hasAccess(actorAccess, ACCESS_TASK_DELETE) ||
++          hasAccess(actorAccess, ACCESS_ADMIN);
+ 
+         const updated = await updateTaskStatus(
+           req.params.id,
+diff --git a/apps/api/src/bot/bot.ts b/apps/api/src/bot/bot.ts
+index 2c7611e..a9759c8 100644
+--- a/apps/api/src/bot/bot.ts
++++ b/apps/api/src/bot/bot.ts
+@@ -32,7 +32,7 @@ import {
+ import { TASK_STATUS_ICON_MAP } from '../utils/taskStatusIcons';
+ import buildChatMessageLink from '../utils/messageLink';
+ import formatTask from '../utils/formatTask';
+-import { createTask, getUsersMap } from '../db/queries';
++import { getUsersMap } from '../db/queries';
+ import {
+   buildHistorySummaryLog,
+   getTaskIdentifier,
+@@ -44,7 +44,7 @@ import TaskSyncController from '../controllers/taskSync.controller';
+ import { resolveTaskAlbumLink } from '../utils/taskAlbumLink';
+ import { buildCommentHtml } from '../tasks/taskComments';
+ import { buildAttachmentsFromCommentHtml } from '../utils/attachments';
+-import { ACCESS_ADMIN } from '../utils/accessMask';
++import { ACCESS_ADMIN, ACCESS_TASK_DELETE, hasAccess } from '../utils/accessMask';
+ import { collectAssigneeIds, normalizeUserId } from '../utils/assigneeIds';
+ import ReportGeneratorService from '../services/reportGenerator';
+ import TasksService from '../tasks/tasks.service';
+@@ -63,38 +63,11 @@ const REQUEST_TYPE_NAME = 'Заявка';
+ const resolveChatId = (): string | undefined =>
+   typeof getChatId === 'function' ? getChatId() : staticChatId;
+ 
+-type CancelRequestStage = 'awaitingReason' | 'awaitingConfirm';
+-
+-type CancelRequestSession = {
+-  taskId: string;
+-  actorId: number;
+-  identifier: string;
+-  reason?: string;
+-  stage: CancelRequestStage;
+-};
+-
+-class CancellationRequestError extends Error {
+-  constructor(
+-    public code:
+-      | 'not_found'
+-      | 'not_executor'
+-      | 'creator_missing'
+-      | 'unsupported',
+-    message?: string,
+-  ) {
+-    super(message ?? code);
+-    this.name = 'CancellationRequestError';
+-  }
+-}
+-
+-const cancelRequestSessions = new Map<number, CancelRequestSession>();
+ const commentSessions = new Map<
+   number,
+   { taskId: string; identifier: string }
+ >();
+ const HISTORY_ALERT_LIMIT = 190;
+-const CANCEL_REASON_MIN_LENGTH = 50;
+-const CANCEL_REASON_MAX_LENGTH = 2000;
+ 
+ process.on('unhandledRejection', (err) => {
+   console.error('Unhandled rejection in bot:', err);
+@@ -254,53 +227,6 @@ const escapeHtml = (value: string): string =>
+     (char) => htmlEscapeMap[char] ?? char,
+   );
+ 
+-const normalizeReasonText = (reason: string): string => {
+-  const normalized = reason.replace(/\r\n/g, '\n').trim();
+-  if (normalized.length <= CANCEL_REASON_MAX_LENGTH) {
+-    return normalized;
+-  }
+-  return normalized.slice(0, CANCEL_REASON_MAX_LENGTH);
+-};
+-
+-const formatCancellationDescription = (
+-  identifier: string,
+-  reason: string,
+-  status?: string,
+-): string => {
+-  const parts: string[] = [];
+-  const trimmedIdentifier = identifier.trim();
+-  if (trimmedIdentifier) {
+-    parts.push(
+-      `<p><strong>Задача:</strong> ${escapeHtml(trimmedIdentifier)}</p>`,
+-    );
+-  }
+-  const normalizedReason = reason.replace(/\r?\n/g, '\n');
+-  const reasonSegments = normalizedReason
+-    .split('\n')
+-    .map((segment) => escapeHtml(segment.trim()))
+-    .filter((segment) => segment.length > 0);
+-  const reasonHtml = reasonSegments.length
+-    ? reasonSegments.join('<br />')
+-    : escapeHtml(normalizedReason.trim());
+-  parts.push(
+-    `<p><strong>Причина удаления:</strong><br />${reasonHtml || '—'}</p>`,
+-  );
+-  const statusTrimmed = typeof status === 'string' ? status.trim() : '';
+-  if (statusTrimmed) {
+-    parts.push(
+-      `<p><strong>Текущий статус:</strong> ${escapeHtml(statusTrimmed)}</p>`,
+-    );
+-  }
+-  return parts.join('');
+-};
+-
+-type CancelRequestContext = {
+-  plain: TaskPresentation;
+-  creatorId: number;
+-  identifier: string;
+-  docId: string;
+-};
+-
+ const toPlainTask = (
+   task: TaskDocument | (TaskDocument & Record<string, unknown>),
+ ): TaskPresentation =>
+@@ -308,98 +234,6 @@ const toPlainTask = (
+     ? ((task as { toObject(): unknown }).toObject() as TaskPresentation)
+     : (task as TaskPresentation);
+ 
+-async function loadCancelRequestContext(
+-  taskId: string,
+-  actorId: number,
+-): Promise<CancelRequestContext> {
+-  const task = await getTask(taskId);
+-  if (!task) {
+-    throw new CancellationRequestError('not_found');
+-  }
+-  const plain = toPlainTask(task);
+-  const kind = detectTaskKind(plain);
+-  if (kind !== 'task') {
+-    throw new CancellationRequestError('unsupported');
+-  }
+-  if (!isTaskExecutor(plain, actorId)) {
+-    throw new CancellationRequestError('not_executor');
+-  }
+-  const creatorId = Number(plain.created_by);
+-  if (!Number.isFinite(creatorId) || creatorId === 0) {
+-    throw new CancellationRequestError('creator_missing');
+-  }
+-  const identifier =
+-    getTaskIdentifier(plain as Parameters<typeof getTaskIdentifier>[0]) ||
+-    taskId;
+-  const docId =
+-    typeof plain._id === 'object' &&
+-    plain._id !== null &&
+-    'toString' in plain._id
+-      ? (plain._id as { toString(): string }).toString()
+-      : String((plain as { _id?: unknown })._id ?? taskId);
+-  return { plain, creatorId, identifier, docId };
+-}
+-
+-async function createCancellationRequestFromTask(
+-  taskId: string,
+-  actorId: number,
+-  reason: string,
+-): Promise<{ requestId: string; identifier: string }> {
+-  const context = await loadCancelRequestContext(taskId, actorId);
+-  const { plain, creatorId, identifier, docId } = context;
+-  const normalizedReason = normalizeReasonText(reason);
+-  const description = formatCancellationDescription(
+-    identifier,
+-    normalizedReason,
+-    typeof plain.status === 'string' ? plain.status : undefined,
+-  );
+-  const payload: Partial<TaskDocument> = {
+-    title: `Запрос на отмену задачи ${identifier}`,
+-    task_description: description,
+-    kind: 'request',
+-    task_type: REQUEST_TYPE_NAME,
+-    status: 'Новая',
+-    created_by: actorId,
+-    custom: {
+-      cancelSource: {
+-        taskId: docId,
+-        identifier,
+-        requestedBy: actorId,
+-        requestedAt: new Date().toISOString(),
+-      },
+-      cancelReason: normalizedReason,
+-    },
+-  };
+-  if (Number.isFinite(creatorId) && creatorId !== 0) {
+-    payload.assigned_user_id = creatorId;
+-    payload.assignees = [creatorId];
+-  }
+-  const created = await createTask(payload, actorId);
+-  const requestId =
+-    typeof created._id === 'object' &&
+-    created._id !== null &&
+-    'toString' in created._id
+-      ? (created._id as { toString(): string }).toString()
+-      : String(created._id ?? '');
+-  if (requestId) {
+-    try {
+-      await taskSyncController.onWebTaskUpdate(requestId, created);
+-    } catch (error) {
+-      console.error(
+-        'Не удалось синхронизировать заявку на удаление задачи',
+-        error,
+-      );
+-    }
+-  }
+-  try {
+-    await writeLog(
+-      `Создана заявка ${requestId} пользователем ${actorId}/telegram`,
+-    );
+-  } catch (error) {
+-    console.error('Не удалось записать лог создания заявки', error);
+-  }
+-  return { requestId, identifier };
+-}
+ 
+ async function updateMessageReplyMarkup(
+   ctx: Context,
+@@ -793,7 +627,9 @@ const hasAdminPrivileges = (user: UserDocument | null): boolean => {
+     return true;
+   }
+   const mask = typeof user.access === 'number' ? user.access : 0;
+-  return (mask & ACCESS_ADMIN) === ACCESS_ADMIN;
++  return (
++    hasAccess(mask, ACCESS_ADMIN) || hasAccess(mask, ACCESS_TASK_DELETE)
++  );
+ };
+ 
+ export type TaskUserProfile = {
+@@ -1733,83 +1569,6 @@ bot.action('task_cancel_prompt', async (ctx) => {
+   await ctx.answerCbQuery('Некорректный формат кнопки', { show_alert: true });
+ });
+ 
+-bot.action('task_cancel_request_prompt', async (ctx) => {
+-  await ctx.answerCbQuery('Некорректный формат кнопки', { show_alert: true });
+-});
+-
+-bot.action(/^task_cancel_request_prompt:.+$/, async (ctx) => {
+-  const data = getCallbackData(ctx.callbackQuery);
+-  const taskId = getTaskIdFromCallback(data);
+-  if (!taskId) {
+-    await ctx.answerCbQuery(messages.taskStatusInvalidId, {
+-      show_alert: true,
+-    });
+-    return;
+-  }
+-  const userId = ctx.from?.id;
+-  if (!userId) {
+-    await ctx.answerCbQuery(messages.taskStatusUnknownUser, {
+-      show_alert: true,
+-    });
+-    return;
+-  }
+-  try {
+-    const context = await loadCancelRequestContext(taskId, userId);
+-    cancelRequestSessions.set(userId, {
+-      taskId,
+-      actorId: userId,
+-      identifier: context.identifier,
+-      stage: 'awaitingReason',
+-    });
+-    const promptText = `Введите причину отмены для задачи ${context.identifier}. Текст должен содержать не менее ${CANCEL_REASON_MIN_LENGTH} символов.`;
+-    const cancelRows: InlineKeyboardButton[][] = [
+-      [Markup.button.callback('Отмена', `cancel_request_abort:${taskId}`)],
+-    ];
+-    const keyboard = Markup.inlineKeyboard(cancelRows) as ReturnType<
+-      typeof Markup.inlineKeyboard
+-    > & { reply_markup?: InlineKeyboardMarkup };
+-    if (!keyboard.reply_markup) {
+-      keyboard.reply_markup = { inline_keyboard: cancelRows };
+-    }
+-    try {
+-      await bot.telegram.sendMessage(userId, promptText, {
+-        reply_markup: keyboard.reply_markup,
+-      });
+-    } catch (error) {
+-      cancelRequestSessions.delete(userId);
+-      console.error('Не удалось отправить запрос причины отмены', error);
+-      await ctx.answerCbQuery(messages.cancelRequestStartError, {
+-        show_alert: true,
+-      });
+-      return;
+-    }
+-    await ctx.answerCbQuery(messages.cancelRequestPrompt);
+-  } catch (error) {
+-    let response: string = messages.cancelRequestFailed;
+-    if (error instanceof CancellationRequestError) {
+-      switch (error.code) {
+-        case 'not_found':
+-          response = messages.taskNotFound;
+-          break;
+-        case 'not_executor':
+-          response = messages.taskAssignmentRequired;
+-          break;
+-        case 'creator_missing':
+-          response = messages.cancelRequestCreatorMissing;
+-          break;
+-        case 'unsupported':
+-          response = messages.cancelRequestUnavailable;
+-          break;
+-        default:
+-          response = messages.cancelRequestFailed;
+-      }
+-    } else {
+-      console.error('Не удалось подготовить заявку на удаление', error);
+-    }
+-    await ctx.answerCbQuery(response, { show_alert: true });
+-  }
+-});
+-
+ bot.action(/^task_cancel_prompt:.+$/, async (ctx) => {
+   const data = getCallbackData(ctx.callbackQuery);
+   const taskId = getTaskIdFromCallback(data);
+@@ -2065,141 +1824,9 @@ if (!registerTextHandler) {
+       }
+       return;
+     }
+-    const session = cancelRequestSessions.get(userId);
+-    if (!session || session.stage !== 'awaitingReason') {
+-      return;
+-    }
+-    if (ctx.chat?.type !== 'private') {
+-      return;
+-    }
+-    const messageText =
+-      typeof ctx.message?.text === 'string' ? ctx.message.text : '';
+-    const normalized = messageText.replace(/\r\n/g, '\n').trim();
+-    if (!normalized || normalized.length < CANCEL_REASON_MIN_LENGTH) {
+-      await ctx.reply(messages.cancelRequestReasonLength);
+-      return;
+-    }
+-    session.reason = normalized;
+-    session.stage = 'awaitingConfirm';
+-    cancelRequestSessions.set(userId, session);
+-    const preview =
+-      normalized.length > 500 ? `${normalized.slice(0, 500)}…` : normalized;
+-    const confirmRows: InlineKeyboardButton[][] = [
+-      [
+-        Markup.button.callback(
+-          'Подтвердить',
+-          `cancel_request_confirm:${session.taskId}`,
+-        ),
+-        Markup.button.callback(
+-          'Отмена',
+-          `cancel_request_abort:${session.taskId}`,
+-        ),
+-      ],
+-    ];
+-    const keyboard = Markup.inlineKeyboard(confirmRows) as ReturnType<
+-      typeof Markup.inlineKeyboard
+-    > & { reply_markup?: InlineKeyboardMarkup };
+-    if (!keyboard.reply_markup) {
+-      keyboard.reply_markup = { inline_keyboard: confirmRows };
+-    }
+-    await ctx.reply(
+-      `${messages.cancelRequestConfirmPrompt}\n\nЗадача: ${session.identifier}\nПричина:\n${preview}`,
+-      {
+-        reply_markup: keyboard.reply_markup,
+-      },
+-    );
+   });
+ }
+ 
+-bot.action(/^cancel_request_confirm:.+$/, async (ctx) => {
+-  const data = getCallbackData(ctx.callbackQuery);
+-  const taskId = getTaskIdFromCallback(data);
+-  if (!taskId) {
+-    await ctx.answerCbQuery(messages.taskStatusInvalidId, {
+-      show_alert: true,
+-    });
+-    return;
+-  }
+-  const userId = ctx.from?.id;
+-  if (!userId) {
+-    await ctx.answerCbQuery(messages.taskStatusUnknownUser, {
+-      show_alert: true,
+-    });
+-    return;
+-  }
+-  const session = cancelRequestSessions.get(userId);
+-  if (!session || session.taskId !== taskId) {
+-    await ctx.answerCbQuery(messages.cancelRequestFailed, {
+-      show_alert: true,
+-    });
+-    return;
+-  }
+-  const reason = session.reason?.trim();
+-  if (!reason || reason.length < CANCEL_REASON_MIN_LENGTH) {
+-    await ctx.answerCbQuery(messages.cancelRequestReasonLength, {
+-      show_alert: true,
+-    });
+-    return;
+-  }
+-  try {
+-    await createCancellationRequestFromTask(taskId, userId, reason);
+-    cancelRequestSessions.delete(userId);
+-    try {
+-      await ctx.editMessageReplyMarkup(undefined);
+-    } catch (error) {
+-      console.warn('Не удалось обновить сообщение подтверждения отмены', error);
+-    }
+-    await ctx.answerCbQuery(messages.cancelRequestSuccess);
+-    await ctx.reply(
+-      `${messages.cancelRequestSuccess}\nЗадача: ${session.identifier}`,
+-    );
+-  } catch (error) {
+-    let response: string = messages.cancelRequestFailed;
+-    if (error instanceof CancellationRequestError) {
+-      switch (error.code) {
+-        case 'not_found':
+-          response = messages.taskNotFound;
+-          break;
+-        case 'not_executor':
+-          response = messages.taskAssignmentRequired;
+-          break;
+-        case 'creator_missing':
+-          response = messages.cancelRequestCreatorMissing;
+-          break;
+-        case 'unsupported':
+-          response = messages.cancelRequestUnavailable;
+-          break;
+-        default:
+-          response = messages.cancelRequestFailed;
+-      }
+-    } else {
+-      console.error('Не удалось создать заявку на удаление задачи', error);
+-    }
+-    await ctx.answerCbQuery(response, { show_alert: true });
+-  }
+-});
+-
+-bot.action(/^cancel_request_abort:.+$/, async (ctx) => {
+-  const data = getCallbackData(ctx.callbackQuery);
+-  const taskId = getTaskIdFromCallback(data);
+-  const userId = ctx.from?.id;
+-  if (userId) {
+-    const session = cancelRequestSessions.get(userId);
+-    if (session && (!taskId || session.taskId === taskId)) {
+-      cancelRequestSessions.delete(userId);
+-    }
+-  }
+-  try {
+-    await ctx.editMessageReplyMarkup(undefined);
+-  } catch (error) {
+-    console.warn('Не удалось обновить сообщение отмены заявки', error);
+-  }
+-  await ctx.answerCbQuery(messages.cancelRequestCanceled);
+-  if (ctx.chat?.type === 'private') {
+-    await ctx.reply(messages.cancelRequestCanceled);
+-  }
+-});
+-
+ const retryableCodes = new Set([409, 429, 502, 504]);
+ 
+ export async function startBot(retry = 0): Promise<void> {
+diff --git a/apps/api/src/db/queries.ts b/apps/api/src/db/queries.ts
+index 8f7089f..25af90d 100644
+--- a/apps/api/src/db/queries.ts
++++ b/apps/api/src/db/queries.ts
+@@ -1182,7 +1182,6 @@ export async function updateTaskStatus(
+   const existing = await Task.findById(id);
+   if (!existing) return null;
+ 
+-  const source = options.source ?? 'web';
+   const currentStatus =
+     typeof existing.status === 'string'
+       ? (existing.status as TaskDocument['status'])
+@@ -1190,8 +1189,6 @@ export async function updateTaskStatus(
+ 
+   const assignedUserId = normalizeUserId(existing.assigned_user_id);
+   const assignees = collectAssigneeIds(existing.assignees);
+-  const hasAssignments = assignedUserId !== null || assignees.length > 0;
+-
+   const isExecutor =
+     (assignedUserId !== null && assignedUserId === userId) ||
+     assignees.includes(userId);
+@@ -1202,27 +1199,8 @@ export async function updateTaskStatus(
+   const isCancellation = status === 'Отменена';
+   const isCompletion = status === 'Выполнена';
+ 
+-  // admin override flag (passed from routes.ts)
+   const adminOverride = !!options.adminOverride;
+ 
+-  // Cancellation rules: only creator, only via web (existing behavior)
+-  if (isCancellation) {
+-    if (!isCreator) {
+-      const err = new Error(
+-        'Статус «Отменена» может установить только создатель задачи.',
+-      );
+-      (err as Error & { code?: string }).code = 'TASK_CANCEL_FORBIDDEN';
+-      throw err;
+-    }
+-    if (source !== 'web') {
+-      const err = new Error(
+-        'Отмена задачи в Telegram недоступна. Используйте веб-форму.',
+-      );
+-      (err as Error & { code?: string }).code = 'TASK_CANCEL_SOURCE_FORBIDDEN';
+-      throw err;
+-    }
+-  }
+-
+   // If task already in terminal state, only adminOverride may change it
+   const terminalStatuses: TaskDocument['status'][] = ['Выполнена', 'Отменена'];
+   if (
+@@ -1239,21 +1217,7 @@ export async function updateTaskStatus(
+     }
+   }
+ 
+-  // Completion rules: allow **creator OR executor** to set as completed
+-  if (isCompletion && !(isCreator || isExecutor || adminOverride)) {
+-    const err = new Error(
+-      'Статус «Выполнена» может установить только создатель или исполнитель задачи.',
+-    );
+-    (err as Error & { code?: string }).code = 'TASK_STATUS_FORBIDDEN';
+-    throw err;
+-  }
+-
+-  // If there are assignments, only creator/executor (or adminOverride) can change status
+-  if (
+-    hasAssignments &&
+-    !(isExecutor || isCreator || adminOverride) &&
+-    !(isCancellation && isCreator) // keep original creator-cancellation allowance
+-  ) {
++  if (!(isCreator || isExecutor || adminOverride)) {
+     const err = new Error('Нет прав на изменение статуса задачи');
+     (err as Error & { code?: string }).code = 'TASK_STATUS_FORBIDDEN';
+     throw err;
+diff --git a/apps/api/src/messages.ts b/apps/api/src/messages.ts
+index 9ef7ea3..2b96e72 100644
+--- a/apps/api/src/messages.ts
++++ b/apps/api/src/messages.ts
+@@ -42,20 +42,6 @@ const messages = {
+     'Отменить заявку могут только исполнитель или создатель.',
+   taskHistoryEmpty: 'История изменений отсутствует.',
+   taskHistoryPopupError: 'Не удалось загрузить историю задачи.',
+-  cancelRequestPrompt:
+-    'Отправьте причину удаления задачи личным сообщением боту.',
+-  cancelRequestStartError:
+-    'Не удалось отправить запрос на отмену. Напишите боту в личные сообщения.',
+-  cancelRequestCreatorMissing:
+-    'Не удалось определить автора задачи для назначения запроса.',
+-  cancelRequestUnavailable: 'Запрос на отмену можно создать только для задач.',
+-  cancelRequestReasonLength:
+-    'Причина удаления должна содержать не менее 50 символов.',
+-  cancelRequestConfirmPrompt:
+-    'Проверьте текст причины удаления и подтвердите отправку запроса.',
+-  cancelRequestCanceled: 'Создание запроса на отмену отменено.',
+-  cancelRequestSuccess: 'Запрос на отмену задачи создан.',
+-  cancelRequestFailed: 'Не удалось создать запрос на отмену задачи.',
+   enterComment: 'Введите комментарий',
+   commentStartError:
+     'Не удалось начать ввод комментария. Напишите боту в личные сообщения.',
+diff --git a/apps/api/src/utils/taskButtons.ts b/apps/api/src/utils/taskButtons.ts
+index 47ed30e..27f213e 100644
+--- a/apps/api/src/utils/taskButtons.ts
++++ b/apps/api/src/utils/taskButtons.ts
+@@ -73,27 +73,15 @@ const buildStatusRows = (
+       resolveStatusLabel('Выполнена', currentStatus),
+       `task_done_prompt:${id}`,
+     ),
++    Markup.button.callback(
++      resolveStatusLabel('Отменена', currentStatus),
++      `task_cancel_prompt:${id}`,
++    ),
+   ];
+-  if (options.kind === 'request') {
+-    primaryRow.push(
+-      Markup.button.callback(
+-        resolveStatusLabel('Отменена', currentStatus),
+-        `task_cancel_prompt:${id}`,
+-      ),
+-    );
+-  }
+   const rows: InlineKeyboardMatrix = [primaryRow];
+   const actionsRow: InlineKeyboardButton[] = [
+     Markup.button.callback('История', `task_history:${id}`),
+   ];
+-  if (options.kind !== 'request') {
+-    actionsRow.push(
+-      Markup.button.callback(
+-        'Запрос на отмену',
+-        `task_cancel_request_prompt:${id}`,
+-      ),
+-    );
+-  }
+   rows.push(actionsRow);
+   return rows;
+ };
+diff --git a/apps/web/src/TaskBoard.tsx b/apps/web/src/TaskBoard.tsx
+index d85c29e..a34ba7c 100644
+--- a/apps/web/src/TaskBoard.tsx
++++ b/apps/web/src/TaskBoard.tsx
+@@ -12,8 +12,10 @@ import { cn } from '@/lib/utils';
+ import TaskCard from './components/TaskCard';
+ import TaskDialog from './components/TaskDialog';
+ import useTasks from './context/useTasks';
++import { useAuth } from './context/useAuth';
+ import { fetchKanban, updateTaskStatus } from './services/tasks';
+ import type { Task } from 'shared';
++import { ACCESS_ADMIN, ACCESS_TASK_DELETE, hasAccess } from './utils/access';
+ 
+ const columns = ['Новая', 'В работе', 'Выполнена'];
+ 
+@@ -59,10 +61,13 @@ type KanbanTask = Task & {
+   due?: string;
+   request_id?: string;
+   task_number?: string;
++  created_by?: number;
++  assigned_user_id?: number;
+ };
+ 
+ export default function TaskBoard() {
+   const { t } = useTranslation();
++  const { user } = useAuth();
+   const [tasks, setTasks] = useState<KanbanTask[]>([]);
+   const [filters, setFilters] = useState<FilterState>(() => ({
+     ...DEFAULT_FILTERS,
+@@ -74,6 +79,13 @@ export default function TaskBoard() {
+   const paramsSnapshot = params.toString();
+   const open = params.get('newTask') !== null;
+   const { version } = useTasks();
++  const currentUserId =
++    typeof user?.telegram_id === 'number' ? user.telegram_id : null;
++  const accessMask = typeof user?.access === 'number' ? user.access : 0;
++  const isAdmin =
++    (user?.role ?? '').toLowerCase() === 'admin' ||
++    hasAccess(accessMask, ACCESS_ADMIN) ||
++    hasAccess(accessMask, ACCESS_TASK_DELETE);
+   const collator = useMemo(
+     () => new Intl.Collator('ru', { sensitivity: 'base', numeric: true }),
+     [],
+@@ -249,10 +261,47 @@ export default function TaskBoard() {
+   const onDragEnd = async ({ destination, draggableId }) => {
+     if (!destination) return;
+     const status = columns[Number(destination.droppableId)];
+-    await updateTaskStatus(draggableId, status);
++    const task = tasks.find((item) => item._id === draggableId);
++    if (!task || task.status === status) return;
++    const prevStatus = task.status;
++    const creatorId = Number((task as { created_by?: unknown }).created_by);
++    const assignedUserId = Number(
++      (task as { assigned_user_id?: unknown }).assigned_user_id,
++    );
++    const assignees = Array.isArray(task.assignees)
++      ? task.assignees
++      : [];
++    const isExecutor =
++      (Number.isFinite(assignedUserId) && assignedUserId === currentUserId) ||
++      (currentUserId !== null && assignees.includes(currentUserId));
++    const isCreator =
++      Number.isFinite(creatorId) && currentUserId === creatorId;
++    const isTerminal = prevStatus === 'Выполнена' || prevStatus === 'Отменена';
++    if (isTerminal && !isAdmin) {
++      window.alert(t('taskSaveFailed'));
++      return;
++    }
++    if (!(isExecutor || isCreator || isAdmin)) {
++      window.alert(t('taskSaveFailed'));
++      return;
++    }
+     setTasks((ts) =>
+       ts.map((t) => (t._id === draggableId ? { ...t, status } : t)),
+     );
++    try {
++      const res = await updateTaskStatus(draggableId, status);
++      if (!res.ok) {
++        setTasks((ts) =>
++          ts.map((t) => (t._id === draggableId ? { ...t, status: prevStatus } : t)),
++        );
++        window.alert(t('taskSaveFailed'));
++      }
++    } catch (error) {
++      setTasks((ts) =>
++        ts.map((t) => (t._id === draggableId ? { ...t, status: prevStatus } : t)),
++      );
++      window.alert(t('taskSaveFailed'));
++    }
+   };
+ 
+   const openTaskDialog = useCallback(
+diff --git a/apps/web/src/components/TaskDialog.test.tsx b/apps/web/src/components/TaskDialog.test.tsx
+index b79f7af..364af91 100644
+--- a/apps/web/src/components/TaskDialog.test.tsx
++++ b/apps/web/src/components/TaskDialog.test.tsx
+@@ -16,6 +16,7 @@ const mockUser = { telegram_id: 99, role: 'admin', access: 8 } as const;
+ const translate = (value: string) => value;
+ const mockI18n = { language: 'ru', changeLanguage: jest.fn() };
+ const alertMock = jest.fn();
++const updateTaskStatusMock = jest.fn();
+ 
+ jest.mock('../context/useAuth', () => ({
+   useAuth: () => ({ user: mockUser }),
+@@ -157,7 +158,7 @@ jest.mock('../services/tasks', () => {
+     createTask: (...args: any[]) => createTaskMock(...args),
+     updateTask: (...args: any[]) => updateTaskMock(...args),
+     deleteTask: jest.fn(),
+-    updateTaskStatus: jest.fn(),
++    updateTaskStatus: (...args: any[]) => updateTaskStatusMock(...args),
+   };
+ });
+ 
+@@ -172,6 +173,7 @@ describe('TaskDialog', () => {
+       ok: true,
+       json: async () => ({ ...taskData, _id: '1' }),
+     });
++    updateTaskStatusMock.mockResolvedValue({ ok: true, json: async () => ({}) });
+     mockI18n.language = 'ru';
+     alertMock.mockReset();
+   });
+@@ -199,6 +201,24 @@ describe('TaskDialog', () => {
+     expect(await screen.findByText('taskCreatedBy')).toBeTruthy();
+   });
+ 
++  it('показывает кнопку отмены и отправляет отмену', async () => {
++    render(
++      <MemoryRouter>
++        <TaskDialog onClose={() => {}} id="1" />
++      </MemoryRouter>,
++    );
++
++    expect(await screen.findByText('accept')).toBeInTheDocument();
++
++    await act(async () => {
++      fireEvent.click(screen.getByText('cancelTask'));
++    });
++
++    await waitFor(() =>
++      expect(updateTaskStatusMock).toHaveBeenCalledWith('1', 'Отменена'),
++    );
++  });
++
+   it('не дублирует запрос summary при редактировании черновика', async () => {
+     render(
+       <MemoryRouter>
+diff --git a/apps/web/src/components/TaskDialog.tsx b/apps/web/src/components/TaskDialog.tsx
+index 50f5134..d7e5eb4 100644
+--- a/apps/web/src/components/TaskDialog.tsx
++++ b/apps/web/src/components/TaskDialog.tsx
+@@ -57,6 +57,7 @@ import {
+ } from '../columns/taskColumns';
+ import useDueDateOffset from '../hooks/useDueDateOffset';
+ import coerceTaskId from '../utils/coerceTaskId';
++import { ACCESS_ADMIN, ACCESS_TASK_DELETE, hasAccess } from '../utils/access';
+ 
+ type TaskKind = 'task' | 'request';
+ 
+@@ -956,6 +957,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+   );
+   const [status, setStatus] = React.useState(DEFAULT_STATUS);
+   const [initialStatus, setInitialStatus] = React.useState(DEFAULT_STATUS);
++  const isTerminal = status === 'Выполнена' || status === 'Отменена';
+   const [taskAssigneeIds, setTaskAssigneeIds] = React.useState<number[]>([]);
+   const [cargoLength, setCargoLength] = React.useState('');
+   const [cargoWidth, setCargoWidth] = React.useState('');
+@@ -966,6 +968,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+   const [creator, setCreator] = React.useState('');
+   const currentUserId =
+     typeof user?.telegram_id === 'number' ? user.telegram_id : null;
++  const accessMask = typeof user?.access === 'number' ? user.access : 0;
++  const isAdmin =
++    (user?.role ?? '').toLowerCase() === 'admin' ||
++    hasAccess(accessMask, ACCESS_ADMIN) ||
++    hasAccess(accessMask, ACCESS_TASK_DELETE);
+   const creatorNumericId = React.useMemo(() => {
+     const parsed = Number(creator);
+     return Number.isFinite(parsed) ? parsed : null;
+@@ -978,8 +985,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+   );
+   const isTaskNew = initialStatus === 'Новая';
+   const canEditTask = canEditAll || isExecutor || (isCreator && isTaskNew);
+-  const canChangeStatus = canEditAll || isExecutor || isCreator;
+-  const canFinalizeStatus = canEditAll || isCreator;
++  const canChangeStatus = canEditAll || isExecutor || isCreator || isAdmin;
++  const canFinalizeStatus = canEditAll || isCreator || isExecutor || isAdmin;
++  const canCancel = !isTerminal && (isCreator || isExecutor || isAdmin || canEditAll);
+   const priorities = fields.find((f) => f.name === 'priority')?.options || [];
+   const transports =
+     fields.find((f) => f.name === 'transport_type')?.options || [];
+@@ -2413,6 +2421,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+   const [showSaveConfirm, setShowSaveConfirm] = React.useState(false);
+   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
+   const [showAcceptConfirm, setShowAcceptConfirm] = React.useState(false);
++  const [showCancelConfirm, setShowCancelConfirm] = React.useState(false);
+   const [showDoneConfirm, setShowDoneConfirm] = React.useState(false);
+   const [pendingDoneOption, setPendingDoneOption] = React.useState('');
+   React.useEffect(() => {
+@@ -2627,6 +2636,53 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+     }
+   };
+ 
++  const cancelTask = async () => {
++    const targetId = effectiveTaskId;
++    if (!targetId) return;
++    if (!canChangeStatus) {
++      setAlertMsg(t('taskSaveFailed'));
++      return;
++    }
++    const prev = status;
++    setStatus('Отменена');
++    try {
++      const [data] = await Promise.all([
++        updateTask(targetId, { status: 'Отменена' }).then((r) =>
++          r.ok ? r.json() : null,
++        ),
++        updateTaskStatus(targetId, 'Отменена'),
++      ]);
++      if (data) {
++        if (initialRef.current) {
++          initialRef.current.status = 'Отменена';
++        }
++        setInitialStatus('Отменена');
++        if (onSave) onSave(data);
++        setAlertMsg(t('taskCanceled'));
++      } else {
++        setStatus(prev);
++        setAlertMsg(t('taskSaveFailed'));
++      }
++    } catch (error) {
++      console.error(error);
++      setStatus(prev);
++      if (error instanceof TaskRequestError) {
++        const reason = error.message.trim();
++        setAlertMsg(
++          reason
++            ? t('taskSaveFailedWithReason', { reason })
++            : t('taskSaveFailed'),
++        );
++      } else if (error instanceof Error && error.message) {
++        setAlertMsg(t('taskSaveFailedWithReason', { reason: error.message }));
++      } else {
++        setAlertMsg(t('taskSaveFailed'));
++      }
++    } finally {
++      setSelectedAction('');
++    }
++  };
++
+   const creatorId = Number(creator);
+   const hasCreator = Number.isFinite(creatorId) && creator.trim().length > 0;
+   const creatorName = hasCreator ? resolveUserName(creatorId) : '';
+@@ -3436,7 +3492,13 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+                   <div
+                     className={cn(
+                       'mt-2 grid gap-2',
+-                      canFinalizeStatus ? 'grid-cols-2' : 'grid-cols-1',
++                      (() => {
++                        const count =
++                          1 + (canFinalizeStatus ? 1 : 0) + (canCancel ? 1 : 0);
++                        if (count >= 3) return 'grid-cols-3';
++                        if (count === 2) return 'grid-cols-2';
++                        return 'grid-cols-1';
++                      })(),
+                     )}
+                   >
+                     <Button
+@@ -3463,6 +3525,19 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+                         {t('done')}
+                       </Button>
+                     ) : null}
++                    {canCancel ? (
++                      <Button
++                        className={cn(
++                          'rounded-lg',
++                          selectedAction === 'cancel' &&
++                            'ring-accentPrimary ring-2',
++                        )}
++                        variant={status === 'Отменена' ? 'destructive' : 'outline'}
++                        onClick={() => setShowCancelConfirm(true)}
++                      >
++                        {t('cancelTask')}
++                      </Button>
++                    ) : null}
+                   </div>
+                   {canFinalizeStatus && showDoneSelect && (
+                     <>
+@@ -3509,6 +3584,20 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+                       onCancel={() => setShowDoneConfirm(false)}
+                     />
+                   ) : null}
++                  {canCancel ? (
++                    <ConfirmDialog
++                      open={showCancelConfirm}
++                      message={t('cancelTaskQuestion')}
++                      confirmText={t('cancelTask')}
++                      cancelText={t('close')}
++                      onConfirm={() => {
++                        setShowCancelConfirm(false);
++                        setSelectedAction('cancel');
++                        cancelTask();
++                      }}
++                      onCancel={() => setShowCancelConfirm(false)}
++                    />
++                  ) : null}
+                 </>
+               )}
+             </>
+diff --git a/apps/web/src/locales/en/translation.json b/apps/web/src/locales/en/translation.json
+index 3fd9e7b..35896d1 100644
+--- a/apps/web/src/locales/en/translation.json
++++ b/apps/web/src/locales/en/translation.json
+@@ -82,6 +82,9 @@
+   "deleteTaskQuestion": "Delete task?",
+   "acceptTaskQuestion": "Accept task?",
+   "completeTaskQuestion": "Complete task?",
++  "cancelTask": "Cancel",
++  "cancelTaskQuestion": "Cancel task?",
++  "taskCanceled": "Task canceled",
+   "distance": "Distance",
+   "done": "Done",
+   "doneChanged": "Task completed with changes",
+diff --git a/apps/web/src/locales/ru/translation.json b/apps/web/src/locales/ru/translation.json
+index 0002066..95cdda3 100644
+--- a/apps/web/src/locales/ru/translation.json
++++ b/apps/web/src/locales/ru/translation.json
+@@ -82,6 +82,9 @@
+   "deleteTaskQuestion": "Удалить задачу?",
+   "acceptTaskQuestion": "Принять задачу?",
+   "completeTaskQuestion": "Завершить задачу?",
++  "cancelTask": "Отменить",
++  "cancelTaskQuestion": "Отменить задачу?",
++  "taskCanceled": "Задача отменена",
+   "distance": "Расстояние",
+   "done": "Выполнено",
+   "doneChanged": "Задача выполнена с изменениями",
+diff --git a/apps/web/src/locales/uk/translation.json b/apps/web/src/locales/uk/translation.json
+index 0a6679d..ab6acb4 100644
+--- a/apps/web/src/locales/uk/translation.json
++++ b/apps/web/src/locales/uk/translation.json
+@@ -45,5 +45,11 @@
+   },
+   "nav": {
+     "settings": "Налаштування"
+-  }
++  },
++  "deleteTaskQuestion": "Видалити задачу?",
++  "acceptTaskQuestion": "Прийняти задачу?",
++  "completeTaskQuestion": "Завершити задачу?",
++  "cancelTask": "Скасувати",
++  "cancelTaskQuestion": "Скасувати задачу?",
++  "taskCanceled": "Задачу скасовано"
+ }

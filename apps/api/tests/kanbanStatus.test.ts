@@ -40,7 +40,9 @@ app.patch(
     return next();
   },
   asyncHandler(async (req, res) => {
-    await updateTaskStatus(req.params.id, req.body.status, 0);
+    await updateTaskStatus(req.params.id, req.body.status, 0, {
+      adminOverride: false,
+    });
     await writeLog(`Статус задачи ${req.params.id} -> ${req.body.status}`);
     res.json({ status: 'ok' });
   }),
@@ -53,7 +55,9 @@ test('статус задачи меняется на В работе', async ()
     .patch(`/api/v1/tasks/${id}/status`)
     .send({ status: 'В работе' });
   expect(res.body.status).toBe('ok');
-  expect(updateTaskStatus).toHaveBeenCalledWith(id, 'В работе', 0);
+  expect(updateTaskStatus).toHaveBeenCalledWith(id, 'В работе', 0, {
+    adminOverride: false,
+  });
 });
 
 afterAll(() => {

@@ -45,5 +45,11 @@
   },
   "nav": {
     "settings": "Налаштування"
-  }
+  },
+  "deleteTaskQuestion": "Видалити задачу?",
+  "acceptTaskQuestion": "Прийняти задачу?",
+  "completeTaskQuestion": "Завершити задачу?",
+  "cancelTask": "Скасувати",
+  "cancelTaskQuestion": "Скасувати задачу?",
+  "taskCanceled": "Задачу скасовано"
 }

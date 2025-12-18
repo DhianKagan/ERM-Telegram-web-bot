@@ -3,6 +3,12 @@
 import { Response, CookieOptions } from 'express';
 import config from '../config';
 
+function maskToken(token: string): string {
+  if (!token) return '';
+  const tail = token.slice(-4);
+  return `***${tail}`;
+}
+
 export default function setTokenCookie(
   res: Response,
   token: string,
@@ -19,8 +25,9 @@ export default function setTokenCookie(
     cookieOpts.domain = cfg.cookieDomain || new URL(cfg.appUrl).hostname;
   }
   res.cookie('token', token, cookieOpts);
-  const preview = token.slice(0, 8);
-  console.log(
-    `Установлена cookie token:${preview} domain:${cookieOpts.domain || 'none'}`,
-  );
+  const preview = maskToken(token);
+  console.info('Установлена cookie token', {
+    token: preview,
+    domain: cookieOpts.domain || 'none',
+  });
 }

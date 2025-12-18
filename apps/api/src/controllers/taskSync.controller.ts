@@ -129,6 +129,30 @@ const isMessageMissingOnDeleteError = (error: unknown): boolean => {
     .includes('message to delete not found');
 };
 
+const isMessageForbiddenToDeleteError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  const candidate = error as Record<string, unknown> & {
+    response?: { error_code?: number; description?: unknown };
+    description?: unknown;
+    error_code?: unknown;
+  };
+  const errorCode =
+    candidate.response?.error_code ??
+    (typeof candidate.error_code === 'number' ? candidate.error_code : null);
+  if (errorCode !== 400) {
+    return false;
+  }
+  const descriptionSource =
+    typeof candidate.response?.description === 'string'
+      ? candidate.response.description
+      : typeof candidate.description === 'string'
+        ? candidate.description
+        : '';
+  return descriptionSource.toLowerCase().includes("message can't be deleted");
+};
+
 const toNumericId = (value: unknown): number | null => {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : null;
@@ -453,12 +477,20 @@ export default class TaskSyncController {
               previousPhotosMessageId,
             );
           } catch (error) {
-            if (!isMessageMissingOnDeleteError(error)) {
-              console.error(
-                'Не удалось удалить предыдущее сообщение альбома задачи',
+            if (isMessageMissingOnDeleteError(error)) {
+              return;
+            }
+            if (isMessageForbiddenToDeleteError(error)) {
+              console.warn(
+                'Сообщение альбома задачи нельзя удалить в Telegram',
                 error,
               );
+              return;
             }
+            console.error(
+              'Не удалось удалить предыдущее сообщение альбома задачи',
+              error,
+            );
           }
         }
       }
@@ -511,6 +543,11 @@ export default class TaskSyncController {
             if (isMessageMissingOnDeleteError(deleteError)) {
               console.info(
                 'Устаревшее сообщение задачи уже удалено в Telegram',
+                { chatId: targetChatId, messageId: currentMessageId },
+              );
+            } else if (isMessageForbiddenToDeleteError(deleteError)) {
+              console.warn(
+                'Устаревшее сообщение задачи нельзя удалить в Telegram',
                 { chatId: targetChatId, messageId: currentMessageId },
               );
             } else {
@@ -916,7 +953,9 @@ export default class TaskSyncController {
           },
         });
       } catch (error) {
-        if (!isMessageMissingOnDeleteError(error)) {
+        if (isMessageForbiddenToDeleteError(error)) {
+          console.warn('Комментарий задачи нельзя удалить в Telegram', error);
+        } else if (!isMessageMissingOnDeleteError(error)) {
           console.error(
             'Не удалось удалить устаревший комментарий задачи',
             error,
@@ -967,6 +1006,9 @@ export default class TaskSyncController {
         commentMessageId = undefined;
       } catch (error) {
         if (isMessageMissingOnDeleteError(error)) {
+          commentMessageId = undefined;
+        } else if (isMessageForbiddenToDeleteError(error)) {
+          console.warn('Комментарий задачи нельзя удалить в Telegram', error);
           commentMessageId = undefined;
         } else {
           console.error(

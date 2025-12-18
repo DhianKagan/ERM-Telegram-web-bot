@@ -13,6 +13,7 @@ import type {
   TaskFilters,
   SummaryFilters,
   TasksChartResult,
+  UpdateTaskOptions,
 } from '../db/queries';
 import { writeLog as writeAttachmentLog } from '../services/wgLogEngine';
 import { extractAttachmentIds } from '../utils/attachments';
@@ -36,6 +37,7 @@ interface TasksRepository {
     id: string,
     data: Partial<TaskDocument>,
     userId: number,
+    options?: UpdateTaskOptions,
   ): Promise<TaskDocument | null>;
   addTime(id: string, minutes: number): Promise<TaskDocument | null>;
   bulkUpdate(ids: string[], data: Partial<TaskDocument>): Promise<void>;
@@ -252,7 +254,12 @@ class TasksService {
     return this.repo.getTask(id);
   }
 
-  async update(id: string, data: Partial<TaskDocument> = {}, userId: number) {
+  async update(
+    id: string,
+    data: Partial<TaskDocument> = {},
+    userId: number,
+    options: UpdateTaskOptions = {},
+  ) {
     const payload = data ?? {};
     if (Object.prototype.hasOwnProperty.call(payload, 'due_date')) {
       (payload as Record<string, unknown>).deadline_reminder_sent_at =
@@ -266,7 +273,7 @@ class TasksService {
     await ensureTaskLinksShort(payload);
     await this.applyTaskTypeTopic(payload);
     try {
-      const task = await this.repo.updateTask(id, payload, userId);
+      const task = await this.repo.updateTask(id, payload, userId, options);
       await clearRouteCache();
       await this.logAttachmentSync(
         'update',

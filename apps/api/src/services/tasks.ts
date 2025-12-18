@@ -1,6 +1,7 @@
 // apps/api/src/services/tasks.ts
 import * as q from '../db/queries';
 import type { TaskDocument } from '../db/model';
+import type { UpdateTaskOptions } from '../db/queries';
 import { ensureTaskLinksShort } from './taskLinks';
 import { parsePointInput } from '../utils/geo';
 import { logger } from '../services/wgLogEngine';
@@ -122,11 +123,12 @@ export const update = async (
   id: string,
   data: TaskData = {},
   userId = 0,
+  options: UpdateTaskOptions = {},
 ): Promise<unknown> => {
   await applyRouteInfo(data);
   await ensureTaskLinksShort(data as Partial<TaskDocument>);
   const payload = prepareTaskPayload(data);
-  return q.updateTask(id, payload, userId);
+  return q.updateTask(id, payload, userId, options);
 };
 
 export const addTime = (

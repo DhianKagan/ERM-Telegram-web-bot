@@ -484,9 +484,7 @@ export default async function registerRoutes(
       }
       const dbUser = await getUser(userId);
       const accessMask = Number(dbUser?.access ?? 0);
-      const adminOverride =
-        hasAccess(accessMask, ACCESS_TASK_DELETE) ||
-        hasAccess(accessMask, ACCESS_ADMIN);
+      const adminOverride = hasAccess(accessMask, ACCESS_TASK_DELETE);
       // actor validation: must be creator/assignee/controller
       const assigneeIds = new Set<number>();
       const controllerIds = new Set<number>();
@@ -533,7 +531,7 @@ export default async function registerRoutes(
           req.params.id,
           req.body.status,
           userId,
-          { source: 'telegram', adminOverride },
+          { source: 'telegram', adminOverride, actorAccess: accessMask },
         );
         if (!updated) {
           sendProblem(req, res, {
@@ -592,15 +590,13 @@ export default async function registerRoutes(
         const user = (req as RequestWithUser).user;
         const actorId = Number(user?.id ?? 0);
         const actorAccess = Number(user?.access ?? 0);
-        const adminOverride =
-          hasAccess(actorAccess, ACCESS_TASK_DELETE) ||
-          hasAccess(actorAccess, ACCESS_ADMIN);
+        const adminOverride = hasAccess(actorAccess, ACCESS_TASK_DELETE);
 
         const updated = await updateTaskStatus(
           req.params.id,
           req.body.status,
           actorId,
-          { source: 'web', adminOverride },
+          { source: 'web', adminOverride, actorAccess },
         );
         if (!updated) {
           sendProblem(req, res, {

@@ -1,0 +1,733 @@
+diff --git a/apps/api/src/api/routes.ts b/apps/api/src/api/routes.ts
+index 93d59f9..9f55b32 100644
+--- a/apps/api/src/api/routes.ts
++++ b/apps/api/src/api/routes.ts
+@@ -484,9 +484,7 @@ export default async function registerRoutes(
+       }
+       const dbUser = await getUser(userId);
+       const accessMask = Number(dbUser?.access ?? 0);
+-      const adminOverride =
+-        hasAccess(accessMask, ACCESS_TASK_DELETE) ||
+-        hasAccess(accessMask, ACCESS_ADMIN);
++      const adminOverride = hasAccess(accessMask, ACCESS_TASK_DELETE);
+       // actor validation: must be creator/assignee/controller
+       const assigneeIds = new Set<number>();
+       const controllerIds = new Set<number>();
+@@ -533,7 +531,7 @@ export default async function registerRoutes(
+           req.params.id,
+           req.body.status,
+           userId,
+-          { source: 'telegram', adminOverride },
++          { source: 'telegram', adminOverride, actorAccess: accessMask },
+         );
+         if (!updated) {
+           sendProblem(req, res, {
+@@ -592,15 +590,13 @@ export default async function registerRoutes(
+         const user = (req as RequestWithUser).user;
+         const actorId = Number(user?.id ?? 0);
+         const actorAccess = Number(user?.access ?? 0);
+-        const adminOverride =
+-          hasAccess(actorAccess, ACCESS_TASK_DELETE) ||
+-          hasAccess(actorAccess, ACCESS_ADMIN);
++        const adminOverride = hasAccess(actorAccess, ACCESS_TASK_DELETE);
+ 
+         const updated = await updateTaskStatus(
+           req.params.id,
+           req.body.status,
+           actorId,
+-          { source: 'web', adminOverride },
++          { source: 'web', adminOverride, actorAccess },
+         );
+         if (!updated) {
+           sendProblem(req, res, {
+diff --git a/apps/api/src/db/queries.ts b/apps/api/src/db/queries.ts
+index e5459a0..bb979cc 100644
+--- a/apps/api/src/db/queries.ts
++++ b/apps/api/src/db/queries.ts
+@@ -695,6 +695,36 @@ export type UpdateTaskStatusOptions = {
+   source?: 'web' | 'telegram' | 'tma';
+   // pass true to allow admin override of terminal state rules
+   adminOverride?: boolean;
++  actorAccess?: number;
++};
++
++export type UpdateTaskOptions = {
++  adminOverride?: boolean;
++};
++
++const TERMINAL_TASK_STATUSES: ReadonlySet<TaskDocument['status']> = new Set([
++  'Выполнена',
++  'Отменена',
++]);
++
++const isTerminalStatus = (
++  status: TaskDocument['status'] | string | undefined,
++): status is TaskDocument['status'] =>
++  typeof status === 'string' && TERMINAL_TASK_STATUSES.has(status as never);
++
++const isUserStatusTransitionAllowed = (
++  currentStatus: TaskDocument['status'] | undefined,
++  nextStatus: TaskDocument['status'] | undefined,
++): boolean => {
++  if (!nextStatus) return false;
++  if (isTerminalStatus(currentStatus)) return false;
++  if (!currentStatus || currentStatus === 'Новая') {
++    return nextStatus === 'В работе' || nextStatus === 'Выполнена';
++  }
++  if (currentStatus === 'В работе') {
++    return nextStatus === 'Выполнена' || nextStatus === 'В работе';
++  }
++  return false;
+ };
+ 
+ function normalizeObjectId(value: unknown): Types.ObjectId | null {
+@@ -1007,10 +1037,12 @@ export async function updateTask(
+   id: string,
+   fields: Partial<TaskDocument>,
+   userId: number,
++  options: UpdateTaskOptions = {},
+ ): Promise<TaskDocument | null> {
+   const data = sanitizeUpdate(fields);
+   const prev = await Task.findById(id);
+   if (!prev) return null;
++  const allowAdminOverride = options.adminOverride === true;
+   await normalizeTransportFields(
+     data as Partial<TaskDocument> & Record<string, unknown>,
+     prev,
+@@ -1050,20 +1082,22 @@ export async function updateTask(
+     if (nextStatus === 'Новая') {
+       (data as Record<string, unknown>).in_progress_at = null;
+     } else if (nextStatus === 'Отменена') {
+-      if (kind === 'task' && !isCreator) {
+-        const err = new Error(
+-          'Статус «Отменена» может установить только создатель задачи.',
+-        );
+-        (err as Error & { code?: string }).code = 'TASK_CANCEL_FORBIDDEN';
+-        throw err;
+-      }
+-      if (kind === 'request' && !isCreator && !isExecutor) {
+-        const err = new Error(
+-          'Отменить заявку могут только исполнитель или создатель.',
+-        );
+-        (err as Error & { code?: string }).code =
+-          'TASK_REQUEST_CANCEL_FORBIDDEN';
+-        throw err;
++      if (!allowAdminOverride) {
++        if (kind === 'task' && !isCreator) {
++          const err = new Error(
++            'Статус «Отменена» может установить только создатель задачи.',
++          );
++          (err as Error & { code?: string }).code = 'TASK_CANCEL_FORBIDDEN';
++          throw err;
++        }
++        if (kind === 'request' && !isCreator && !isExecutor) {
++          const err = new Error(
++            'Отменить заявку могут только исполнитель или создатель.',
++          );
++          (err as Error & { code?: string }).code =
++            'TASK_REQUEST_CANCEL_FORBIDDEN';
++          throw err;
++        }
+       }
+     }
+   }
+@@ -1187,39 +1221,71 @@ export async function updateTaskStatus(
+       ? (existing.status as TaskDocument['status'])
+       : undefined;
+ 
++  const controllerIds = new Set<number>();
++  const primaryController = Number(existing.controller_user_id);
++  if (Number.isFinite(primaryController)) {
++    controllerIds.add(primaryController);
++  }
++  if (Array.isArray(existing.controllers)) {
++    existing.controllers
++      .map((value) => Number(value))
++      .filter((value) => Number.isFinite(value))
++      .forEach((value) => controllerIds.add(value));
++  }
++
+   const assignedUserId = normalizeUserId(existing.assigned_user_id);
+   const assignees = collectAssigneeIds(existing.assignees);
+   const isExecutor =
+     (assignedUserId !== null && assignedUserId === userId) ||
+     assignees.includes(userId);
++  const isController = controllerIds.has(userId);
+ 
+   const creatorId = Number(existing.created_by);
+   const isCreator = Number.isFinite(creatorId) && creatorId === userId;
+ 
+-  const adminOverride = !!options.adminOverride;
++  const actorAccess = Number(options.actorAccess ?? 0);
++  const hasDeleteAccess = hasAccess(actorAccess, ACCESS_TASK_DELETE);
++  const hasAdminAccess = hasAccess(actorAccess, ACCESS_ADMIN) || hasDeleteAccess;
++  const hasManagerAccess =
++    hasAccess(actorAccess, ACCESS_MANAGER) || hasDeleteAccess;
++  const isActorLinked = isCreator || isExecutor || isController;
++  const allowTerminalOverride =
++    hasDeleteAccess && options.adminOverride !== false;
+ 
+   // If task already in terminal state, only adminOverride may change it
+-  const terminalStatuses: TaskDocument['status'][] = ['Выполнена', 'Отменена'];
+-  if (
+-    typeof currentStatus === 'string' &&
+-    terminalStatuses.includes(currentStatus)
+-  ) {
+-    // allow change only for adminOverride
+-    if (!adminOverride) {
+-      const err = new Error(
+-        'Нельзя менять статус задачи, которая уже завершена или отменена.',
+-      );
+-      (err as Error & { code?: string }).code = 'TASK_STATUS_FORBIDDEN';
+-      throw err;
+-    }
+-  }
+-
+-  if (!(isCreator || isExecutor || adminOverride)) {
+-    const err = new Error('Нет прав на изменение статуса задачи');
++  if (isTerminalStatus(currentStatus) && !allowTerminalOverride) {
++    const err = new Error(
++      'Нельзя менять статус задачи, которая уже завершена или отменена.',
++    );
+     (err as Error & { code?: string }).code = 'TASK_STATUS_FORBIDDEN';
+     throw err;
+   }
+ 
++  if (!allowTerminalOverride) {
++    if (hasAdminAccess) {
++      // администраторы без уровня удаления работают с любыми задачами, кроме финальных
++    } else if (hasManagerAccess) {
++      if (!isActorLinked) {
++        const err = new Error('Нет прав на изменение статуса задачи');
++        (err as Error & { code?: string }).code = 'TASK_STATUS_FORBIDDEN';
++        throw err;
++      }
++    } else {
++      if (!isActorLinked) {
++        const err = new Error('Нет прав на изменение статуса задачи');
++        (err as Error & { code?: string }).code = 'TASK_STATUS_FORBIDDEN';
++        throw err;
++      }
++      if (!isUserStatusTransitionAllowed(currentStatus, status)) {
++        const err = new Error(
++          'Исполнителю доступны только статусы «В работе» и «Выполнена» из статуса «Новая».',
++        );
++        (err as Error & { code?: string }).code = 'TASK_STATUS_FORBIDDEN';
++        throw err;
++      }
++    }
++  }
++
+   // (Optional) keep existing constraints about allowed previous statuses for completion.
+   // The user requested to allow creator/executor to change to any status from any status,
+   // so we skip strict "allowedCompletionSources" check. If you want to enforce a transition
+@@ -1260,7 +1326,10 @@ export async function updateTaskStatus(
+   }
+ 
+   // Preserve original call that records the change and returns the task
+-  return updateTask(id, update, userId);
++  const allowCancelOverride = allowTerminalOverride || hasAdminAccess;
++  return updateTask(id, update, userId, {
++    adminOverride: allowCancelOverride,
++  });
+ }
+ 
+ export interface TaskFilters {
+diff --git a/apps/api/src/middleware/taskAccess.ts b/apps/api/src/middleware/taskAccess.ts
+index 389fbae..ab8ddf5 100644
+--- a/apps/api/src/middleware/taskAccess.ts
++++ b/apps/api/src/middleware/taskAccess.ts
+@@ -7,6 +7,7 @@ import {
+   ACCESS_ADMIN,
+   ACCESS_USER,
+   ACCESS_MANAGER,
++  ACCESS_TASK_DELETE,
+ } from '../utils/accessMask';
+ import * as service from '../services/tasks';
+ import { writeLog } from '../services/service';
+@@ -28,10 +29,15 @@ export default async function checkTaskAccess(
+     });
+     return;
+   }
+-  const mask = req.user?.access ?? ACCESS_USER;
++  const mask = Number(req.user?.access ?? ACCESS_USER);
++  const roleName = typeof req.user?.role === 'string' ? req.user.role : '';
+   const id = Number(req.user?.id);
+-  const hasElevatedAccess =
+-    hasAccess(mask, ACCESS_ADMIN) || hasAccess(mask, ACCESS_MANAGER);
++  const hasDeleteAccess = hasAccess(mask, ACCESS_TASK_DELETE);
++  const hasAdminAccess =
++    roleName === 'admin' || hasAccess(mask, ACCESS_ADMIN) || hasDeleteAccess;
++  const hasManagerAccess = hasAccess(mask, ACCESS_MANAGER) || hasDeleteAccess;
++  const isAdminWithoutDelete = hasAdminAccess && !hasDeleteAccess;
++  const isManagerActor = hasManagerAccess && !hasDeleteAccess;
+   const assignedIds = new Set<number>();
+   if (typeof task.assigned_user_id === 'number') {
+     assignedIds.add(task.assigned_user_id);
+@@ -57,50 +63,73 @@ export default async function checkTaskAccess(
+     typeof task.status === 'string'
+       ? (task.status as TaskInfo['status'])
+       : undefined;
+-  const isTaskNew = !status || status === 'Новая';
+-  const hasTaskStarted = status !== undefined && status !== 'Новая';
++  const isTerminal = status === 'Выполнена' || status === 'Отменена';
+   const isCreator = Number.isFinite(id) && task.created_by === id;
+   const isExecutor = Number.isFinite(id) && assignedIds.has(id);
+   const isController = Number.isFinite(id) && controllerIds.has(id);
+-  const sameActor = isCreator && isExecutor;
+   const method = req.method.toUpperCase();
+   const routePath = typeof req.route?.path === 'string' ? req.route.path : '';
+   const isTaskUpdateRoute = method === 'PATCH' && routePath === '/:id';
+   const isStatusRoute =
+     method === 'PATCH' &&
+     (routePath === '/:id/status' || req.originalUrl.endsWith('/status'));
+-  if (hasElevatedAccess || isController) {
++  const isActorLinked = isCreator || isExecutor || isController;
++  const payload = (req.body ?? {}) as Record<string, unknown>;
++  const payloadKeys = Object.entries(payload)
++    .filter(([, value]) => value !== undefined)
++    .map(([key]) => key);
++  const nextStatus =
++    typeof payload.status === 'string'
++      ? (payload.status as TaskInfo['status'])
++      : undefined;
++  const isUserStatusAllowed = (() => {
++    if (!isActorLinked || !nextStatus) return false;
++    if (isTerminal) return false;
++    if (!status || status === 'Новая') {
++      return nextStatus === 'В работе' || nextStatus === 'Выполнена';
++    }
++    if (status === 'В работе') {
++      return nextStatus === 'Выполнена' || nextStatus === 'В работе';
++    }
++    return false;
++  })();
++  if (hasDeleteAccess) {
+     req.task = task;
+     next();
+     return;
+   }
+   if (isTaskUpdateRoute) {
+-    if (isCreator && isTaskNew) {
++    if (isAdminWithoutDelete && !isTerminal) {
+       req.task = task;
+       next();
+       return;
+     }
+-    if (isExecutor && !isCreator) {
+-      const payload = (req.body ?? {}) as Record<string, unknown>;
+-      const keys = Object.entries(payload)
+-        .filter(([, value]) => value !== undefined)
+-        .map(([key]) => key);
+-      const allowed = new Set(['status']);
+-      if (keys.every((key) => allowed.has(key))) {
+-        req.task = task;
+-        next();
+-        return;
+-      }
++    if (isManagerActor && isActorLinked && !isTerminal) {
++      req.task = task;
++      next();
++      return;
++    }
++    if (
++      isUserStatusAllowed &&
++      payloadKeys.length === 1 &&
++      payloadKeys[0] === 'status'
++    ) {
++      req.task = task;
++      next();
++      return;
+     }
+   } else if (isStatusRoute) {
+-    if (isCreator) {
+-      if (!(sameActor && hasTaskStarted)) {
+-        req.task = task;
+-        next();
+-        return;
+-      }
++    if (isAdminWithoutDelete && !isTerminal) {
++      req.task = task;
++      next();
++      return;
++    }
++    if (isManagerActor && isActorLinked && !isTerminal) {
++      req.task = task;
++      next();
++      return;
+     }
+-    if (isExecutor && !sameActor) {
++    if (isUserStatusAllowed) {
+       req.task = task;
+       next();
+       return;
+diff --git a/apps/api/src/services/tasks.ts b/apps/api/src/services/tasks.ts
+index 7f86318..3256d11 100644
+--- a/apps/api/src/services/tasks.ts
++++ b/apps/api/src/services/tasks.ts
+@@ -1,6 +1,7 @@
+ // apps/api/src/services/tasks.ts
+ import * as q from '../db/queries';
+ import type { TaskDocument } from '../db/model';
++import type { UpdateTaskOptions } from '../db/queries';
+ import { ensureTaskLinksShort } from './taskLinks';
+ import { parsePointInput } from '../utils/geo';
+ import { logger } from '../services/wgLogEngine';
+@@ -122,11 +123,12 @@ export const update = async (
+   id: string,
+   data: TaskData = {},
+   userId = 0,
++  options: UpdateTaskOptions = {},
+ ): Promise<unknown> => {
+   await applyRouteInfo(data);
+   await ensureTaskLinksShort(data as Partial<TaskDocument>);
+   const payload = prepareTaskPayload(data);
+-  return q.updateTask(id, payload, userId);
++  return q.updateTask(id, payload, userId, options);
+ };
+ 
+ export const addTime = (
+diff --git a/apps/api/src/tasks/tasks.controller.ts b/apps/api/src/tasks/tasks.controller.ts
+index 724bfeb..d932992 100644
+--- a/apps/api/src/tasks/tasks.controller.ts
++++ b/apps/api/src/tasks/tasks.controller.ts
+@@ -55,7 +55,12 @@ import {
+   resolveTaskTypeTopicId,
+   resolveTaskTypePhotosTarget,
+ } from '../services/taskTypeSettings';
+-import { ACCESS_ADMIN } from '../utils/accessMask';
++import {
++  ACCESS_ADMIN,
++  ACCESS_MANAGER,
++  ACCESS_TASK_DELETE,
++  hasAccess as hasAccessMask,
++} from '../utils/accessMask';
+ import { ensureCommentHtml, syncCommentMessage } from '../tasks/taskComments';
+ import { cleanupUploadedFiles } from '../utils/requestUploads';
+ import { normalizeTaskFilters } from './filterUtils';
+@@ -125,6 +130,30 @@ const attachmentsBaseUrl = baseAppUrl.replace(/\/+$/, '');
+ const ALBUM_MESSAGE_DELAY_MS = 100;
+ 
+ const REQUEST_TYPE_NAME = 'Заявка';
++const TERMINAL_TASK_STATUSES: ReadonlySet<TaskDocument['status']> = new Set([
++  'Выполнена',
++  'Отменена',
++]);
++
++const isTerminalStatus = (
++  status: TaskDocument['status'] | string | undefined,
++): status is TaskDocument['status'] =>
++  typeof status === 'string' && TERMINAL_TASK_STATUSES.has(status as never);
++
++const isUserStatusTransitionAllowed = (
++  currentStatus: TaskDocument['status'] | undefined,
++  nextStatus: TaskDocument['status'] | undefined,
++): boolean => {
++  if (!nextStatus) return false;
++  if (isTerminalStatus(currentStatus)) return false;
++  if (!currentStatus || currentStatus === 'Новая') {
++    return nextStatus === 'В работе' || nextStatus === 'Выполнена';
++  }
++  if (currentStatus === 'В работе') {
++    return nextStatus === 'Выполнена' || nextStatus === 'В работе';
++  }
++  return false;
++};
+ 
+ const cleanupRequestUploads = async (req: Request): Promise<void> => {
+   await cleanupUploadedFiles(req).catch(() => undefined);
+@@ -3055,13 +3084,74 @@ export default class TasksController {
+       const isCreator =
+         Number.isFinite(Number(req.user?.id)) &&
+         Number(previousTask.created_by) === Number(req.user?.id);
+-      if (currentStatus && currentStatus !== 'Новая' && !isCreator) {
++      const assignedIds = new Set<number>();
++      if (typeof previousTask.assigned_user_id === 'number') {
++        assignedIds.add(previousTask.assigned_user_id);
++      }
++      if (Array.isArray(previousTask.assignees)) {
++        previousTask.assignees
++          .map((value) => Number(value))
++          .filter((value) => Number.isFinite(value))
++          .forEach((value) => assignedIds.add(value));
++      }
++      const controllerIds = new Set<number>();
++      const primaryController = Number(previousTask.controller_user_id);
++      if (Number.isFinite(primaryController)) {
++        controllerIds.add(primaryController);
++      }
++      if (Array.isArray(previousTask.controllers)) {
++        previousTask.controllers
++          .map((value) => Number(value))
++          .filter((value) => Number.isFinite(value))
++          .forEach((value) => controllerIds.add(value));
++      }
++      const actorAccess = Number(req.user?.access ?? 0);
++      const actorRole = typeof req.user?.role === 'string' ? req.user.role : '';
++      const hasDeleteAccess = hasAccessMask(actorAccess, ACCESS_TASK_DELETE);
++      const hasAdminRights =
++        actorRole === 'admin' ||
++        hasAccessMask(actorAccess, ACCESS_ADMIN) ||
++        hasDeleteAccess;
++      const hasManagerRights =
++        hasAccessMask(actorAccess, ACCESS_MANAGER) || hasDeleteAccess;
++      const isTerminal = isTerminalStatus(currentStatus);
++      const isExecutor = assignedIds.has(actorId);
++      const isController = controllerIds.has(actorId);
++      const isActorLinked = isCreator || isExecutor || isController;
++      const changedKeys = Object.entries(nextPayload)
++        .filter(([, value]) => value !== undefined)
++        .map(([key]) => key);
++      const requestedStatus =
++        typeof nextPayload.status === 'string'
++          ? (nextPayload.status as TaskDocument['status'])
++          : undefined;
++      const isStatusOnlyUpdate =
++        changedKeys.length === 1 && changedKeys[0] === 'status';
++      const isUserStatusAllowed =
++        isActorLinked &&
++        isStatusOnlyUpdate &&
++        isUserStatusTransitionAllowed(currentStatus, requestedStatus);
++      const canEditTask =
++        hasDeleteAccess ||
++        (!isTerminal &&
++          (hasAdminRights || (hasManagerRights && isActorLinked)));
++      const denyStatus = isTerminal && !hasDeleteAccess ? 409 : 403;
++      const denyDetail = (() => {
++        if (isTerminal) {
++          return 'Редактирование недоступно для задач в статусах «Выполнена» и «Отменена»';
++        }
++        if (isStatusOnlyUpdate && isActorLinked) {
++          return 'Исполнителю доступны только статусы «В работе» и «Выполнена» из статуса «Новая»';
++        }
++        return 'Недостаточно прав для изменения задачи';
++      })();
++      if (!canEditTask && !isUserStatusAllowed) {
+         await cleanupRequestUploads(req);
+         sendProblem(req, res, {
+           type: 'about:blank',
+           title: 'Редактирование запрещено',
+-          status: 409,
+-          detail: 'Редактирование доступно только для задач в статусе «Новая»',
++          status: denyStatus,
++          detail: denyDetail,
+         });
+         return;
+       }
+@@ -3071,7 +3161,9 @@ export default class TasksController {
+       }
+       let task: TaskDocument | null;
+       try {
+-        task = await this.service.update(req.params.id, nextPayload, actorId);
++        task = await this.service.update(req.params.id, nextPayload, actorId, {
++          adminOverride: hasDeleteAccess,
++        });
+       } catch (error) {
+         await cleanupRequestUploads(req);
+         const err = error as { code?: string; message?: string };
+@@ -3105,16 +3197,15 @@ export default class TasksController {
+         if (
+           current &&
+           typeof current.status === 'string' &&
+-          current.status !== 'Новая' &&
+-          !isCreator
++          isTerminalStatus(current.status) &&
++          !hasDeleteAccess
+         ) {
+           await cleanupRequestUploads(req);
+           sendProblem(req, res, {
+             type: 'about:blank',
+             title: 'Редактирование запрещено',
+-            status: 409,
+-            detail:
+-              'Редактирование доступно только для задач в статусе «Новая»',
++            status: denyStatus,
++            detail: denyDetail,
+           });
+         } else {
+           await cleanupRequestUploads(req);
+diff --git a/apps/api/src/tasks/tasks.service.ts b/apps/api/src/tasks/tasks.service.ts
+index 269a95d..cf2f3bd 100644
+--- a/apps/api/src/tasks/tasks.service.ts
++++ b/apps/api/src/tasks/tasks.service.ts
+@@ -13,6 +13,7 @@ import type {
+   TaskFilters,
+   SummaryFilters,
+   TasksChartResult,
++  UpdateTaskOptions,
+ } from '../db/queries';
+ import { writeLog as writeAttachmentLog } from '../services/wgLogEngine';
+ import { extractAttachmentIds } from '../utils/attachments';
+@@ -36,6 +37,7 @@ interface TasksRepository {
+     id: string,
+     data: Partial<TaskDocument>,
+     userId: number,
++    options?: UpdateTaskOptions,
+   ): Promise<TaskDocument | null>;
+   addTime(id: string, minutes: number): Promise<TaskDocument | null>;
+   bulkUpdate(ids: string[], data: Partial<TaskDocument>): Promise<void>;
+@@ -252,7 +254,12 @@ class TasksService {
+     return this.repo.getTask(id);
+   }
+ 
+-  async update(id: string, data: Partial<TaskDocument> = {}, userId: number) {
++  async update(
++    id: string,
++    data: Partial<TaskDocument> = {},
++    userId: number,
++    options: UpdateTaskOptions = {},
++  ) {
+     const payload = data ?? {};
+     if (Object.prototype.hasOwnProperty.call(payload, 'due_date')) {
+       (payload as Record<string, unknown>).deadline_reminder_sent_at =
+@@ -266,7 +273,7 @@ class TasksService {
+     await ensureTaskLinksShort(payload);
+     await this.applyTaskTypeTopic(payload);
+     try {
+-      const task = await this.repo.updateTask(id, payload, userId);
++      const task = await this.repo.updateTask(id, payload, userId, options);
+       await clearRouteCache();
+       await this.logAttachmentSync(
+         'update',
+diff --git a/apps/api/tests/kanbanStatus.test.ts b/apps/api/tests/kanbanStatus.test.ts
+index 7e5a677..ef59484 100644
+--- a/apps/api/tests/kanbanStatus.test.ts
++++ b/apps/api/tests/kanbanStatus.test.ts
+@@ -42,6 +42,7 @@ app.patch(
+   asyncHandler(async (req, res) => {
+     await updateTaskStatus(req.params.id, req.body.status, 0, {
+       adminOverride: false,
++      actorAccess: 0,
+     });
+     await writeLog(`Статус задачи ${req.params.id} -> ${req.body.status}`);
+     res.json({ status: 'ok' });
+@@ -57,6 +58,7 @@ test('статус задачи меняется на В работе', async ()
+   expect(res.body.status).toBe('ok');
+   expect(updateTaskStatus).toHaveBeenCalledWith(id, 'В работе', 0, {
+     adminOverride: false,
++    actorAccess: 0,
+   });
+ });
+ 
+diff --git a/apps/api/tests/taskAttachments.test.ts b/apps/api/tests/taskAttachments.test.ts
+index 127eec3..4d502a0 100644
+--- a/apps/api/tests/taskAttachments.test.ts
++++ b/apps/api/tests/taskAttachments.test.ts
+@@ -261,7 +261,7 @@ describe('Проверка доступа к задаче другим поль
+     expect(response.status).toBe(403);
+   });
+ 
+-  test('создатель новой задачи может обновлять поля', async () => {
++  test('создатель без прав не редактирует даже новую задачу', async () => {
+     mockedGetById.mockResolvedValue({
+       ...defaultTaskAccess,
+       created_by: 7,
+@@ -275,7 +275,7 @@ describe('Проверка доступа к задаче другим поль
+     const response = await request(app)
+       .patch(`/tasks/${existingTaskId}`)
+       .send({ title: 'Обновлено' });
+-    expect(response.status).toBe(200);
++    expect(response.status).toBe(403);
+   });
+ 
+   test('создатель не может редактировать задачу в работе', async () => {
+@@ -329,7 +329,7 @@ describe('Проверка доступа к задаче другим поль
+     expect(response.status).toBe(403);
+   });
+ 
+-  test('создатель-исполнитель не меняет статус после старта', async () => {
++  test('создатель-исполнитель может завершить задачу после старта', async () => {
+     mockedGetById.mockResolvedValue({
+       ...defaultTaskAccess,
+       created_by: 12,
+@@ -344,7 +344,7 @@ describe('Проверка доступа к задаче другим поль
+     const response = await request(app)
+       .patch(`/tasks/${existingTaskId}/status`)
+       .send({ status: 'Выполнена' });
+-    expect(response.status).toBe(403);
++    expect(response.status).toBe(200);
+   });
+ 
+   test('исполнитель может сменить статус через отдельный роут', async () => {
+diff --git a/apps/api/tests/tasksStatusPermissions.test.ts b/apps/api/tests/tasksStatusPermissions.test.ts
+index ff134f3..44d4a25 100644
+--- a/apps/api/tests/tasksStatusPermissions.test.ts
++++ b/apps/api/tests/tasksStatusPermissions.test.ts
+@@ -2,6 +2,11 @@
+ // Основные модули: jest
+ import { Task } from '../src/db/model';
+ import * as queries from '../src/db/queries';
++import {
++  ACCESS_ADMIN,
++  ACCESS_MANAGER,
++  ACCESS_TASK_DELETE,
++} from '../src/utils/accessMask';
+ 
+ jest.mock('../src/db/model', () => ({
+   Task: {
+@@ -65,6 +70,7 @@ describe('updateTaskStatus permissions', () => {
+       999,
+       {
+         adminOverride: true,
++        actorAccess: ACCESS_TASK_DELETE,
+       },
+     );
+ 
+@@ -96,9 +102,31 @@ describe('updateTaskStatus permissions', () => {
+       999,
+       {
+         adminOverride: true,
++        actorAccess: ACCESS_TASK_DELETE,
+       },
+     );
+ 
+     expect(result?.status).toBe('В работе');
+   });
++
++  it('блокирует финальный статус для менеджера без уровня удаления', async () => {
++    (Task.findById as jest.Mock).mockResolvedValue({
++      ...baseTask,
++      status: 'Выполнена',
++    });
++
++    await expect(
++      queries.updateTaskStatus('task-1', 'В работе', 20, {
++        actorAccess: ACCESS_MANAGER,
++      }),
++    ).rejects.toHaveProperty('code', 'TASK_STATUS_FORBIDDEN');
++  });
++
++  it('разрешает администратору без удаления отменять задачу', async () => {
++    const result = await queries.updateTaskStatus('task-1', 'Отменена', 999, {
++      actorAccess: ACCESS_ADMIN,
++    });
++
++    expect(result?.status).toBe('Отменена');
++  });
+ });
+diff --git a/apps/api/tests/tmaTasks.test.ts b/apps/api/tests/tmaTasks.test.ts
+index 62872cb..3edc6e8 100644
+--- a/apps/api/tests/tmaTasks.test.ts
++++ b/apps/api/tests/tmaTasks.test.ts
+@@ -72,7 +72,10 @@ app.patch(
+     if (!ids.includes(Number(user.id))) {
+       return res.status(403).json({ error: 'forbidden' });
+     }
+-    await updateTaskStatus(req.params.id, req.body.status, user.id);
++    await updateTaskStatus(req.params.id, req.body.status, user.id, {
++      adminOverride: false,
++      actorAccess: 0,
++    });
+     res.json({ status: 'ok' });
+   }),
+ );
+@@ -94,5 +97,8 @@ test('обновляет статус задачи', async () => {
+     .set('Authorization', `tma ${initData}`)
+     .send({ status: 'В работе' });
+   expect(res.body.status).toBe('ok');
+-  expect(updateTaskStatus).toHaveBeenCalledWith('1', 'В работе', 123);
++  expect(updateTaskStatus).toHaveBeenCalledWith('1', 'В работе', 123, {
++    adminOverride: false,
++    actorAccess: 0,
++  });
+ });

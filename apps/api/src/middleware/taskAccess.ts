@@ -7,6 +7,7 @@ import {
   ACCESS_ADMIN,
   ACCESS_USER,
   ACCESS_MANAGER,
+  ACCESS_TASK_DELETE,
 } from '../utils/accessMask';
 import * as service from '../services/tasks';
 import { writeLog } from '../services/service';
@@ -28,10 +29,15 @@ export default async function checkTaskAccess(
     });
     return;
   }
-  const mask = req.user?.access ?? ACCESS_USER;
+  const mask = Number(req.user?.access ?? ACCESS_USER);
+  const roleName = typeof req.user?.role === 'string' ? req.user.role : '';
   const id = Number(req.user?.id);
-  const hasElevatedAccess =
-    hasAccess(mask, ACCESS_ADMIN) || hasAccess(mask, ACCESS_MANAGER);
+  const hasDeleteAccess = hasAccess(mask, ACCESS_TASK_DELETE);
+  const hasAdminAccess =
+    roleName === 'admin' || hasAccess(mask, ACCESS_ADMIN) || hasDeleteAccess;
+  const hasManagerAccess = hasAccess(mask, ACCESS_MANAGER) || hasDeleteAccess;
+  const isAdminWithoutDelete = hasAdminAccess && !hasDeleteAccess;
+  const isManagerActor = hasManagerAccess && !hasDeleteAccess;
   const assignedIds = new Set<number>();
   if (typeof task.assigned_user_id === 'number') {
     assignedIds.add(task.assigned_user_id);
@@ -57,50 +63,73 @@ export default async function checkTaskAccess(
     typeof task.status === 'string'
       ? (task.status as TaskInfo['status'])
       : undefined;
-  const isTaskNew = !status || status === 'Новая';
-  const hasTaskStarted = status !== undefined && status !== 'Новая';
+  const isTerminal = status === 'Выполнена' || status === 'Отменена';
   const isCreator = Number.isFinite(id) && task.created_by === id;
   const isExecutor = Number.isFinite(id) && assignedIds.has(id);
   const isController = Number.isFinite(id) && controllerIds.has(id);
-  const sameActor = isCreator && isExecutor;
   const method = req.method.toUpperCase();
   const routePath = typeof req.route?.path === 'string' ? req.route.path : '';
   const isTaskUpdateRoute = method === 'PATCH' && routePath === '/:id';
   const isStatusRoute =
     method === 'PATCH' &&
     (routePath === '/:id/status' || req.originalUrl.endsWith('/status'));
-  if (hasElevatedAccess || isController) {
+  const isActorLinked = isCreator || isExecutor || isController;
+  const payload = (req.body ?? {}) as Record<string, unknown>;
+  const payloadKeys = Object.entries(payload)
+    .filter(([, value]) => value !== undefined)
+    .map(([key]) => key);
+  const nextStatus =
+    typeof payload.status === 'string'
+      ? (payload.status as TaskInfo['status'])
+      : undefined;
+  const isUserStatusAllowed = (() => {
+    if (!isActorLinked || !nextStatus) return false;
+    if (isTerminal) return false;
+    if (!status || status === 'Новая') {
+      return nextStatus === 'В работе' || nextStatus === 'Выполнена';
+    }
+    if (status === 'В работе') {
+      return nextStatus === 'Выполнена' || nextStatus === 'В работе';
+    }
+    return false;
+  })();
+  if (hasDeleteAccess) {
     req.task = task;
     next();
     return;
   }
   if (isTaskUpdateRoute) {
-    if (isCreator && isTaskNew) {
+    if (isAdminWithoutDelete && !isTerminal) {
       req.task = task;
       next();
       return;
     }
-    if (isExecutor && !isCreator) {
-      const payload = (req.body ?? {}) as Record<string, unknown>;
-      const keys = Object.entries(payload)
-        .filter(([, value]) => value !== undefined)
-        .map(([key]) => key);
-      const allowed = new Set(['status']);
-      if (keys.every((key) => allowed.has(key))) {
-        req.task = task;
-        next();
-        return;
-      }
+    if (isManagerActor && isActorLinked && !isTerminal) {
+      req.task = task;
+      next();
+      return;
+    }
+    if (
+      isUserStatusAllowed &&
+      payloadKeys.length === 1 &&
+      payloadKeys[0] === 'status'
+    ) {
+      req.task = task;
+      next();
+      return;
     }
   } else if (isStatusRoute) {
-    if (isCreator) {
-      if (!(sameActor && hasTaskStarted)) {
-        req.task = task;
-        next();
-        return;
-      }
+    if (isAdminWithoutDelete && !isTerminal) {
+      req.task = task;
+      next();
+      return;
     }
-    if (isExecutor && !sameActor) {
+    if (isManagerActor && isActorLinked && !isTerminal) {
+      req.task = task;
+      next();
+      return;
+    }
+    if (isUserStatusAllowed) {
       req.task = task;
       next();
       return;

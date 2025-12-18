@@ -261,7 +261,7 @@ describe('Проверка доступа к задаче другим поль�
     expect(response.status).toBe(403);
   });
 
-  test('создатель новой задачи может обновлять поля', async () => {
+  test('создатель без прав не редактирует даже новую задачу', async () => {
     mockedGetById.mockResolvedValue({
       ...defaultTaskAccess,
       created_by: 7,
@@ -275,7 +275,7 @@ describe('Проверка доступа к задаче другим поль�
     const response = await request(app)
       .patch(`/tasks/${existingTaskId}`)
       .send({ title: 'Обновлено' });
-    expect(response.status).toBe(200);
+    expect(response.status).toBe(403);
   });
 
   test('создатель не может редактировать задачу в работе', async () => {
@@ -329,7 +329,7 @@ describe('Проверка доступа к задаче другим поль�
     expect(response.status).toBe(403);
   });
 
-  test('создатель-исполнитель не меняет статус после старта', async () => {
+  test('создатель-исполнитель может завершить задачу после старта', async () => {
     mockedGetById.mockResolvedValue({
       ...defaultTaskAccess,
       created_by: 12,
@@ -344,7 +344,7 @@ describe('Проверка доступа к задаче другим поль�
     const response = await request(app)
       .patch(`/tasks/${existingTaskId}/status`)
       .send({ status: 'Выполнена' });
-    expect(response.status).toBe(403);
+    expect(response.status).toBe(200);
   });
 
   test('исполнитель может сменить статус через отдельный роут', async () => {

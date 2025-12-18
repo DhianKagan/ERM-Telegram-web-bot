@@ -695,6 +695,36 @@ export type UpdateTaskStatusOptions = {
   source?: 'web' | 'telegram' | 'tma';
   // pass true to allow admin override of terminal state rules
   adminOverride?: boolean;
+  actorAccess?: number;
+};
+
+export type UpdateTaskOptions = {
+  adminOverride?: boolean;
+};
+
+const TERMINAL_TASK_STATUSES: ReadonlySet<TaskDocument['status']> = new Set([
+  'Выполнена',
+  'Отменена',
+]);
+
+const isTerminalStatus = (
+  status: TaskDocument['status'] | string | undefined,
+): status is TaskDocument['status'] =>
+  typeof status === 'string' && TERMINAL_TASK_STATUSES.has(status as never);
+
+const isUserStatusTransitionAllowed = (
+  currentStatus: TaskDocument['status'] | undefined,
+  nextStatus: TaskDocument['status'] | undefined,
+): boolean => {
+  if (!nextStatus) return false;
+  if (isTerminalStatus(currentStatus)) return false;
+  if (!currentStatus || currentStatus === 'Новая') {
+    return nextStatus === 'В работе' || nextStatus === 'Выполнена';
+  }
+  if (currentStatus === 'В работе') {
+    return nextStatus === 'Выполнена' || nextStatus === 'В работе';
+  }
+  return false;
 };
 
 function normalizeObjectId(value: unknown): Types.ObjectId | null {
@@ -1007,10 +1037,12 @@ export async function updateTask(
   id: string,
   fields: Partial<TaskDocument>,
   userId: number,
+  options: UpdateTaskOptions = {},
 ): Promise<TaskDocument | null> {
   const data = sanitizeUpdate(fields);
   const prev = await Task.findById(id);
   if (!prev) return null;
+  const allowAdminOverride = options.adminOverride === true;
   await normalizeTransportFields(
     data as Partial<TaskDocument> & Record<string, unknown>,
     prev,
@@ -1050,20 +1082,22 @@ export async function updateTask(
     if (nextStatus === 'Новая') {
       (data as Record<string, unknown>).in_progress_at = null;
     } else if (nextStatus === 'Отменена') {
-      if (kind === 'task' && !isCreator) {
-        const err = new Error(
-          'Статус «Отменена» может установить только создатель задачи.',
-        );
-        (err as Error & { code?: string }).code = 'TASK_CANCEL_FORBIDDEN';
-        throw err;
-      }
-      if (kind === 'request' && !isCreator && !isExecutor) {
-        const err = new Error(
-          'Отменить заявку могут только исполнитель или создатель.',
-        );
-        (err as Error & { code?: string }).code =
-          'TASK_REQUEST_CANCEL_FORBIDDEN';
-        throw err;
+      if (!allowAdminOverride) {
+        if (kind === 'task' && !isCreator) {
+          const err = new Error(
+            'Статус «Отменена» может установить только создатель задачи.',
+          );
+          (err as Error & { code?: string }).code = 'TASK_CANCEL_FORBIDDEN';
+          throw err;
+        }
+        if (kind === 'request' && !isCreator && !isExecutor) {
+          const err = new Error(
+            'Отменить заявку могут только исполнитель или создатель.',
+          );
+          (err as Error & { code?: string }).code =
+            'TASK_REQUEST_CANCEL_FORBIDDEN';
+          throw err;
+        }
       }
     }
   }
@@ -1187,37 +1221,69 @@ export async function updateTaskStatus(
       ? (existing.status as TaskDocument['status'])
       : undefined;
 
+  const controllerIds = new Set<number>();
+  const primaryController = Number(existing.controller_user_id);
+  if (Number.isFinite(primaryController)) {
+    controllerIds.add(primaryController);
+  }
+  if (Array.isArray(existing.controllers)) {
+    existing.controllers
+      .map((value) => Number(value))
+      .filter((value) => Number.isFinite(value))
+      .forEach((value) => controllerIds.add(value));
+  }
+
   const assignedUserId = normalizeUserId(existing.assigned_user_id);
   const assignees = collectAssigneeIds(existing.assignees);
   const isExecutor =
     (assignedUserId !== null && assignedUserId === userId) ||
     assignees.includes(userId);
+  const isController = controllerIds.has(userId);
 
   const creatorId = Number(existing.created_by);
   const isCreator = Number.isFinite(creatorId) && creatorId === userId;
 
-  const adminOverride = !!options.adminOverride;
+  const actorAccess = Number(options.actorAccess ?? 0);
+  const hasDeleteAccess = hasAccess(actorAccess, ACCESS_TASK_DELETE);
+  const hasAdminAccess = hasAccess(actorAccess, ACCESS_ADMIN) || hasDeleteAccess;
+  const hasManagerAccess =
+    hasAccess(actorAccess, ACCESS_MANAGER) || hasDeleteAccess;
+  const isActorLinked = isCreator || isExecutor || isController;
+  const allowTerminalOverride =
+    hasDeleteAccess && options.adminOverride !== false;
 
   // If task already in terminal state, only adminOverride may change it
-  const terminalStatuses: TaskDocument['status'][] = ['Выполнена', 'Отменена'];
-  if (
-    typeof currentStatus === 'string' &&
-    terminalStatuses.includes(currentStatus)
-  ) {
-    // allow change only for adminOverride
-    if (!adminOverride) {
-      const err = new Error(
-        'Нельзя менять статус задачи, которая уже завершена или отменена.',
-      );
-      (err as Error & { code?: string }).code = 'TASK_STATUS_FORBIDDEN';
-      throw err;
-    }
-  }
-
-  if (!(isCreator || isExecutor || adminOverride)) {
-    const err = new Error('Нет прав на изменение статуса задачи');
+  if (isTerminalStatus(currentStatus) && !allowTerminalOverride) {
+    const err = new Error(
+      'Нельзя менять статус задачи, которая уже завершена или отменена.',
+    );
     (err as Error & { code?: string }).code = 'TASK_STATUS_FORBIDDEN';
     throw err;
+  }
+
+  if (!allowTerminalOverride) {
+    if (hasAdminAccess) {
+      // администраторы без уровня удаления работают с любыми задачами, кроме финальных
+    } else if (hasManagerAccess) {
+      if (!isActorLinked) {
+        const err = new Error('Нет прав на изменение статуса задачи');
+        (err as Error & { code?: string }).code = 'TASK_STATUS_FORBIDDEN';
+        throw err;
+      }
+    } else {
+      if (!isActorLinked) {
+        const err = new Error('Нет прав на изменение статуса задачи');
+        (err as Error & { code?: string }).code = 'TASK_STATUS_FORBIDDEN';
+        throw err;
+      }
+      if (!isUserStatusTransitionAllowed(currentStatus, status)) {
+        const err = new Error(
+          'Исполнителю доступны только статусы «В работе» и «Выполнена» из статуса «Новая».',
+        );
+        (err as Error & { code?: string }).code = 'TASK_STATUS_FORBIDDEN';
+        throw err;
+      }
+    }
   }
 
   // (Optional) keep existing constraints about allowed previous statuses for completion.
@@ -1260,7 +1326,10 @@ export async function updateTaskStatus(
   }
 
   // Preserve original call that records the change and returns the task
-  return updateTask(id, update, userId);
+  const allowCancelOverride = allowTerminalOverride || hasAdminAccess;
+  return updateTask(id, update, userId, {
+    adminOverride: allowCancelOverride,
+  });
 }
 
 export interface TaskFilters {

@@ -2,6 +2,11 @@
 // Основные модули: jest
 import { Task } from '../src/db/model';
 import * as queries from '../src/db/queries';
+import {
+  ACCESS_ADMIN,
+  ACCESS_MANAGER,
+  ACCESS_TASK_DELETE,
+} from '../src/utils/accessMask';
 
 jest.mock('../src/db/model', () => ({
   Task: {
@@ -65,6 +70,7 @@ describe('updateTaskStatus permissions', () => {
       999,
       {
         adminOverride: true,
+        actorAccess: ACCESS_TASK_DELETE,
       },
     );
 
@@ -96,9 +102,31 @@ describe('updateTaskStatus permissions', () => {
       999,
       {
         adminOverride: true,
+        actorAccess: ACCESS_TASK_DELETE,
       },
     );
 
     expect(result?.status).toBe('В работе');
+  });
+
+  it('блокирует финальный статус для менеджера без уровня удаления', async () => {
+    (Task.findById as jest.Mock).mockResolvedValue({
+      ...baseTask,
+      status: 'Выполнена',
+    });
+
+    await expect(
+      queries.updateTaskStatus('task-1', 'В работе', 20, {
+        actorAccess: ACCESS_MANAGER,
+      }),
+    ).rejects.toHaveProperty('code', 'TASK_STATUS_FORBIDDEN');
+  });
+
+  it('разрешает администратору без удаления отменять задачу', async () => {
+    const result = await queries.updateTaskStatus('task-1', 'Отменена', 999, {
+      actorAccess: ACCESS_ADMIN,
+    });
+
+    expect(result?.status).toBe('Отменена');
   });
 });

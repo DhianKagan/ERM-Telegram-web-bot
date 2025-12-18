@@ -55,7 +55,12 @@ import {
   resolveTaskTypeTopicId,
   resolveTaskTypePhotosTarget,
 } from '../services/taskTypeSettings';
-import { ACCESS_ADMIN } from '../utils/accessMask';
+import {
+  ACCESS_ADMIN,
+  ACCESS_MANAGER,
+  ACCESS_TASK_DELETE,
+  hasAccess as hasAccessMask,
+} from '../utils/accessMask';
 import { ensureCommentHtml, syncCommentMessage } from '../tasks/taskComments';
 import { cleanupUploadedFiles } from '../utils/requestUploads';
 import { normalizeTaskFilters } from './filterUtils';
@@ -125,6 +130,30 @@ const attachmentsBaseUrl = baseAppUrl.replace(/\/+$/, '');
 const ALBUM_MESSAGE_DELAY_MS = 100;
 
 const REQUEST_TYPE_NAME = 'Заявка';
+const TERMINAL_TASK_STATUSES: ReadonlySet<TaskDocument['status']> = new Set([
+  'Выполнена',
+  'Отменена',
+]);
+
+const isTerminalStatus = (
+  status: TaskDocument['status'] | string | undefined,
+): status is TaskDocument['status'] =>
+  typeof status === 'string' && TERMINAL_TASK_STATUSES.has(status as never);
+
+const isUserStatusTransitionAllowed = (
+  currentStatus: TaskDocument['status'] | undefined,
+  nextStatus: TaskDocument['status'] | undefined,
+): boolean => {
+  if (!nextStatus) return false;
+  if (isTerminalStatus(currentStatus)) return false;
+  if (!currentStatus || currentStatus === 'Новая') {
+    return nextStatus === 'В работе' || nextStatus === 'Выполнена';
+  }
+  if (currentStatus === 'В работе') {
+    return nextStatus === 'Выполнена' || nextStatus === 'В работе';
+  }
+  return false;
+};
 
 const cleanupRequestUploads = async (req: Request): Promise<void> => {
   await cleanupUploadedFiles(req).catch(() => undefined);
@@ -3055,13 +3084,74 @@ export default class TasksController {
       const isCreator =
         Number.isFinite(Number(req.user?.id)) &&
         Number(previousTask.created_by) === Number(req.user?.id);
-      if (currentStatus && currentStatus !== 'Новая' && !isCreator) {
+      const assignedIds = new Set<number>();
+      if (typeof previousTask.assigned_user_id === 'number') {
+        assignedIds.add(previousTask.assigned_user_id);
+      }
+      if (Array.isArray(previousTask.assignees)) {
+        previousTask.assignees
+          .map((value) => Number(value))
+          .filter((value) => Number.isFinite(value))
+          .forEach((value) => assignedIds.add(value));
+      }
+      const controllerIds = new Set<number>();
+      const primaryController = Number(previousTask.controller_user_id);
+      if (Number.isFinite(primaryController)) {
+        controllerIds.add(primaryController);
+      }
+      if (Array.isArray(previousTask.controllers)) {
+        previousTask.controllers
+          .map((value) => Number(value))
+          .filter((value) => Number.isFinite(value))
+          .forEach((value) => controllerIds.add(value));
+      }
+      const actorAccess = Number(req.user?.access ?? 0);
+      const actorRole = typeof req.user?.role === 'string' ? req.user.role : '';
+      const hasDeleteAccess = hasAccessMask(actorAccess, ACCESS_TASK_DELETE);
+      const hasAdminRights =
+        actorRole === 'admin' ||
+        hasAccessMask(actorAccess, ACCESS_ADMIN) ||
+        hasDeleteAccess;
+      const hasManagerRights =
+        hasAccessMask(actorAccess, ACCESS_MANAGER) || hasDeleteAccess;
+      const isTerminal = isTerminalStatus(currentStatus);
+      const isExecutor = assignedIds.has(actorId);
+      const isController = controllerIds.has(actorId);
+      const isActorLinked = isCreator || isExecutor || isController;
+      const changedKeys = Object.entries(nextPayload)
+        .filter(([, value]) => value !== undefined)
+        .map(([key]) => key);
+      const requestedStatus =
+        typeof nextPayload.status === 'string'
+          ? (nextPayload.status as TaskDocument['status'])
+          : undefined;
+      const isStatusOnlyUpdate =
+        changedKeys.length === 1 && changedKeys[0] === 'status';
+      const isUserStatusAllowed =
+        isActorLinked &&
+        isStatusOnlyUpdate &&
+        isUserStatusTransitionAllowed(currentStatus, requestedStatus);
+      const canEditTask =
+        hasDeleteAccess ||
+        (!isTerminal &&
+          (hasAdminRights || (hasManagerRights && isActorLinked)));
+      const denyStatus = isTerminal && !hasDeleteAccess ? 409 : 403;
+      const denyDetail = (() => {
+        if (isTerminal) {
+          return 'Редактирование недоступно для задач в статусах «Выполнена» и «Отменена»';
+        }
+        if (isStatusOnlyUpdate && isActorLinked) {
+          return 'Исполнителю доступны только статусы «В работе» и «Выполнена» из статуса «Новая»';
+        }
+        return 'Недостаточно прав для изменения задачи';
+      })();
+      if (!canEditTask && !isUserStatusAllowed) {
         await cleanupRequestUploads(req);
         sendProblem(req, res, {
           type: 'about:blank',
           title: 'Редактирование запрещено',
-          status: 409,
-          detail: 'Редактирование доступно только для задач в статусе «Новая»',
+          status: denyStatus,
+          detail: denyDetail,
         });
         return;
       }
@@ -3071,7 +3161,9 @@ export default class TasksController {
       }
       let task: TaskDocument | null;
       try {
-        task = await this.service.update(req.params.id, nextPayload, actorId);
+        task = await this.service.update(req.params.id, nextPayload, actorId, {
+          adminOverride: hasDeleteAccess,
+        });
       } catch (error) {
         await cleanupRequestUploads(req);
         const err = error as { code?: string; message?: string };
@@ -3105,16 +3197,15 @@ export default class TasksController {
         if (
           current &&
           typeof current.status === 'string' &&
-          current.status !== 'Новая' &&
-          !isCreator
+          isTerminalStatus(current.status) &&
+          !hasDeleteAccess
         ) {
           await cleanupRequestUploads(req);
           sendProblem(req, res, {
             type: 'about:blank',
             title: 'Редактирование запрещено',
-            status: 409,
-            detail:
-              'Редактирование доступно только для задач в статусе «Новая»',
+            status: denyStatus,
+            detail: denyDetail,
           });
         } else {
           await cleanupRequestUploads(req);

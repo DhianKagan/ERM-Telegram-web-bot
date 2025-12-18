@@ -1,5 +1,6 @@
 /* Назначение файла: глобальные стили приложения. Основные модули: Tailwind CSS. */
 
+@import './styles/_tokens.css';
 @import './styles/tokens.css';
 @import 'tailwindcss';
 

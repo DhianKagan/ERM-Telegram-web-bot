@@ -9,6 +9,7 @@ import type {
 } from 'shared';
 
 import { Button } from '@/components/ui/button';
+import StatusBadge, { mapStatusTone } from '@/components/ui/StatusBadge';
 import Breadcrumbs from '../components/Breadcrumbs';
 import SkeletonCard from '../components/SkeletonCard';
 import { useAuth } from '../context/useAuth';
@@ -21,13 +22,6 @@ const STATUS_LABELS: Record<RoutePlanStatus | 'cancelled', string> = {
   approved: 'В работе',
   completed: 'Выполнен',
   cancelled: 'Отменен',
-};
-
-const STATUS_STYLES: Record<RoutePlanStatus | 'cancelled', string> = {
-  draft: 'bg-blue-100 text-blue-800',
-  approved: 'bg-amber-100 text-amber-800',
-  completed: 'bg-emerald-100 text-emerald-800',
-  cancelled: 'bg-rose-100 text-rose-800',
 };
 
 const STATUS_OPTIONS: Array<{
@@ -165,7 +159,7 @@ export default function Logistics() {
             Статус
             <select
               id="logistics-status-filter"
-              className="mt-1 min-w-[160px] rounded-md border border-border bg-background px-3 py-2 text-sm focus:border-accentPrimary focus:outline-none"
+              className="mt-1 min-w-[160px] rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[var(--color-muted)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-400)]"
               value={statusFilter}
               onChange={(event) =>
                 setStatusFilter(
@@ -183,7 +177,8 @@ export default function Logistics() {
           <Button
             onClick={() => void loadPlans()}
             disabled={loading}
-            variant="outline"
+            variant="secondary"
+            size="sm"
             className="sm:self-end"
           >
             {loading ? 'Обновляем…' : 'Обновить'}
@@ -207,7 +202,7 @@ export default function Logistics() {
       {loading ? (
         <SkeletonCard />
       ) : filteredPlans.length === 0 ? (
-        <div className="rounded-lg border border-border bg-card p-4 text-sm text-muted-foreground">
+        <div className="ui-card text-sm text-muted-foreground">
           Маршрутные планы отсутствуют.
         </div>
       ) : (
@@ -217,13 +212,12 @@ export default function Logistics() {
             const tasks = collectTasks(plan.routes ?? []);
             const drivers = collectDrivers(plan.routes ?? []);
             const vehicles = collectVehicles(plan.routes ?? []);
-            const statusLabel = STATUS_LABELS[status];
-            const statusColor = STATUS_STYLES[status];
+            const statusLabel = STATUS_LABELS[status] ?? status;
 
             return (
               <article
                 key={plan.id}
-                className="flex h-full flex-col gap-3 rounded-lg border border-border bg-card p-4 shadow-sm"
+                className="ui-card flex h-full flex-col gap-3"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -234,12 +228,11 @@ export default function Logistics() {
                       {plan.title}
                     </h3>
                   </div>
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-semibold leading-5 ${statusColor}`}
-                    aria-label={`Статус: ${statusLabel}`}
-                  >
-                    {statusLabel}
-                  </span>
+                  <StatusBadge
+                    status={statusLabel}
+                    tone={mapStatusTone(status)}
+                    className="ml-auto"
+                  />
                 </div>
                 {plan.notes && (
                   <p

@@ -15,23 +15,13 @@ export const pillBadgeBaseClass =
 
 export const creatorBadgeClass = `${pillBadgeBaseClass} w-full max-w-full justify-start normal-case ${badgeTextClass} ring-1 ring-blue-500/40 bg-blue-500/15 dark:bg-blue-400/20 dark:ring-blue-300/45`;
 
-export const fallbackBadgeClass = buildBadgeClass(
-  'bg-muted/60 ring-1 ring-muted-foreground/30 dark:bg-slate-700/60 dark:ring-slate-500/35',
-);
+export const fallbackBadgeClass = 'ui-status-badge ui-status-badge--muted';
 
 const statusBadgeClassMap: Record<Task['status'], string> = {
-  Новая: buildBadgeClass(
-    'bg-sky-500/20 ring-1 ring-sky-500/45 dark:bg-sky-400/25 dark:ring-sky-300/45',
-  ),
-  'В работе': buildBadgeClass(
-    'bg-amber-500/25 ring-1 ring-amber-500/45 dark:bg-amber-400/25 dark:ring-amber-300/45',
-  ),
-  Выполнена: buildBadgeClass(
-    'bg-emerald-500/20 ring-1 ring-emerald-500/40 dark:bg-emerald-400/25 dark:ring-emerald-300/45',
-  ),
-  Отменена: buildBadgeClass(
-    'bg-rose-500/20 ring-1 ring-rose-500/40 dark:bg-rose-400/25 dark:ring-rose-300/45',
-  ),
+  Новая: 'ui-status-badge ui-status-badge--new',
+  'В работе': 'ui-status-badge ui-status-badge--in_progress',
+  Выполнена: 'ui-status-badge ui-status-badge--done',
+  Отменена: 'ui-status-badge ui-status-badge--canceled',
 };
 
 const urgentPriorityBadgeClass = buildBadgeClass(

@@ -2,6 +2,7 @@
 // Модули: React, контексты, сервисы задач, shared
 import React from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 import TaskTable from '../components/TaskTable';
 import useTasks from '../context/useTasks';
 import {
@@ -140,23 +141,20 @@ export default function RequestsPage() {
           setParams(params);
         }}
         toolbarChildren={
-          <>
-            <button
-              onClick={refresh}
-              className="rounded bg-blue-600 px-2 py-1 text-sm text-white hover:bg-blue-700"
-            >
+          <div className="flex flex-wrap items-center gap-2">
+            <Button variant="secondary" size="sm" onClick={refresh}>
               Обновить
-            </button>
-            <button
+            </Button>
+            <Button
+              size="sm"
               onClick={() => {
                 params.set('newRequest', '1');
                 setParams(params);
               }}
-              className="rounded bg-blue-600 px-2 py-1 text-sm text-white hover:bg-blue-700"
             >
               Новая заявка
-            </button>
-          </>
+            </Button>
+          </div>
         }
       />
     </div>

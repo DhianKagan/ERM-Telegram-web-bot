@@ -891,12 +891,20 @@ export class TaskTelegramMedia {
       try {
         await this.bot.telegram.deleteMessage(chat, messageId);
       } catch (error) {
-        if (!this.isMessageMissingOnDeleteError(error)) {
-          console.error(
-            `Не удалось удалить сообщение вложения ${messageId} задачи`,
+        if (this.isMessageMissingOnDeleteError(error)) {
+          return;
+        }
+        if (this.isMessageForbiddenToDeleteError(error)) {
+          console.warn(
+            `Сообщение вложения ${messageId} нельзя удалить в Telegram`,
             error,
           );
+          return;
         }
+        console.error(
+          `Не удалось удалить сообщение вложения ${messageId} задачи`,
+          error,
+        );
       }
     }
   }
@@ -1218,8 +1226,27 @@ export class TaskTelegramMedia {
   }
 
   private isMessageMissingOnDeleteError(error: unknown): boolean {
+    const { errorCode, description } = this.parseTelegramError(error);
+    return (
+      errorCode === 400 &&
+      Boolean(description?.includes('message to delete not found'))
+    );
+  }
+
+  private isMessageForbiddenToDeleteError(error: unknown): boolean {
+    const { errorCode, description } = this.parseTelegramError(error);
+    return (
+      errorCode === 400 &&
+      Boolean(description?.includes("message can't be deleted"))
+    );
+  }
+
+  private parseTelegramError(error: unknown): {
+    errorCode: number | null;
+    description: string | null;
+  } {
     if (!error || typeof error !== 'object') {
-      return false;
+      return { errorCode: null, description: null };
     }
     const candidate = error as Record<string, unknown> & {
       response?: { error_code?: number; description?: unknown };
@@ -1229,18 +1256,19 @@ export class TaskTelegramMedia {
     const errorCode =
       candidate.response?.error_code ??
       (typeof candidate.error_code === 'number' ? candidate.error_code : null);
-    if (errorCode !== 400) {
-      return false;
-    }
     const descriptionSource =
       typeof candidate.response?.description === 'string'
         ? candidate.response.description
         : typeof candidate.description === 'string'
           ? candidate.description
-          : '';
-    return descriptionSource
-      .toLowerCase()
-      .includes('message to delete not found');
+          : null;
+    return {
+      errorCode,
+      description:
+        typeof descriptionSource === 'string'
+          ? descriptionSource.toLowerCase()
+          : null,
+    };
   }
 }
 

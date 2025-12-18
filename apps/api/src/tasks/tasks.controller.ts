@@ -1321,6 +1321,13 @@ export default class TasksController {
             );
             return;
           }
+          if (this.isMessageForbiddenToDeleteError(error)) {
+            console.warn(
+              `Сообщение вложения ${messageId} нельзя удалить в Telegram`,
+              error,
+            );
+            return;
+          }
           console.error(
             `Не удалось удалить сообщение вложений ${messageId}`,
             error,
@@ -1384,6 +1391,13 @@ export default class TasksController {
           if (this.isMessageMissingOnDeleteError(error)) {
             console.info(
               `Личное сообщение задачи ${messageId} у пользователя ${userId} уже удалено в Telegram`,
+            );
+            return;
+          }
+          if (this.isMessageForbiddenToDeleteError(error)) {
+            console.warn(
+              `Личное сообщение ${messageId} у пользователя ${userId} нельзя удалить в Telegram`,
+              error,
             );
             return;
           }
@@ -1512,6 +1526,13 @@ export default class TasksController {
     } catch (error) {
       if (this.isMessageMissingOnDeleteError(error)) {
         console.info(`Сообщение ${messageId} задачи уже удалено в Telegram`);
+        return true;
+      }
+      if (this.isMessageForbiddenToDeleteError(error)) {
+        console.warn(
+          `Сообщение ${messageId} задачи нельзя удалить в Telegram`,
+          error,
+        );
         return true;
       }
       console.error(
@@ -2061,7 +2082,28 @@ export default class TasksController {
   }
 
   private isMessageMissingOnDeleteError(error: unknown): boolean {
-    if (!error || typeof error !== 'object') return false;
+    const { errorCode, description } = this.parseTelegramError(error);
+    return (
+      errorCode === 400 &&
+      Boolean(description?.includes('message to delete not found'))
+    );
+  }
+
+  private isMessageForbiddenToDeleteError(error: unknown): boolean {
+    const { errorCode, description } = this.parseTelegramError(error);
+    return (
+      errorCode === 400 &&
+      Boolean(description?.includes("message can't be deleted"))
+    );
+  }
+
+  private parseTelegramError(error: unknown): {
+    errorCode: number | null;
+    description: string | null;
+  } {
+    if (!error || typeof error !== 'object') {
+      return { errorCode: null, description: null };
+    }
     const record = error as Record<string, unknown>;
     const rawResponse = record.response;
     const response =
@@ -2071,17 +2113,17 @@ export default class TasksController {
     const errorCode =
       response?.error_code ??
       (typeof record.error_code === 'number' ? record.error_code : null);
-    if (errorCode !== 400) {
-      return false;
-    }
     const descriptionRaw =
       response?.description ??
       (typeof record.description === 'string' ? record.description : null) ??
       null;
-    if (typeof descriptionRaw !== 'string') {
-      return false;
-    }
-    return descriptionRaw.toLowerCase().includes('message to delete not found');
+    return {
+      errorCode,
+      description:
+        typeof descriptionRaw === 'string'
+          ? descriptionRaw.toLowerCase()
+          : null,
+    };
   }
 
   private async broadcastTaskSnapshot(

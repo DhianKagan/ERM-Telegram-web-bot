@@ -67,11 +67,7 @@ import {
 } from '../services/shortLinks';
 
 // new imports for access check
-import {
-  ACCESS_ADMIN,
-  ACCESS_TASK_DELETE,
-  hasAccess,
-} from '../utils/accessMask';
+import { ACCESS_TASK_DELETE, hasAccess } from '../utils/accessMask';
 
 const validate = (validations: ValidationChain[]): RequestHandler[] => [
   ...validations,
@@ -117,7 +113,15 @@ export default async function registerRoutes(
   cookieFlags: CookieOptions,
   pub: string,
 ): Promise<void> {
-  const csrf = lusca.csrf({ angular: true, cookie: { options: cookieFlags } });
+  const csrfCookieOptions: CookieOptions = {
+    ...cookieFlags,
+    httpOnly: false,
+    sameSite: cookieFlags.secure ? 'none' : 'lax',
+  };
+  const csrf = lusca.csrf({
+    angular: true,
+    cookie: { options: csrfCookieOptions },
+  });
   const csrfExclude = [
     '/api/v1/auth/send_code',
     '/api/v1/auth/verify_code',

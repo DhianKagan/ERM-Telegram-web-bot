@@ -1182,7 +1182,6 @@ export async function updateTaskStatus(
   const existing = await Task.findById(id);
   if (!existing) return null;
 
-  const source = options.source ?? 'web';
   const currentStatus =
     typeof existing.status === 'string'
       ? (existing.status as TaskDocument['status'])
@@ -1190,8 +1189,6 @@ export async function updateTaskStatus(
 
   const assignedUserId = normalizeUserId(existing.assigned_user_id);
   const assignees = collectAssigneeIds(existing.assignees);
-  const hasAssignments = assignedUserId !== null || assignees.length > 0;
-
   const isExecutor =
     (assignedUserId !== null && assignedUserId === userId) ||
     assignees.includes(userId);
@@ -1199,29 +1196,7 @@ export async function updateTaskStatus(
   const creatorId = Number(existing.created_by);
   const isCreator = Number.isFinite(creatorId) && creatorId === userId;
 
-  const isCancellation = status === 'Отменена';
-  const isCompletion = status === 'Выполнена';
-
-  // admin override flag (passed from routes.ts)
   const adminOverride = !!options.adminOverride;
-
-  // Cancellation rules: only creator, only via web (existing behavior)
-  if (isCancellation) {
-    if (!isCreator) {
-      const err = new Error(
-        'Статус «Отменена» может установить только создатель задачи.',
-      );
-      (err as Error & { code?: string }).code = 'TASK_CANCEL_FORBIDDEN';
-      throw err;
-    }
-    if (source !== 'web') {
-      const err = new Error(
-        'Отмена задачи в Telegram недоступна. Используйте веб-форму.',
-      );
-      (err as Error & { code?: string }).code = 'TASK_CANCEL_SOURCE_FORBIDDEN';
-      throw err;
-    }
-  }
 
   // If task already in terminal state, only adminOverride may change it
   const terminalStatuses: TaskDocument['status'][] = ['Выполнена', 'Отменена'];
@@ -1239,21 +1214,7 @@ export async function updateTaskStatus(
     }
   }
 
-  // Completion rules: allow **creator OR executor** to set as completed
-  if (isCompletion && !(isCreator || isExecutor || adminOverride)) {
-    const err = new Error(
-      'Статус «Выполнена» может установить только создатель или исполнитель задачи.',
-    );
-    (err as Error & { code?: string }).code = 'TASK_STATUS_FORBIDDEN';
-    throw err;
-  }
-
-  // If there are assignments, only creator/executor (or adminOverride) can change status
-  if (
-    hasAssignments &&
-    !(isExecutor || isCreator || adminOverride) &&
-    !(isCancellation && isCreator) // keep original creator-cancellation allowance
-  ) {
+  if (!(isCreator || isExecutor || adminOverride)) {
     const err = new Error('Нет прав на изменение статуса задачи');
     (err as Error & { code?: string }).code = 'TASK_STATUS_FORBIDDEN';
     throw err;
@@ -1301,7 +1262,6 @@ export async function updateTaskStatus(
   // Preserve original call that records the change and returns the task
   return updateTask(id, update, userId);
 }
-
 
 export interface TaskFilters {
   status?: string | string[];

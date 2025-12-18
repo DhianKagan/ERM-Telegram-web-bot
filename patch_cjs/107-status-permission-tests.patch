@@ -1,0 +1,63 @@
+diff --git a/apps/api/tests/kanbanStatus.test.ts b/apps/api/tests/kanbanStatus.test.ts
+index 9c2d7ea..7e5a677 100644
+--- a/apps/api/tests/kanbanStatus.test.ts
++++ b/apps/api/tests/kanbanStatus.test.ts
+@@ -40,7 +40,9 @@ app.patch(
+     return next();
+   },
+   asyncHandler(async (req, res) => {
+-    await updateTaskStatus(req.params.id, req.body.status, 0);
++    await updateTaskStatus(req.params.id, req.body.status, 0, {
++      adminOverride: false,
++    });
+     await writeLog(`Статус задачи ${req.params.id} -> ${req.body.status}`);
+     res.json({ status: 'ok' });
+   }),
+@@ -53,7 +55,9 @@ test('статус задачи меняется на В работе', async ()
+     .patch(`/api/v1/tasks/${id}/status`)
+     .send({ status: 'В работе' });
+   expect(res.body.status).toBe('ok');
+-  expect(updateTaskStatus).toHaveBeenCalledWith(id, 'В работе', 0);
++  expect(updateTaskStatus).toHaveBeenCalledWith(id, 'В работе', 0, {
++    adminOverride: false,
++  });
+ });
+ 
+ afterAll(() => {
+diff --git a/apps/web/src/components/TaskDialog.tsx b/apps/web/src/components/TaskDialog.tsx
+index 5b80ac7..9e117db 100644
+--- a/apps/web/src/components/TaskDialog.tsx
++++ b/apps/web/src/components/TaskDialog.tsx
+@@ -693,13 +693,17 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+   );
+   const isEdit = Boolean(effectiveTaskId);
+   const { user } = useAuth();
+-  const isAdmin = user?.role === 'admin';
+-  const normalizedAccess =
++  const accessMask =
+     typeof user?.access === 'number'
+       ? user.access
+       : typeof user?.access === 'string'
+         ? Number.parseInt(user.access, 10)
+-        : Number.NaN;
++        : 0;
++  const isAdmin =
++    (user?.role ?? '').toLowerCase() === 'admin' ||
++    hasAccess(accessMask, ACCESS_ADMIN) ||
++    hasAccess(accessMask, ACCESS_TASK_DELETE);
++  const normalizedAccess = Number.isFinite(accessMask) ? accessMask : Number.NaN;
+   const canDeleteTask =
+     Number.isFinite(normalizedAccess) &&
+     (normalizedAccess & ACCESS_TASK_DELETE) === ACCESS_TASK_DELETE;
+@@ -968,11 +972,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+   const [creator, setCreator] = React.useState('');
+   const currentUserId =
+     typeof user?.telegram_id === 'number' ? user.telegram_id : null;
+-  const accessMask = typeof user?.access === 'number' ? user.access : 0;
+-  const isAdmin =
+-    (user?.role ?? '').toLowerCase() === 'admin' ||
+-    hasAccess(accessMask, ACCESS_ADMIN) ||
+-    hasAccess(accessMask, ACCESS_TASK_DELETE);
+   const creatorNumericId = React.useMemo(() => {
+     const parsed = Number(creator);
+     return Number.isFinite(parsed) ? parsed : null;

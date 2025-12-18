@@ -57,6 +57,7 @@ import {
 } from '../columns/taskColumns';
 import useDueDateOffset from '../hooks/useDueDateOffset';
 import coerceTaskId from '../utils/coerceTaskId';
+import { ACCESS_ADMIN, ACCESS_TASK_DELETE, hasAccess } from '../utils/access';
 
 type TaskKind = 'task' | 'request';
 
@@ -692,13 +693,17 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   );
   const isEdit = Boolean(effectiveTaskId);
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
-  const normalizedAccess =
+  const accessMask =
     typeof user?.access === 'number'
       ? user.access
       : typeof user?.access === 'string'
         ? Number.parseInt(user.access, 10)
-        : Number.NaN;
+        : 0;
+  const isAdmin =
+    (user?.role ?? '').toLowerCase() === 'admin' ||
+    hasAccess(accessMask, ACCESS_ADMIN) ||
+    hasAccess(accessMask, ACCESS_TASK_DELETE);
+  const normalizedAccess = Number.isFinite(accessMask) ? accessMask : Number.NaN;
   const canDeleteTask =
     Number.isFinite(normalizedAccess) &&
     (normalizedAccess & ACCESS_TASK_DELETE) === ACCESS_TASK_DELETE;
@@ -956,6 +961,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   );
   const [status, setStatus] = React.useState(DEFAULT_STATUS);
   const [initialStatus, setInitialStatus] = React.useState(DEFAULT_STATUS);
+  const isTerminal = status === 'Выполнена' || status === 'Отменена';
   const [taskAssigneeIds, setTaskAssigneeIds] = React.useState<number[]>([]);
   const [cargoLength, setCargoLength] = React.useState('');
   const [cargoWidth, setCargoWidth] = React.useState('');
@@ -978,8 +984,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   );
   const isTaskNew = initialStatus === 'Новая';
   const canEditTask = canEditAll || isExecutor || (isCreator && isTaskNew);
-  const canChangeStatus = canEditAll || isExecutor || isCreator;
-  const canFinalizeStatus = canEditAll || isCreator;
+  const canChangeStatus = canEditAll || isExecutor || isCreator || isAdmin;
+  const canFinalizeStatus = canEditAll || isCreator || isExecutor || isAdmin;
+  const canCancel =
+    !isTerminal && (isCreator || isExecutor || isAdmin || canEditAll);
   const priorities = fields.find((f) => f.name === 'priority')?.options || [];
   const transports =
     fields.find((f) => f.name === 'transport_type')?.options || [];
@@ -2413,6 +2421,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const [showSaveConfirm, setShowSaveConfirm] = React.useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = React.useState(false);
   const [showAcceptConfirm, setShowAcceptConfirm] = React.useState(false);
+  const [showCancelConfirm, setShowCancelConfirm] = React.useState(false);
   const [showDoneConfirm, setShowDoneConfirm] = React.useState(false);
   const [pendingDoneOption, setPendingDoneOption] = React.useState('');
   React.useEffect(() => {
@@ -2627,6 +2636,53 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     }
   };
 
+  const cancelTask = async () => {
+    const targetId = effectiveTaskId;
+    if (!targetId) return;
+    if (!canChangeStatus) {
+      setAlertMsg(t('taskSaveFailed'));
+      return;
+    }
+    const prev = status;
+    setStatus('Отменена');
+    try {
+      const [data] = await Promise.all([
+        updateTask(targetId, { status: 'Отменена' }).then((r) =>
+          r.ok ? r.json() : null,
+        ),
+        updateTaskStatus(targetId, 'Отменена'),
+      ]);
+      if (data) {
+        if (initialRef.current) {
+          initialRef.current.status = 'Отменена';
+        }
+        setInitialStatus('Отменена');
+        if (onSave) onSave(data);
+        setAlertMsg(t('taskCanceled'));
+      } else {
+        setStatus(prev);
+        setAlertMsg(t('taskSaveFailed'));
+      }
+    } catch (error) {
+      console.error(error);
+      setStatus(prev);
+      if (error instanceof TaskRequestError) {
+        const reason = error.message.trim();
+        setAlertMsg(
+          reason
+            ? t('taskSaveFailedWithReason', { reason })
+            : t('taskSaveFailed'),
+        );
+      } else if (error instanceof Error && error.message) {
+        setAlertMsg(t('taskSaveFailedWithReason', { reason: error.message }));
+      } else {
+        setAlertMsg(t('taskSaveFailed'));
+      }
+    } finally {
+      setSelectedAction('');
+    }
+  };
+
   const creatorId = Number(creator);
   const hasCreator = Number.isFinite(creatorId) && creator.trim().length > 0;
   const creatorName = hasCreator ? resolveUserName(creatorId) : '';
@@ -2637,7 +2693,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     if (createdLabel) parts.push(createdLabel);
     return parts.join(' ').trim();
   }, [created, requestId, t]);
-    const handleBackdropClick = React.useCallback(
+  const handleBackdropClick = React.useCallback(
     (event: React.MouseEvent<HTMLElement>) => {
       if (event.target === event.currentTarget) {
         onClose();
@@ -2654,7 +2710,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   // Берём значения полей (если они есть) — защищённый доступ к DOM.
   // Поля могут быть опциональны (если форма не содержит адресов), поэтому
   // безопасно подставляем длину 0.
-  const startEl = document.getElementById('task-start') as HTMLInputElement | null;
+  const startEl = document.getElementById(
+    'task-start',
+  ) as HTMLInputElement | null;
   const endEl = document.getElementById('task-end') as HTMLInputElement | null;
   const startQueryLength = startEl ? startEl.value.trim().length : 0;
   const finishQueryLength = endEl ? endEl.value.trim().length : 0;
@@ -3436,7 +3494,13 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                   <div
                     className={cn(
                       'mt-2 grid gap-2',
-                      canFinalizeStatus ? 'grid-cols-2' : 'grid-cols-1',
+                      (() => {
+                        const count =
+                          1 + (canFinalizeStatus ? 1 : 0) + (canCancel ? 1 : 0);
+                        if (count >= 3) return 'grid-cols-3';
+                        if (count === 2) return 'grid-cols-2';
+                        return 'grid-cols-1';
+                      })(),
                     )}
                   >
                     <Button
@@ -3461,6 +3525,21 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                         onClick={() => setShowDoneSelect((v) => !v)}
                       >
                         {t('done')}
+                      </Button>
+                    ) : null}
+                    {canCancel ? (
+                      <Button
+                        className={cn(
+                          'rounded-lg',
+                          selectedAction === 'cancel' &&
+                            'ring-accentPrimary ring-2',
+                        )}
+                        variant={
+                          status === 'Отменена' ? 'destructive' : 'outline'
+                        }
+                        onClick={() => setShowCancelConfirm(true)}
+                      >
+                        {t('cancelTask')}
                       </Button>
                     ) : null}
                   </div>
@@ -3507,6 +3586,20 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                         completeTask(pendingDoneOption);
                       }}
                       onCancel={() => setShowDoneConfirm(false)}
+                    />
+                  ) : null}
+                  {canCancel ? (
+                    <ConfirmDialog
+                      open={showCancelConfirm}
+                      message={t('cancelTaskQuestion')}
+                      confirmText={t('cancelTask')}
+                      cancelText={t('close')}
+                      onConfirm={() => {
+                        setShowCancelConfirm(false);
+                        setSelectedAction('cancel');
+                        cancelTask();
+                      }}
+                      onCancel={() => setShowCancelConfirm(false)}
                     />
                   ) : null}
                 </>

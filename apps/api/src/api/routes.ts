@@ -56,6 +56,7 @@ import {
   writeLog,
   listMentionedTasks,
   getTask,
+  getUser,
 } from '../services/service';
 import container from '../di';
 import { TOKENS } from '../di/tokens';
@@ -66,7 +67,11 @@ import {
 } from '../services/shortLinks';
 
 // new imports for access check
-import { ACCESS_TASK_DELETE, hasAccess } from '../utils/accessMask';
+import {
+  ACCESS_ADMIN,
+  ACCESS_TASK_DELETE,
+  hasAccess,
+} from '../utils/accessMask';
 
 const validate = (validations: ValidationChain[]): RequestHandler[] => [
   ...validations,
@@ -477,6 +482,11 @@ export default async function registerRoutes(
         });
         return;
       }
+      const dbUser = await getUser(userId);
+      const accessMask = Number(dbUser?.access ?? 0);
+      const adminOverride =
+        hasAccess(accessMask, ACCESS_TASK_DELETE) ||
+        hasAccess(accessMask, ACCESS_ADMIN);
       // actor validation: must be creator/assignee/controller
       const assigneeIds = new Set<number>();
       const controllerIds = new Set<number>();
@@ -509,7 +519,7 @@ export default async function registerRoutes(
       if (Number.isFinite(creatorId)) {
         actorIds.add(creatorId);
       }
-      if (!actorIds.has(userId)) {
+      if (!actorIds.has(userId) && !adminOverride) {
         sendProblem(req, res, {
           type: 'about:blank',
           title: 'Доступ запрещён',
@@ -523,7 +533,7 @@ export default async function registerRoutes(
           req.params.id,
           req.body.status,
           userId,
-          { source: 'telegram' }, // no adminOverride from tma by design
+          { source: 'telegram', adminOverride },
         );
         if (!updated) {
           sendProblem(req, res, {
@@ -582,7 +592,9 @@ export default async function registerRoutes(
         const user = (req as RequestWithUser).user;
         const actorId = Number(user?.id ?? 0);
         const actorAccess = Number(user?.access ?? 0);
-        const adminOverride = hasAccess(actorAccess, ACCESS_TASK_DELETE);
+        const adminOverride =
+          hasAccess(actorAccess, ACCESS_TASK_DELETE) ||
+          hasAccess(actorAccess, ACCESS_ADMIN);
 
         const updated = await updateTaskStatus(
           req.params.id,

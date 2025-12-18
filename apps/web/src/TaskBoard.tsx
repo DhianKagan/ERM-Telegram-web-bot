@@ -12,8 +12,10 @@ import { cn } from '@/lib/utils';
 import TaskCard from './components/TaskCard';
 import TaskDialog from './components/TaskDialog';
 import useTasks from './context/useTasks';
+import { useAuth } from './context/useAuth';
 import { fetchKanban, updateTaskStatus } from './services/tasks';
 import type { Task } from 'shared';
+import { ACCESS_ADMIN, ACCESS_TASK_DELETE, hasAccess } from './utils/access';
 
 const columns = ['Новая', 'В работе', 'Выполнена'];
 
@@ -59,10 +61,13 @@ type KanbanTask = Task & {
   due?: string;
   request_id?: string;
   task_number?: string;
+  created_by?: number;
+  assigned_user_id?: number;
 };
 
 export default function TaskBoard() {
   const { t } = useTranslation();
+  const { user } = useAuth();
   const [tasks, setTasks] = useState<KanbanTask[]>([]);
   const [filters, setFilters] = useState<FilterState>(() => ({
     ...DEFAULT_FILTERS,
@@ -74,6 +79,13 @@ export default function TaskBoard() {
   const paramsSnapshot = params.toString();
   const open = params.get('newTask') !== null;
   const { version } = useTasks();
+  const currentUserId =
+    typeof user?.telegram_id === 'number' ? user.telegram_id : null;
+  const accessMask = typeof user?.access === 'number' ? user.access : 0;
+  const isAdmin =
+    (user?.role ?? '').toLowerCase() === 'admin' ||
+    hasAccess(accessMask, ACCESS_ADMIN) ||
+    hasAccess(accessMask, ACCESS_TASK_DELETE);
   const collator = useMemo(
     () => new Intl.Collator('ru', { sensitivity: 'base', numeric: true }),
     [],
@@ -249,10 +261,48 @@ export default function TaskBoard() {
   const onDragEnd = async ({ destination, draggableId }) => {
     if (!destination) return;
     const status = columns[Number(destination.droppableId)];
-    await updateTaskStatus(draggableId, status);
+    const task = tasks.find((item) => item._id === draggableId);
+    if (!task || task.status === status) return;
+    const prevStatus = task.status;
+    const creatorId = Number((task as { created_by?: unknown }).created_by);
+    const assignedUserId = Number(
+      (task as { assigned_user_id?: unknown }).assigned_user_id,
+    );
+    const assignees = Array.isArray(task.assignees) ? task.assignees : [];
+    const isExecutor =
+      (Number.isFinite(assignedUserId) && assignedUserId === currentUserId) ||
+      (currentUserId !== null && assignees.includes(currentUserId));
+    const isCreator = Number.isFinite(creatorId) && currentUserId === creatorId;
+    const isTerminal = prevStatus === 'Выполнена' || prevStatus === 'Отменена';
+    if (isTerminal && !isAdmin) {
+      window.alert(t('taskSaveFailed'));
+      return;
+    }
+    if (!(isExecutor || isCreator || isAdmin)) {
+      window.alert(t('taskSaveFailed'));
+      return;
+    }
     setTasks((ts) =>
       ts.map((t) => (t._id === draggableId ? { ...t, status } : t)),
     );
+    try {
+      const res = await updateTaskStatus(draggableId, status);
+      if (!res.ok) {
+        setTasks((ts) =>
+          ts.map((t) =>
+            t._id === draggableId ? { ...t, status: prevStatus } : t,
+          ),
+        );
+        window.alert(t('taskSaveFailed'));
+      }
+    } catch (error) {
+      setTasks((ts) =>
+        ts.map((t) =>
+          t._id === draggableId ? { ...t, status: prevStatus } : t,
+        ),
+      );
+      window.alert(t('taskSaveFailed'));
+    }
   };
 
   const openTaskDialog = useCallback(

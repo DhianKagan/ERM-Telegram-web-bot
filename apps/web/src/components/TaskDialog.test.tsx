@@ -16,6 +16,7 @@ const mockUser = { telegram_id: 99, role: 'admin', access: 8 } as const;
 const translate = (value: string) => value;
 const mockI18n = { language: 'ru', changeLanguage: jest.fn() };
 const alertMock = jest.fn();
+const updateTaskStatusMock = jest.fn();
 
 jest.mock('../context/useAuth', () => ({
   useAuth: () => ({ user: mockUser }),
@@ -157,7 +158,7 @@ jest.mock('../services/tasks', () => {
     createTask: (...args: any[]) => createTaskMock(...args),
     updateTask: (...args: any[]) => updateTaskMock(...args),
     deleteTask: jest.fn(),
-    updateTaskStatus: jest.fn(),
+    updateTaskStatus: (...args: any[]) => updateTaskStatusMock(...args),
   };
 });
 
@@ -171,6 +172,10 @@ describe('TaskDialog', () => {
     updateTaskMock.mockResolvedValue({
       ok: true,
       json: async () => ({ ...taskData, _id: '1' }),
+    });
+    updateTaskStatusMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({}),
     });
     mockI18n.language = 'ru';
     alertMock.mockReset();
@@ -197,6 +202,24 @@ describe('TaskDialog', () => {
     unmount();
     renderDialog();
     expect(await screen.findByText('taskCreatedBy')).toBeTruthy();
+  });
+
+  it('показывает кнопку отмены и отправляет отмену', async () => {
+    render(
+      <MemoryRouter>
+        <TaskDialog onClose={() => {}} id="1" />
+      </MemoryRouter>,
+    );
+
+    expect(await screen.findByText('accept')).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('cancelTask'));
+    });
+
+    await waitFor(() =>
+      expect(updateTaskStatusMock).toHaveBeenCalledWith('1', 'Отменена'),
+    );
   });
 
   it('не дублирует запрос summary при редактировании черновика', async () => {

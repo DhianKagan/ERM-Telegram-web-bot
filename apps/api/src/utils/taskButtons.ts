@@ -64,6 +64,7 @@ const buildStatusRows = (
   currentStatus?: TaskStatus,
   options: TaskStatusKeyboardOptions = {},
 ): InlineKeyboardMatrix => {
+  void options;
   const primaryRow: InlineKeyboardButton[] = [
     Markup.button.callback(
       resolveStatusLabel('В работе', currentStatus),
@@ -73,27 +74,15 @@ const buildStatusRows = (
       resolveStatusLabel('Выполнена', currentStatus),
       `task_done_prompt:${id}`,
     ),
+    Markup.button.callback(
+      resolveStatusLabel('Отменена', currentStatus),
+      `task_cancel_prompt:${id}`,
+    ),
   ];
-  if (options.kind === 'request') {
-    primaryRow.push(
-      Markup.button.callback(
-        resolveStatusLabel('Отменена', currentStatus),
-        `task_cancel_prompt:${id}`,
-      ),
-    );
-  }
   const rows: InlineKeyboardMatrix = [primaryRow];
   const actionsRow: InlineKeyboardButton[] = [
     Markup.button.callback('История', `task_history:${id}`),
   ];
-  if (options.kind !== 'request') {
-    actionsRow.push(
-      Markup.button.callback(
-        'Запрос на отмену',
-        `task_cancel_request_prompt:${id}`,
-      ),
-    );
-  }
   rows.push(actionsRow);
   return rows;
 };

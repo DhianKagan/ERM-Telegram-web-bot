@@ -39,11 +39,7 @@ import authFetch from '../utils/authFetch';
 import parseGoogleAddress from '../utils/parseGoogleAddress';
 import { validateURL } from '../utils/validation';
 import extractCoords from '../utils/extractCoords';
-import {
-  expandLink,
-  searchAddress as searchMapAddress,
-  type AddressSuggestion,
-} from '../services/maps';
+import { expandLink } from '../services/maps';
 import { ArrowPathIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import fetchRoute from '../services/route';
 import haversine from '../utils/haversine';
@@ -528,8 +524,6 @@ const formatCoords = (coords: { lat: number; lng: number } | null): string => {
 const buildMapsLink = (coords: { lat: number; lng: number }): string =>
   `https://www.google.com/maps/search/?api=1&query=${coords.lat},${coords.lng}`;
 
-const MIN_ADDRESS_QUERY_LENGTH = 3;
-
 const sanitizeLocationLink = (value: unknown): string => {
   if (typeof value !== 'string') {
     return '';
@@ -854,7 +848,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     Number.isFinite(normalizedAccess) &&
     (normalizedAccess & ACCESS_TASK_DELETE) === ACCESS_TASK_DELETE;
   const canEditAll = isAdmin || user?.role === 'manager';
-  const { t: rawT, i18n } = useTranslation();
+  const { t: rawT } = useTranslation();
   const initialKind = React.useMemo(() => kind ?? 'task', [kind]);
   const [entityKind, setEntityKind] = React.useState<'task' | 'request'>(
     initialKind,
@@ -886,7 +880,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       adaptTaskText(String(rawT(...args))),
     [rawT, adaptTaskText],
   );
-  const currentLanguage = i18n.language;
   React.useEffect(() => {
     if (kind && kind !== entityKind) {
       setEntityKind(kind);
@@ -1085,6 +1078,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const [comment, setComment] = React.useState('');
   const [priority, setPriority] = React.useState(DEFAULT_PRIORITY);
   const [transportType, setTransportType] = React.useState(DEFAULT_TRANSPORT);
+  const [transportRequired, setTransportRequired] = React.useState(false);
   const [transportDriverId, setTransportDriverId] = React.useState<string>('');
   const [transportDriverName, setTransportDriverName] =
     React.useState<string>('');
@@ -1127,19 +1121,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     lat: number;
     lng: number;
   } | null>(null);
-  const [startSuggestions, setStartSuggestions] = React.useState<
-    AddressSuggestion[]
-  >([]);
-  const [startSuggestionsOpen, setStartSuggestionsOpen] =
-    React.useState(false);
-  const [startSearchLoading, setStartSearchLoading] = React.useState(false);
-  const [startSearchError, setStartSearchError] = React.useState<string | null>(
-    null,
-  );
-  const startSearchAbortRef = React.useRef<AbortController | null>(null);
-  const startSearchTimeoutRef = React.useRef<number | null>(null);
-  const startSearchRequestRef = React.useRef(0);
-  const startInputRef = React.useRef<HTMLInputElement | null>(null);
+  const startLinkInputRef = React.useRef<HTMLInputElement | null>(null);
   const [startCollectionId, setStartCollectionId] = React.useState('');
   const viaPointCounterRef = React.useRef(0);
   const [viaPoints, setViaPoints] = React.useState<ViaPointState[]>([]);
@@ -1149,19 +1131,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     lat: number;
     lng: number;
   } | null>(null);
-  const [finishSuggestions, setFinishSuggestions] = React.useState<
-    AddressSuggestion[]
-  >([]);
-  const [finishSuggestionsOpen, setFinishSuggestionsOpen] =
-    React.useState(false);
-  const [finishSearchLoading, setFinishSearchLoading] = React.useState(false);
-  const [finishSearchError, setFinishSearchError] = React.useState<
-    string | null
-  >(null);
-  const finishSearchAbortRef = React.useRef<AbortController | null>(null);
-  const finishSearchTimeoutRef = React.useRef<number | null>(null);
-  const finishSearchRequestRef = React.useRef(0);
-  const finishInputRef = React.useRef<HTMLInputElement | null>(null);
+  const finishLinkInputRef = React.useRef<HTMLInputElement | null>(null);
   const [finishCollectionId, setFinishCollectionId] = React.useState('');
   const [collectionObjects, setCollectionObjects] = React.useState<
     CollectionObject[]
@@ -1195,6 +1165,12 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const priorities = fields.find((f) => f.name === 'priority')?.options || [];
   const transports =
     fields.find((f) => f.name === 'transport_type')?.options || [];
+  const defaultRequiredTransport = React.useMemo(
+    () =>
+      transports.find((transport) => transport !== DEFAULT_TRANSPORT) ??
+      DEFAULT_TRANSPORT,
+    [DEFAULT_TRANSPORT, transports],
+  );
   const payments =
     fields.find((f) => f.name === 'payment_method')?.options || [];
   const statuses = fields.find((f) => f.name === 'status')?.options || [];
@@ -1216,10 +1192,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const [distanceKm, setDistanceKm] = React.useState<number | null>(null);
   const [routeLink, setRouteLink] = React.useState('');
   const autoRouteRef = React.useRef(true);
-  const transportRequiresDetails = React.useMemo(
-    () => transportType === 'Легковой' || transportType === 'Грузовой',
-    [transportType],
-  );
+  const transportRequiresDetails = transportRequired;
   const loadTransportOptions = React.useCallback(
     async (force = false) => {
       if (transportOptionsLoading || (transportOptionsLoaded && !force)) {
@@ -1251,40 +1224,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     if (!transportRequiresDetails) return;
     void loadTransportOptions();
   }, [transportRequiresDetails, loadTransportOptions]);
-  const cancelStartSearch = React.useCallback(() => {
-    startSearchAbortRef.current?.abort();
-    startSearchAbortRef.current = null;
-    if (startSearchTimeoutRef.current) {
-      window.clearTimeout(startSearchTimeoutRef.current);
-      startSearchTimeoutRef.current = null;
-    }
-  }, []);
-  const cancelFinishSearch = React.useCallback(() => {
-    finishSearchAbortRef.current?.abort();
-    finishSearchAbortRef.current = null;
-    if (finishSearchTimeoutRef.current) {
-      window.clearTimeout(finishSearchTimeoutRef.current);
-      finishSearchTimeoutRef.current = null;
-    }
-  }, []);
-  const clearStartSuggestions = React.useCallback(() => {
-    setStartSuggestions([]);
-    setStartSearchError(null);
-    setStartSearchLoading(false);
-  }, []);
-  const clearFinishSuggestions = React.useCallback(() => {
-    setFinishSuggestions([]);
-    setFinishSearchError(null);
-    setFinishSearchLoading(false);
-  }, []);
-  const canonicalStartLink = React.useMemo(
-    () => sanitizeLocationLink(startLink),
-    [startLink],
-  );
-  const canonicalEndLink = React.useMemo(
-    () => sanitizeLocationLink(endLink),
-    [endLink],
-  );
   const loadCollectionObjects = React.useCallback(async () => {
     if (collectionObjectsLoading || collectionObjectsLoaded) {
       return;
@@ -1314,13 +1253,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     if (!showLogistics) return;
     void loadCollectionObjects();
   }, [showLogistics, loadCollectionObjects]);
-  React.useEffect(
-    () => () => {
-      cancelStartSearch();
-      cancelFinishSearch();
-    },
-    [cancelStartSearch, cancelFinishSearch],
-  );
   React.useEffect(() => {
     if (!transportDriverId) {
       if (transportDriverName) setTransportDriverName('');
@@ -1458,10 +1390,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     }
   }, [selectedDriverOption, transportDriverName]);
   const vehicleOptions = React.useMemo(() => {
-    const allowedType = transportType === 'Грузовой' ? 'Грузовой' : 'Легковой';
-    const list = transportVehicleOptions
-      .filter((vehicle) => vehicle.transportType === allowedType)
-      .slice();
+    const list = transportVehicleOptions.slice();
     if (
       transportVehicleId &&
       !list.some((item) => item.id === transportVehicleId)
@@ -1470,7 +1399,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         id: transportVehicleId,
         name: transportVehicleName || transportVehicleId,
         registrationNumber: transportVehicleRegistration || '',
-        transportType: allowedType,
+        transportType: '',
       });
     }
     return list.sort((a, b) => a.name.localeCompare(b.name, 'ru'));
@@ -1479,7 +1408,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     transportVehicleId,
     transportVehicleName,
     transportVehicleRegistration,
-    transportType,
   ]);
   const vehicleSelectOptions = React.useMemo(
     () =>
@@ -1572,6 +1500,25 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       typeof titleValue === 'string' ? titleValue.trim().length > 0 : false,
     [titleValue],
   );
+  const taskTypePrefixInitializedRef = React.useRef(false);
+  const getTaskTypePrefix = React.useCallback((value: string) => {
+    const trimmed = value.trim();
+    if (!trimmed) return '';
+    return trimmed.split(/\s+/)[0] ?? '';
+  }, []);
+  const applyTaskTypePrefix = React.useCallback(
+    (nextType: string) => {
+      const nextPrefix = getTaskTypePrefix(nextType);
+      const currentTitle =
+        typeof getValues('title') === 'string' ? getValues('title') : '';
+      const baseTitle = currentTitle.trimStart();
+      const nextTitle = nextPrefix
+        ? `${nextPrefix}${baseTitle ? ` ${baseTitle}` : ''}`
+        : baseTitle;
+      setValue('title', nextTitle, { shouldDirty: true });
+    },
+    [getTaskTypePrefix, getValues, setValue],
+  );
   const canUploadAttachments = editing && isTitleFilled;
   const titleRef = React.useRef<HTMLTextAreaElement | null>(null);
   const handleTitleRef = React.useCallback(
@@ -1587,6 +1534,20 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     node.style.height = '';
     node.style.height = `${node.scrollHeight}px`;
   }, [titleValue]);
+  React.useEffect(() => {
+    if (isEdit) {
+      return;
+    }
+    if (taskTypePrefixInitializedRef.current) {
+      return;
+    }
+    const currentTitle =
+      typeof getValues('title') === 'string' ? getValues('title') : '';
+    if (!currentTitle.trim()) {
+      applyTaskTypePrefix(taskType);
+    }
+    taskTypePrefixInitializedRef.current = true;
+  }, [applyTaskTypePrefix, getValues, isEdit, taskType]);
   React.useEffect(() => {
     if (!isEdit && entityKind === 'request') {
       setTaskType(DEFAULT_REQUEST_TYPE);
@@ -1767,6 +1728,12 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       setComment(commentHtml);
       setPriority(curPriority);
       setTransportType(curTransport);
+      const hasTransportDetails = Boolean(
+        driverIdValue || vehicleIdValue || driverNameStored || vehicleNameValue,
+      );
+      setTransportRequired(
+        curTransport !== DEFAULT_TRANSPORT || hasTransportDetails,
+      );
       setTransportDriverId(driverIdValue);
       setTransportDriverName(driverNameStored || driverDisplay);
       setTransportVehicleId(vehicleIdValue);
@@ -1842,14 +1809,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       setStart(startLocationValue);
       setStartLink(startLocationLink);
       setStartCoordinates(startCoordsNormalized);
-      clearStartSuggestions();
-      setStartSuggestionsOpen(false);
       setStartCollectionId('');
       setEnd(endLocationValue);
       setEndLink(endLocationLink);
       setFinishCoordinates(endCoordsNormalized);
-      clearFinishSuggestions();
-      setFinishSuggestionsOpen(false);
       setFinishCollectionId('');
       const rawPoints = Array.isArray(taskData.points)
         ? (taskData.points as TaskPoint[])
@@ -1952,8 +1915,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       DEFAULT_REQUEST_TYPE,
       taskTypeOptions,
       created,
-      clearFinishSuggestions,
-      clearStartSuggestions,
       formatInputDate,
       parseIsoDateMemo,
       stableReset,
@@ -1966,15 +1927,29 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
 
   const handleLogisticsToggle = (checked: boolean) => {
     setShowLogistics(checked);
-    if (!checked) {
-      setStartSuggestionsOpen(false);
-      setFinishSuggestionsOpen(false);
-      cancelStartSearch();
-      cancelFinishSearch();
-      clearStartSuggestions();
-      clearFinishSuggestions();
-    }
   };
+
+  const handleTaskTypeChange = React.useCallback(
+    (value: string) => {
+      setTaskType(value);
+      applyTaskTypePrefix(value);
+    },
+    [applyTaskTypePrefix],
+  );
+
+  const handleTransportRequiredChange = React.useCallback(
+    (checked: boolean) => {
+      setTransportRequired(checked);
+      if (!checked) {
+        setTransportType(DEFAULT_TRANSPORT);
+        return;
+      }
+      if (transportType === DEFAULT_TRANSPORT) {
+        setTransportType(defaultRequiredTransport);
+      }
+    },
+    [DEFAULT_TRANSPORT, defaultRequiredTransport, transportType],
+  );
 
   React.useEffect(() => {
     if (!isEdit) {
@@ -2077,6 +2052,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         : normalizeAssigneeList(values.assignees);
     const resolvedTaskType =
       entityKind === 'request' ? DEFAULT_REQUEST_TYPE : taskType;
+    const resolvedTransportType = transportRequired
+      ? transportType
+      : DEFAULT_TRANSPORT;
 
     const payload: Record<string, unknown> = {
       title: titleValue,
@@ -2084,7 +2062,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       task_description: descriptionValue,
       comment,
       priority,
-      transport_type: transportType,
+      transport_type: resolvedTransportType,
       payment_method: paymentMethod,
       status,
       logistics_enabled: showLogistics,
@@ -2235,6 +2213,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     startLink,
     taskAssigneeIds,
     taskType,
+    transportRequired,
+    DEFAULT_TRANSPORT,
     transportDriverId,
     transportDriverName,
     transportType,
@@ -2245,194 +2225,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     requestId,
   ]);
 
-  const runStartSearch = React.useCallback(
-    (value: string) => {
-      const trimmed = value.trim();
-      if (trimmed.length < MIN_ADDRESS_QUERY_LENGTH) {
-        clearStartSuggestions();
-        return;
-      }
-      cancelStartSearch();
-      const requestId = startSearchRequestRef.current + 1;
-      startSearchRequestRef.current = requestId;
-      const controller = new AbortController();
-      startSearchAbortRef.current = controller;
-      setStartSearchLoading(true);
-      setStartSearchError(null);
-      void searchMapAddress(trimmed, {
-        signal: controller.signal,
-        limit: 7,
-        language: currentLanguage,
-      })
-        .then((items) => {
-          if (startSearchRequestRef.current !== requestId) {
-            return;
-          }
-          setStartSuggestions(items);
-        })
-        .catch((error) => {
-          if (error instanceof DOMException && error.name === 'AbortError') {
-            return;
-          }
-          if (startSearchRequestRef.current !== requestId) {
-            return;
-          }
-          setStartSuggestions([]);
-          setStartSearchError(t('addressSearchFailed'));
-        })
-        .finally(() => {
-          if (startSearchRequestRef.current === requestId) {
-            setStartSearchLoading(false);
-          }
-        });
-    },
-    [cancelStartSearch, clearStartSuggestions, currentLanguage, t],
-  );
-
-  const runFinishSearch = React.useCallback(
-    (value: string) => {
-      const trimmed = value.trim();
-      if (trimmed.length < MIN_ADDRESS_QUERY_LENGTH) {
-        clearFinishSuggestions();
-        return;
-      }
-      cancelFinishSearch();
-      const requestId = finishSearchRequestRef.current + 1;
-      finishSearchRequestRef.current = requestId;
-      const controller = new AbortController();
-      finishSearchAbortRef.current = controller;
-      setFinishSearchLoading(true);
-      setFinishSearchError(null);
-      void searchMapAddress(trimmed, {
-        signal: controller.signal,
-        limit: 7,
-        language: currentLanguage,
-      })
-        .then((items) => {
-          if (finishSearchRequestRef.current !== requestId) {
-            return;
-          }
-          setFinishSuggestions(items);
-        })
-        .catch((error) => {
-          if (error instanceof DOMException && error.name === 'AbortError') {
-            return;
-          }
-          if (finishSearchRequestRef.current !== requestId) {
-            return;
-          }
-          setFinishSuggestions([]);
-          setFinishSearchError(t('addressSearchFailed'));
-        })
-        .finally(() => {
-          if (finishSearchRequestRef.current === requestId) {
-            setFinishSearchLoading(false);
-          }
-        });
-    },
-    [cancelFinishSearch, clearFinishSuggestions, currentLanguage, t],
-  );
-
-  const scheduleStartSearch = React.useCallback(
-    (value: string) => {
-      cancelStartSearch();
-      if (!value.trim()) {
-        clearStartSuggestions();
-        return;
-      }
-      if (value.trim().length < MIN_ADDRESS_QUERY_LENGTH) {
-        clearStartSuggestions();
-        return;
-      }
-      startSearchTimeoutRef.current = window.setTimeout(() => {
-        startSearchTimeoutRef.current = null;
-        runStartSearch(value);
-      }, 350);
-    },
-    [cancelStartSearch, clearStartSuggestions, runStartSearch],
-  );
-
-  const scheduleFinishSearch = React.useCallback(
-    (value: string) => {
-      cancelFinishSearch();
-      if (!value.trim()) {
-        clearFinishSuggestions();
-        return;
-      }
-      if (value.trim().length < MIN_ADDRESS_QUERY_LENGTH) {
-        clearFinishSuggestions();
-        return;
-      }
-      finishSearchTimeoutRef.current = window.setTimeout(() => {
-        finishSearchTimeoutRef.current = null;
-        runFinishSearch(value);
-      }, 350);
-    },
-    [cancelFinishSearch, clearFinishSuggestions, runFinishSearch],
-  );
-
-  const handleStartSuggestionSelect = React.useCallback(
-    (suggestion: AddressSuggestion) => {
-      autoRouteRef.current = true;
-      cancelStartSearch();
-      setStartSuggestionsOpen(false);
-      setStartSearchError(null);
-      clearStartSuggestions();
-      startInputRef.current?.focus();
-      setStart(suggestion.label);
-      const coords = { lat: suggestion.lat, lng: suggestion.lng };
-      setStartCoordinates(coords);
-      setStartLink(buildMapsLink(coords));
-      setStartCollectionId('');
-    },
-    [cancelStartSearch, clearStartSuggestions],
-  );
-
-  const handleFinishSuggestionSelect = React.useCallback(
-    (suggestion: AddressSuggestion) => {
-      autoRouteRef.current = true;
-      cancelFinishSearch();
-      setFinishSuggestionsOpen(false);
-      setFinishSearchError(null);
-      clearFinishSuggestions();
-      finishInputRef.current?.focus();
-      setEnd(suggestion.label);
-      const coords = { lat: suggestion.lat, lng: suggestion.lng };
-      setFinishCoordinates(coords);
-      setEndLink(buildMapsLink(coords));
-      setFinishCollectionId('');
-    },
-    [cancelFinishSearch, clearFinishSuggestions],
-  );
-
-  const handleStartInputChange = React.useCallback(
-    (value: string) => {
-      autoRouteRef.current = true;
-      setStart(value);
-      setStartLink('');
-      setStartCoordinates(null);
-      setStartCollectionId('');
-      setStartSearchError(null);
-      setStartSuggestionsOpen(true);
-      scheduleStartSearch(value);
-    },
-    [scheduleStartSearch],
-  );
-
-  const handleFinishInputChange = React.useCallback(
-    (value: string) => {
-      autoRouteRef.current = true;
-      setEnd(value);
-      setEndLink('');
-      setFinishCoordinates(null);
-      setFinishCollectionId('');
-      setFinishSearchError(null);
-      setFinishSuggestionsOpen(true);
-      scheduleFinishSearch(value);
-    },
-    [scheduleFinishSearch],
-  );
-
   const handleStartLink = async (value: string) => {
     autoRouteRef.current = true;
     const resolved = await resolveLocationLink(value);
@@ -2440,18 +2232,12 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       setStart('');
       setStartCoordinates(null);
       setStartLink('');
-      setStartSuggestionsOpen(false);
-      cancelStartSearch();
-      clearStartSuggestions();
       return;
     }
     setStart(resolved.title);
     setStartCoordinates(resolved.coords);
     setStartLink(resolved.link);
     setStartCollectionId('');
-    setStartSuggestionsOpen(false);
-    cancelStartSearch();
-    clearStartSuggestions();
   };
 
   const handleEndLink = async (value: string) => {
@@ -2461,18 +2247,12 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       setEnd('');
       setFinishCoordinates(null);
       setEndLink('');
-      setFinishSuggestionsOpen(false);
-      cancelFinishSearch();
-      clearFinishSuggestions();
       return;
     }
     setEnd(resolved.title);
     setFinishCoordinates(resolved.coords);
     setEndLink(resolved.link);
     setFinishCollectionId('');
-    setFinishSuggestionsOpen(false);
-    cancelFinishSearch();
-    clearFinishSuggestions();
   };
 
   const handleViaLinkChange = React.useCallback(
@@ -2522,28 +2302,15 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         setStartCoordinates(coords ?? null);
         setStartLink(coords ? buildMapsLink(coords) : '');
         setStartCollectionId(optionId);
-        setStartSuggestionsOpen(false);
-        cancelStartSearch();
-        clearStartSuggestions();
       } else {
         autoRouteRef.current = true;
         setEnd(option.address || option.value || option.name);
         setFinishCoordinates(coords ?? null);
         setEndLink(coords ? buildMapsLink(coords) : '');
         setFinishCollectionId(optionId);
-        setFinishSuggestionsOpen(false);
-        cancelFinishSearch();
-        clearFinishSuggestions();
       }
     },
-    [
-      cancelFinishSearch,
-      cancelStartSearch,
-      clearFinishSuggestions,
-      clearStartSuggestions,
-      collectionObjects,
-      t,
-    ],
+    [collectionObjects, t],
   );
 
   const applyViaCollectionPoint = React.useCallback(
@@ -2802,6 +2569,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       startDate: defaultStartDate,
       dueDate: defaultDueDate,
     });
+    taskTypePrefixInitializedRef.current = false;
     setCargoLength('');
     setCargoWidth('');
     setCargoHeight('');
@@ -2810,18 +2578,16 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     setStart('');
     setStartLink('');
     setStartCoordinates(null);
-    setStartSuggestionsOpen(false);
-    clearStartSuggestions();
     setStartCollectionId('');
     setViaPoints([]);
     setEnd('');
     setEndLink('');
     setFinishCoordinates(null);
-    setFinishSuggestionsOpen(false);
-    clearFinishSuggestions();
     setFinishCollectionId('');
     setRouteLink('');
     setShowLogistics(false);
+    setTransportType(DEFAULT_TRANSPORT);
+    setTransportRequired(false);
     setTransportDriverId('');
     setTransportDriverName('');
     setTransportVehicleId('');
@@ -3122,12 +2888,12 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         if (showLogistics) {
           if (!startCoordinates) {
             setAlertMsg(t('logisticsStartCoordinatesRequired'));
-            startInputRef.current?.focus();
+            startLinkInputRef.current?.focus();
             return;
           }
           if (!finishCoordinates) {
             setAlertMsg(t('logisticsFinishCoordinatesRequired'));
-            finishInputRef.current?.focus();
+            finishLinkInputRef.current?.focus();
             return;
           }
           if (viaPoints.length > 0) {
@@ -3144,13 +2910,16 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
             }
           }
         }
+        const resolvedTransportType = transportRequired
+          ? transportType
+          : DEFAULT_TRANSPORT;
         const payload: Record<string, unknown> = {
           title: formData.title,
           task_type: resolvedTaskType,
           task_description: formData.description,
           comment,
           priority,
-          transport_type: transportType,
+          transport_type: resolvedTransportType,
           payment_method: paymentMethod,
           status,
           created_by: toNumericValue(creator),
@@ -3447,9 +3216,19 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       dueDate: d.dueDate,
     });
     setTaskType(d.taskType);
+    taskTypePrefixInitializedRef.current = true;
     setComment(d.comment);
     setPriority(d.priority);
     setTransportType(d.transportType);
+    setTransportRequired(
+      d.transportType !== DEFAULT_TRANSPORT ||
+        Boolean(
+          d.transportDriverId ||
+            d.transportVehicleId ||
+            d.transportDriverName ||
+            d.transportVehicleName,
+        ),
+    );
     setTransportDriverId(d.transportDriverId);
     setTransportDriverName(d.transportDriverName);
     setTransportVehicleId(d.transportVehicleId);
@@ -3470,15 +3249,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     setStart(d.start);
     setStartLink(d.startLink);
     setStartCoordinates(d.startCoordinates);
-    setStartSuggestionsOpen(false);
-    clearStartSuggestions();
     setStartCollectionId('');
     setViaPoints(d.viaPoints);
     setEnd(d.end);
     setEndLink(d.endLink);
     setFinishCoordinates(d.finishCoordinates);
-    setFinishSuggestionsOpen(false);
-    clearFinishSuggestions();
     setFinishCollectionId('');
     setRouteLink(d.routeLink);
     setAttachments(mergeAttachmentLists([], d.attachments as Attachment[]));
@@ -3660,9 +3435,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     return null;
   }
 
-  const startQueryLength = start.trim().length;
-  const finishQueryLength = end.trim().length;
-
   return createPortal(
     <div className="fixed inset-0 z-[1000]">
       <div
@@ -3785,6 +3557,26 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                   </div>
                   <div>
                     <label className="block text-sm font-medium">
+                      {t('taskType')}
+                    </label>
+                    <select
+                      value={taskType}
+                      onChange={(e) => handleTaskTypeChange(e.target.value)}
+                      className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                      disabled={!editing || entityKind === 'request'}
+                    >
+                      {(entityKind === 'request'
+                        ? requestTypeOptions
+                        : taskTypeOptions
+                      ).map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium">
                       {t('taskTitle')}
                     </label>
                     <textarea
@@ -3842,7 +3634,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                         <div className="sm:col-span-2 lg:col-span-2">
                           <label
                             className="block text-sm font-medium"
-                            htmlFor="task-start-address"
+                            htmlFor="task-start-link"
                           >
                             <span className="flex flex-wrap items-center gap-2">
                               <span>{t('startPoint')}</span>
@@ -3852,212 +3644,64 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                             </span>
                           </label>
                           <div className="mt-1 space-y-2">
-                            <div className="relative">
+                            <div className="flex flex-wrap items-center gap-2">
                               <input
-                                id="task-start-address"
-                                ref={startInputRef}
-                                value={start}
-                                onChange={(event) =>
-                                  handleStartInputChange(event.target.value)
-                                }
-                                onFocus={() => {
-                                  if (!editing) return;
-                                  setStartSuggestionsOpen(true);
-                                }}
-                                onBlur={() => {
-                                  window.setTimeout(() => {
-                                    setStartSuggestionsOpen(false);
-                                  }, 120);
-                                }}
-                                onKeyDown={(event) => {
-                                  if (event.key === 'Enter' && editing) {
-                                    if (startSuggestions.length > 0) {
-                                      event.preventDefault();
-                                      handleStartSuggestionSelect(
-                                        startSuggestions[0],
-                                      );
-                                    }
-                                  }
-                                  if (event.key === 'Escape') {
-                                    setStartSuggestionsOpen(false);
-                                  }
-                                }}
-                                placeholder={t('addressPlaceholder', {
-                                  count: MIN_ADDRESS_QUERY_LENGTH,
-                                })}
-                                className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none disabled:cursor-not-allowed"
+                                id="task-start-link"
+                                ref={startLinkInputRef}
+                                name="startLink"
+                                value={startLink}
+                                onChange={(e) => handleStartLink(e.target.value)}
+                                placeholder={t('googleMapsLink')}
+                                className="focus:ring-brand-200 focus:border-accentPrimary min-w-0 flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
                                 disabled={!editing}
                               />
-                              {editing && startSuggestionsOpen ? (
-                                <div className="absolute left-0 right-0 z-20 mt-1 rounded-md border border-slate-200 bg-white shadow-lg">
-                                  {startSearchLoading ? (
-                                    <div className="px-3 py-2 text-sm text-muted-foreground">
-                                      {t('addressSearchLoading')}
-                                    </div>
-                                  ) : startSearchError ? (
-                                    <div className="px-3 py-2 text-sm text-red-600">
-                                      {startSearchError}
-                                    </div>
-                                  ) : startQueryLength === 0 ? (
-                                    <div className="px-3 py-2 text-sm text-muted-foreground">
-                                      {t('addressSearchHint', {
-                                        count: MIN_ADDRESS_QUERY_LENGTH,
-                                      })}
-                                    </div>
-                                  ) : startQueryLength <
-                                    MIN_ADDRESS_QUERY_LENGTH ? (
-                                    <div className="px-3 py-2 text-sm text-muted-foreground">
-                                      {t('addressSearchHint', {
-                                        count: MIN_ADDRESS_QUERY_LENGTH,
-                                      })}
-                                    </div>
-                                  ) : startSuggestions.length ? (
-                                    <ul
-                                      className="max-h-60 overflow-y-auto py-1"
-                                      role="listbox"
-                                    >
-                                      {startSuggestions.map((suggestion) => (
-                                        <li
-                                          key={`${suggestion.id}-${suggestion.lat}-${suggestion.lng}`}
-                                          role="option"
-                                          className="cursor-pointer px-3 py-2 text-sm hover:bg-slate-100"
-                                          onMouseDown={(event) => {
-                                            event.preventDefault();
-                                            handleStartSuggestionSelect(
-                                              suggestion,
-                                            );
-                                          }}
-                                        >
-                                          <div className="font-medium text-slate-800">
-                                            {suggestion.label}
-                                          </div>
-                                          {suggestion.description ? (
-                                            <div className="text-xs text-slate-500">
-                                              {suggestion.description}
-                                            </div>
-                                          ) : null}
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  ) : (
-                                    <div className="px-3 py-2 text-sm text-muted-foreground">
-                                      {t('addressSearchNoResults')}
-                                    </div>
-                                  )}
-                                </div>
-                              ) : null}
-                            </div>
-                            {canonicalStartLink ? (
-                              <div className="flex flex-wrap items-start gap-2">
-                                <div className="flex min-w-0 flex-col gap-1">
-                                  <a
-                                    href={canonicalStartLink}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-accentPrimary underline break-words"
-                                  >
-                                    {start || t('link')}
-                                  </a>
-                                  {startCoordinates && (
-                                    <input
-                                      id="task-start-coordinates"
-                                      name="startCoordinatesDisplay"
-                                      value={formatCoords(startCoordinates)}
-                                      readOnly
-                                      className="focus:ring-brand-200 focus:border-accentPrimary w-full cursor-text rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-xs text-slate-600 focus:ring focus:outline-none"
-                                      onFocus={(e) => e.currentTarget.select()}
-                                      aria-label={t('coordinates')}
-                                    />
-                                  )}
-                                </div>
-                                {editing ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleStartLink('')}
-                                    className="shrink-0 text-red-600"
-                                  >
-                                    ✖
-                                  </button>
-                                ) : null}
-                                <select
-                                  aria-label={t('collectionAddressLabel')}
-                                  value={startCollectionId}
-                                  onChange={(event) => {
-                                    const value = event.target.value;
-                                    setStartCollectionId(value);
-                                    if (value) {
-                                      applyCollectionPoint('start', value);
-                                    }
-                                  }}
-                                  className="focus:ring-brand-200 focus:border-accentPrimary min-w-[200px] rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
-                                  disabled={!editing || collectionObjectsLoading}
-                                >
-                                  <option value="">
-                                    {t('collectionAddressPlaceholder')}
-                                  </option>
-                                  {collectionOptions.map((option) => (
-                                    <option
-                                      key={option.value}
-                                      value={option.value}
-                                    >
-                                      {option.label}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                            ) : (
-                              <div className="flex flex-wrap items-center gap-2">
-                                <input
-                                  id="task-start-link"
-                                  name="startLink"
-                                  value={startLink}
-                                  onChange={(e) =>
-                                    handleStartLink(e.target.value)
+                              <a
+                                href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
+                                target="_blank"
+                                rel="noopener"
+                                className={cn(
+                                  buttonVariants({
+                                    variant: 'default',
+                                    size: 'sm',
+                                  }),
+                                  'rounded-2xl px-3 shrink-0 whitespace-nowrap h-10',
+                                )}
+                              >
+                                {t('googleMapsButton')}
+                              </a>
+                              <select
+                                aria-label={t('collectionAddressLabel')}
+                                value={startCollectionId}
+                                onChange={(event) => {
+                                  const value = event.target.value;
+                                  setStartCollectionId(value);
+                                  if (value) {
+                                    applyCollectionPoint('start', value);
                                   }
-                                  placeholder={t('googleMapsLink')}
-                                  className="focus:ring-brand-200 focus:border-accentPrimary min-w-0 flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
-                                  disabled={!editing}
-                                />
-                                <a
-                                  href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
-                                  target="_blank"
-                                  rel="noopener"
-                                  className={cn(
-                                    buttonVariants({
-                                      variant: 'default',
-                                      size: 'sm',
-                                    }),
-                                    'rounded-2xl px-3 shrink-0 whitespace-nowrap h-10',
-                                  )}
-                                >
-                                  {t('googleMapsButton')}
-                                </a>
-                                <select
-                                  aria-label={t('collectionAddressLabel')}
-                                  value={startCollectionId}
-                                  onChange={(event) => {
-                                    const value = event.target.value;
-                                    setStartCollectionId(value);
-                                    if (value) {
-                                      applyCollectionPoint('start', value);
-                                    }
-                                  }}
-                                  className="focus:ring-brand-200 focus:border-accentPrimary min-w-[200px] rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
-                                  disabled={!editing || collectionObjectsLoading}
-                                >
-                                  <option value="">
-                                    {t('collectionAddressPlaceholder')}
+                                }}
+                                className="focus:ring-brand-200 focus:border-accentPrimary min-w-[200px] rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                                disabled={!editing || collectionObjectsLoading}
+                              >
+                                <option value="">
+                                  {t('collectionAddressPlaceholder')}
+                                </option>
+                                {collectionOptions.map((option) => (
+                                  <option key={option.value} value={option.value}>
+                                    {option.label}
                                   </option>
-                                  {collectionOptions.map((option) => (
-                                    <option
-                                      key={option.value}
-                                      value={option.value}
-                                    >
-                                      {option.label}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
+                                ))}
+                              </select>
+                            </div>
+                            {startCoordinates && (
+                              <input
+                                id="task-start-coordinates"
+                                name="startCoordinatesDisplay"
+                                value={formatCoords(startCoordinates)}
+                                readOnly
+                                className="focus:ring-brand-200 focus:border-accentPrimary w-full cursor-text rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-xs text-slate-600 focus:ring focus:outline-none"
+                                onFocus={(e) => e.currentTarget.select()}
+                                aria-label={t('coordinates')}
+                              />
                             )}
                             {collectionObjectsLoading ? (
                               <p className="mt-1 text-xs text-slate-500">
@@ -4205,7 +3849,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                         <div className="sm:col-span-2 lg:col-span-2">
                           <label
                             className="block text-sm font-medium"
-                            htmlFor="task-finish-address"
+                            htmlFor="task-end-link"
                           >
                             <span className="flex flex-wrap items-center gap-2">
                               <span>{t('endPoint')}</span>
@@ -4215,212 +3859,64 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                             </span>
                           </label>
                           <div className="mt-1 space-y-2">
-                            <div className="relative">
+                            <div className="flex flex-wrap items-center gap-2">
                               <input
-                                id="task-finish-address"
-                                ref={finishInputRef}
-                                value={end}
-                                onChange={(event) =>
-                                  handleFinishInputChange(event.target.value)
-                                }
-                                onFocus={() => {
-                                  if (!editing) return;
-                                  setFinishSuggestionsOpen(true);
-                                }}
-                                onBlur={() => {
-                                  window.setTimeout(() => {
-                                    setFinishSuggestionsOpen(false);
-                                  }, 120);
-                                }}
-                                onKeyDown={(event) => {
-                                  if (event.key === 'Enter' && editing) {
-                                    if (finishSuggestions.length > 0) {
-                                      event.preventDefault();
-                                      handleFinishSuggestionSelect(
-                                        finishSuggestions[0],
-                                      );
-                                    }
-                                  }
-                                  if (event.key === 'Escape') {
-                                    setFinishSuggestionsOpen(false);
-                                  }
-                                }}
-                                placeholder={t('addressPlaceholder', {
-                                  count: MIN_ADDRESS_QUERY_LENGTH,
-                                })}
-                                className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none disabled:cursor-not-allowed"
+                                id="task-end-link"
+                                ref={finishLinkInputRef}
+                                name="endLink"
+                                value={endLink}
+                                onChange={(e) => handleEndLink(e.target.value)}
+                                placeholder={t('googleMapsLink')}
+                                className="focus:ring-brand-200 focus:border-accentPrimary min-w-0 flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
                                 disabled={!editing}
                               />
-                              {editing && finishSuggestionsOpen ? (
-                                <div className="absolute left-0 right-0 z-20 mt-1 rounded-md border border-slate-200 bg-white shadow-lg">
-                                  {finishSearchLoading ? (
-                                    <div className="px-3 py-2 text-sm text-muted-foreground">
-                                      {t('addressSearchLoading')}
-                                    </div>
-                                  ) : finishSearchError ? (
-                                    <div className="px-3 py-2 text-sm text-red-600">
-                                      {finishSearchError}
-                                    </div>
-                                  ) : finishQueryLength === 0 ? (
-                                    <div className="px-3 py-2 text-sm text-muted-foreground">
-                                      {t('addressSearchHint', {
-                                        count: MIN_ADDRESS_QUERY_LENGTH,
-                                      })}
-                                    </div>
-                                  ) : finishQueryLength <
-                                    MIN_ADDRESS_QUERY_LENGTH ? (
-                                    <div className="px-3 py-2 text-sm text-muted-foreground">
-                                      {t('addressSearchHint', {
-                                        count: MIN_ADDRESS_QUERY_LENGTH,
-                                      })}
-                                    </div>
-                                  ) : finishSuggestions.length ? (
-                                    <ul
-                                      className="max-h-60 overflow-y-auto py-1"
-                                      role="listbox"
-                                    >
-                                      {finishSuggestions.map((suggestion) => (
-                                        <li
-                                          key={`${suggestion.id}-${suggestion.lat}-${suggestion.lng}`}
-                                          role="option"
-                                          className="cursor-pointer px-3 py-2 text-sm hover:bg-slate-100"
-                                          onMouseDown={(event) => {
-                                            event.preventDefault();
-                                            handleFinishSuggestionSelect(
-                                              suggestion,
-                                            );
-                                          }}
-                                        >
-                                          <div className="font-medium text-slate-800">
-                                            {suggestion.label}
-                                          </div>
-                                          {suggestion.description ? (
-                                            <div className="text-xs text-slate-500">
-                                              {suggestion.description}
-                                            </div>
-                                          ) : null}
-                                        </li>
-                                      ))}
-                                    </ul>
-                                  ) : (
-                                    <div className="px-3 py-2 text-sm text-muted-foreground">
-                                      {t('addressSearchNoResults')}
-                                    </div>
-                                  )}
-                                </div>
-                              ) : null}
-                            </div>
-                            {canonicalEndLink ? (
-                              <div className="flex flex-wrap items-start gap-2">
-                                <div className="flex min-w-0 flex-col gap-1">
-                                  <a
-                                    href={canonicalEndLink}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-accentPrimary underline break-words"
-                                  >
-                                    {end || t('link')}
-                                  </a>
-                                  {finishCoordinates && (
-                                    <input
-                                      id="task-finish-coordinates"
-                                      name="finishCoordinatesDisplay"
-                                      value={formatCoords(finishCoordinates)}
-                                      readOnly
-                                      className="focus:ring-brand-200 focus:border-accentPrimary w-full cursor-text rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-xs text-slate-600 focus:ring focus:outline-none"
-                                      onFocus={(e) => e.currentTarget.select()}
-                                      aria-label={t('coordinates')}
-                                    />
-                                  )}
-                                </div>
-                                {editing ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleEndLink('')}
-                                    className="shrink-0 text-red-600"
-                                  >
-                                    ✖
-                                  </button>
-                                ) : null}
-                                <select
-                                  aria-label={t('collectionAddressLabel')}
-                                  value={finishCollectionId}
-                                  onChange={(event) => {
-                                    const value = event.target.value;
-                                    setFinishCollectionId(value);
-                                    if (value) {
-                                      applyCollectionPoint('finish', value);
-                                    }
-                                  }}
-                                  className="focus:ring-brand-200 focus:border-accentPrimary min-w-[200px] rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
-                                  disabled={!editing || collectionObjectsLoading}
-                                >
-                                  <option value="">
-                                    {t('collectionAddressPlaceholder')}
-                                  </option>
-                                  {collectionOptions.map((option) => (
-                                    <option
-                                      key={option.value}
-                                      value={option.value}
-                                    >
-                                      {option.label}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                            ) : (
-                              <div className="flex flex-wrap items-center gap-2">
-                                <input
-                                  id="task-end-link"
-                                  name="endLink"
-                                  value={endLink}
-                                  onChange={(e) =>
-                                    handleEndLink(e.target.value)
+                              <a
+                                href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
+                                target="_blank"
+                                rel="noopener"
+                                className={cn(
+                                  buttonVariants({
+                                    variant: 'default',
+                                    size: 'sm',
+                                  }),
+                                  'rounded-2xl px-3 shrink-0 whitespace-nowrap h-10',
+                                )}
+                              >
+                                {t('googleMapsButton')}
+                              </a>
+                              <select
+                                aria-label={t('collectionAddressLabel')}
+                                value={finishCollectionId}
+                                onChange={(event) => {
+                                  const value = event.target.value;
+                                  setFinishCollectionId(value);
+                                  if (value) {
+                                    applyCollectionPoint('finish', value);
                                   }
-                                  placeholder={t('googleMapsLink')}
-                                  className="focus:ring-brand-200 focus:border-accentPrimary min-w-0 flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
-                                  disabled={!editing}
-                                />
-                                <a
-                                  href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
-                                  target="_blank"
-                                  rel="noopener"
-                                  className={cn(
-                                    buttonVariants({
-                                      variant: 'default',
-                                      size: 'sm',
-                                    }),
-                                    'rounded-2xl px-3 shrink-0 whitespace-nowrap h-10',
-                                  )}
-                                >
-                                  {t('googleMapsButton')}
-                                </a>
-                                <select
-                                  aria-label={t('collectionAddressLabel')}
-                                  value={finishCollectionId}
-                                  onChange={(event) => {
-                                    const value = event.target.value;
-                                    setFinishCollectionId(value);
-                                    if (value) {
-                                      applyCollectionPoint('finish', value);
-                                    }
-                                  }}
-                                  className="focus:ring-brand-200 focus:border-accentPrimary min-w-[200px] rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
-                                  disabled={!editing || collectionObjectsLoading}
-                                >
-                                  <option value="">
-                                    {t('collectionAddressPlaceholder')}
+                                }}
+                                className="focus:ring-brand-200 focus:border-accentPrimary min-w-[200px] rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                                disabled={!editing || collectionObjectsLoading}
+                              >
+                                <option value="">
+                                  {t('collectionAddressPlaceholder')}
+                                </option>
+                                {collectionOptions.map((option) => (
+                                  <option key={option.value} value={option.value}>
+                                    {option.label}
                                   </option>
-                                  {collectionOptions.map((option) => (
-                                    <option
-                                      key={option.value}
-                                      value={option.value}
-                                    >
-                                      {option.label}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
+                                ))}
+                              </select>
+                            </div>
+                            {finishCoordinates && (
+                              <input
+                                id="task-finish-coordinates"
+                                name="finishCoordinatesDisplay"
+                                value={formatCoords(finishCoordinates)}
+                                readOnly
+                                className="focus:ring-brand-200 focus:border-accentPrimary w-full cursor-text rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-xs text-slate-600 focus:ring focus:outline-none"
+                                onFocus={(e) => e.currentTarget.select()}
+                                aria-label={t('coordinates')}
+                              />
                             )}
                             {collectionObjectsLoading ? (
                               <p className="mt-1 text-xs text-slate-500">
@@ -4456,24 +3952,23 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                         </div>
                         <div>
                           <label
-                            className="block text-sm font-medium"
-                            htmlFor="task-transport-type"
+                            className="flex items-center gap-2 text-sm font-medium"
+                            htmlFor="task-transport-required"
                           >
-                            {t('transportType')}
+                            <input
+                              id="task-transport-required"
+                              type="checkbox"
+                              className="h-4 w-4"
+                              checked={transportRequired}
+                              onChange={(event) =>
+                                handleTransportRequiredChange(
+                                  event.target.checked,
+                                )
+                              }
+                              disabled={!editing}
+                            />
+                            {t('transportRequired')}
                           </label>
-                          <select
-                            id="task-transport-type"
-                            value={transportType}
-                            onChange={(e) => setTransportType(e.target.value)}
-                            className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
-                            disabled={!editing}
-                          >
-                            {transports.map((transport) => (
-                              <option key={transport} value={transport}>
-                                {transport}
-                              </option>
-                            ))}
-                          </select>
                         </div>
                         <div>
                           <label
@@ -4562,58 +4057,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                             inputMode="decimal"
                             disabled={!editing}
                           />
-                        </div>
-                        <div className="sm:col-span-2 lg:col-span-1">
-                          <label className="block text-sm font-medium">
-                            {t('paymentMethod')}
-                          </label>
-                          <select
-                            value={paymentMethod}
-                            onChange={(e) => setPaymentMethod(e.target.value)}
-                            className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
-                            disabled={!editing}
-                          >
-                            {payments.map((p) => (
-                              <option key={p} value={p}>
-                                {p}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="sm:col-span-2 lg:col-span-3">
-                          <label
-                            className="block text-sm font-medium"
-                            htmlFor="task-payment-amount"
-                          >
-                            {t('paymentAmount')}
-                          </label>
-                          <div
-                            className={`focus-within:border-accentPrimary focus-within:ring-brand-200 flex items-center rounded-md border border-slate-200 bg-slate-50 text-sm transition focus-within:ring ${
-                              editing ? '' : 'opacity-80'
-                            }`}
-                          >
-                            <input
-                              id="task-payment-amount"
-                              name="paymentAmount"
-                              value={paymentAmount}
-                              onChange={(e) => setPaymentAmount(e.target.value)}
-                              onBlur={(e) =>
-                                setPaymentAmount(
-                                  formatCurrencyDisplay(e.target.value),
-                                )
-                              }
-                              className="flex-1 bg-transparent px-2.5 py-1.5 text-sm focus:outline-none disabled:cursor-not-allowed"
-                              placeholder="0"
-                              inputMode="decimal"
-                              disabled={!editing}
-                            />
-                            <span className="px-2 text-sm font-semibold text-slate-500">
-                              грн
-                            </span>
-                          </div>
-                          <p className="mt-1 text-xs text-slate-500">
-                            {t('paymentAmountFormat')}
-                          </p>
                         </div>
                       </div>
                     )}
@@ -4846,20 +4289,17 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
                       <label className="block text-sm font-medium">
-                        {t('taskType')}
+                        {t('paymentMethod')}
                       </label>
                       <select
-                        value={taskType}
-                        onChange={(e) => setTaskType(e.target.value)}
+                        value={paymentMethod}
+                        onChange={(e) => setPaymentMethod(e.target.value)}
                         className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
-                        disabled={!editing || entityKind === 'request'}
+                        disabled={!editing}
                       >
-                        {(entityKind === 'request'
-                          ? requestTypeOptions
-                          : taskTypeOptions
-                        ).map((option) => (
-                          <option key={option} value={option}>
-                            {option}
+                        {payments.map((p) => (
+                          <option key={p} value={p}>
+                            {p}
                           </option>
                         ))}
                       </select>
@@ -4916,6 +4356,38 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                         placeholder="—"
                         className="w-full rounded-md border border-slate-200 bg-slate-100 px-2.5 py-1.5 text-sm text-slate-700 focus:outline-none"
                       />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <label
+                        className="block text-sm font-medium"
+                        htmlFor="task-payment-amount"
+                      >
+                        {t('paymentAmount')}
+                      </label>
+                      <div
+                        className={`focus-within:border-accentPrimary focus-within:ring-brand-200 flex items-center rounded-md border border-slate-200 bg-white text-sm transition focus-within:ring ${
+                          editing ? '' : 'opacity-80'
+                        }`}
+                      >
+                        <input
+                          id="task-payment-amount"
+                          name="paymentAmount"
+                          value={paymentAmount}
+                          onChange={(e) => setPaymentAmount(e.target.value)}
+                          onBlur={(e) =>
+                            setPaymentAmount(
+                              formatCurrencyDisplay(e.target.value),
+                            )
+                          }
+                          className="min-w-0 flex-1 bg-transparent px-2.5 py-1.5 focus:outline-none"
+                          inputMode="decimal"
+                          disabled={!editing}
+                        />
+                        <span className="px-2 text-xs text-slate-500">грн</span>
+                      </div>
+                      <p className="mt-1 text-xs text-slate-500">
+                        {t('paymentAmountFormat')}
+                      </p>
                     </div>
                   </div>
                   {showTransportFields && (

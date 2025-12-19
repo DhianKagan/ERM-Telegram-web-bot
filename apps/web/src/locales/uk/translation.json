@@ -67,12 +67,17 @@
   "googleMapsButton": "Google Maps",
   "googleMapsHint": "Відкрийте Google Maps, щоб знайти точку або маршрут",
   "googleMapsLink": "Вставте посилання Google Maps",
-  "collectionAddressLabel": "Адреса з колекції",
-  "collectionAddressPlaceholder": "Оберіть адресу",
+  "collectionAddressLabel": "Список об'єктів",
+  "collectionAddressPlaceholder": "Оберіть об'єкт",
   "collectionAddressesLoading": "Завантажуємо адреси...",
   "collectionAddressesLoadFailed": "Не вдалося завантажити адреси",
   "collectionAddressMissingCoordinates": "У вибраної адреси немає координат",
+  "viaPointsLabel": "Проміжні точки",
+  "viaPointLabel": "Проміжна точка {{index}}",
+  "viaPointsEmpty": "Проміжні точки не додані",
+  "addAddress": "Додати адресу",
   "logisticsCoordinatesHint": "Координати обов'язкові: виберіть адресу або точку на карті",
   "logisticsStartCoordinatesRequired": "Вкажіть координати точки відправлення",
-  "logisticsFinishCoordinatesRequired": "Вкажіть координати точки прибуття"
+  "logisticsFinishCoordinatesRequired": "Вкажіть координати точки прибуття",
+  "logisticsViaCoordinatesRequired": "Вкажіть координати проміжної точки {{index}}"
 }

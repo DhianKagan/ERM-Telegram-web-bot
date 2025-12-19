@@ -48,6 +48,7 @@ import { ArrowPathIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import fetchRoute from '../services/route';
 import haversine from '../utils/haversine';
 import createRouteLink from '../utils/createRouteLink';
+import createMultiRouteLink from '../utils/createMultiRouteLink';
 import {
   useForm,
   Controller,
@@ -57,7 +58,7 @@ import {
 import FileUploader from './FileUploader';
 import Spinner from './Spinner';
 import type { Attachment, HistoryItem, UserBrief } from '../types/task';
-import type { Task } from 'shared';
+import type { Task, TaskPoint } from 'shared';
 import EmployeeLink from './EmployeeLink';
 import {
   creatorBadgeClass,
@@ -76,6 +77,15 @@ import {
 
 type TaskKind = 'task' | 'request';
 const MAX_ASSIGNEES = 5;
+const MAX_VIA_POINTS = 5;
+
+type ViaPointState = {
+  id: string;
+  title: string;
+  link: string;
+  coordinates: { lat: number; lng: number } | null;
+  collectionId: string;
+};
 
 const ensureInlineMode = (value?: string | null): string | undefined => {
   if (!value) return undefined;
@@ -304,6 +314,7 @@ interface InitialValues {
   start: string;
   startLink: string;
   startCoordinates: { lat: number; lng: number } | null;
+  viaPoints: ViaPointState[];
   end: string;
   endLink: string;
   finishCoordinates: { lat: number; lng: number } | null;
@@ -565,6 +576,52 @@ const isManagedShortLink = (value: string): boolean => {
   } catch {
     return false;
   }
+};
+
+const resolveLocationLink = async (
+  value: string,
+): Promise<{
+  link: string;
+  resolved: string;
+  coords: { lat: number; lng: number } | null;
+  title: string;
+} | null> => {
+  const sanitized = sanitizeLocationLink(value);
+  if (!sanitized) {
+    return null;
+  }
+  let link = sanitized;
+  let resolved = sanitized;
+  let coords = extractCoords(resolved);
+  if (
+    /^https?:\/\/maps\.app\.goo\.gl\//i.test(sanitized) ||
+    isManagedShortLink(sanitized)
+  ) {
+    const data = await expandLink(sanitized);
+    if (data?.url) {
+      const expanded = sanitizeLocationLink(data.url) || sanitized;
+      resolved = expanded;
+      const backendCoords = toCoordsValue(data.coords);
+      if (backendCoords) {
+        coords = backendCoords;
+      }
+      if (typeof data.short === 'string') {
+        const shortCandidate = sanitizeLocationLink(data.short);
+        link = shortCandidate || sanitized;
+      } else {
+        link = expanded;
+      }
+    }
+    if (!coords) {
+      coords = extractCoords(resolved);
+    }
+  }
+  return {
+    link,
+    resolved,
+    coords: coords ?? extractCoords(resolved),
+    title: parseGoogleAddress(resolved),
+  };
 };
 
 const toIsoString = (value: unknown): string => {
@@ -1084,6 +1141,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const startSearchRequestRef = React.useRef(0);
   const startInputRef = React.useRef<HTMLInputElement | null>(null);
   const [startCollectionId, setStartCollectionId] = React.useState('');
+  const viaPointCounterRef = React.useRef(0);
+  const [viaPoints, setViaPoints] = React.useState<ViaPointState[]>([]);
   const [end, setEnd] = React.useState('');
   const [endLink, setEndLink] = React.useState('');
   const [finishCoordinates, setFinishCoordinates] = React.useState<{
@@ -1304,13 +1363,49 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     }
     prevTransportRequiresRef.current = transportRequiresDetails;
   }, [transportRequiresDetails]);
+  const formatCollectionLabel = React.useCallback(
+    (item: CollectionObject): string => {
+      const name = typeof item.name === 'string' ? item.name.trim() : '';
+      const address =
+        typeof item.address === 'string' ? item.address.trim() : '';
+      const value = typeof item.value === 'string' ? item.value.trim() : '';
+      if (name && address) {
+        return `${name} — ${address}`;
+      }
+      if (name && value && name !== value) {
+        return `${name} — ${value}`;
+      }
+      return address || value || name || item._id;
+    },
+    [],
+  );
   const collectionOptions = React.useMemo(
     () =>
       collectionObjects.map((item) => ({
         value: item._id,
-        label: item.address || item.value || item.name,
+        label: formatCollectionLabel(item),
       })),
-    [collectionObjects],
+    [collectionObjects, formatCollectionLabel],
+  );
+  const createViaPoint = React.useCallback(
+    (seed?: Partial<ViaPointState>): ViaPointState => {
+      const id = `via-${Date.now()}-${viaPointCounterRef.current}`;
+      viaPointCounterRef.current += 1;
+      return {
+        id,
+        title: '',
+        link: '',
+        coordinates: null,
+        collectionId: '',
+        ...seed,
+      };
+    },
+    [],
+  );
+  const resolveViaCoordinates = React.useCallback(
+    (point: ViaPointState): { lat: number; lng: number } | null =>
+      point.coordinates ?? (point.link ? extractCoords(point.link) : null),
+    [],
   );
   const driverOptionItems = React.useMemo(() => {
     const list = [...transportDriverOptions];
@@ -1756,6 +1851,24 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       clearFinishSuggestions();
       setFinishSuggestionsOpen(false);
       setFinishCollectionId('');
+      const rawPoints = Array.isArray(taskData.points)
+        ? (taskData.points as TaskPoint[])
+        : [];
+      const viaFromTask = rawPoints
+        .filter((point) => point && point.kind === 'via')
+        .slice()
+        .sort((a, b) => a.order - b.order)
+        .map((point) =>
+          createViaPoint({
+            title: point.title ?? '',
+            link: point.sourceUrl ?? '',
+            coordinates: point.coordinates
+              ? { lat: point.coordinates.lat, lng: point.coordinates.lng }
+              : null,
+            collectionId: '',
+          }),
+        );
+      setViaPoints(viaFromTask);
       if (storedRouteLinkRaw) {
         autoRouteRef.current = false;
         setRouteLink(storedRouteLinkRaw);
@@ -1797,6 +1910,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         start: startLocationValue,
         startLink: startLocationLink,
         startCoordinates: startCoordsNormalized,
+        viaPoints: viaFromTask,
         end: endLocationValue,
         endLink: endLocationLink,
         finishCoordinates: endCoordsNormalized,
@@ -1845,6 +1959,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       stableReset,
       setDueOffset,
       setInitialDates,
+      createViaPoint,
       commitResolvedTaskId,
     ],
   );
@@ -1904,6 +2019,52 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     return null;
   };
 
+  const buildPointsPayload = React.useCallback(
+    (): TaskPoint[] => {
+      const points: TaskPoint[] = [];
+      if (startCoordinates) {
+        points.push({
+          order: points.length,
+          kind: 'start',
+          coordinates: startCoordinates,
+          title: start.trim() || undefined,
+          sourceUrl: startLink.trim() || undefined,
+        });
+      }
+      viaPoints.forEach((point) => {
+        const coords = resolveViaCoordinates(point);
+        if (!coords) return;
+        points.push({
+          order: points.length,
+          kind: 'via',
+          coordinates: coords,
+          title: point.title.trim() || undefined,
+          sourceUrl: point.link.trim() || undefined,
+        });
+      });
+      if (finishCoordinates) {
+        points.push({
+          order: points.length,
+          kind: 'finish',
+          coordinates: finishCoordinates,
+          title: end.trim() || undefined,
+          sourceUrl: endLink.trim() || undefined,
+        });
+      }
+      return points;
+    },
+    [
+      end,
+      endLink,
+      finishCoordinates,
+      resolveViaCoordinates,
+      start,
+      startCoordinates,
+      startLink,
+      viaPoints,
+    ],
+  );
+
   const collectDraftPayload = React.useCallback(() => {
     const values = getValues();
     const titleValue =
@@ -1951,6 +2112,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     if (startCoordinates) payload.startCoordinates = startCoordinates;
     if (finishCoordinates) payload.finishCoordinates = finishCoordinates;
     if (routeLink) payload.google_route_url = routeLink;
+    const points = buildPointsPayload();
+    if (points.length >= 2) payload.points = points;
     if (distanceKm !== null) payload.route_distance_km = distanceKm;
 
     const driverCandidate = transportDriverId.trim();
@@ -2059,6 +2222,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     endLink,
     entityKind,
     finishCoordinates,
+    buildPointsPayload,
     getValues,
     paymentAmount,
     paymentMethod,
@@ -2271,8 +2435,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
 
   const handleStartLink = async (value: string) => {
     autoRouteRef.current = true;
-    const sanitized = sanitizeLocationLink(value);
-    if (!sanitized) {
+    const resolved = await resolveLocationLink(value);
+    if (!resolved) {
       setStart('');
       setStartCoordinates(null);
       setStartLink('');
@@ -2281,35 +2445,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       clearStartSuggestions();
       return;
     }
-    let link = sanitized;
-    let resolved = sanitized;
-    let coords = extractCoords(resolved);
-    if (
-      /^https?:\/\/maps\.app\.goo\.gl\//i.test(sanitized) ||
-      isManagedShortLink(sanitized)
-    ) {
-      const data = await expandLink(sanitized);
-      if (data?.url) {
-        const expanded = sanitizeLocationLink(data.url) || sanitized;
-        resolved = expanded;
-        const backendCoords = toCoordsValue(data.coords);
-        if (backendCoords) {
-          coords = backendCoords;
-        }
-        if (typeof data.short === 'string') {
-          const shortCandidate = sanitizeLocationLink(data.short);
-          link = shortCandidate || sanitized;
-        } else {
-          link = expanded;
-        }
-      }
-      if (!coords) {
-        coords = extractCoords(resolved);
-      }
-    }
-    setStart(parseGoogleAddress(resolved));
-    setStartCoordinates(coords ?? extractCoords(resolved));
-    setStartLink(link);
+    setStart(resolved.title);
+    setStartCoordinates(resolved.coords);
+    setStartLink(resolved.link);
     setStartCollectionId('');
     setStartSuggestionsOpen(false);
     cancelStartSearch();
@@ -2318,8 +2456,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
 
   const handleEndLink = async (value: string) => {
     autoRouteRef.current = true;
-    const sanitized = sanitizeLocationLink(value);
-    if (!sanitized) {
+    const resolved = await resolveLocationLink(value);
+    if (!resolved) {
       setEnd('');
       setFinishCoordinates(null);
       setEndLink('');
@@ -2328,40 +2466,43 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       clearFinishSuggestions();
       return;
     }
-    let link = sanitized;
-    let resolved = sanitized;
-    let coords = extractCoords(resolved);
-    if (
-      /^https?:\/\/maps\.app\.goo\.gl\//i.test(sanitized) ||
-      isManagedShortLink(sanitized)
-    ) {
-      const data = await expandLink(sanitized);
-      if (data?.url) {
-        const expanded = sanitizeLocationLink(data.url) || sanitized;
-        resolved = expanded;
-        const backendCoords = toCoordsValue(data.coords);
-        if (backendCoords) {
-          coords = backendCoords;
-        }
-        if (typeof data.short === 'string') {
-          const shortCandidate = sanitizeLocationLink(data.short);
-          link = shortCandidate || sanitized;
-        } else {
-          link = expanded;
-        }
-      }
-      if (!coords) {
-        coords = extractCoords(resolved);
-      }
-    }
-    setEnd(parseGoogleAddress(resolved));
-    setFinishCoordinates(coords ?? extractCoords(resolved));
-    setEndLink(link);
+    setEnd(resolved.title);
+    setFinishCoordinates(resolved.coords);
+    setEndLink(resolved.link);
     setFinishCollectionId('');
     setFinishSuggestionsOpen(false);
     cancelFinishSearch();
     clearFinishSuggestions();
   };
+
+  const handleViaLinkChange = React.useCallback(
+    async (id: string, value: string) => {
+      autoRouteRef.current = true;
+      const resolved = await resolveLocationLink(value);
+      setViaPoints((prev) =>
+        prev.map((point) => {
+          if (point.id !== id) return point;
+          if (!resolved) {
+            return {
+              ...point,
+              title: '',
+              link: '',
+              coordinates: null,
+              collectionId: '',
+            };
+          }
+          return {
+            ...point,
+            title: resolved.title,
+            link: resolved.link,
+            coordinates: resolved.coords,
+            collectionId: '',
+          };
+        }),
+      );
+    },
+    [],
+  );
 
   const applyCollectionPoint = React.useCallback(
     (target: 'start' | 'finish', optionId: string) => {
@@ -2405,10 +2546,78 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     ],
   );
 
+  const applyViaCollectionPoint = React.useCallback(
+    (pointId: string, optionId: string) => {
+      const option = collectionObjects.find((item) => item._id === optionId);
+      if (!option) return;
+      const coords =
+        typeof option.latitude === 'number' &&
+        typeof option.longitude === 'number'
+          ? { lat: option.latitude, lng: option.longitude }
+          : null;
+      if (!coords) {
+        setAlertMsg(t('collectionAddressMissingCoordinates'));
+      }
+      autoRouteRef.current = true;
+      const title = option.address || option.value || option.name || '';
+      setViaPoints((prev) =>
+        prev.map((point) =>
+          point.id === pointId
+            ? {
+                ...point,
+                title,
+                coordinates: coords,
+                link: coords ? buildMapsLink(coords) : '',
+                collectionId: optionId,
+              }
+            : point,
+        ),
+      );
+    },
+    [collectionObjects, t],
+  );
+
+  const addViaPoint = React.useCallback(() => {
+    if (viaPoints.length >= MAX_VIA_POINTS) {
+      return;
+    }
+    autoRouteRef.current = true;
+    setViaPoints((prev) => [...prev, createViaPoint()]);
+  }, [createViaPoint, viaPoints.length]);
+
+  const removeViaPoint = React.useCallback((id: string) => {
+    autoRouteRef.current = true;
+    setViaPoints((prev) => prev.filter((point) => point.id !== id));
+  }, []);
+
+  const routePoints = React.useMemo(() => {
+    if (!startCoordinates || !finishCoordinates) return [];
+    const viaCoords = viaPoints
+      .map((point) => resolveViaCoordinates(point))
+      .filter(
+        (coords): coords is { lat: number; lng: number } => Boolean(coords),
+      );
+    if (viaCoords.length !== viaPoints.length) return [];
+    return [startCoordinates, ...viaCoords, finishCoordinates];
+  }, [finishCoordinates, resolveViaCoordinates, startCoordinates, viaPoints]);
+
   React.useEffect(() => {
-    if (startCoordinates && finishCoordinates) {
+    if (routePoints.length >= 2) {
       if (autoRouteRef.current) {
-        setRouteLink(createRouteLink(startCoordinates, finishCoordinates));
+        if (routePoints.length > 2) {
+          setRouteLink(createMultiRouteLink(routePoints));
+        } else {
+          setRouteLink(createRouteLink(startCoordinates, finishCoordinates));
+        }
+      }
+      if (routePoints.length > 2) {
+        const distanceValue = routePoints.reduce((acc, point, index) => {
+          if (index === 0) return 0;
+          const prev = routePoints[index - 1];
+          return acc + haversine(prev, point);
+        }, 0);
+        setDistanceKm(Number(distanceValue.toFixed(1)));
+        return undefined;
       }
       let cancelled = false;
       const applyFallback = () => {
@@ -2420,7 +2629,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       fetchRoute(startCoordinates, finishCoordinates)
         .then((r) => {
           if (cancelled) return;
-          if (r && typeof r.distance === 'number' && Number.isFinite(r.distance)) {
+          if (
+            r &&
+            typeof r.distance === 'number' &&
+            Number.isFinite(r.distance)
+          ) {
             setDistanceKm(Number((r.distance / 1000).toFixed(1)));
             return;
           }
@@ -2438,7 +2651,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       setRouteLink('');
     }
     return undefined;
-  }, [startCoordinates, finishCoordinates]);
+  }, [finishCoordinates, routePoints, startCoordinates]);
 
   React.useEffect(() => {
     const targetId = effectiveTaskId;
@@ -2557,6 +2770,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       start: '',
       startLink: '',
       startCoordinates: null,
+      viaPoints: [],
       end: '',
       endLink: '',
       finishCoordinates: null,
@@ -2599,6 +2813,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     setStartSuggestionsOpen(false);
     clearStartSuggestions();
     setStartCollectionId('');
+    setViaPoints([]);
     setEnd('');
     setEndLink('');
     setFinishCoordinates(null);
@@ -2915,6 +3130,19 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
             finishInputRef.current?.focus();
             return;
           }
+          if (viaPoints.length > 0) {
+            const missingIndex = viaPoints.findIndex(
+              (point) => !resolveViaCoordinates(point),
+            );
+            if (missingIndex >= 0) {
+              setAlertMsg(
+                t('logisticsViaCoordinatesRequired', {
+                  index: missingIndex + 1,
+                }),
+              );
+              return;
+            }
+          }
         }
         const payload: Record<string, unknown> = {
           title: formData.title,
@@ -3002,6 +3230,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         else if (isEdit) payload.cargo_weight_kg = '';
         if (startCoordinates) payload.startCoordinates = startCoordinates;
         if (finishCoordinates) payload.finishCoordinates = finishCoordinates;
+        const points = buildPointsPayload();
+        if (points.length >= 2) payload.points = points;
         if (distanceKm !== null) payload.route_distance_km = distanceKm;
         if (routeLink) payload.google_route_url = routeLink;
         const sendPayload = { ...payload, attachments };
@@ -3243,6 +3473,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     setStartSuggestionsOpen(false);
     clearStartSuggestions();
     setStartCollectionId('');
+    setViaPoints(d.viaPoints);
     setEnd(d.end);
     setEndLink(d.endLink);
     setFinishCoordinates(d.finishCoordinates);
@@ -3748,6 +3979,31 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                     ✖
                                   </button>
                                 ) : null}
+                                <select
+                                  aria-label={t('collectionAddressLabel')}
+                                  value={startCollectionId}
+                                  onChange={(event) => {
+                                    const value = event.target.value;
+                                    setStartCollectionId(value);
+                                    if (value) {
+                                      applyCollectionPoint('start', value);
+                                    }
+                                  }}
+                                  className="focus:ring-brand-200 focus:border-accentPrimary min-w-[200px] rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                                  disabled={!editing || collectionObjectsLoading}
+                                >
+                                  <option value="">
+                                    {t('collectionAddressPlaceholder')}
+                                  </option>
+                                  {collectionOptions.map((option) => (
+                                    <option
+                                      key={option.value}
+                                      value={option.value}
+                                    >
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
                               </div>
                             ) : (
                               <div className="flex flex-wrap items-center gap-2">
@@ -3776,35 +4032,175 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                 >
                                   {t('googleMapsButton')}
                                 </a>
+                                <select
+                                  aria-label={t('collectionAddressLabel')}
+                                  value={startCollectionId}
+                                  onChange={(event) => {
+                                    const value = event.target.value;
+                                    setStartCollectionId(value);
+                                    if (value) {
+                                      applyCollectionPoint('start', value);
+                                    }
+                                  }}
+                                  className="focus:ring-brand-200 focus:border-accentPrimary min-w-[200px] rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                                  disabled={!editing || collectionObjectsLoading}
+                                >
+                                  <option value="">
+                                    {t('collectionAddressPlaceholder')}
+                                  </option>
+                                  {collectionOptions.map((option) => (
+                                    <option
+                                      key={option.value}
+                                      value={option.value}
+                                    >
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
                               </div>
                             )}
-                            <div className="pt-1">
-                              <SingleSelect
-                                label={t('collectionAddressLabel')}
-                                options={collectionOptions}
-                                value={startCollectionId || null}
-                                onChange={(option) => {
-                                  const value = option?.value ?? '';
-                                  setStartCollectionId(value);
-                                  if (value) {
-                                    applyCollectionPoint('start', value);
-                                  }
-                                }}
-                                disabled={!editing || collectionObjectsLoading}
-                                placeholder={t('collectionAddressPlaceholder')}
-                              />
-                              {collectionObjectsLoading ? (
-                                <p className="mt-1 text-xs text-slate-500">
-                                  {t('collectionAddressesLoading')}
-                                </p>
-                              ) : null}
-                              {collectionObjectsError ? (
-                                <p className="mt-1 text-xs text-red-600">
-                                  {collectionObjectsError}
-                                </p>
-                              ) : null}
-                            </div>
+                            {collectionObjectsLoading ? (
+                              <p className="mt-1 text-xs text-slate-500">
+                                {t('collectionAddressesLoading')}
+                              </p>
+                            ) : null}
+                            {collectionObjectsError ? (
+                              <p className="mt-1 text-xs text-red-600">
+                                {collectionObjectsError}
+                              </p>
+                            ) : null}
                           </div>
+                        </div>
+                        <div className="sm:col-span-2 lg:col-span-2">
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <label className="text-sm font-medium">
+                              {t('viaPointsLabel')}
+                            </label>
+                            {editing ? (
+                              <button
+                                type="button"
+                                onClick={addViaPoint}
+                                disabled={viaPoints.length >= MAX_VIA_POINTS}
+                                className="text-sm font-semibold text-accentPrimary underline decoration-dotted disabled:cursor-not-allowed disabled:text-slate-400"
+                              >
+                                {t('addAddress')}
+                              </button>
+                            ) : null}
+                          </div>
+                          {viaPoints.length ? (
+                            <div className="mt-2 space-y-3">
+                              {viaPoints.map((point, index) => (
+                                <div
+                                  key={point.id}
+                                  className="rounded-md border border-slate-200 bg-white p-3"
+                                >
+                                  <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <label
+                                      className="text-sm font-medium"
+                                      htmlFor={`task-via-link-${point.id}`}
+                                    >
+                                      {t('viaPointLabel', {
+                                        index: index + 1,
+                                      })}
+                                    </label>
+                                    {editing ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => removeViaPoint(point.id)}
+                                        className="text-xs font-semibold text-red-600"
+                                      >
+                                        {t('delete')}
+                                      </button>
+                                    ) : null}
+                                  </div>
+                                  <div className="mt-2 flex flex-wrap items-center gap-2">
+                                    <input
+                                      id={`task-via-link-${point.id}`}
+                                      value={point.link}
+                                      onChange={(event) => {
+                                        void handleViaLinkChange(
+                                          point.id,
+                                          event.target.value,
+                                        );
+                                      }}
+                                      placeholder={t('googleMapsLink')}
+                                      className="focus:ring-brand-200 focus:border-accentPrimary min-w-0 flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                                      disabled={!editing}
+                                    />
+                                    <a
+                                      href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
+                                      target="_blank"
+                                      rel="noopener"
+                                      className={cn(
+                                        buttonVariants({
+                                          variant: 'default',
+                                          size: 'sm',
+                                        }),
+                                        'rounded-2xl px-3 shrink-0 whitespace-nowrap h-10',
+                                      )}
+                                    >
+                                      {t('googleMapsButton')}
+                                    </a>
+                                    <select
+                                      aria-label={t('collectionAddressLabel')}
+                                      value={point.collectionId}
+                                      onChange={(event) => {
+                                        const value = event.target.value;
+                                        setViaPoints((prev) =>
+                                          prev.map((item) =>
+                                            item.id === point.id
+                                              ? { ...item, collectionId: value }
+                                              : item,
+                                          ),
+                                        );
+                                        if (value) {
+                                          applyViaCollectionPoint(
+                                            point.id,
+                                            value,
+                                          );
+                                        }
+                                      }}
+                                      className="focus:ring-brand-200 focus:border-accentPrimary min-w-[200px] rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                                      disabled={
+                                        !editing || collectionObjectsLoading
+                                      }
+                                    >
+                                      <option value="">
+                                        {t('collectionAddressPlaceholder')}
+                                      </option>
+                                      {collectionOptions.map((option) => (
+                                        <option
+                                          key={option.value}
+                                          value={option.value}
+                                        >
+                                          {option.label}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                  {point.title ? (
+                                    <p className="mt-1 text-xs text-slate-500">
+                                      {point.title}
+                                    </p>
+                                  ) : null}
+                                  {collectionObjectsLoading ? (
+                                    <p className="mt-1 text-xs text-slate-500">
+                                      {t('collectionAddressesLoading')}
+                                    </p>
+                                  ) : null}
+                                  {collectionObjectsError ? (
+                                    <p className="mt-1 text-xs text-red-600">
+                                      {collectionObjectsError}
+                                    </p>
+                                  ) : null}
+                                </div>
+                              ))}
+                            </div>
+                          ) : (
+                            <p className="mt-2 text-xs text-slate-500">
+                              {t('viaPointsEmpty')}
+                            </p>
+                          )}
                         </div>
                         <div className="sm:col-span-2 lg:col-span-2">
                           <label
@@ -3946,6 +4342,31 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                     ✖
                                   </button>
                                 ) : null}
+                                <select
+                                  aria-label={t('collectionAddressLabel')}
+                                  value={finishCollectionId}
+                                  onChange={(event) => {
+                                    const value = event.target.value;
+                                    setFinishCollectionId(value);
+                                    if (value) {
+                                      applyCollectionPoint('finish', value);
+                                    }
+                                  }}
+                                  className="focus:ring-brand-200 focus:border-accentPrimary min-w-[200px] rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                                  disabled={!editing || collectionObjectsLoading}
+                                >
+                                  <option value="">
+                                    {t('collectionAddressPlaceholder')}
+                                  </option>
+                                  {collectionOptions.map((option) => (
+                                    <option
+                                      key={option.value}
+                                      value={option.value}
+                                    >
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
                               </div>
                             ) : (
                               <div className="flex flex-wrap items-center gap-2">
@@ -3974,34 +4395,43 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                 >
                                   {t('googleMapsButton')}
                                 </a>
+                                <select
+                                  aria-label={t('collectionAddressLabel')}
+                                  value={finishCollectionId}
+                                  onChange={(event) => {
+                                    const value = event.target.value;
+                                    setFinishCollectionId(value);
+                                    if (value) {
+                                      applyCollectionPoint('finish', value);
+                                    }
+                                  }}
+                                  className="focus:ring-brand-200 focus:border-accentPrimary min-w-[200px] rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                                  disabled={!editing || collectionObjectsLoading}
+                                >
+                                  <option value="">
+                                    {t('collectionAddressPlaceholder')}
+                                  </option>
+                                  {collectionOptions.map((option) => (
+                                    <option
+                                      key={option.value}
+                                      value={option.value}
+                                    >
+                                      {option.label}
+                                    </option>
+                                  ))}
+                                </select>
                               </div>
                             )}
-                            <div className="pt-1">
-                              <SingleSelect
-                                label={t('collectionAddressLabel')}
-                                options={collectionOptions}
-                                value={finishCollectionId || null}
-                                onChange={(option) => {
-                                  const value = option?.value ?? '';
-                                  setFinishCollectionId(value);
-                                  if (value) {
-                                    applyCollectionPoint('finish', value);
-                                  }
-                                }}
-                                disabled={!editing || collectionObjectsLoading}
-                                placeholder={t('collectionAddressPlaceholder')}
-                              />
-                              {collectionObjectsLoading ? (
-                                <p className="mt-1 text-xs text-slate-500">
-                                  {t('collectionAddressesLoading')}
-                                </p>
-                              ) : null}
-                              {collectionObjectsError ? (
-                                <p className="mt-1 text-xs text-red-600">
-                                  {collectionObjectsError}
-                                </p>
-                              ) : null}
-                            </div>
+                            {collectionObjectsLoading ? (
+                              <p className="mt-1 text-xs text-slate-500">
+                                {t('collectionAddressesLoading')}
+                              </p>
+                            ) : null}
+                            {collectionObjectsError ? (
+                              <p className="mt-1 text-xs text-red-600">
+                                {collectionObjectsError}
+                              </p>
+                            ) : null}
                           </div>
                         </div>
                         <div>

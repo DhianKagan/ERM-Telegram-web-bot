@@ -29,6 +29,8 @@ const hasAssigneeList = (value: unknown): boolean =>
   Array.isArray(value) && value.length > 0;
 
 const executorsRequiredMessage = 'Укажите хотя бы одного исполнителя';
+const MAX_ASSIGNEES = 5;
+const assigneeLimitMessage = 'Можно выбрать не более 5 исполнителей';
 const statusField = taskFields.find((f) => f.name === 'status');
 const statusList: readonly string[] = statusField?.options ?? [
   'Новая',
@@ -77,6 +79,17 @@ const pointsRule = () =>
       return true;
     });
 
+const assigneesLimitRule = () =>
+  body('assignees')
+    .optional()
+    .custom((value) => {
+      if (!Array.isArray(value)) return true;
+      if (value.length > MAX_ASSIGNEES) {
+        throw new Error(assigneeLimitMessage);
+      }
+      return true;
+    });
+
 export class CreateTaskDto {
   static rules() {
     return [
@@ -90,6 +103,7 @@ export class CreateTaskDto {
         .isNumeric(),
       body('start_date').optional().isISO8601(),
       body('assignees').optional().isArray(),
+      assigneesLimitRule(),
       body('transport_driver_id')
         .customSanitizer(normalizeEmptyNumeric)
         .optional({ nullable: true })
@@ -141,6 +155,7 @@ export class UpdateTaskDto {
         .customSanitizer(normalizeEmptyNumeric)
         .optional({ nullable: true })
         .isNumeric(),
+      assigneesLimitRule(),
       body('transport_driver_id')
         .customSanitizer(normalizeEmptyNumeric)
         .optional({ nullable: true })

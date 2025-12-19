@@ -79,6 +79,10 @@ jest.mock(
 const users = [
   { telegram_id: 1, name: 'Alice' },
   { telegram_id: 2, name: 'Bob' },
+  { telegram_id: 3, name: 'Cara' },
+  { telegram_id: 4, name: 'Dan' },
+  { telegram_id: 5, name: 'Ema' },
+  { telegram_id: 6, name: 'Finn' },
 ];
 const usersMap = users.reduce<Record<string, any>>((acc, u) => {
   acc[String(u.telegram_id)] = u;
@@ -520,6 +524,34 @@ describe('TaskDialog', () => {
     );
   });
 
+  it('ограничивает выбор максимум пятью исполнителями', async () => {
+    render(
+      <MemoryRouter>
+        <TaskDialog onClose={() => {}} />
+      </MemoryRouter>,
+    );
+
+    const assigneeSelect = await screen.findByTestId('assignee');
+    await act(async () => {
+      fireEvent.change(assigneeSelect, {
+        target: {
+          selectedOptions: [
+            { value: '1' },
+            { value: '2' },
+            { value: '3' },
+            { value: '4' },
+            { value: '5' },
+            { value: '6' },
+          ],
+        },
+      });
+    });
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'assigneeLimitError',
+    );
+  });
+
   it('отображает ссылку Google Maps при включённой логистике', async () => {
     render(
       <MemoryRouter>
@@ -533,8 +565,11 @@ describe('TaskDialog', () => {
       fireEvent.click(logisticsToggle);
     });
     const mapsLink = await screen.findByRole('link', {
-      name: 'Google Maps',
+      name: 'googleMapsButton',
     });
-    expect(mapsLink).toHaveAttribute('href', 'https://www.google.com/maps');
+    expect(mapsLink).toHaveAttribute(
+      'href',
+      'https://maps.app.goo.gl/xsiC9fHdunCcifQF6',
+    );
   });
 });

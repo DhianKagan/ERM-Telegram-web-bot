@@ -3,8 +3,14 @@
   "adminPanel": "Админка",
   "assignees": "Исполнитель(и)",
   "assigneeRequiredError": "Укажите хотя бы одного исполнителя",
+  "assigneeLimitError": "Можно выбрать не более {{count}} исполнителей",
   "assigneeSelectPlaceholder": "Выберите исполнителя",
   "assigneeSelectHint": "Исполнитель обязателен для сохранения задачи",
+  "addressPlaceholder": "Введите адрес (минимум {{count}} символа)",
+  "addressSearchLoading": "Ищем адрес...",
+  "addressSearchHint": "Введите минимум {{count}} символа для поиска",
+  "addressSearchNoResults": "Ничего не найдено",
+  "addressSearchFailed": "Не удалось получить подсказки",
   "attachments": "Вложения",
   "author": "автор",
   "appTitle": "ERM WEB",
@@ -526,5 +532,15 @@
     }
   },
   "googleMapsButton": "Google Maps",
-  "googleMapsHint": "Откройте Google Maps для поиска точки или маршрута"
+  "googleMapsHint": "Откройте Google Maps для поиска точки или маршрута",
+  "googleMapsLink": "Вставьте ссылку Google Maps",
+  "collectionAddressLabel": "Адрес из коллекции",
+  "collectionAddressPlaceholder": "Выберите адрес",
+  "collectionAddressesLoading": "Загружаем адреса...",
+  "collectionAddressesLoadFailed": "Не удалось загрузить адреса",
+  "collectionAddressMissingCoordinates": "У выбранного адреса нет координат",
+  "logisticsCoordinatesHint": "Координаты обязательны: выберите адрес или точку на карте",
+  "logisticsStartCoordinatesRequired": "Укажите координаты точки отправления",
+  "logisticsFinishCoordinatesRequired": "Укажите координаты точки прибытия",
+  "startPoint": "Стартовая точка"
 }

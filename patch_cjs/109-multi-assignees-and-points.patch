@@ -1,0 +1,1681 @@
+diff --git a/apps/api/src/dto/tasks.dto.ts b/apps/api/src/dto/tasks.dto.ts
+index 0940ab5..6011b27 100644
+--- a/apps/api/src/dto/tasks.dto.ts
++++ b/apps/api/src/dto/tasks.dto.ts
+@@ -29,6 +29,8 @@ const hasAssigneeList = (value: unknown): boolean =>
+   Array.isArray(value) && value.length > 0;
+ 
+ const executorsRequiredMessage = 'Укажите хотя бы одного исполнителя';
++const MAX_ASSIGNEES = 5;
++const assigneeLimitMessage = 'Можно выбрать не более 5 исполнителей';
+ const statusField = taskFields.find((f) => f.name === 'status');
+ const statusList: readonly string[] = statusField?.options ?? [
+   'Новая',
+@@ -77,6 +79,17 @@ const pointsRule = () =>
+       return true;
+     });
+ 
++const assigneesLimitRule = () =>
++  body('assignees')
++    .optional()
++    .custom((value) => {
++      if (!Array.isArray(value)) return true;
++      if (value.length > MAX_ASSIGNEES) {
++        throw new Error(assigneeLimitMessage);
++      }
++      return true;
++    });
++
+ export class CreateTaskDto {
+   static rules() {
+     return [
+@@ -90,6 +103,7 @@ export class CreateTaskDto {
+         .isNumeric(),
+       body('start_date').optional().isISO8601(),
+       body('assignees').optional().isArray(),
++      assigneesLimitRule(),
+       body('transport_driver_id')
+         .customSanitizer(normalizeEmptyNumeric)
+         .optional({ nullable: true })
+@@ -141,6 +155,7 @@ export class UpdateTaskDto {
+         .customSanitizer(normalizeEmptyNumeric)
+         .optional({ nullable: true })
+         .isNumeric(),
++      assigneesLimitRule(),
+       body('transport_driver_id')
+         .customSanitizer(normalizeEmptyNumeric)
+         .optional({ nullable: true })
+diff --git a/apps/api/src/routes/tasks.ts b/apps/api/src/routes/tasks.ts
+index 35c1fc7..140f5c2 100644
+--- a/apps/api/src/routes/tasks.ts
++++ b/apps/api/src/routes/tasks.ts
+@@ -852,6 +852,19 @@ export const normalizeArrays: RequestHandler = (req, _res, next) => {
+ 
+   const assignedRaw =
+     body.assigned_user_id ?? (body as Record<string, unknown>).assignedUserId;
++  const rawAssignees =
++    body.assignees !== undefined ? body.assignees : undefined;
++  const normalizedAssignees = rawAssignees !== undefined
++    ? (Array.isArray(rawAssignees) ? rawAssignees : [rawAssignees])
++        .map((item) => (typeof item === 'string' ? item.trim() : item))
++        .filter(
++          (item) =>
++            item !== null &&
++            item !== undefined &&
++            !(typeof item === 'string' && item.length === 0),
++        )
++    : [];
++
+   if (assignedRaw !== undefined) {
+     const pickValue = Array.isArray(assignedRaw)
+       ? assignedRaw.find(
+@@ -866,26 +879,29 @@ export const normalizeArrays: RequestHandler = (req, _res, next) => {
+       pickValue === undefined ||
+       (typeof pickValue === 'string' && pickValue.trim().length === 0)
+     ) {
+-      body.assigned_user_id = null;
+-      body.assignees = [];
++      if (normalizedAssignees.length) {
++        body.assignees = normalizedAssignees;
++        body.assigned_user_id = normalizedAssignees[0];
++      } else {
++        body.assigned_user_id = null;
++        body.assignees = [];
++      }
+     } else {
+       const normalized =
+         typeof pickValue === 'string' ? pickValue.trim() : pickValue;
++      const normalizedList = normalizedAssignees.length
++        ? normalizedAssignees
++        : [normalized];
++      const normalizedKey = String(normalized);
++      const mergedAssignees = normalizedList.some(
++        (item) => String(item) === normalizedKey,
++      )
++        ? normalizedList
++        : [...normalizedList, normalized];
+       body.assigned_user_id = normalized;
+-      body.assignees = [normalized];
++      body.assignees = mergedAssignees;
+     }
+-  } else if (body.assignees !== undefined) {
+-    const rawAssignees = Array.isArray(body.assignees)
+-      ? body.assignees
+-      : [body.assignees];
+-    const normalizedAssignees = rawAssignees
+-      .map((item) => (typeof item === 'string' ? item.trim() : item))
+-      .filter(
+-        (item) =>
+-          item !== null &&
+-          item !== undefined &&
+-          !(typeof item === 'string' && item.length === 0),
+-      );
++  } else if (rawAssignees !== undefined) {
+     body.assignees = normalizedAssignees;
+   }
+   const controllersValue = body.controllers;
+diff --git a/apps/web/src/components/TaskDialog.test.tsx b/apps/web/src/components/TaskDialog.test.tsx
+index bc2aea0..419d0fc 100644
+--- a/apps/web/src/components/TaskDialog.test.tsx
++++ b/apps/web/src/components/TaskDialog.test.tsx
+@@ -79,6 +79,10 @@ jest.mock(
+ const users = [
+   { telegram_id: 1, name: 'Alice' },
+   { telegram_id: 2, name: 'Bob' },
++  { telegram_id: 3, name: 'Cara' },
++  { telegram_id: 4, name: 'Dan' },
++  { telegram_id: 5, name: 'Ema' },
++  { telegram_id: 6, name: 'Finn' },
+ ];
+ const usersMap = users.reduce<Record<string, any>>((acc, u) => {
+   acc[String(u.telegram_id)] = u;
+@@ -520,6 +524,34 @@ describe('TaskDialog', () => {
+     );
+   });
+ 
++  it('ограничивает выбор максимум пятью исполнителями', async () => {
++    render(
++      <MemoryRouter>
++        <TaskDialog onClose={() => {}} />
++      </MemoryRouter>,
++    );
++
++    const assigneeSelect = await screen.findByTestId('assignee');
++    await act(async () => {
++      fireEvent.change(assigneeSelect, {
++        target: {
++          selectedOptions: [
++            { value: '1' },
++            { value: '2' },
++            { value: '3' },
++            { value: '4' },
++            { value: '5' },
++            { value: '6' },
++          ],
++        },
++      });
++    });
++
++    expect(await screen.findByRole('alert')).toHaveTextContent(
++      'assigneeLimitError',
++    );
++  });
++
+   it('отображает ссылку Google Maps при включённой логистике', async () => {
+     render(
+       <MemoryRouter>
+@@ -533,8 +565,11 @@ describe('TaskDialog', () => {
+       fireEvent.click(logisticsToggle);
+     });
+     const mapsLink = await screen.findByRole('link', {
+-      name: 'Google Maps',
++      name: 'googleMapsButton',
+     });
+-    expect(mapsLink).toHaveAttribute('href', 'https://www.google.com/maps');
++    expect(mapsLink).toHaveAttribute(
++      'href',
++      'https://maps.app.goo.gl/xsiC9fHdunCcifQF6',
++    );
+   });
+ });
+diff --git a/apps/web/src/components/TaskDialog.tsx b/apps/web/src/components/TaskDialog.tsx
+index 9e117db..7644a8d 100644
+--- a/apps/web/src/components/TaskDialog.tsx
++++ b/apps/web/src/components/TaskDialog.tsx
+@@ -36,7 +36,18 @@ import type {
+   TransportVehicleOption,
+ } from '../services/tasks';
+ import authFetch from '../utils/authFetch';
++import parseGoogleAddress from '../utils/parseGoogleAddress';
++import { validateURL } from '../utils/validation';
++import extractCoords from '../utils/extractCoords';
++import {
++  expandLink,
++  searchAddress as searchMapAddress,
++  type AddressSuggestion,
++} from '../services/maps';
+ import { ArrowPathIcon, XMarkIcon } from '@heroicons/react/24/outline';
++import fetchRoute from '../services/route';
++import haversine from '../utils/haversine';
++import createRouteLink from '../utils/createRouteLink';
+ import {
+   useForm,
+   Controller,
+@@ -58,8 +69,13 @@ import {
+ import useDueDateOffset from '../hooks/useDueDateOffset';
+ import coerceTaskId from '../utils/coerceTaskId';
+ import { ACCESS_ADMIN, ACCESS_TASK_DELETE, hasAccess } from '../utils/access';
++import {
++  fetchAllCollectionObjects,
++  type CollectionObject,
++} from '../services/collections';
+ 
+ type TaskKind = 'task' | 'request';
++const MAX_ASSIGNEES = 5;
+ 
+ const ensureInlineMode = (value?: string | null): string | undefined => {
+   if (!value) return undefined;
+@@ -285,6 +301,13 @@ interface InitialValues {
+   completedAt: string;
+   creator: string;
+   assignees: number[];
++  start: string;
++  startLink: string;
++  startCoordinates: { lat: number; lng: number } | null;
++  end: string;
++  endLink: string;
++  finishCoordinates: { lat: number; lng: number } | null;
++  routeLink: string;
+   startDate: string;
+   dueDate: string;
+   attachments: Attachment[];
+@@ -469,6 +492,52 @@ const parseIsoDate = (value?: string | null): Date | null => {
+   return parsed;
+ };
+ 
++const toCoordsValue = (value: unknown): { lat: number; lng: number } | null => {
++  if (!value || typeof value !== 'object') return null;
++  const candidate = value as { lat?: unknown; lng?: unknown };
++  const lat = Number(candidate.lat);
++  const lng = Number(candidate.lng);
++  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
++    return null;
++  }
++  return { lat, lng };
++};
++
++const formatCoords = (coords: { lat: number; lng: number } | null): string => {
++  if (!coords) return '';
++  const lat = Number.isFinite(coords.lat)
++    ? coords.lat.toFixed(6)
++    : String(coords.lat);
++  const lng = Number.isFinite(coords.lng)
++    ? coords.lng.toFixed(6)
++    : String(coords.lng);
++  return `${lat}, ${lng}`;
++};
++
++const buildMapsLink = (coords: { lat: number; lng: number }): string =>
++  `https://www.google.com/maps/search/?api=1&query=${coords.lat},${coords.lng}`;
++
++const MIN_ADDRESS_QUERY_LENGTH = 3;
++
++const sanitizeLocationLink = (value: unknown): string => {
++  if (typeof value !== 'string') {
++    return '';
++  }
++  const normalized = validateURL(value);
++  if (!normalized) {
++    return '';
++  }
++  try {
++    const parsed = new URL(normalized);
++    if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
++      return parsed.toString();
++    }
++  } catch {
++    return '';
++  }
++  return '';
++};
++
+ const resolveAppOrigin = (): string | null => {
+   if (typeof window === 'undefined') return null;
+   try {
+@@ -478,6 +547,26 @@ const resolveAppOrigin = (): string | null => {
+   }
+ };
+ 
++const isManagedShortLink = (value: string): boolean => {
++  if (!value) return false;
++  try {
++    const parsed = new URL(value);
++    const origin = resolveAppOrigin();
++    if (origin && parsed.origin !== origin) {
++      return false;
++    }
++    const segments = parsed.pathname.split('/').filter(Boolean);
++    const index = segments.indexOf('l');
++    return (
++      index !== -1 &&
++      index === segments.length - 2 &&
++      Boolean(segments[index + 1])
++    );
++  } catch {
++    return false;
++  }
++};
++
+ const toIsoString = (value: unknown): string => {
+   if (value instanceof Date) return value.toISOString();
+   if (typeof value === 'number') {
+@@ -795,6 +884,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+           type: 'required',
+           message: t('assigneeRequiredError'),
+         };
++      } else if (normalizedAssignees.length > MAX_ASSIGNEES) {
++        fieldErrors.assignees = {
++          type: 'validate',
++          message: t('assigneeLimitError', { count: MAX_ASSIGNEES }),
++        };
+       }
+       if (normalized.startDate && normalized.dueDate) {
+         const startTime = new Date(normalized.startDate).getTime();
+@@ -826,6 +920,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+     watch,
+     setValue,
+     setError,
++    clearErrors,
+     formState: { errors },
+   } = useForm<TaskFormValues>({
+     resolver: taskFormResolver,
+@@ -969,6 +1064,56 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+   const [cargoVolume, setCargoVolume] = React.useState('');
+   const [cargoWeight, setCargoWeight] = React.useState('');
+   const [showLogistics, setShowLogistics] = React.useState(false);
++  const [start, setStart] = React.useState('');
++  const [startLink, setStartLink] = React.useState('');
++  const [startCoordinates, setStartCoordinates] = React.useState<{
++    lat: number;
++    lng: number;
++  } | null>(null);
++  const [startSuggestions, setStartSuggestions] = React.useState<
++    AddressSuggestion[]
++  >([]);
++  const [startSuggestionsOpen, setStartSuggestionsOpen] =
++    React.useState(false);
++  const [startSearchLoading, setStartSearchLoading] = React.useState(false);
++  const [startSearchError, setStartSearchError] = React.useState<string | null>(
++    null,
++  );
++  const startSearchAbortRef = React.useRef<AbortController | null>(null);
++  const startSearchTimeoutRef = React.useRef<number | null>(null);
++  const startSearchRequestRef = React.useRef(0);
++  const startInputRef = React.useRef<HTMLInputElement | null>(null);
++  const [startCollectionId, setStartCollectionId] = React.useState('');
++  const [end, setEnd] = React.useState('');
++  const [endLink, setEndLink] = React.useState('');
++  const [finishCoordinates, setFinishCoordinates] = React.useState<{
++    lat: number;
++    lng: number;
++  } | null>(null);
++  const [finishSuggestions, setFinishSuggestions] = React.useState<
++    AddressSuggestion[]
++  >([]);
++  const [finishSuggestionsOpen, setFinishSuggestionsOpen] =
++    React.useState(false);
++  const [finishSearchLoading, setFinishSearchLoading] = React.useState(false);
++  const [finishSearchError, setFinishSearchError] = React.useState<
++    string | null
++  >(null);
++  const finishSearchAbortRef = React.useRef<AbortController | null>(null);
++  const finishSearchTimeoutRef = React.useRef<number | null>(null);
++  const finishSearchRequestRef = React.useRef(0);
++  const finishInputRef = React.useRef<HTMLInputElement | null>(null);
++  const [finishCollectionId, setFinishCollectionId] = React.useState('');
++  const [collectionObjects, setCollectionObjects] = React.useState<
++    CollectionObject[]
++  >([]);
++  const [collectionObjectsLoading, setCollectionObjectsLoading] =
++    React.useState(false);
++  const [collectionObjectsLoaded, setCollectionObjectsLoaded] =
++    React.useState(false);
++  const [collectionObjectsError, setCollectionObjectsError] = React.useState<
++    string | null
++  >(null);
+   const [creator, setCreator] = React.useState('');
+   const currentUserId =
+     typeof user?.telegram_id === 'number' ? user.telegram_id : null;
+@@ -1010,6 +1155,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+   const skipNextDraftSyncRef = React.useRef(true);
+   const [photosLink, setPhotosLink] = React.useState<string | null>(null);
+   const [distanceKm, setDistanceKm] = React.useState<number | null>(null);
++  const [routeLink, setRouteLink] = React.useState('');
++  const autoRouteRef = React.useRef(true);
+   const transportRequiresDetails = React.useMemo(
+     () => transportType === 'Легковой' || transportType === 'Грузовой',
+     [transportType],
+@@ -1045,6 +1192,76 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+     if (!transportRequiresDetails) return;
+     void loadTransportOptions();
+   }, [transportRequiresDetails, loadTransportOptions]);
++  const cancelStartSearch = React.useCallback(() => {
++    startSearchAbortRef.current?.abort();
++    startSearchAbortRef.current = null;
++    if (startSearchTimeoutRef.current) {
++      window.clearTimeout(startSearchTimeoutRef.current);
++      startSearchTimeoutRef.current = null;
++    }
++  }, []);
++  const cancelFinishSearch = React.useCallback(() => {
++    finishSearchAbortRef.current?.abort();
++    finishSearchAbortRef.current = null;
++    if (finishSearchTimeoutRef.current) {
++      window.clearTimeout(finishSearchTimeoutRef.current);
++      finishSearchTimeoutRef.current = null;
++    }
++  }, []);
++  const clearStartSuggestions = React.useCallback(() => {
++    setStartSuggestions([]);
++    setStartSearchError(null);
++    setStartSearchLoading(false);
++  }, []);
++  const clearFinishSuggestions = React.useCallback(() => {
++    setFinishSuggestions([]);
++    setFinishSearchError(null);
++    setFinishSearchLoading(false);
++  }, []);
++  const canonicalStartLink = React.useMemo(
++    () => sanitizeLocationLink(startLink),
++    [startLink],
++  );
++  const canonicalEndLink = React.useMemo(
++    () => sanitizeLocationLink(endLink),
++    [endLink],
++  );
++  const loadCollectionObjects = React.useCallback(async () => {
++    if (collectionObjectsLoading || collectionObjectsLoaded) {
++      return;
++    }
++    setCollectionObjectsLoading(true);
++    setCollectionObjectsError(null);
++    try {
++      const items = await fetchAllCollectionObjects();
++      setCollectionObjects(items);
++      setCollectionObjectsLoaded(true);
++    } catch (error) {
++      const message =
++        error instanceof Error && error.message
++          ? error.message
++          : t('collectionAddressesLoadFailed');
++      setCollectionObjectsError(message);
++    } finally {
++      setCollectionObjectsLoading(false);
++    }
++  }, [
++    collectionObjectsLoaded,
++    collectionObjectsLoading,
++    t,
++    setCollectionObjects,
++  ]);
++  React.useEffect(() => {
++    if (!showLogistics) return;
++    void loadCollectionObjects();
++  }, [showLogistics, loadCollectionObjects]);
++  React.useEffect(
++    () => () => {
++      cancelStartSearch();
++      cancelFinishSearch();
++    },
++    [cancelStartSearch, cancelFinishSearch],
++  );
+   React.useEffect(() => {
+     if (!transportDriverId) {
+       if (transportDriverName) setTransportDriverName('');
+@@ -1087,6 +1304,14 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+     }
+     prevTransportRequiresRef.current = transportRequiresDetails;
+   }, [transportRequiresDetails]);
++  const collectionOptions = React.useMemo(
++    () =>
++      collectionObjects.map((item) => ({
++        value: item._id,
++        label: item.address || item.value || item.name,
++      })),
++    [collectionObjects],
++  );
+   const driverOptionItems = React.useMemo(() => {
+     const list = [...transportDriverOptions];
+     if (transportDriverId) {
+@@ -1478,6 +1703,24 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+         volumeValue,
+         weightValue,
+       );
++      const startLocationValue = (taskData.start_location as string) || '';
++      const endLocationValue = (taskData.end_location as string) || '';
++      const startLocationLinkRaw =
++        (taskData.start_location_link as string) || '';
++      const endLocationLinkRaw = (taskData.end_location_link as string) || '';
++      const startLocationLink = sanitizeLocationLink(startLocationLinkRaw);
++      const endLocationLink = sanitizeLocationLink(endLocationLinkRaw);
++      const startCoordsFromTask = toCoordsValue(taskData.startCoordinates);
++      const endCoordsFromTask = toCoordsValue(taskData.finishCoordinates);
++      const startCoordsNormalized =
++        startCoordsFromTask ??
++        (startLocationLink ? extractCoords(startLocationLink) : null);
++      const endCoordsNormalized =
++        endCoordsFromTask ??
++        (endLocationLink ? extractCoords(endLocationLink) : null);
++      const storedRouteLinkRaw = sanitizeLocationLink(
++        (taskData.google_route_url as string) || '',
++      );
+       const distanceValue =
+         typeof taskData.route_distance_km === 'number'
+           ? taskData.route_distance_km
+@@ -1485,7 +1728,15 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+       const rawLogisticsEnabled = (taskData as Record<string, unknown>)
+         .logistics_enabled;
+       const hasLogisticsData = Boolean(
+-        distanceValue !== null || curTransport !== DEFAULT_TRANSPORT || hasDims,
++        startLocationValue ||
++          endLocationValue ||
++          startLocationLink ||
++          endLocationLink ||
++          startCoordsFromTask ||
++          endCoordsFromTask ||
++          distanceValue !== null ||
++          curTransport !== DEFAULT_TRANSPORT ||
++          hasDims,
+       );
+       const logisticsEnabled =
+         typeof rawLogisticsEnabled === 'boolean'
+@@ -1493,6 +1744,25 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+           : hasLogisticsData;
+       setShowLogistics(logisticsEnabled);
+       setCreator(String((taskData.created_by as unknown) || ''));
++      setStart(startLocationValue);
++      setStartLink(startLocationLink);
++      setStartCoordinates(startCoordsNormalized);
++      clearStartSuggestions();
++      setStartSuggestionsOpen(false);
++      setStartCollectionId('');
++      setEnd(endLocationValue);
++      setEndLink(endLocationLink);
++      setFinishCoordinates(endCoordsNormalized);
++      clearFinishSuggestions();
++      setFinishSuggestionsOpen(false);
++      setFinishCollectionId('');
++      if (storedRouteLinkRaw) {
++        autoRouteRef.current = false;
++        setRouteLink(storedRouteLinkRaw);
++      } else {
++        autoRouteRef.current = true;
++        setRouteLink('');
++      }
+       setAttachments(attachmentsFromTask);
+       const albumChat = (taskData as Record<string, unknown>)
+         .telegram_photos_chat_id;
+@@ -1524,6 +1794,13 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+         completedAt: curCompletedAt,
+         creator: String((taskData.created_by as unknown) || ''),
+         assignees: normalizedAssigneeIds,
++        start: startLocationValue,
++        startLink: startLocationLink,
++        startCoordinates: startCoordsNormalized,
++        end: endLocationValue,
++        endLink: endLocationLink,
++        finishCoordinates: endCoordsNormalized,
++        routeLink: storedRouteLinkRaw,
+         startDate,
+         dueDate,
+         attachments: mergeAttachmentLists([], attachmentsFromTask),
+@@ -1561,6 +1838,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+       DEFAULT_REQUEST_TYPE,
+       taskTypeOptions,
+       created,
++      clearFinishSuggestions,
++      clearStartSuggestions,
+       formatInputDate,
+       parseIsoDateMemo,
+       stableReset,
+@@ -1572,6 +1851,14 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+ 
+   const handleLogisticsToggle = (checked: boolean) => {
+     setShowLogistics(checked);
++    if (!checked) {
++      setStartSuggestionsOpen(false);
++      setFinishSuggestionsOpen(false);
++      cancelStartSearch();
++      cancelFinishSearch();
++      clearStartSuggestions();
++      clearFinishSuggestions();
++    }
+   };
+ 
+   React.useEffect(() => {
+@@ -1657,6 +1944,13 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+ 
+     if (values.startDate) payload.start_date = values.startDate;
+     if (values.dueDate) payload.due_date = values.dueDate;
++    if (start) payload.start_location = start;
++    if (startLink) payload.start_location_link = startLink;
++    if (end) payload.end_location = end;
++    if (endLink) payload.end_location_link = endLink;
++    if (startCoordinates) payload.startCoordinates = startCoordinates;
++    if (finishCoordinates) payload.finishCoordinates = finishCoordinates;
++    if (routeLink) payload.google_route_url = routeLink;
+     if (distanceKm !== null) payload.route_distance_km = distanceKm;
+ 
+     const driverCandidate = transportDriverId.trim();
+@@ -1761,13 +2055,20 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+     completedAt,
+     creator,
+     distanceKm,
++    end,
++    endLink,
+     entityKind,
++    finishCoordinates,
+     getValues,
+     paymentAmount,
+     paymentMethod,
+     photosLink,
+     priority,
++    routeLink,
+     showLogistics,
++    start,
++    startCoordinates,
++    startLink,
+     taskAssigneeIds,
+     taskType,
+     transportDriverId,
+@@ -1780,6 +2081,365 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+     requestId,
+   ]);
+ 
++  const runStartSearch = React.useCallback(
++    (value: string) => {
++      const trimmed = value.trim();
++      if (trimmed.length < MIN_ADDRESS_QUERY_LENGTH) {
++        clearStartSuggestions();
++        return;
++      }
++      cancelStartSearch();
++      const requestId = startSearchRequestRef.current + 1;
++      startSearchRequestRef.current = requestId;
++      const controller = new AbortController();
++      startSearchAbortRef.current = controller;
++      setStartSearchLoading(true);
++      setStartSearchError(null);
++      void searchMapAddress(trimmed, {
++        signal: controller.signal,
++        limit: 7,
++        language: currentLanguage,
++      })
++        .then((items) => {
++          if (startSearchRequestRef.current !== requestId) {
++            return;
++          }
++          setStartSuggestions(items);
++        })
++        .catch((error) => {
++          if (error instanceof DOMException && error.name === 'AbortError') {
++            return;
++          }
++          if (startSearchRequestRef.current !== requestId) {
++            return;
++          }
++          setStartSuggestions([]);
++          setStartSearchError(t('addressSearchFailed'));
++        })
++        .finally(() => {
++          if (startSearchRequestRef.current === requestId) {
++            setStartSearchLoading(false);
++          }
++        });
++    },
++    [cancelStartSearch, clearStartSuggestions, currentLanguage, t],
++  );
++
++  const runFinishSearch = React.useCallback(
++    (value: string) => {
++      const trimmed = value.trim();
++      if (trimmed.length < MIN_ADDRESS_QUERY_LENGTH) {
++        clearFinishSuggestions();
++        return;
++      }
++      cancelFinishSearch();
++      const requestId = finishSearchRequestRef.current + 1;
++      finishSearchRequestRef.current = requestId;
++      const controller = new AbortController();
++      finishSearchAbortRef.current = controller;
++      setFinishSearchLoading(true);
++      setFinishSearchError(null);
++      void searchMapAddress(trimmed, {
++        signal: controller.signal,
++        limit: 7,
++        language: currentLanguage,
++      })
++        .then((items) => {
++          if (finishSearchRequestRef.current !== requestId) {
++            return;
++          }
++          setFinishSuggestions(items);
++        })
++        .catch((error) => {
++          if (error instanceof DOMException && error.name === 'AbortError') {
++            return;
++          }
++          if (finishSearchRequestRef.current !== requestId) {
++            return;
++          }
++          setFinishSuggestions([]);
++          setFinishSearchError(t('addressSearchFailed'));
++        })
++        .finally(() => {
++          if (finishSearchRequestRef.current === requestId) {
++            setFinishSearchLoading(false);
++          }
++        });
++    },
++    [cancelFinishSearch, clearFinishSuggestions, currentLanguage, t],
++  );
++
++  const scheduleStartSearch = React.useCallback(
++    (value: string) => {
++      cancelStartSearch();
++      if (!value.trim()) {
++        clearStartSuggestions();
++        return;
++      }
++      if (value.trim().length < MIN_ADDRESS_QUERY_LENGTH) {
++        clearStartSuggestions();
++        return;
++      }
++      startSearchTimeoutRef.current = window.setTimeout(() => {
++        startSearchTimeoutRef.current = null;
++        runStartSearch(value);
++      }, 350);
++    },
++    [cancelStartSearch, clearStartSuggestions, runStartSearch],
++  );
++
++  const scheduleFinishSearch = React.useCallback(
++    (value: string) => {
++      cancelFinishSearch();
++      if (!value.trim()) {
++        clearFinishSuggestions();
++        return;
++      }
++      if (value.trim().length < MIN_ADDRESS_QUERY_LENGTH) {
++        clearFinishSuggestions();
++        return;
++      }
++      finishSearchTimeoutRef.current = window.setTimeout(() => {
++        finishSearchTimeoutRef.current = null;
++        runFinishSearch(value);
++      }, 350);
++    },
++    [cancelFinishSearch, clearFinishSuggestions, runFinishSearch],
++  );
++
++  const handleStartSuggestionSelect = React.useCallback(
++    (suggestion: AddressSuggestion) => {
++      autoRouteRef.current = true;
++      cancelStartSearch();
++      setStartSuggestionsOpen(false);
++      setStartSearchError(null);
++      clearStartSuggestions();
++      startInputRef.current?.focus();
++      setStart(suggestion.label);
++      const coords = { lat: suggestion.lat, lng: suggestion.lng };
++      setStartCoordinates(coords);
++      setStartLink(buildMapsLink(coords));
++      setStartCollectionId('');
++    },
++    [cancelStartSearch, clearStartSuggestions],
++  );
++
++  const handleFinishSuggestionSelect = React.useCallback(
++    (suggestion: AddressSuggestion) => {
++      autoRouteRef.current = true;
++      cancelFinishSearch();
++      setFinishSuggestionsOpen(false);
++      setFinishSearchError(null);
++      clearFinishSuggestions();
++      finishInputRef.current?.focus();
++      setEnd(suggestion.label);
++      const coords = { lat: suggestion.lat, lng: suggestion.lng };
++      setFinishCoordinates(coords);
++      setEndLink(buildMapsLink(coords));
++      setFinishCollectionId('');
++    },
++    [cancelFinishSearch, clearFinishSuggestions],
++  );
++
++  const handleStartInputChange = React.useCallback(
++    (value: string) => {
++      autoRouteRef.current = true;
++      setStart(value);
++      setStartLink('');
++      setStartCoordinates(null);
++      setStartCollectionId('');
++      setStartSearchError(null);
++      setStartSuggestionsOpen(true);
++      scheduleStartSearch(value);
++    },
++    [scheduleStartSearch],
++  );
++
++  const handleFinishInputChange = React.useCallback(
++    (value: string) => {
++      autoRouteRef.current = true;
++      setEnd(value);
++      setEndLink('');
++      setFinishCoordinates(null);
++      setFinishCollectionId('');
++      setFinishSearchError(null);
++      setFinishSuggestionsOpen(true);
++      scheduleFinishSearch(value);
++    },
++    [scheduleFinishSearch],
++  );
++
++  const handleStartLink = async (value: string) => {
++    autoRouteRef.current = true;
++    const sanitized = sanitizeLocationLink(value);
++    if (!sanitized) {
++      setStart('');
++      setStartCoordinates(null);
++      setStartLink('');
++      setStartSuggestionsOpen(false);
++      cancelStartSearch();
++      clearStartSuggestions();
++      return;
++    }
++    let link = sanitized;
++    let resolved = sanitized;
++    let coords = extractCoords(resolved);
++    if (
++      /^https?:\/\/maps\.app\.goo\.gl\//i.test(sanitized) ||
++      isManagedShortLink(sanitized)
++    ) {
++      const data = await expandLink(sanitized);
++      if (data?.url) {
++        const expanded = sanitizeLocationLink(data.url) || sanitized;
++        resolved = expanded;
++        const backendCoords = toCoordsValue(data.coords);
++        if (backendCoords) {
++          coords = backendCoords;
++        }
++        if (typeof data.short === 'string') {
++          const shortCandidate = sanitizeLocationLink(data.short);
++          link = shortCandidate || sanitized;
++        } else {
++          link = expanded;
++        }
++      }
++      if (!coords) {
++        coords = extractCoords(resolved);
++      }
++    }
++    setStart(parseGoogleAddress(resolved));
++    setStartCoordinates(coords ?? extractCoords(resolved));
++    setStartLink(link);
++    setStartCollectionId('');
++    setStartSuggestionsOpen(false);
++    cancelStartSearch();
++    clearStartSuggestions();
++  };
++
++  const handleEndLink = async (value: string) => {
++    autoRouteRef.current = true;
++    const sanitized = sanitizeLocationLink(value);
++    if (!sanitized) {
++      setEnd('');
++      setFinishCoordinates(null);
++      setEndLink('');
++      setFinishSuggestionsOpen(false);
++      cancelFinishSearch();
++      clearFinishSuggestions();
++      return;
++    }
++    let link = sanitized;
++    let resolved = sanitized;
++    let coords = extractCoords(resolved);
++    if (
++      /^https?:\/\/maps\.app\.goo\.gl\//i.test(sanitized) ||
++      isManagedShortLink(sanitized)
++    ) {
++      const data = await expandLink(sanitized);
++      if (data?.url) {
++        const expanded = sanitizeLocationLink(data.url) || sanitized;
++        resolved = expanded;
++        const backendCoords = toCoordsValue(data.coords);
++        if (backendCoords) {
++          coords = backendCoords;
++        }
++        if (typeof data.short === 'string') {
++          const shortCandidate = sanitizeLocationLink(data.short);
++          link = shortCandidate || sanitized;
++        } else {
++          link = expanded;
++        }
++      }
++      if (!coords) {
++        coords = extractCoords(resolved);
++      }
++    }
++    setEnd(parseGoogleAddress(resolved));
++    setFinishCoordinates(coords ?? extractCoords(resolved));
++    setEndLink(link);
++    setFinishCollectionId('');
++    setFinishSuggestionsOpen(false);
++    cancelFinishSearch();
++    clearFinishSuggestions();
++  };
++
++  const applyCollectionPoint = React.useCallback(
++    (target: 'start' | 'finish', optionId: string) => {
++      const option = collectionObjects.find((item) => item._id === optionId);
++      if (!option) return;
++      const coords =
++        typeof option.latitude === 'number' &&
++        typeof option.longitude === 'number'
++          ? { lat: option.latitude, lng: option.longitude }
++          : null;
++      if (!coords) {
++        setAlertMsg(t('collectionAddressMissingCoordinates'));
++      }
++      if (target === 'start') {
++        autoRouteRef.current = true;
++        setStart(option.address || option.value || option.name);
++        setStartCoordinates(coords ?? null);
++        setStartLink(coords ? buildMapsLink(coords) : '');
++        setStartCollectionId(optionId);
++        setStartSuggestionsOpen(false);
++        cancelStartSearch();
++        clearStartSuggestions();
++      } else {
++        autoRouteRef.current = true;
++        setEnd(option.address || option.value || option.name);
++        setFinishCoordinates(coords ?? null);
++        setEndLink(coords ? buildMapsLink(coords) : '');
++        setFinishCollectionId(optionId);
++        setFinishSuggestionsOpen(false);
++        cancelFinishSearch();
++        clearFinishSuggestions();
++      }
++    },
++    [
++      cancelFinishSearch,
++      cancelStartSearch,
++      clearFinishSuggestions,
++      clearStartSuggestions,
++      collectionObjects,
++      t,
++    ],
++  );
++
++  React.useEffect(() => {
++    if (startCoordinates && finishCoordinates) {
++      if (autoRouteRef.current) {
++        setRouteLink(createRouteLink(startCoordinates, finishCoordinates));
++      }
++      let cancelled = false;
++      const applyFallback = () => {
++        const fallback = haversine(startCoordinates, finishCoordinates);
++        if (!cancelled) {
++          setDistanceKm(Number(fallback.toFixed(1)));
++        }
++      };
++      fetchRoute(startCoordinates, finishCoordinates)
++        .then((r) => {
++          if (cancelled) return;
++          if (r && typeof r.distance === 'number' && Number.isFinite(r.distance)) {
++            setDistanceKm(Number((r.distance / 1000).toFixed(1)));
++            return;
++          }
++          applyFallback();
++        })
++        .catch(() => {
++          applyFallback();
++        });
++      return () => {
++        cancelled = true;
++      };
++    }
++    setDistanceKm(null);
++    if (autoRouteRef.current) {
++      setRouteLink('');
++    }
++    return undefined;
++  }, [startCoordinates, finishCoordinates]);
++
+   React.useEffect(() => {
+     const targetId = effectiveTaskId;
+     if (isEdit && targetId) {
+@@ -1894,6 +2554,13 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+       completedAt: '',
+       creator: user ? String(user.telegram_id) : '',
+       assignees: defaultAssigneeIds,
++      start: '',
++      startLink: '',
++      startCoordinates: null,
++      end: '',
++      endLink: '',
++      finishCoordinates: null,
++      routeLink: '',
+       startDate: defaultStartDate,
+       dueDate: defaultDueDate,
+       attachments: [],
+@@ -1926,6 +2593,19 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+     setCargoHeight('');
+     setCargoVolume('');
+     setCargoWeight('');
++    setStart('');
++    setStartLink('');
++    setStartCoordinates(null);
++    setStartSuggestionsOpen(false);
++    clearStartSuggestions();
++    setStartCollectionId('');
++    setEnd('');
++    setEndLink('');
++    setFinishCoordinates(null);
++    setFinishSuggestionsOpen(false);
++    clearFinishSuggestions();
++    setFinishCollectionId('');
++    setRouteLink('');
+     setShowLogistics(false);
+     setTransportDriverId('');
+     setTransportDriverName('');
+@@ -2214,8 +2894,28 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+           setAlertMsg(t('assigneeRequiredError'));
+           return;
+         }
++        if (assignedList.length > MAX_ASSIGNEES) {
++          setError('assignees', {
++            type: 'validate',
++            message: t('assigneeLimitError', { count: MAX_ASSIGNEES }),
++          });
++          setAlertMsg(t('assigneeLimitError', { count: MAX_ASSIGNEES }));
++          return;
++        }
+         const resolvedTaskType =
+           entityKind === 'request' ? DEFAULT_REQUEST_TYPE : taskType;
++        if (showLogistics) {
++          if (!startCoordinates) {
++            setAlertMsg(t('logisticsStartCoordinatesRequired'));
++            startInputRef.current?.focus();
++            return;
++          }
++          if (!finishCoordinates) {
++            setAlertMsg(t('logisticsFinishCoordinatesRequired'));
++            finishInputRef.current?.focus();
++            return;
++          }
++        }
+         const payload: Record<string, unknown> = {
+           title: formData.title,
+           task_type: resolvedTaskType,
+@@ -2228,6 +2928,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+           created_by: toNumericValue(creator),
+           assigned_user_id: assignedList[0],
+           assignees: assignedList,
++          start_location: start,
++          start_location_link: startLink,
++          end_location: end,
++          end_location_link: endLink,
+           logistics_enabled: showLogistics,
+         };
+         const driverCandidate = transportDriverId.trim();
+@@ -2296,7 +3000,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+         else if (isEdit) payload.cargo_volume_m3 = '';
+         if (weightValue !== null) payload.cargo_weight_kg = weightValue;
+         else if (isEdit) payload.cargo_weight_kg = '';
++        if (startCoordinates) payload.startCoordinates = startCoordinates;
++        if (finishCoordinates) payload.finishCoordinates = finishCoordinates;
+         if (distanceKm !== null) payload.route_distance_km = distanceKm;
++        if (routeLink) payload.google_route_url = routeLink;
+         const sendPayload = { ...payload, attachments };
+         let savedTask: (Partial<Task> & Record<string, unknown>) | null = null;
+         const currentTaskId = effectiveTaskId ?? '';
+@@ -2412,7 +3119,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+     (formErrors: FieldErrors<TaskFormValues>) => {
+       if (formErrors.assignees) {
+         setIsSubmitting(false);
+-        setAlertMsg(t('assigneeRequiredError'));
++        setAlertMsg(
++          String(formErrors.assignees.message || t('assigneeRequiredError')),
++        );
+       }
+     },
+   );
+@@ -2528,6 +3237,19 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+     setCargoHeight(d.cargoHeight);
+     setCargoVolume(d.cargoVolume);
+     setCargoWeight(d.cargoWeight);
++    setStart(d.start);
++    setStartLink(d.startLink);
++    setStartCoordinates(d.startCoordinates);
++    setStartSuggestionsOpen(false);
++    clearStartSuggestions();
++    setStartCollectionId('');
++    setEnd(d.end);
++    setEndLink(d.endLink);
++    setFinishCoordinates(d.finishCoordinates);
++    setFinishSuggestionsOpen(false);
++    clearFinishSuggestions();
++    setFinishCollectionId('');
++    setRouteLink(d.routeLink);
+     setAttachments(mergeAttachmentLists([], d.attachments as Attachment[]));
+     setPhotosLink(
+       buildTelegramMessageLink(d.photosChatId, d.photosMessageId) ??
+@@ -2707,15 +3429,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+     return null;
+   }
+ 
+-  // Берём значения полей (если они есть) — защищённый доступ к DOM.
+-  // Поля могут быть опциональны (если форма не содержит адресов), поэтому
+-  // безопасно подставляем длину 0.
+-  const startEl = document.getElementById(
+-    'task-start',
+-  ) as HTMLInputElement | null;
+-  const endEl = document.getElementById('task-end') as HTMLInputElement | null;
+-  const startQueryLength = startEl ? startEl.value.trim().length : 0;
+-  const finishQueryLength = endEl ? endEl.value.trim().length : 0;
++  const startQueryLength = start.trim().length;
++  const finishQueryLength = end.trim().length;
+ 
+   return createPortal(
+     <div className="fixed inset-0 z-[1000]">
+@@ -2804,8 +3519,24 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+                           users={users}
+                           value={Array.isArray(field.value) ? field.value : []}
+                           onChange={(val) => {
+-                            setTaskAssigneeIds(val);
+-                            field.onChange(val);
++                            const normalized = normalizeAssigneeList(val);
++                            if (normalized.length > MAX_ASSIGNEES) {
++                              setError('assignees', {
++                                type: 'validate',
++                                message: t('assigneeLimitError', {
++                                  count: MAX_ASSIGNEES,
++                                }),
++                              });
++                              setAlertMsg(
++                                t('assigneeLimitError', {
++                                  count: MAX_ASSIGNEES,
++                                }),
++                              );
++                              return;
++                            }
++                            clearErrors('assignees');
++                            setTaskAssigneeIds(normalized);
++                            field.onChange(normalized);
+                           }}
+                           onBlur={field.onBlur}
+                           disabled={!editing}
+@@ -2880,29 +3611,397 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+                         <div className="sm:col-span-2 lg:col-span-2">
+                           <label
+                             className="block text-sm font-medium"
+-                            htmlFor="task-google-maps"
++                            htmlFor="task-start-address"
+                           >
+-                            {t('googleMapsButton')}
++                            <span className="flex flex-wrap items-center gap-2">
++                              <span>{t('startPoint')}</span>
++                              <span className="text-xs font-normal text-amber-700">
++                                {t('logisticsCoordinatesHint')}
++                              </span>
++                            </span>
+                           </label>
+-                          <div className="mt-2 flex flex-wrap items-center gap-3">
+-                            <a
+-                              id="task-google-maps"
+-                              href="https://www.google.com/maps"
+-                              target="_blank"
+-                              rel="noopener noreferrer"
+-                              className={cn(
+-                                buttonVariants({
+-                                  variant: 'default',
+-                                  size: 'sm',
+-                                }),
+-                                'rounded-2xl px-3 shrink-0 whitespace-nowrap h-10',
+-                              )}
+-                            >
+-                              Google Maps
+-                            </a>
+-                            <span className="text-xs text-slate-600">
+-                              {t('googleMapsHint')}
++                          <div className="mt-1 space-y-2">
++                            <div className="relative">
++                              <input
++                                id="task-start-address"
++                                ref={startInputRef}
++                                value={start}
++                                onChange={(event) =>
++                                  handleStartInputChange(event.target.value)
++                                }
++                                onFocus={() => {
++                                  if (!editing) return;
++                                  setStartSuggestionsOpen(true);
++                                }}
++                                onBlur={() => {
++                                  window.setTimeout(() => {
++                                    setStartSuggestionsOpen(false);
++                                  }, 120);
++                                }}
++                                onKeyDown={(event) => {
++                                  if (event.key === 'Enter' && editing) {
++                                    if (startSuggestions.length > 0) {
++                                      event.preventDefault();
++                                      handleStartSuggestionSelect(
++                                        startSuggestions[0],
++                                      );
++                                    }
++                                  }
++                                  if (event.key === 'Escape') {
++                                    setStartSuggestionsOpen(false);
++                                  }
++                                }}
++                                placeholder={t('addressPlaceholder', {
++                                  count: MIN_ADDRESS_QUERY_LENGTH,
++                                })}
++                                className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none disabled:cursor-not-allowed"
++                                disabled={!editing}
++                              />
++                              {editing && startSuggestionsOpen ? (
++                                <div className="absolute left-0 right-0 z-20 mt-1 rounded-md border border-slate-200 bg-white shadow-lg">
++                                  {startSearchLoading ? (
++                                    <div className="px-3 py-2 text-sm text-muted-foreground">
++                                      {t('addressSearchLoading')}
++                                    </div>
++                                  ) : startSearchError ? (
++                                    <div className="px-3 py-2 text-sm text-red-600">
++                                      {startSearchError}
++                                    </div>
++                                  ) : startQueryLength === 0 ? (
++                                    <div className="px-3 py-2 text-sm text-muted-foreground">
++                                      {t('addressSearchHint', {
++                                        count: MIN_ADDRESS_QUERY_LENGTH,
++                                      })}
++                                    </div>
++                                  ) : startQueryLength <
++                                    MIN_ADDRESS_QUERY_LENGTH ? (
++                                    <div className="px-3 py-2 text-sm text-muted-foreground">
++                                      {t('addressSearchHint', {
++                                        count: MIN_ADDRESS_QUERY_LENGTH,
++                                      })}
++                                    </div>
++                                  ) : startSuggestions.length ? (
++                                    <ul
++                                      className="max-h-60 overflow-y-auto py-1"
++                                      role="listbox"
++                                    >
++                                      {startSuggestions.map((suggestion) => (
++                                        <li
++                                          key={`${suggestion.id}-${suggestion.lat}-${suggestion.lng}`}
++                                          role="option"
++                                          className="cursor-pointer px-3 py-2 text-sm hover:bg-slate-100"
++                                          onMouseDown={(event) => {
++                                            event.preventDefault();
++                                            handleStartSuggestionSelect(
++                                              suggestion,
++                                            );
++                                          }}
++                                        >
++                                          <div className="font-medium text-slate-800">
++                                            {suggestion.label}
++                                          </div>
++                                          {suggestion.description ? (
++                                            <div className="text-xs text-slate-500">
++                                              {suggestion.description}
++                                            </div>
++                                          ) : null}
++                                        </li>
++                                      ))}
++                                    </ul>
++                                  ) : (
++                                    <div className="px-3 py-2 text-sm text-muted-foreground">
++                                      {t('addressSearchNoResults')}
++                                    </div>
++                                  )}
++                                </div>
++                              ) : null}
++                            </div>
++                            {canonicalStartLink ? (
++                              <div className="flex flex-wrap items-start gap-2">
++                                <div className="flex min-w-0 flex-col gap-1">
++                                  <a
++                                    href={canonicalStartLink}
++                                    target="_blank"
++                                    rel="noopener noreferrer"
++                                    className="text-accentPrimary underline break-words"
++                                  >
++                                    {start || t('link')}
++                                  </a>
++                                  {startCoordinates && (
++                                    <input
++                                      id="task-start-coordinates"
++                                      name="startCoordinatesDisplay"
++                                      value={formatCoords(startCoordinates)}
++                                      readOnly
++                                      className="focus:ring-brand-200 focus:border-accentPrimary w-full cursor-text rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-xs text-slate-600 focus:ring focus:outline-none"
++                                      onFocus={(e) => e.currentTarget.select()}
++                                      aria-label={t('coordinates')}
++                                    />
++                                  )}
++                                </div>
++                                {editing ? (
++                                  <button
++                                    type="button"
++                                    onClick={() => handleStartLink('')}
++                                    className="shrink-0 text-red-600"
++                                  >
++                                    ✖
++                                  </button>
++                                ) : null}
++                              </div>
++                            ) : (
++                              <div className="flex flex-wrap items-center gap-2">
++                                <input
++                                  id="task-start-link"
++                                  name="startLink"
++                                  value={startLink}
++                                  onChange={(e) =>
++                                    handleStartLink(e.target.value)
++                                  }
++                                  placeholder={t('googleMapsLink')}
++                                  className="focus:ring-brand-200 focus:border-accentPrimary min-w-0 flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
++                                  disabled={!editing}
++                                />
++                                <a
++                                  href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
++                                  target="_blank"
++                                  rel="noopener"
++                                  className={cn(
++                                    buttonVariants({
++                                      variant: 'default',
++                                      size: 'sm',
++                                    }),
++                                    'rounded-2xl px-3 shrink-0 whitespace-nowrap h-10',
++                                  )}
++                                >
++                                  {t('googleMapsButton')}
++                                </a>
++                              </div>
++                            )}
++                            <div className="pt-1">
++                              <SingleSelect
++                                label={t('collectionAddressLabel')}
++                                options={collectionOptions}
++                                value={startCollectionId || null}
++                                onChange={(option) => {
++                                  const value = option?.value ?? '';
++                                  setStartCollectionId(value);
++                                  if (value) {
++                                    applyCollectionPoint('start', value);
++                                  }
++                                }}
++                                disabled={!editing || collectionObjectsLoading}
++                                placeholder={t('collectionAddressPlaceholder')}
++                              />
++                              {collectionObjectsLoading ? (
++                                <p className="mt-1 text-xs text-slate-500">
++                                  {t('collectionAddressesLoading')}
++                                </p>
++                              ) : null}
++                              {collectionObjectsError ? (
++                                <p className="mt-1 text-xs text-red-600">
++                                  {collectionObjectsError}
++                                </p>
++                              ) : null}
++                            </div>
++                          </div>
++                        </div>
++                        <div className="sm:col-span-2 lg:col-span-2">
++                          <label
++                            className="block text-sm font-medium"
++                            htmlFor="task-finish-address"
++                          >
++                            <span className="flex flex-wrap items-center gap-2">
++                              <span>{t('endPoint')}</span>
++                              <span className="text-xs font-normal text-amber-700">
++                                {t('logisticsCoordinatesHint')}
++                              </span>
+                             </span>
++                          </label>
++                          <div className="mt-1 space-y-2">
++                            <div className="relative">
++                              <input
++                                id="task-finish-address"
++                                ref={finishInputRef}
++                                value={end}
++                                onChange={(event) =>
++                                  handleFinishInputChange(event.target.value)
++                                }
++                                onFocus={() => {
++                                  if (!editing) return;
++                                  setFinishSuggestionsOpen(true);
++                                }}
++                                onBlur={() => {
++                                  window.setTimeout(() => {
++                                    setFinishSuggestionsOpen(false);
++                                  }, 120);
++                                }}
++                                onKeyDown={(event) => {
++                                  if (event.key === 'Enter' && editing) {
++                                    if (finishSuggestions.length > 0) {
++                                      event.preventDefault();
++                                      handleFinishSuggestionSelect(
++                                        finishSuggestions[0],
++                                      );
++                                    }
++                                  }
++                                  if (event.key === 'Escape') {
++                                    setFinishSuggestionsOpen(false);
++                                  }
++                                }}
++                                placeholder={t('addressPlaceholder', {
++                                  count: MIN_ADDRESS_QUERY_LENGTH,
++                                })}
++                                className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none disabled:cursor-not-allowed"
++                                disabled={!editing}
++                              />
++                              {editing && finishSuggestionsOpen ? (
++                                <div className="absolute left-0 right-0 z-20 mt-1 rounded-md border border-slate-200 bg-white shadow-lg">
++                                  {finishSearchLoading ? (
++                                    <div className="px-3 py-2 text-sm text-muted-foreground">
++                                      {t('addressSearchLoading')}
++                                    </div>
++                                  ) : finishSearchError ? (
++                                    <div className="px-3 py-2 text-sm text-red-600">
++                                      {finishSearchError}
++                                    </div>
++                                  ) : finishQueryLength === 0 ? (
++                                    <div className="px-3 py-2 text-sm text-muted-foreground">
++                                      {t('addressSearchHint', {
++                                        count: MIN_ADDRESS_QUERY_LENGTH,
++                                      })}
++                                    </div>
++                                  ) : finishQueryLength <
++                                    MIN_ADDRESS_QUERY_LENGTH ? (
++                                    <div className="px-3 py-2 text-sm text-muted-foreground">
++                                      {t('addressSearchHint', {
++                                        count: MIN_ADDRESS_QUERY_LENGTH,
++                                      })}
++                                    </div>
++                                  ) : finishSuggestions.length ? (
++                                    <ul
++                                      className="max-h-60 overflow-y-auto py-1"
++                                      role="listbox"
++                                    >
++                                      {finishSuggestions.map((suggestion) => (
++                                        <li
++                                          key={`${suggestion.id}-${suggestion.lat}-${suggestion.lng}`}
++                                          role="option"
++                                          className="cursor-pointer px-3 py-2 text-sm hover:bg-slate-100"
++                                          onMouseDown={(event) => {
++                                            event.preventDefault();
++                                            handleFinishSuggestionSelect(
++                                              suggestion,
++                                            );
++                                          }}
++                                        >
++                                          <div className="font-medium text-slate-800">
++                                            {suggestion.label}
++                                          </div>
++                                          {suggestion.description ? (
++                                            <div className="text-xs text-slate-500">
++                                              {suggestion.description}
++                                            </div>
++                                          ) : null}
++                                        </li>
++                                      ))}
++                                    </ul>
++                                  ) : (
++                                    <div className="px-3 py-2 text-sm text-muted-foreground">
++                                      {t('addressSearchNoResults')}
++                                    </div>
++                                  )}
++                                </div>
++                              ) : null}
++                            </div>
++                            {canonicalEndLink ? (
++                              <div className="flex flex-wrap items-start gap-2">
++                                <div className="flex min-w-0 flex-col gap-1">
++                                  <a
++                                    href={canonicalEndLink}
++                                    target="_blank"
++                                    rel="noopener noreferrer"
++                                    className="text-accentPrimary underline break-words"
++                                  >
++                                    {end || t('link')}
++                                  </a>
++                                  {finishCoordinates && (
++                                    <input
++                                      id="task-finish-coordinates"
++                                      name="finishCoordinatesDisplay"
++                                      value={formatCoords(finishCoordinates)}
++                                      readOnly
++                                      className="focus:ring-brand-200 focus:border-accentPrimary w-full cursor-text rounded-md border border-dashed border-slate-300 bg-slate-50 px-2 py-1 text-xs text-slate-600 focus:ring focus:outline-none"
++                                      onFocus={(e) => e.currentTarget.select()}
++                                      aria-label={t('coordinates')}
++                                    />
++                                  )}
++                                </div>
++                                {editing ? (
++                                  <button
++                                    type="button"
++                                    onClick={() => handleEndLink('')}
++                                    className="shrink-0 text-red-600"
++                                  >
++                                    ✖
++                                  </button>
++                                ) : null}
++                              </div>
++                            ) : (
++                              <div className="flex flex-wrap items-center gap-2">
++                                <input
++                                  id="task-end-link"
++                                  name="endLink"
++                                  value={endLink}
++                                  onChange={(e) =>
++                                    handleEndLink(e.target.value)
++                                  }
++                                  placeholder={t('googleMapsLink')}
++                                  className="focus:ring-brand-200 focus:border-accentPrimary min-w-0 flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
++                                  disabled={!editing}
++                                />
++                                <a
++                                  href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
++                                  target="_blank"
++                                  rel="noopener"
++                                  className={cn(
++                                    buttonVariants({
++                                      variant: 'default',
++                                      size: 'sm',
++                                    }),
++                                    'rounded-2xl px-3 shrink-0 whitespace-nowrap h-10',
++                                  )}
++                                >
++                                  {t('googleMapsButton')}
++                                </a>
++                              </div>
++                            )}
++                            <div className="pt-1">
++                              <SingleSelect
++                                label={t('collectionAddressLabel')}
++                                options={collectionOptions}
++                                value={finishCollectionId || null}
++                                onChange={(option) => {
++                                  const value = option?.value ?? '';
++                                  setFinishCollectionId(value);
++                                  if (value) {
++                                    applyCollectionPoint('finish', value);
++                                  }
++                                }}
++                                disabled={!editing || collectionObjectsLoading}
++                                placeholder={t('collectionAddressPlaceholder')}
++                              />
++                              {collectionObjectsLoading ? (
++                                <p className="mt-1 text-xs text-slate-500">
++                                  {t('collectionAddressesLoading')}
++                                </p>
++                              ) : null}
++                              {collectionObjectsError ? (
++                                <p className="mt-1 text-xs text-red-600">
++                                  {collectionObjectsError}
++                                </p>
++                              ) : null}
++                            </div>
+                           </div>
+                         </div>
+                         <div>
+diff --git a/apps/web/src/locales/en/translation.json b/apps/web/src/locales/en/translation.json
+index 35896d1..f32113e 100644
+--- a/apps/web/src/locales/en/translation.json
++++ b/apps/web/src/locales/en/translation.json
+@@ -3,8 +3,14 @@
+   "adminPanel": "Admin panel",
+   "assignees": "Assignee(s)",
+   "assigneeRequiredError": "Select at least one assignee",
++  "assigneeLimitError": "Select up to {{count}} assignees",
+   "assigneeSelectPlaceholder": "Select assignee",
+   "assigneeSelectHint": "Pick a responsible user before saving the task",
++  "addressPlaceholder": "Enter an address (at least {{count}} characters)",
++  "addressSearchLoading": "Searching address...",
++  "addressSearchHint": "Type at least {{count}} characters to search",
++  "addressSearchNoResults": "No results found",
++  "addressSearchFailed": "Failed to load suggestions",
+   "attachments": "Attachments",
+   "author": "author",
+   "appTitle": "ERM WEB",
+@@ -492,5 +498,15 @@
+     }
+   },
+   "googleMapsButton": "Google Maps",
+-  "googleMapsHint": "Open Google Maps to find a place or route"
++  "googleMapsHint": "Open Google Maps to find a place or route",
++  "googleMapsLink": "Paste a Google Maps link",
++  "collectionAddressLabel": "Address from collection",
++  "collectionAddressPlaceholder": "Select an address",
++  "collectionAddressesLoading": "Loading addresses...",
++  "collectionAddressesLoadFailed": "Failed to load addresses",
++  "collectionAddressMissingCoordinates": "Selected address has no coordinates",
++  "logisticsCoordinatesHint": "Coordinates are required: choose an address or a map point",
++  "logisticsStartCoordinatesRequired": "Specify the start point coordinates",
++  "logisticsFinishCoordinatesRequired": "Specify the destination coordinates",
++  "startPoint": "Start point"
+ }
+diff --git a/apps/web/src/locales/ru/translation.json b/apps/web/src/locales/ru/translation.json
+index 95cdda3..38c8e43 100644
+--- a/apps/web/src/locales/ru/translation.json
++++ b/apps/web/src/locales/ru/translation.json
+@@ -3,8 +3,14 @@
+   "adminPanel": "Админка",
+   "assignees": "Исполнитель(и)",
+   "assigneeRequiredError": "Укажите хотя бы одного исполнителя",
++  "assigneeLimitError": "Можно выбрать не более {{count}} исполнителей",
+   "assigneeSelectPlaceholder": "Выберите исполнителя",
+   "assigneeSelectHint": "Исполнитель обязателен для сохранения задачи",
++  "addressPlaceholder": "Введите адрес (минимум {{count}} символа)",
++  "addressSearchLoading": "Ищем адрес...",
++  "addressSearchHint": "Введите минимум {{count}} символа для поиска",
++  "addressSearchNoResults": "Ничего не найдено",
++  "addressSearchFailed": "Не удалось получить подсказки",
+   "attachments": "Вложения",
+   "author": "автор",
+   "appTitle": "ERM WEB",
+@@ -526,5 +532,15 @@
+     }
+   },
+   "googleMapsButton": "Google Maps",
+-  "googleMapsHint": "Откройте Google Maps для поиска точки или маршрута"
++  "googleMapsHint": "Откройте Google Maps для поиска точки или маршрута",
++  "googleMapsLink": "Вставьте ссылку Google Maps",
++  "collectionAddressLabel": "Адрес из коллекции",
++  "collectionAddressPlaceholder": "Выберите адрес",
++  "collectionAddressesLoading": "Загружаем адреса...",
++  "collectionAddressesLoadFailed": "Не удалось загрузить адреса",
++  "collectionAddressMissingCoordinates": "У выбранного адреса нет координат",
++  "logisticsCoordinatesHint": "Координаты обязательны: выберите адрес или точку на карте",
++  "logisticsStartCoordinatesRequired": "Укажите координаты точки отправления",
++  "logisticsFinishCoordinatesRequired": "Укажите координаты точки прибытия",
++  "startPoint": "Стартовая точка"
+ }
+diff --git a/apps/web/src/locales/uk/translation.json b/apps/web/src/locales/uk/translation.json
+index ab6acb4..520459d 100644
+--- a/apps/web/src/locales/uk/translation.json
++++ b/apps/web/src/locales/uk/translation.json
+@@ -51,5 +51,28 @@
+   "completeTaskQuestion": "Завершити задачу?",
+   "cancelTask": "Скасувати",
+   "cancelTaskQuestion": "Скасувати задачу?",
+-  "taskCanceled": "Задачу скасовано"
++  "taskCanceled": "Задачу скасовано",
++  "assignees": "Виконавець(і)",
++  "assigneeRequiredError": "Вкажіть хоча б одного виконавця",
++  "assigneeLimitError": "Можна вибрати не більше {{count}} виконавців",
++  "assigneeSelectPlaceholder": "Оберіть виконавця",
++  "assigneeSelectHint": "Виконавець обов'язковий для збереження задачі",
++  "addressPlaceholder": "Введіть адресу (мінімум {{count}} символи)",
++  "addressSearchLoading": "Шукаємо адресу...",
++  "addressSearchHint": "Введіть мінімум {{count}} символи для пошуку",
++  "addressSearchNoResults": "Нічого не знайдено",
++  "addressSearchFailed": "Не вдалося отримати підказки",
++  "startPoint": "Початкова точка",
++  "endPoint": "Фінальна точка",
++  "googleMapsButton": "Google Maps",
++  "googleMapsHint": "Відкрийте Google Maps, щоб знайти точку або маршрут",
++  "googleMapsLink": "Вставте посилання Google Maps",
++  "collectionAddressLabel": "Адреса з колекції",
++  "collectionAddressPlaceholder": "Оберіть адресу",
++  "collectionAddressesLoading": "Завантажуємо адреси...",
++  "collectionAddressesLoadFailed": "Не вдалося завантажити адреси",
++  "collectionAddressMissingCoordinates": "У вибраної адреси немає координат",
++  "logisticsCoordinatesHint": "Координати обов'язкові: виберіть адресу або точку на карті",
++  "logisticsStartCoordinatesRequired": "Вкажіть координати точки відправлення",
++  "logisticsFinishCoordinatesRequired": "Вкажіть координати точки прибуття"
+ }

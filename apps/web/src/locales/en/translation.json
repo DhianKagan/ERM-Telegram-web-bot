@@ -3,8 +3,14 @@
   "adminPanel": "Admin panel",
   "assignees": "Assignee(s)",
   "assigneeRequiredError": "Select at least one assignee",
+  "assigneeLimitError": "Select up to {{count}} assignees",
   "assigneeSelectPlaceholder": "Select assignee",
   "assigneeSelectHint": "Pick a responsible user before saving the task",
+  "addressPlaceholder": "Enter an address (at least {{count}} characters)",
+  "addressSearchLoading": "Searching address...",
+  "addressSearchHint": "Type at least {{count}} characters to search",
+  "addressSearchNoResults": "No results found",
+  "addressSearchFailed": "Failed to load suggestions",
   "attachments": "Attachments",
   "author": "author",
   "appTitle": "ERM WEB",
@@ -492,5 +498,15 @@
     }
   },
   "googleMapsButton": "Google Maps",
-  "googleMapsHint": "Open Google Maps to find a place or route"
+  "googleMapsHint": "Open Google Maps to find a place or route",
+  "googleMapsLink": "Paste a Google Maps link",
+  "collectionAddressLabel": "Address from collection",
+  "collectionAddressPlaceholder": "Select an address",
+  "collectionAddressesLoading": "Loading addresses...",
+  "collectionAddressesLoadFailed": "Failed to load addresses",
+  "collectionAddressMissingCoordinates": "Selected address has no coordinates",
+  "logisticsCoordinatesHint": "Coordinates are required: choose an address or a map point",
+  "logisticsStartCoordinatesRequired": "Specify the start point coordinates",
+  "logisticsFinishCoordinatesRequired": "Specify the destination coordinates",
+  "startPoint": "Start point"
 }

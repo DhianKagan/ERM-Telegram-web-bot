@@ -852,6 +852,19 @@ export const normalizeArrays: RequestHandler = (req, _res, next) => {
 
   const assignedRaw =
     body.assigned_user_id ?? (body as Record<string, unknown>).assignedUserId;
+  const rawAssignees =
+    body.assignees !== undefined ? body.assignees : undefined;
+  const normalizedAssignees = rawAssignees !== undefined
+    ? (Array.isArray(rawAssignees) ? rawAssignees : [rawAssignees])
+        .map((item) => (typeof item === 'string' ? item.trim() : item))
+        .filter(
+          (item) =>
+            item !== null &&
+            item !== undefined &&
+            !(typeof item === 'string' && item.length === 0),
+        )
+    : [];
+
   if (assignedRaw !== undefined) {
     const pickValue = Array.isArray(assignedRaw)
       ? assignedRaw.find(
@@ -866,26 +879,29 @@ export const normalizeArrays: RequestHandler = (req, _res, next) => {
       pickValue === undefined ||
       (typeof pickValue === 'string' && pickValue.trim().length === 0)
     ) {
-      body.assigned_user_id = null;
-      body.assignees = [];
+      if (normalizedAssignees.length) {
+        body.assignees = normalizedAssignees;
+        body.assigned_user_id = normalizedAssignees[0];
+      } else {
+        body.assigned_user_id = null;
+        body.assignees = [];
+      }
     } else {
       const normalized =
         typeof pickValue === 'string' ? pickValue.trim() : pickValue;
+      const normalizedList = normalizedAssignees.length
+        ? normalizedAssignees
+        : [normalized];
+      const normalizedKey = String(normalized);
+      const mergedAssignees = normalizedList.some(
+        (item) => String(item) === normalizedKey,
+      )
+        ? normalizedList
+        : [...normalizedList, normalized];
       body.assigned_user_id = normalized;
-      body.assignees = [normalized];
+      body.assignees = mergedAssignees;
     }
-  } else if (body.assignees !== undefined) {
-    const rawAssignees = Array.isArray(body.assignees)
-      ? body.assignees
-      : [body.assignees];
-    const normalizedAssignees = rawAssignees
-      .map((item) => (typeof item === 'string' ? item.trim() : item))
-      .filter(
-        (item) =>
-          item !== null &&
-          item !== undefined &&
-          !(typeof item === 'string' && item.length === 0),
-      );
+  } else if (rawAssignees !== undefined) {
     body.assignees = normalizedAssignees;
   }
   const controllersValue = body.controllers;

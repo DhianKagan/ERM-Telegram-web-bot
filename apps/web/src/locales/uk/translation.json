@@ -76,7 +76,9 @@
   "viaPointLabel": "Проміжна точка {{index}}",
   "viaPointsEmpty": "Проміжні точки не додані",
   "addAddress": "Додати адресу",
-  "logisticsCoordinatesHint": "Координати обов'язкові: виберіть адресу або точку на карті",
+  "logisticsToggle": "Логістика",
+  "transportRequired": "Потреба в транспорті",
+  "logisticsCoordinatesHint": "Координати обов'язкові: вставте посилання Google Maps або виберіть точку з колекції",
   "logisticsStartCoordinatesRequired": "Вкажіть координати точки відправлення",
   "logisticsFinishCoordinatesRequired": "Вкажіть координати точки прибуття",
   "logisticsViaCoordinatesRequired": "Вкажіть координати проміжної точки {{index}}"

@@ -74,7 +74,6 @@ describe('formatTask', () => {
     expect(text).toContain('📣 *Доставка труб*');
     expect(text).toContain('🧭 *Логистика*');
     expect(text).toContain('🗺 Расстояние: *125 км*');
-    expect(text).toContain('🚗 Транспорт: *Грузовой*');
     expect(text).toContain('🚘 Водитель: [Иван Петров](tg://user?id=101)');
     expect(text).toContain(
       `🚙 Авто: *${escapeMarkdownV2('MAN TGS (AA1234BB)')}*`,

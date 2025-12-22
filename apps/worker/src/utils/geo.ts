@@ -101,18 +101,19 @@ export function parsePointInput(input: unknown): LatLng | null {
 
   // If it's an object
   if (typeof input === 'object' && !Array.isArray(input)) {
-    const maybeLat = (input as any).lat;
-    const maybeLng = (input as any).lng;
-    const maybeLatitude = (input as any).latitude ?? maybeLat;
-    const maybeLongitude = (input as any).longitude ?? (input as any).lon ?? maybeLng ?? (input as any).lng;
+    const record = input as Record<string, unknown>;
+    const maybeLat = record.lat;
+    const maybeLng = record.lng;
+    const maybeLatitude = record.latitude ?? maybeLat;
+    const maybeLongitude = record.longitude ?? record.lon ?? maybeLng ?? record.lng;
     const latN = Number(maybeLatitude);
     const lngN = Number(maybeLongitude);
     if (Number.isFinite(latN) && Number.isFinite(lngN) && isValidLat(latN) && isValidLon(lngN)) {
       return { lat: roundCoord(latN), lng: roundCoord(lngN) };
     }
     // Try swapped keys (lng, lat)
-    const maybeLat2 = (input as any).lng;
-    const maybeLng2 = (input as any).lat;
+    const maybeLat2 = record.lng;
+    const maybeLng2 = record.lat;
     const lat2 = Number(maybeLat2);
     const lng2 = Number(maybeLng2);
     if (Number.isFinite(lat2) && Number.isFinite(lng2) && isValidLat(lat2) && isValidLon(lng2)) {

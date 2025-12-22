@@ -1,6 +1,5 @@
 // apps/worker/src/tasks/geocoding.ts
 import type { Job } from 'bullmq';
-import IORedis from 'ioredis';
 import { logger } from '../logger';
 import { parsePointInput, type LatLng } from '../utils/geo';
 import { extractCoords as sharedExtractCoords } from 'shared';
@@ -80,12 +79,6 @@ async function persistCoords(
   try {
     // dynamic import mongodb to construct ObjectId if available at runtime
     // We purposely do runtime import to avoid compile-time dependency on types.
-    // Use unknown->as any casting internally, but not exported as any.
-    // (This is only runtime; TypeScript does not require mongodb types here.)
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
-    // Use dynamic import syntax
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore - runtime import
     const mod = await import('mongodb');
     const ObjectIdCtor = (mod as unknown as { ObjectId?: new (s?: string) => unknown }).ObjectId;
     if (typeof ObjectIdCtor === 'function') {
@@ -147,12 +140,7 @@ export async function geocodeAddress(jobOrAddress: Job | string | undefined): Pr
       const mod = await import('mongodb');
       const MongoClientCtor = (mod as unknown as { MongoClient: new (uri: string, options?: unknown) => unknown }).MongoClient;
       client = new MongoClientCtor(mongoUrl, { connectTimeoutMS: 10000 });
-      // Use unknown typing for client; call connect + db via runtime calls
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
       await (client as { connect: () => Promise<unknown> }).connect();
-      // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-      // @ts-ignore
       db = (client as { db: (name?: string) => unknown }).db();
       // fetch task doc if present
       if (taskIdFromJob) {
@@ -163,8 +151,6 @@ export async function geocodeAddress(jobOrAddress: Job | string | undefined): Pr
           const ObjectIdCtor = (mod as unknown as { ObjectId?: new (s?: string) => unknown }).ObjectId;
           if (typeof ObjectIdCtor === 'function') {
             try {
-              // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-              // @ts-ignore
               filter = { _id: new ObjectIdCtor(String(taskIdFromJob)) };
             } catch {
               filter = { _id: taskIdFromJob };
@@ -245,8 +231,6 @@ export async function geocodeAddress(jobOrAddress: Job | string | undefined): Pr
     // close client if opened
     try {
       if (client && typeof (client as { close?: () => Promise<unknown> }).close === 'function') {
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
         await (client as { close: () => Promise<unknown> }).close();
       }
     } catch {

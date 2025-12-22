@@ -15,4 +15,4 @@ cmds = ["pnpm install --frozen-lockfile"]
 cmds = ["pnpm build"]
 
 [start]
-cmd = "pnpm --filter telegram-task-bot run start:pm2"
+cmd = "pnpm --filter apps/api run start:pm2"

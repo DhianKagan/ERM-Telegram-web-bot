@@ -18,10 +18,14 @@ describe('analyze_railway_logs.mjs', () => {
       'utf8',
     );
 
+    const scriptPath = path.resolve(
+      __dirname,
+      '../../scripts/analyze_railway_logs.mjs',
+    );
     const result = spawnSync(
       'node',
       [
-        'scripts/analyze_railway_logs.mjs',
+        scriptPath,
         logPath,
         '--prefix',
         'test-case',

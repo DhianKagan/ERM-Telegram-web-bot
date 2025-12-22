@@ -1,5 +1,5 @@
 {
-  "name": "telegram-task-bot",
+  "name": "apps/api",
   "version": "1.0.0",
   "main": "src/bot/bot.js",
   "types": "bot.d.ts",

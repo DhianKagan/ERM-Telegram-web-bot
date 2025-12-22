@@ -110,7 +110,12 @@ test('update пересчитывает ссылку и дистанцию', asy
     },
     1,
   );
-  expect(repo.updateTask).toHaveBeenCalledWith('1', expect.any(Object), 1);
+  expect(repo.updateTask).toHaveBeenCalledWith(
+    '1',
+    expect.any(Object),
+    1,
+    {},
+  );
   const expectedUrl = generateRouteLink({ lat: 0, lng: 0 }, { lat: 1, lng: 1 });
   expect(task.google_route_url).toBe(expectedUrl);
   expect(task.route_distance_km).toBe(5);
@@ -121,7 +126,7 @@ test('update не падает без данных', async () => {
   const service = new TasksService(repo);
   const emptyPayload = undefined as unknown as Partial<TaskDocument>;
   const task = await service.update('1', emptyPayload, 1);
-  expect(repo.updateTask).toHaveBeenCalledWith('1', {}, 1);
+  expect(repo.updateTask).toHaveBeenCalledWith('1', {}, 1, {});
   expect(task).toEqual({ _id: '1' });
 });
 

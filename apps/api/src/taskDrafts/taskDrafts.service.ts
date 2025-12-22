@@ -33,8 +33,6 @@ const normalizeAttachments = (value: unknown): Attachment[] => {
 const objectIdSet = (ids: Types.ObjectId[]): Set<string> =>
   new Set(ids.map((id) => id.toHexString()));
 
-type MaybePoint = { lat?: unknown; lng?: unknown } | [unknown, unknown] | string;
-
 /**
  * Try to coerce various input forms into a canonical { lat: number, lng: number } or null.
  * Accepts inputs of unknown type (we're defensive).

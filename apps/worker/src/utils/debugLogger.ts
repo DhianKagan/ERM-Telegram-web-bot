@@ -38,7 +38,7 @@ export function logOutboundRouteCall(opts: {
 
 function maskHeaders(h?: Record<string, unknown>) {
   if (!h) return h;
-  const out: any = {};
+  const out: Record<string, unknown> = {};
   for (const k of Object.keys(h)) {
     if (k.toLowerCase() === 'authorization') out[k] = '<REDACTED>';
     else out[k] = h[k];

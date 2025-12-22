@@ -136,7 +136,7 @@
     "filters": {
       "title": "Фильтр задач",
       "searchLabel": "Поиск",
-      "searchPlaceholder": "Название или номер задачи",
+      "searchPlaceholder": "Название, номер, тип, статус, приоритет, исполнитель, создатель, водитель, транспорт",
       "transportLabel": "Транспорт",
       "transportAny": "Любой транспорт",
       "transportCar": "Легковой",
@@ -145,6 +145,14 @@
       "sortLabel": "Сортировка",
       "sortTitleAsc": "Название ↑",
       "sortTitleDesc": "Название ↓",
+      "sortNumberAsc": "Номер задачи",
+      "sortTypeAsc": "Тип задачи",
+      "sortStatusAsc": "Статус",
+      "sortPriorityAsc": "Приоритет",
+      "sortExecutorAsc": "Исполнитель",
+      "sortCreatorAsc": "Создатель",
+      "sortDriverAsc": "Водитель",
+      "sortTransportAsc": "Транспорт",
       "apply": "Искать",
       "result": "Найдено задач: {{count}}"
     },

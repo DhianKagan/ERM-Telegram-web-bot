@@ -45,6 +45,7 @@ test('listLogs учитывает traceId и диапазон дат', async () 
   process.env.SUPPRESS_LOGS = '0';
   const { writeLog, listLogs } = require('../../src/services/wgLogEngine');
   await writeLog('Старое сообщение', 'info');
+  await new Promise((resolve) => setTimeout(resolve, 1));
   const from = new Date().toISOString();
   await writeLog('Новое сообщение', 'info', { traceId: 'custom-trace' });
   await new Promise((resolve) => setTimeout(resolve, 0));

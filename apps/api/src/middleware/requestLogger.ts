@@ -19,15 +19,7 @@ function sanitizeHeaders(h: Record<string, unknown> | undefined) {
   const out: Record<string, unknown> = {};
   for (const key of Object.keys(h)) {
     const low = key.toLowerCase();
-    if (low === 'authorization') {
-      out[key] = '<REDACTED>';
-    } else {
-      try {
-        out[key] = (h as any)[key];
-      } catch {
-        out[key] = '<UNSERIALIZABLE>';
-      }
-    }
+    out[key] = low === 'authorization' ? '<REDACTED>' : h[key];
   }
   return out;
 }
@@ -37,14 +29,20 @@ export default function requestLogger(req: Request, res: Response, next: NextFun
   const requestId = headerReqId || randomUUID();
 
   // attach requestId for downstream usage
-  (req as any).requestId = requestId;
+  const reqWithId = req as Request & { requestId?: string };
+  reqWithId.requestId = requestId;
 
   const start = Date.now();
 
   // log incoming request
   try {
     logger.info(
-      { reqId: requestId, method: req.method, url: req.originalUrl, headers: sanitizeHeaders(req.headers as any) },
+      {
+        reqId: requestId,
+        method: req.method,
+        url: req.originalUrl,
+        headers: sanitizeHeaders(req.headers as Record<string, unknown>),
+      },
       'Incoming HTTP request'
     );
   } catch (err) {

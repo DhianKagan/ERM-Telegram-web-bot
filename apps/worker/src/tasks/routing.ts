@@ -8,16 +8,13 @@ import {
   precheckLocations,
   parsePointInput,
   LatLng,
-  haversineDistanceMeters,
 } from '../utils/geo';
 
 const REQUEST_TIMEOUT_MS = Number(process.env.WORKER_ROUTE_TIMEOUT_MS || '30000'); // 30s default
 
-const isValidPoint = (point: Coordinates | undefined): point is Coordinates => {
-  if (!point) {
-    return false;
-  }
-  return Number.isFinite((point as any).lat) && Number.isFinite((point as any).lng);
+type OsrmResponse = {
+  code?: string;
+  routes?: Array<{ distance?: number }>;
 };
 
 const buildRouteUrl = (
@@ -50,8 +47,7 @@ function normalizeWorkerPoint(input: Coordinates | string | undefined): LatLng |
   // If already object with lat/lng
   if (typeof input === 'object') {
     // try parse using parsePointInput
-    const p = parsePointInput(input as unknown as unknown);
-    return p;
+    return parsePointInput(input);
   }
   if (typeof input === 'string') {
     return parsePointInput(input);
@@ -111,11 +107,13 @@ export const calculateRouteDistance = async (
 
     // optional tracing
     try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const { getTrace } = require('../utils/trace');
-      const trace = getTrace && getTrace();
-      if (trace && trace.traceparent) {
-        headers['traceparent'] = trace.traceparent;
+      const mod = await import('../utils/trace');
+      const trace = typeof mod.getTrace === 'function' ? mod.getTrace() : undefined;
+      if (trace && typeof trace === 'object' && 'traceparent' in trace) {
+        const traceparent = (trace as { traceparent?: unknown }).traceparent;
+        if (typeof traceparent === 'string') {
+          headers['traceparent'] = traceparent;
+        }
       }
     } catch {
       // ignore if tracing not available
@@ -124,9 +122,9 @@ export const calculateRouteDistance = async (
     const startTime = Date.now();
     const response = await fetch(url.toString(), { signal: controller.signal, headers });
     const raw = await response.text();
-    let payload: unknown = null;
+    let payload: OsrmResponse | null = null;
     try {
-      payload = raw ? JSON.parse(raw) : null;
+      payload = raw ? (JSON.parse(raw) as OsrmResponse) : null;
     } catch {
       logger.warn(
         { url: url.toString(), status: response.status, raw: raw && raw.slice(0, 2000) + '...[truncated]' },
@@ -138,20 +136,20 @@ export const calculateRouteDistance = async (
     const durationMs = Date.now() - startTime;
     logger.info({ url: url.toString(), durationMs, status: response.status }, 'Worker: route call');
 
-    const asAny = payload as any;
-    if (!response.ok || asAny?.code !== 'Ok') {
-      logger.warn({ status: response.status, payload: asAny }, 'OSRM returned error in worker');
+    if (!response.ok || payload?.code !== 'Ok') {
+      logger.warn({ status: response.status, payload }, 'OSRM returned error in worker');
       return { distanceKm: null };
     }
 
-    const distanceMeters = asAny.routes?.[0]?.distance;
+    const distanceMeters = payload?.routes?.[0]?.distance;
     if (typeof distanceMeters !== 'number') {
       return { distanceKm: null };
     }
     const distanceKm = Number((distanceMeters / 1000).toFixed(1));
     return { distanceKm } as RouteDistanceJobResult;
   } catch (error) {
-    const isAbort = error instanceof Error && (error as any).name === 'AbortError';
+    const name = (error as { name?: unknown }).name;
+    const isAbort = typeof name === 'string' && name === 'AbortError';
     const level = isAbort ? 'warn' : 'error';
     logger[level]({ start: startParsed, finish: finishParsed, error }, 'Unable to fetch route (worker)');
     return { distanceKm: null };

@@ -1,0 +1,30 @@
+# Назначение файла: деплой на Railway после мерджа PR (push в main)
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Установка Railway CLI
+        run: npm install -g @railway/cli
+
+      - name: Деплой на Railway
+        run: railway up --service bot --detach
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}

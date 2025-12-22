@@ -141,6 +141,7 @@ jest.mock('../apps/api/src/tasks/taskLinks', () => ({
 jest.mock('shared', () => ({
   PROJECT_TIMEZONE: 'Europe/Kyiv',
   PROJECT_TIMEZONE_LABEL: 'Europe/Kyiv',
+  extractCoords: jest.fn(() => null),
 }));
 
 jest.mock('../apps/api/src/controllers/taskSync.controller', () => ({

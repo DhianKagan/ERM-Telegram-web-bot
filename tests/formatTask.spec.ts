@@ -12,6 +12,7 @@ beforeAll(async () => {
     __esModule: true,
     appUrl: process.env.APP_URL || 'https://example.com',
     mongoDatabaseUrl: process.env.MONGO_DATABASE_URL!,
+    routingUrl: 'http://localhost:5000/route/v1/driving',
   }));
   ({ default: formatTask } = await import('../apps/api/src/utils/formatTask'));
   ({ default: escapeMarkdownV2 } = await import(

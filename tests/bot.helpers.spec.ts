@@ -15,6 +15,7 @@ jest.mock('../apps/api/src/config', () => ({
   getChatId: jest.fn(() => '123'),
   chatId: '123',
   appUrl: 'https://app.local',
+  routingUrl: 'http://localhost:5000/route/v1/driving',
 }));
 
 jest.mock('telegraf', () => {
@@ -160,7 +161,11 @@ jest.mock('../apps/api/src/utils/attachments', () => ({
   buildAttachmentsFromCommentHtml: jest.fn(() => []),
 }));
 
-jest.mock('../apps/api/src/utils/accessMask', () => ({ ACCESS_ADMIN: 8 }));
+jest.mock('../apps/api/src/utils/accessMask', () => ({
+  ACCESS_ADMIN: 8,
+  hasAccess: (mask: number, required: number) =>
+    (mask & required) === required,
+}));
 
 const loadBotModule = () => {
   jest.resetModules();

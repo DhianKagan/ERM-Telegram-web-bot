@@ -12,6 +12,9 @@ let tableMaxPoints = Number(
   process.env.ROUTE_TABLE_MAX_POINTS || defaultTableMaxPoints,
 );
 if (!Number.isFinite(tableMaxPoints) || tableMaxPoints <= 0) {
+  console.warn(
+    'ROUTE_TABLE_MAX_POINTS должен быть положительным. Используется значение по умолчанию 100',
+  );
   tableMaxPoints = defaultTableMaxPoints;
 }
 const defaultTableMinInterval = 200;
@@ -19,6 +22,9 @@ let tableMinInterval = Number(
   process.env.ROUTE_TABLE_MIN_INTERVAL_MS || defaultTableMinInterval,
 );
 if (!Number.isFinite(tableMinInterval) || tableMinInterval <= 0) {
+  console.warn(
+    'ROUTE_TABLE_MIN_INTERVAL_MS должен быть положительным. Используется значение по умолчанию 200',
+  );
   tableMinInterval = defaultTableMinInterval;
 }
 let tableLastCall = 0;
@@ -52,6 +58,12 @@ const buildEndpointUrl = (endpoint: Endpoint, coords?: string): URL => {
 
 const allowed = ['table', 'nearest', 'match', 'trip', 'route'] as const;
 type Endpoint = (typeof allowed)[number];
+type OsrmResponse = {
+  code?: string;
+  message?: string;
+  routes?: Array<{ distance?: number; geometry?: { coordinates?: Position[] } | null }>;
+  waypoints?: unknown;
+};
 
 export function validateCoords(value: string): string {
   const coordRx =
@@ -174,9 +186,12 @@ async function call<T>(
 
   // Normalize input coords first. If invalid, throw early.
   const locations = normalizePointsString(coords);
-  if (locations.length < 2) throw new Error('Некорректные координаты после нормализации');
+  const minPoints = endpoint === 'nearest' ? 1 : 2;
+  if (locations.length < minPoints) {
+    throw new Error('Некорректные координаты после нормализации');
+  }
 
-  const pre = precheckLocations(locations);
+  const pre = endpoint === 'nearest' ? { ok: true } : precheckLocations(locations);
   if (!pre.ok) {
     // return a structure that the caller can interpret as no-route
     logger.warn({ reason: pre.reason, details: pre }, 'Precheck of locations failed');
@@ -219,10 +234,10 @@ async function call<T>(
     }
 
     // try parse
-    let data: any = null;
+    let data: OsrmResponse | null = null;
     try {
-      data = raw ? JSON.parse(raw) : null;
-    } catch (e) {
+      data = raw ? (JSON.parse(raw) as OsrmResponse) : null;
+    } catch {
       logger.error({ reqId: trace?.traceId, url: url.toString(), status: res.status, body: raw }, 'Non-JSON response from routing service');
       throw new Error('Routing service returned non-JSON response');
     }
@@ -316,10 +331,10 @@ export async function getRouteDistance(
       logger.info({ reqId: trace?.traceId, url: routeUrl.toString(), status: res.status, body: preview }, 'RouteDistance upstream response (debug)');
     }
 
-    let data: any = null;
+    let data: OsrmResponse | null = null;
     try {
-      data = raw ? JSON.parse(raw) : null;
-    } catch (e) {
+      data = raw ? (JSON.parse(raw) as OsrmResponse) : null;
+    } catch {
       logger.error({ reqId: trace?.traceId, url: routeUrl.toString(), status: res.status, body: raw }, 'Non-JSON response from routing service (route)');
       throw new Error('Routing service returned non-JSON response');
     }

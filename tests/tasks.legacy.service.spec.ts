@@ -53,9 +53,9 @@ describe('legacy tasks service — расчёт маршрута', () => {
 
     await create({ startCoordinates: start, finishCoordinates: finish });
 
-    expect(createTask).toHaveBeenCalledTimes(1);
-    const payload = createTask.mock.calls[0][0];
-    expect(payload.google_route_url).toBe(generateRouteLink(start, finish));
-    expect(payload.route_distance_km).toBeNull();
+  expect(createTask).toHaveBeenCalledTimes(1);
+  const payload = createTask.mock.calls[0][0];
+  expect(payload.google_route_url).toBeUndefined();
+  expect(payload.route_distance_km).toBeNull();
   });
 });

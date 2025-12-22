@@ -16,9 +16,13 @@ describe('маршруты OSRM', () => {
     promClient.register.clear();
     process.env.ROUTING_URL =
       'https://router.project-osrm.org/route/v1/driving';
+    process.env.ROUTE_CACHE_ENABLED = '0';
+    const { clearRouteCache } = await import('../src/services/route');
+    await clearRouteCache();
     global.fetch = jest.fn(async () => ({
       ok: true,
       status: 200,
+      text: async () => JSON.stringify({ code: 'Ok', routes: [{ geometry: null }] }),
       json: async () => ({ code: 'Ok', routes: [{ geometry: null }] }),
     })) as unknown as typeof fetch;
   });
@@ -31,7 +35,9 @@ describe('маршруты OSRM', () => {
     const { table } = await import('../src/services/route');
     await table('1,1;2,2', {});
 
-    const calledUrl = (fetch as jest.Mock).mock.calls[0][0] as URL;
+    const calledUrl = new URL(
+      (fetch as jest.Mock).mock.calls[0][0] as string,
+    );
     expect(calledUrl.pathname).toBe('/table/v1/driving/1,1;2,2');
     expect(calledUrl.searchParams.get('points')).toBeNull();
   });
@@ -41,6 +47,11 @@ describe('маршруты OSRM', () => {
     (fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
       status: 200,
+      text: async () =>
+        JSON.stringify({
+          code: 'Ok',
+          routes: [{ geometry: { coordinates: [[1, 2]] } }],
+        }),
       json: async () => ({
         code: 'Ok',
         routes: [{ geometry: { coordinates: [[1, 2]] } }],
@@ -48,7 +59,9 @@ describe('маршруты OSRM', () => {
     });
 
     const result = await routeGeometry('1,1;2,2');
-    const calledUrl = (fetch as jest.Mock).mock.calls[0][0] as URL;
+    const calledUrl = new URL(
+      (fetch as jest.Mock).mock.calls[0][0] as string,
+    );
     expect(calledUrl.pathname).toBe('/route/v1/driving/1,1;2,2');
     expect(result).toEqual([[1, 2]]);
   });
@@ -58,6 +71,12 @@ describe('маршруты OSRM', () => {
     (fetch as jest.Mock).mockResolvedValueOnce({
       ok: true,
       status: 200,
+      text: async () =>
+        JSON.stringify({
+          code: 'Ok',
+          routes: [{ distance: 1234 }],
+          waypoints: [{ name: 'a' }, { name: 'b' }],
+        }),
       json: async () => ({
         code: 'Ok',
         routes: [{ distance: 1234 }],
@@ -67,10 +86,12 @@ describe('маршруты OSRM', () => {
 
     const result = await getRouteDistance(
       { lat: 1, lng: 2 },
-      { lat: 3, lng: 4 },
+      { lat: 1.5, lng: 2.5 },
     );
-    const calledUrl = (fetch as jest.Mock).mock.calls[0][0] as URL;
-    expect(calledUrl.pathname).toBe('/route/v1/driving/2,1;4,3');
+    const calledUrl = new URL(
+      (fetch as jest.Mock).mock.calls[0][0] as string,
+    );
+    expect(calledUrl.pathname).toBe('/route/v1/driving/2,1;2.5,1.5');
     expect(result.distance).toBe(1234);
   });
 });

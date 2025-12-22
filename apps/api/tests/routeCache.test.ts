@@ -4,6 +4,7 @@ const { table, clearRouteCache } = require('../src/services/route');
 global.fetch = jest.fn(async () => ({
   ok: true,
   status: 200,
+  text: async () => JSON.stringify({ code: 'Ok' }),
   json: async () => ({ code: 'Ok' }),
 })) as unknown as typeof fetch;
 

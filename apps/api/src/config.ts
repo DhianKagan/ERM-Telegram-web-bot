@@ -194,17 +194,6 @@ if (authFallback) {
   fallbackMessages.push(authFallback);
 }
 
-const authSource = parsedMongoUrl.searchParams.get('authSource');
-const requiresRailwayAuthSource =
-  !authSource &&
-  mongoUsername === 'mongo' &&
-  (isRailwayInternal || isRailwayProxyHost || isRailwayAppHost);
-if (requiresRailwayAuthSource) {
-  throw new Error(
-    'Для MongoDB Railway добавьте параметр authSource=admin в MONGO_DATABASE_URL',
-  );
-}
-
 if (fallbackMessages.length) {
   console.log(`MONGO_DATABASE_URL дополнен ${fallbackMessages.join(' и ')}`);
 }

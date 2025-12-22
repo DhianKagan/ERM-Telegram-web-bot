@@ -25,7 +25,7 @@ test('table отклоняет некорректные координаты', a
   const { table } = require('../src/services/route');
   global.fetch = jest.fn();
   await expect(table('1,1;../../../etc', {})).rejects.toThrow(
-    'Некорректные координаты',
+    'Некорректные координаты после нормализации',
   );
   expect(fetch).not.toHaveBeenCalled();
 });
@@ -41,6 +41,7 @@ test('использует дефолт ROUTE_TABLE_MAX_POINTS при отриц
   const { table } = require('../src/services/route');
   global.fetch = jest.fn().mockResolvedValue({
     ok: true,
+    text: async () => JSON.stringify({}),
     json: async () => ({}),
   });
   await expect(table('1,1;2,2', {})).resolves.toBeDefined();
@@ -61,6 +62,7 @@ test('использует дефолт ROUTE_TABLE_MIN_INTERVAL_MS при от�
   const { table } = require('../src/services/route');
   global.fetch = jest.fn().mockResolvedValue({
     ok: true,
+    text: async () => JSON.stringify({}),
     json: async () => ({}),
   });
   await table('1,1;2,2', {});

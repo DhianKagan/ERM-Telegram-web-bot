@@ -21,39 +21,70 @@ if (!isJest) {
   defaultMetricsInterval?.unref?.();
 }
 
-export const httpRequestsTotal = new client.Counter({
-  name: 'http_requests_total',
-  help: 'Количество HTTP запросов',
-  labelNames: ['method', 'route', 'status'],
-  registers: [register],
-});
+const getOrCreateMetric = <T extends client.Metric<string>>(
+  name: string,
+  factory: () => T,
+): T => {
+  const existing = register.getSingleMetric(name);
+  if (existing) {
+    return existing as T;
+  }
+  return factory();
+};
 
-export const httpRequestDuration = new client.Histogram({
-  name: 'http_request_duration_seconds',
-  help: 'Длительность HTTP запросов в секундах',
-  labelNames: ['method', 'route', 'status'],
-  buckets: [0.05, 0.1, 0.3, 0.5, 1, 3, 5],
-  registers: [register],
-});
+export const httpRequestsTotal = getOrCreateMetric(
+  'http_requests_total',
+  () =>
+    new client.Counter({
+      name: 'http_requests_total',
+      help: 'Количество HTTP запросов',
+      labelNames: ['method', 'route', 'status'],
+      registers: [register],
+    }),
+);
 
-export const osrmRequestDuration = new client.Histogram({
-  name: 'osrm_request_duration_seconds',
-  help: 'Длительность запросов к OSRM',
-  labelNames: ['endpoint', 'status'],
-  buckets: [0.05, 0.1, 0.3, 0.5, 1, 3, 5],
-  registers: [register],
-});
+export const httpRequestDuration = getOrCreateMetric(
+  'http_request_duration_seconds',
+  () =>
+    new client.Histogram({
+      name: 'http_request_duration_seconds',
+      help: 'Длительность HTTP запросов в секундах',
+      labelNames: ['method', 'route', 'status'],
+      buckets: [0.05, 0.1, 0.3, 0.5, 1, 3, 5],
+      registers: [register],
+    }),
+);
 
-export const osrmErrorsTotal = new client.Counter({
-  name: 'osrm_errors_total',
-  help: 'Ошибки запросов к OSRM',
-  labelNames: ['endpoint', 'reason'],
-  registers: [register],
-});
+export const osrmRequestDuration = getOrCreateMetric(
+  'osrm_request_duration_seconds',
+  () =>
+    new client.Histogram({
+      name: 'osrm_request_duration_seconds',
+      help: 'Длительность запросов к OSRM',
+      labelNames: ['endpoint', 'status'],
+      buckets: [0.05, 0.1, 0.3, 0.5, 1, 3, 5],
+      registers: [register],
+    }),
+);
 
-export const fleetRecoveryFailuresTotal = new client.Counter({
-  name: 'fleet_recovery_failures_total',
-  help: 'Неудачные попытки восстановления флота из коллекции',
-  labelNames: ['reason'],
-  registers: [register],
-});
+export const osrmErrorsTotal = getOrCreateMetric(
+  'osrm_errors_total',
+  () =>
+    new client.Counter({
+      name: 'osrm_errors_total',
+      help: 'Ошибки запросов к OSRM',
+      labelNames: ['endpoint', 'reason'],
+      registers: [register],
+    }),
+);
+
+export const fleetRecoveryFailuresTotal = getOrCreateMetric(
+  'fleet_recovery_failures_total',
+  () =>
+    new client.Counter({
+      name: 'fleet_recovery_failures_total',
+      help: 'Неудачные попытки восстановления флота из коллекции',
+      labelNames: ['reason'],
+      registers: [register],
+    }),
+);

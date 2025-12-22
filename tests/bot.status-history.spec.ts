@@ -10,6 +10,7 @@ jest.mock('../apps/api/src/config', () => ({
   botToken: 'test-token',
   chatId: -1001234567890,
   appUrl: 'https://example.com',
+  routingUrl: 'http://localhost:5000/route/v1/driving',
 }));
 
 jest.mock('telegraf', () => {

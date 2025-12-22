@@ -160,7 +160,12 @@ export default function TaskCard({ task, onOpen }: TaskCardProps) {
     : titleText;
 
   return (
-    <div className="flex min-h-[4.5rem] w-full flex-col gap-2 rounded-md border border-border bg-card/80 p-2 shadow-sm transition-shadow hover:shadow-md focus-within:ring-2 focus-within:ring-ring/60 focus-within:ring-offset-2 focus-within:ring-offset-background">
+    <div className="flex min-h-[4.5rem] w-full flex-col gap-2 rounded-lg border border-border/70 bg-card/90 p-2 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-within:ring-2 focus-within:ring-ring/60 focus-within:ring-offset-2 focus-within:ring-offset-background">
+      {typeLabel ? (
+        <div className="flex items-center justify-between">
+          <span className={typeClass}>{typeLabel}</span>
+        </div>
+      ) : null}
       <button
         type="button"
         className={titleButtonClass}
@@ -192,7 +197,6 @@ export default function TaskCard({ task, onOpen }: TaskCardProps) {
       ) : null}
       <div className="flex flex-wrap items-center gap-1.5">
         <StatusBadge status={task.status ?? ''} tone={statusTone} />
-        {typeLabel ? <span className={typeClass}>{typeLabel}</span> : null}
         <DeadlineCountdownBadge
           startValue={startDate ?? undefined}
           dueValue={dueDate ?? undefined}

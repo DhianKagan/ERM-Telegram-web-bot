@@ -122,6 +122,10 @@ process.env.MONGO_DATABASE_URL ||=
   'mongodb://admin:admin@localhost:27017/ermdb?authSource=admin';
 process.env.RETRY_ATTEMPTS ||= '0';
 process.env.SUPPRESS_LOGS ||= '1';
+process.env.QUEUE_REDIS_URL = '';
+process.env.REDIS_URL = '';
+process.env.ROUTE_CACHE_REDIS_URL = '';
+process.env.MONGOMS_DOWNLOAD_IGNORE_MISSING_HEADER ||= '1';
 
 // Увеличиваем тайм-аут буфера операций синхронно, чтобы дождаться запуска MongoMemoryServer в CI
 const applyBufferTimeout = (mongoose: Mongoose): void => {

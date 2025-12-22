@@ -136,7 +136,7 @@
     "filters": {
       "title": "Task filters",
       "searchLabel": "Search",
-      "searchPlaceholder": "Title or task number",
+      "searchPlaceholder": "Title, number, type, status, priority, executor, creator, driver, transport",
       "transportLabel": "Transport",
       "transportAny": "Any transport",
       "transportCar": "Passenger",
@@ -145,6 +145,14 @@
       "sortLabel": "Sort",
       "sortTitleAsc": "Name ↑",
       "sortTitleDesc": "Name ↓",
+      "sortNumberAsc": "Task number",
+      "sortTypeAsc": "Task type",
+      "sortStatusAsc": "Status",
+      "sortPriorityAsc": "Priority",
+      "sortExecutorAsc": "Executor",
+      "sortCreatorAsc": "Creator",
+      "sortDriverAsc": "Driver",
+      "sortTransportAsc": "Transport",
       "apply": "Search",
       "result": "Tasks found: {{count}}"
     },

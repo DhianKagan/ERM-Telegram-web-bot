@@ -647,7 +647,10 @@ const buildPointLabel = (
   if (!baseLabel) {
     return coords ? formatCoords(coords) : '';
   }
-  const maxWords = isGooglePoint ? maxWordsForGoogle : maxWordsDefault;
+  if (!isGooglePoint) {
+    return baseLabel;
+  }
+  const maxWords = maxWordsForGoogle || maxWordsDefault;
   return trimPointLabel(baseLabel, maxWords);
 };
 
@@ -3839,8 +3842,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                       start,
                                       startLink,
                                       startCoordinates,
-                                      1,
-                                      2,
+                                      3,
+                                      0,
                                     )}
                                   </a>
                                 ) : (
@@ -3849,8 +3852,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                       start,
                                       startLink,
                                       startCoordinates,
-                                      1,
-                                      2,
+                                      3,
+                                      0,
                                     )}
                                   </span>
                                 )}
@@ -3999,8 +4002,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                             point.title,
                                             point.link,
                                             point.coordinates,
-                                            1,
-                                            2,
+                                            3,
+                                            0,
                                           )}
                                         </a>
                                       ) : (
@@ -4009,8 +4012,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                             point.title,
                                             point.link,
                                             point.coordinates,
-                                            1,
-                                            2,
+                                            3,
+                                            0,
                                           )}
                                         </span>
                                       )}
@@ -4121,8 +4124,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                       end,
                                       endLink,
                                       finishCoordinates,
-                                      1,
-                                      2,
+                                      3,
+                                      0,
                                     )}
                                   </a>
                                 ) : (
@@ -4131,8 +4134,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                       end,
                                       endLink,
                                       finishCoordinates,
-                                      1,
-                                      2,
+                                      3,
+                                      0,
                                     )}
                                   </span>
                                 )}

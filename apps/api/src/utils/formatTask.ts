@@ -81,9 +81,9 @@ const buildPointLabel = (
   if (isGooglePoint) {
     return isCoordsLabel(baseLabel)
       ? baseLabel
-      : trimPointName(baseLabel, 2);
+      : trimPointName(baseLabel, 3);
   }
-  return trimPointName(baseLabel, 2) || baseLabel;
+  return baseLabel;
 };
 
 const taskDateFormatter = new Intl.DateTimeFormat('ru-RU', {

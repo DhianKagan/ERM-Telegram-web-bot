@@ -831,6 +831,20 @@ function normalizeUserId(value: unknown): string | undefined {
 
 export const normalizeArrays: RequestHandler = (req, _res, next) => {
   const body = req.body as Record<string, unknown>;
+  const rawPoints = body.points;
+  if (typeof rawPoints === 'string') {
+    const trimmed = rawPoints.trim();
+    if (trimmed.startsWith('[')) {
+      try {
+        const parsed = JSON.parse(trimmed);
+        if (Array.isArray(parsed)) {
+          body.points = parsed;
+        }
+      } catch {
+        // оставляем как есть, чтобы валидация вернула корректную ошибку
+      }
+    }
+  }
   const requestUserId = (req as RequestWithUser).user?.id;
   const hasAssignedUserId =
     body.assigned_user_id !== undefined ||

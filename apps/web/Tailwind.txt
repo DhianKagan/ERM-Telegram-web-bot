@@ -30,3 +30,192 @@
 Адаптивность: Открыть приложение на различных устройствах или используя инструменты разработчика для имитации мобильного экрана. Проверить, что дизайн корректно адаптируется: на узких экранах меню навигации сворачивается (например, появляется бургер-меню), элементы списка или таблицы перестраиваются под размер экрана (возможно, с прокруткой горизонтально для больших таблиц), текст остается читабельным. Ни на одной странице не должно быть горизонтального скролла из-за вылезающих блоков или налезающих друг на друга элементов.
 
 Функциональные проверки: Повторно протестировать ключевые пользовательские сценарии: отправку форм (например, логин, настройки профиля), навигацию по меню, открытие модальных окон, работу интерактивных элементов (например, раскрытие выпадающих списков, переключение тумблеров). Убедиться, что после унификации стилей все эти сценарии работают без ошибок. Если какое-либо действие перестало работать (например, кнопка не отправляет форму из-за измененного класса), это нужно обнаружить и исправить прежде, чем считать задачу завершенной.
+
+
+
+Title: feat(ui): унификация дизайна Tailwind/DaisyUI — тема, UI primitives, рефакторинг /cp/settings
+
+Context / кратко:
+Проект использует Tailwind CSS + DaisyUI (см. apps/web/tailwind.config.ts). Нужно унифицировать стиль фронтенда (все элементы: кнопки, формы, таблицы, карточки, навигация, модальные окна и т.д.), реализовать светлую/тёмную тему, вынести переиспользуемые UI-примитивы и аккуратно переработать страницу /cp/settings так, чтобы визуально она стала упорядоченной и функциональной. При этом НЕ МЕНЯЕМ UI-стек: оставляем Tailwind/DaisyUI и используем существующую палитру (primary, secondary, accent и т.д. в tailwind.config.ts). Все изменения должны быть минимально-инвазивными и не ломать бизнес-логику.
+
+Goal / цель:
+Единый дизайн по всему фронту: одинаковые размеры/радиусы/отступы/цвета кнопок и форм, адаптивная сетка, светлая/тёмная тема с переключателем, переиспользуемые UI-компоненты и аккуратный, читаемый /cp/settings.
+
+Expected outcome:
+
+tailwind.config.ts и DaisyUI темы донастроены (light/dark).
+
+В apps/web/src/components/ui/ появится набор UI primitives: UiButton, UiCard, UiTable, UiFormGroup, UiModal, UiInput, ThemeToggle.
+
+Главные страницы (особенно /cp/settings) используют эти компоненты.
+
+Не нарушен существующий функционал; сборка и тесты зелёные.
+
+PR содержит unified patch + полные файлы, DoD и инструкции ревьювера.
+
+Детальные шаги (выполнение поэтапно)
+ШАГ 0 — Подготовка
+
+Отдельная ветка: feat/ui/unify-tailwind-daisyui.
+
+Запустить локально:
+
+pnpm -w -s install
+pnpm --filter shared build
+pnpm -r --filter '!shared' build
+pnpm --filter apps/api exec tsc -b
+pnpm -w test
+pnpm -w lint
+
+
+Создавать маленькие, проверяемые коммиты по этапам.
+
+ШАГ 1 — Тема (light/dark) — minimal & global
+
+tailwind.config.ts:
+
+Добавить DaisyUI custom themes erm-light и erm-dark, использующие уже объявленные цвета (primary, accentPrimary/Secondary, neutral, success, error и т.д.). Пример: daisyui: { themes: [ { 'erm-light': { primary: '#465fff', 'base-100': '#FFFFFF', ... } }, { 'erm-dark': { primary: '#7a5af8', 'base-100': '#0F1724', ... } } ] }.
+
+Убедиться, что darkMode: 'class' включён (в конфиге уже есть).
+
+ThemeToggle компонент: apps/web/src/components/ui/ThemeToggle.tsx.
+
+Сохраняет выбор в localStorage и ставит document.documentElement.classList/data-theme (или html.classList.toggle('dark')) для переключения.
+
+Доступность: aria attributes.
+
+В App.tsx / layout: подключить ThemeToggle в шапку. При загрузке читать localStorage и применять тему.
+
+ШАГ 2 — UI-primitives (реализация)
+
+Создать apps/web/src/components/ui/ с файлами:
+
+UiButton.tsx
+
+API: <UiButton variant="primary|secondary|ghost" size="sm|md|lg" .../>
+
+Рендерит button с соответствующими Tailwind/DaisyUI классами (btn btn-primary, btn btn-outline, одинаковая высота/паддинг).
+
+UiCard.tsx
+
+Карточка с заголовком, действиями и телом. Использует card card-compact/shadow.
+
+UiFormGroup.tsx
+
+Label + control + helper text + error. Использует form-control, label, input input-bordered.
+
+UiInput.tsx, UiSelect.tsx, UiCheckbox, UiRadio
+
+Обёртки над стандартными полями, со стилями и aria.
+
+UiTable.tsx
+
+Обёртка над table DaisyUI: поддержка columns prop, rowKey, pagination. Предусмотреть empty и loading state.
+
+UiModal.tsx
+
+Модальное окно с заголовком, Actions slot. В основе dialog/modal DaisyUI.
+
+Каждый компонент должен:
+
+Принимать классы через className и style для override.
+
+Быть документирован (PropTypes/tsdoc).
+
+Иметь simple unit tests (Jest + RTL) проверяющие рендер и основные props.
+
+ШАГ 3 — Глобальные утилиты стилей
+
+CSS tokens / утилиты: добавить в apps/web/src/styles/ui.css набор CSS-переменных/утилит (если нужно) — но в основном пользоваться tailwind classes.
+
+Соглашения: документ apps/web/docs/UI_GUIDELINES.md с правилами: кнопки, отступы (8px base), radius (8px), цвета primary/secondary, и т.д. Это нужно для Codex и команды.
+
+ШАГ 4 — Рефакторинг страниц (по этапам)
+
+Страница /cp/settings (high priority) — путь: apps/web/src/pages/cp/settings/* или где находится компонент:
+
+Разбить секции на карточки UiCard с заголовками и подзаголовками.
+
+Убрать длинную горизонтальную ленту и заменить её сеткой карточек (grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6).
+
+Перенести фильтры/поиск в верхнюю панель Card: <Input.Search /> + UiButton справа.
+
+Для таблиц в этой странице использовать UiTable с зеброй, пагинацией и compact mode.
+
+Свернуть второстепенные панели в accordion/Collapse (DaisyUI collapse) при необходимости.
+
+Форма TaskDialog и подобные:
+
+Заменить inline-стили и локальные классы на UiFormGroup, UiInput, UiSelect и UiButton.
+
+Навигация:
+
+Проверить Navbar/Sidebar: использовать единый компонент UiNavbar/UiSidebar с одинаковыми отступами и шрифтами.
+
+ШАГ 5 — Адаптивность и accessibility
+
+Во всех компонентах применить responsive utilities (sm:, md:, lg:), touch targets >= 44px, контрастность текста для accessibility.
+
+Проверить клавиатурную навигацию и aria labels у интерактивных элементов.
+
+ШАГ 6 — Тестирование / QA
+
+Unit тесты компонентов.
+
+Smoke тесты: открыть TaskDialog, создать задачу, проверить формы. Открыть /cp/settings — проверить отображение карточек и работу поиска/фильтров.
+
+Cross-theme тест: переключение темы, проверка видимости элементов в dark/light.
+
+ШАГ 7 — PR / DoD
+
+В PR включить:
+
+unified patch и полные файлы для модифицированных компонентов;
+
+чеклист:
+
+pnpm -w -s install — OK
+
+pnpm --filter shared build — OK
+
+pnpm -r --filter '!shared' build — OK
+
+pnpm --filter apps/api exec tsc -b — OK
+
+pnpm -w test — OK
+
+Visual review screenshots до/после (desktop / mobile / dark theme)
+
+Инструкция ревьювера: проверить page /cp/settings, поиск, создание задачи, theme toggle.
+
+Пример минимального патча (шаблон действий Codex)
+
+tailwind.config.ts — добавить daisyui themes: erm-light/erm-dark (используя существующие цвета).
+
+components/ui/UiButton.tsx — новый компонент.
+
+components/ui/ThemeToggle.tsx — новый компонент.
+
+pages/cp/SettingsPage.tsx — заменить layout на сетку карточек, таблицу на UiTable.
+
+styles — добавить apps/web/src/styles/ui.css (опционально).
+
+tests — добавить базовые тесты для UiButton и SettingsPage.
+
+Оценка объёма работы (примерно)
+
+Тема + UI primitives: 1–2 недели (1 dev) — создание компонентов, тесты, документация.
+
+Рефакторинг ключевых страниц (включая /cp/settings): 1–3 недели в зависимости от количества страниц и сложности. Рефакторинг весь фронтенда — несколько месяцев, но постепенный, по странице/модулю.
+
+Полный рефакторинг всего фронта: крупный проект; можно делать итерационно — сначала theme + primitives, затем migrate page-by-page.
+
+Рекомендация по приоритету (iterative)
+
+Настроить темы (light/dark) и ThemeToggle.
+
+Создать UiButton / UiFormGroup / UiCard / UiTable.
+
+Рефакторить страницу /cp/settings — сделать её эталоном.
+
+Постепенно переносить другие страницы (Tasks, Collections, Kanban) на новые primitives.

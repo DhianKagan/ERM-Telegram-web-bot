@@ -20,7 +20,7 @@ export default function AlertDialog({
 }: AlertDialogProps) {
   return (
     <Modal open={open} onClose={onClose}>
-      <p>{message}</p>
+      <p className="whitespace-pre-line">{message}</p>
       <div className="mt-4 flex justify-end">
         <Button variant="default" size="pill" onClick={onClose}>
           {closeText}

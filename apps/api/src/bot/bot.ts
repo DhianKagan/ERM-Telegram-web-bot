@@ -43,6 +43,7 @@ import TaskSyncController from '../controllers/taskSync.controller';
 import { resolveTaskAlbumLink } from '../utils/taskAlbumLink';
 import { buildCommentHtml } from '../tasks/taskComments';
 import { buildAttachmentsFromCommentHtml } from '../utils/attachments';
+import parseGoogleAddress from '../utils/parseGoogleAddress';
 import {
   ACCESS_ADMIN,
   ACCESS_TASK_DELETE,
@@ -723,6 +724,45 @@ const formatCoordinates = (value: unknown): string | null => {
   return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
 };
 
+const isCoordsLabel = (value: string): boolean =>
+  /^-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?$/.test(value.trim());
+
+const trimPointName = (value: string, maxWords: number): string => {
+  const trimmed = value
+    .split(/[—–-]/)[0]
+    .split(',')[0]
+    .trim();
+  if (!trimmed) return value.trim();
+  const words = trimmed.split(/\s+/).filter(Boolean);
+  if (!words.length) return value.trim();
+  return words.slice(0, maxWords).join(' ');
+};
+
+const buildPointLabel = (
+  title: string,
+  link: string,
+  coords: unknown,
+): string => {
+  const normalizedTitle = title.trim();
+  const parsedTitle = link ? parseGoogleAddress(link) : '';
+  const isGooglePoint =
+    Boolean(link) &&
+    Boolean(parsedTitle) &&
+    Boolean(normalizedTitle) &&
+    normalizedTitle === parsedTitle;
+  const baseLabel = normalizedTitle || parsedTitle;
+  const coordLabel = formatCoordinates(coords) || '';
+  if (!baseLabel) {
+    return coordLabel;
+  }
+  if (isGooglePoint) {
+    return isCoordsLabel(baseLabel)
+      ? baseLabel
+      : trimPointName(baseLabel, 2);
+  }
+  return trimPointName(baseLabel, 2) || baseLabel;
+};
+
 export const buildDirectTaskMessage = (
   task: Record<string, unknown> & { status?: SharedTask['status'] },
   link: string | null,
@@ -770,20 +810,30 @@ export const buildDirectTaskMessage = (
     typeof task.end_location_link === 'string'
       ? task.end_location_link.trim()
       : '';
-  if (startLocation) {
+  const startLabel = buildPointLabel(
+    startLocation,
+    startLink,
+    task.startCoordinates,
+  );
+  if (startLabel) {
     const coords = formatCoordinates(task.startCoordinates);
     const label = startLink
-      ? `<a href="${startLink}">${htmlEscape(startLocation)}</a>`
-      : htmlEscape(startLocation);
+      ? `<a href="${startLink}">${htmlEscape(startLabel)}</a>`
+      : htmlEscape(startLabel);
     lines.push(
       `Старт: ${label}${coords ? ` (<code>${htmlEscape(coords)}</code>)` : ''}`,
     );
   }
-  if (endLocation) {
+  const endLabel = buildPointLabel(
+    endLocation,
+    endLink,
+    task.finishCoordinates,
+  );
+  if (endLabel) {
     const coords = formatCoordinates(task.finishCoordinates);
     const label = endLink
-      ? `<a href="${endLink}">${htmlEscape(endLocation)}</a>`
-      : htmlEscape(endLocation);
+      ? `<a href="${endLink}">${htmlEscape(endLabel)}</a>`
+      : htmlEscape(endLabel);
     lines.push(
       `Финиш: ${label}${coords ? ` (<code>${htmlEscape(coords)}</code>)` : ''}`,
     );

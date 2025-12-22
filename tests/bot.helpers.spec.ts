@@ -136,6 +136,7 @@ jest.mock('shared', () => ({
   PROJECT_TIMEZONE: 'Europe/Kyiv',
   PROJECT_TIMEZONE_LABEL: 'Europe/Kyiv',
   buildTaskAppLink: jest.fn(() => 'https://shared/link'),
+  extractCoords: jest.fn(() => null),
 }));
 
 const taskSyncCtor = jest.fn();

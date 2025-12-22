@@ -16,6 +16,22 @@ const normalizeText = (value: unknown): string | undefined => {
   return trimmed ? trimmed : undefined;
 };
 
+const shouldExpandMapsUrl = (value: string): boolean => {
+  if (!value) return false;
+  try {
+    const parsed = new URL(value);
+    const host = parsed.hostname.toLowerCase();
+    return (
+      parsed.protocol === 'https:' &&
+      ['goo.gl', 'maps.app.goo.gl', 'maps.google.com', 'www.google.com'].includes(
+        host,
+      )
+    );
+  } catch {
+    return false;
+  }
+};
+
 export type TaskPointsErrorCode =
   | 'points_limit_exceeded'
   | 'invalid_point'
@@ -89,7 +105,7 @@ export async function prepareIncomingPoints(
     const order = Number.isFinite(orderRaw) ? orderRaw : i;
     const sourceUrlRaw = normalizeText(payload.sourceUrl);
     let sourceUrl = sourceUrlRaw;
-    if (sourceUrlRaw) {
+    if (sourceUrlRaw && shouldExpandMapsUrl(sourceUrlRaw)) {
       try {
         sourceUrl = await expandMapsUrl(sourceUrlRaw);
       } catch (error) {

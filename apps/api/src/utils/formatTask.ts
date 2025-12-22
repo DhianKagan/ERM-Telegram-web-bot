@@ -13,6 +13,7 @@ import {
   type User,
 } from 'shared';
 import { appUrl as configuredAppUrl } from '../config';
+import parseGoogleAddress from './parseGoogleAddress';
 
 const toPriorityDisplay = (value: string) =>
   /^бессроч/i.test(value.trim()) ? 'До выполнения' : value;
@@ -33,6 +34,57 @@ const currencyFormatter = new Intl.NumberFormat('uk-UA', {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 });
+
+const formatCoordinates = (
+  coords: { lat: number; lng: number } | null | undefined,
+): string => {
+  if (!coords) return '';
+  const lat = Number(coords.lat);
+  const lng = Number(coords.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return '';
+  }
+  return `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+};
+
+const isCoordsLabel = (value: string): boolean =>
+  /^-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?$/.test(value.trim());
+
+const trimPointName = (value: string, maxWords: number): string => {
+  const trimmed = value
+    .split(/[—–-]/)[0]
+    .split(',')[0]
+    .trim();
+  if (!trimmed) return value.trim();
+  const words = trimmed.split(/\s+/).filter(Boolean);
+  if (!words.length) return value.trim();
+  return words.slice(0, maxWords).join(' ');
+};
+
+const buildPointLabel = (
+  title: string,
+  link: string | null | undefined,
+  coords: { lat: number; lng: number } | null | undefined,
+): string => {
+  const normalizedTitle = title.trim();
+  const parsedTitle = link ? parseGoogleAddress(link) : '';
+  const isGooglePoint =
+    Boolean(link) &&
+    Boolean(parsedTitle) &&
+    Boolean(normalizedTitle) &&
+    normalizedTitle === parsedTitle;
+  const baseLabel = normalizedTitle || parsedTitle;
+  const coordLabel = formatCoordinates(coords);
+  if (!baseLabel) {
+    return coordLabel;
+  }
+  if (isGooglePoint) {
+    return isCoordsLabel(baseLabel)
+      ? baseLabel
+      : trimPointName(baseLabel, 2);
+  }
+  return trimPointName(baseLabel, 2) || baseLabel;
+};
 
 const taskDateFormatter = new Intl.DateTimeFormat('ru-RU', {
   day: '2-digit',
@@ -782,14 +834,26 @@ export default function formatTask(
   }
   if (logisticsEnabled) {
     const logisticsLines: string[] = [];
-    const start = task.start_location ? mdEscape(task.start_location) : '';
-    const end = task.end_location ? mdEscape(task.end_location) : '';
-    const startLink = task.start_location_link
-      ? `[${start}](${mdEscape(task.start_location_link)})`
-      : start;
-    const endLink = task.end_location_link
-      ? `[${end}](${mdEscape(task.end_location_link)})`
-      : end;
+    const startLabel = buildPointLabel(
+      task.start_location ?? '',
+      task.start_location_link,
+      task.startCoordinates ?? null,
+    );
+    const endLabel = buildPointLabel(
+      task.end_location ?? '',
+      task.end_location_link,
+      task.finishCoordinates ?? null,
+    );
+    const start = startLabel ? mdEscape(startLabel) : '';
+    const end = endLabel ? mdEscape(endLabel) : '';
+    const startLink =
+      start && task.start_location_link
+        ? `[${start}](${mdEscape(task.start_location_link)})`
+        : start;
+    const endLink =
+      end && task.end_location_link
+        ? `[${end}](${mdEscape(task.end_location_link)})`
+        : end;
     if (start || end) {
       const arrow = start && end ? ' → ' : '';
       logisticsLines.push(`📍 ${startLink}${arrow}${endLink}`);

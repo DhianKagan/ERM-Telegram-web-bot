@@ -12,6 +12,7 @@ interface ConfirmDialogProps {
   onCancel: () => void;
   confirmText?: string;
   cancelText?: string;
+  confirmVariant?: React.ComponentProps<typeof Button>['variant'];
 }
 
 export default function ConfirmDialog({
@@ -21,6 +22,7 @@ export default function ConfirmDialog({
   onCancel,
   confirmText = 'Подтвердить',
   cancelText = 'Отмена',
+  confirmVariant = 'destructive',
 }: ConfirmDialogProps) {
   const [pending, setPending] = React.useState(false);
 
@@ -55,7 +57,7 @@ export default function ConfirmDialog({
           {cancelText}
         </Button>
         <Button
-          variant="destructive"
+          variant={confirmVariant}
           size="pill"
           onClick={handleConfirm}
           disabled={pending}

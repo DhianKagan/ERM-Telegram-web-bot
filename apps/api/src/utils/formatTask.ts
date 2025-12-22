@@ -867,11 +867,6 @@ export default function formatTask(
         `🗺 Расстояние: ${emphasizeValue(distanceValue, null)}`,
       );
     }
-    if (task.transport_type) {
-      logisticsLines.push(
-        `🚗 Транспорт: ${emphasizeValue(task.transport_type, null)}`,
-      );
-    }
     const driverNameRaw =
       typeof task.transport_driver_name === 'string'
         ? task.transport_driver_name.trim()

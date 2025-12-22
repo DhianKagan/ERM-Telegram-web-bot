@@ -1339,6 +1339,16 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     },
     [],
   );
+  const resolveCollectionTitle = React.useCallback(
+    (item: CollectionObject): string => {
+      const name = typeof item.name === 'string' ? item.name.trim() : '';
+      const value = typeof item.value === 'string' ? item.value.trim() : '';
+      const address =
+        typeof item.address === 'string' ? item.address.trim() : '';
+      return name || value || address || item._id;
+    },
+    [],
+  );
   const collectionOptions = React.useMemo(
     () =>
       collectionObjects.map((item) => ({
@@ -2396,24 +2406,25 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         typeof option.longitude === 'number'
           ? { lat: option.latitude, lng: option.longitude }
           : null;
+      const title = resolveCollectionTitle(option);
       if (!coords) {
         setAlertMsg(t('collectionAddressMissingCoordinates'));
       }
       if (target === 'start') {
         autoRouteRef.current = true;
-        setStart(option.address || option.value || option.name);
+        setStart(title);
         setStartCoordinates(coords ?? null);
         setStartLink(coords ? buildMapsLink(coords) : '');
         setStartCollectionId(optionId);
       } else {
         autoRouteRef.current = true;
-        setEnd(option.address || option.value || option.name);
+        setEnd(title);
         setFinishCoordinates(coords ?? null);
         setEndLink(coords ? buildMapsLink(coords) : '');
         setFinishCollectionId(optionId);
       }
     },
-    [collectionObjects, t],
+    [collectionObjects, resolveCollectionTitle, t],
   );
 
   const applyViaCollectionPoint = React.useCallback(
@@ -2425,11 +2436,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         typeof option.longitude === 'number'
           ? { lat: option.latitude, lng: option.longitude }
           : null;
+      const title = resolveCollectionTitle(option);
       if (!coords) {
         setAlertMsg(t('collectionAddressMissingCoordinates'));
       }
       autoRouteRef.current = true;
-      const title = option.address || option.value || option.name || '';
       setViaPoints((prev) =>
         prev.map((point) =>
           point.id === pointId
@@ -4463,6 +4474,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                           : t('createTaskQuestion')
                       }
                       confirmText={isEdit ? t('save') : t('create')}
+                      confirmVariant="success"
                       cancelText={t('cancel')}
                       onConfirm={async () => {
                         setShowSaveConfirm(false);

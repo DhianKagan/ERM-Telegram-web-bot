@@ -8,6 +8,9 @@ const request = require('supertest');
 const fs = require('fs');
 const path = require('path');
 
+const testUploadsDir = path.resolve(__dirname, '../tmp/uploads-files-test');
+process.env.STORAGE_DIR = testUploadsDir;
+
 jest.mock('../src/db/model', () => ({
   File: { findById: jest.fn() },
   Task: {
@@ -33,6 +36,12 @@ describe('files route', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+  });
+
+  afterAll(() => {
+    if (fs.existsSync(testUploadsDir)) {
+      fs.rmSync(testUploadsDir, { recursive: true, force: true });
+    }
   });
 
   test('deny access for foreign file', async () => {

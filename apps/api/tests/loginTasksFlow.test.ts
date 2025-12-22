@@ -12,6 +12,9 @@ process.env.CHAT_ID = '1';
 process.env.JWT_SECRET = 'secret';
 process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
 process.env.APP_URL = 'https://localhost';
+const originalDisableTaskNotifications =
+  process.env.DISABLE_TASK_NOTIFICATIONS;
+process.env.DISABLE_TASK_NOTIFICATIONS = 'true';
 
 const { Types } = require('mongoose');
 const mockAdminRoleId = new Types.ObjectId('64b000000000000000000001');
@@ -141,6 +144,11 @@ afterAll(() => {
   server.close();
   stopScheduler();
   stopQueue();
+  if (originalDisableTaskNotifications === undefined) {
+    delete process.env.DISABLE_TASK_NOTIFICATIONS;
+  } else {
+    process.env.DISABLE_TASK_NOTIFICATIONS = originalDisableTaskNotifications;
+  }
 });
 
 test('полный цикл логина и создания задачи', async () => {

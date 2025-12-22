@@ -2944,12 +2944,14 @@ export default class TasksController {
       );
       const normalizedTask = this.normalizeTaskResponse(task);
       res.status(201).json(normalizedTask);
-      void this.notifyTaskCreated(task, actorId).catch((error) => {
-        console.error(
-          'Не удалось отправить уведомление о создании задачи',
-          error,
-        );
-      });
+      if (process.env.DISABLE_TASK_NOTIFICATIONS !== 'true') {
+        void this.notifyTaskCreated(task, actorId).catch((error) => {
+          console.error(
+            'Не удалось отправить уведомление о создании задачи',
+            error,
+          );
+        });
+      }
     },
   ];
 
@@ -3013,12 +3015,14 @@ export default class TasksController {
       );
       const normalizedTask = this.normalizeTaskResponse(task);
       res.status(201).json(normalizedTask);
-      void this.notifyTaskCreated(task, actorId).catch((error) => {
-        console.error(
-          'Не удалось отправить уведомление о создании задачи',
-          error,
-        );
-      });
+      if (process.env.DISABLE_TASK_NOTIFICATIONS !== 'true') {
+        void this.notifyTaskCreated(task, actorId).catch((error) => {
+          console.error(
+            'Не удалось отправить уведомление о создании задачи',
+            error,
+          );
+        });
+      }
     },
   ];
 

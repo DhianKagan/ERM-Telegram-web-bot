@@ -618,6 +618,39 @@ const resolveLocationLink = async (
   };
 };
 
+const trimPointLabel = (value: string, maxWords: number): string => {
+  const trimmed = value
+    .split(/[—–-]/)[0]
+    .split(',')[0]
+    .trim();
+  if (!trimmed) return value.trim();
+  const words = trimmed.split(/\s+/).filter(Boolean);
+  if (!words.length) return value.trim();
+  return words.slice(0, maxWords).join(' ');
+};
+
+const buildPointLabel = (
+  title: string,
+  link: string,
+  coords: { lat: number; lng: number } | null,
+  maxWordsForGoogle: number,
+  maxWordsDefault: number,
+): string => {
+  const normalizedTitle = title.trim();
+  const parsedTitle = link ? parseGoogleAddress(link) : '';
+  const isGooglePoint =
+    Boolean(link) &&
+    Boolean(parsedTitle) &&
+    Boolean(normalizedTitle) &&
+    normalizedTitle === parsedTitle;
+  const baseLabel = normalizedTitle || parsedTitle;
+  if (!baseLabel) {
+    return coords ? formatCoords(coords) : '';
+  }
+  const maxWords = isGooglePoint ? maxWordsForGoogle : maxWordsDefault;
+  return trimPointLabel(baseLabel, maxWords);
+};
+
 const toIsoString = (value: unknown): string => {
   if (value instanceof Date) return value.toISOString();
   if (typeof value === 'number') {
@@ -990,8 +1023,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     (...args: Parameters<typeof reset>) => resetRef.current(...args),
     [],
   );
-  const RAW_DEFAULT_TASK_TYPE =
-    fields.find((f) => f.name === 'task_type')?.default || '';
   const DEFAULT_PRIORITY =
     fields.find((f) => f.name === 'priority')?.default || '';
   const DEFAULT_TRANSPORT =
@@ -1009,10 +1040,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     };
   }, []);
   const DEFAULT_REQUEST_TYPE = requestTypeOptions[0] ?? REQUEST_TYPE_NAME;
-  const DEFAULT_TASK_TYPE =
-    RAW_DEFAULT_TASK_TYPE && RAW_DEFAULT_TASK_TYPE !== REQUEST_TYPE_NAME
-      ? RAW_DEFAULT_TASK_TYPE
-      : (taskTypeOptions[0] ?? '');
+  const DEFAULT_TASK_TYPE = '';
 
   const formatInputDate = React.useCallback((value: Date) => {
     const year = value.getFullYear();
@@ -1520,6 +1548,65 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     [getTaskTypePrefix, getValues, setValue],
   );
   const canUploadAttachments = editing && isTitleFilled;
+  const resolveTaskTypeError = React.useCallback(() => {
+    if (!taskType.trim()) {
+      return t('taskTypeRequired');
+    }
+    return null;
+  }, [t, taskType]);
+  const collectErrorMessages = React.useCallback(
+    (formErrors: FieldErrors<TaskFormValues>) => {
+      const messages: string[] = [];
+      Object.values(formErrors).forEach((error) => {
+        if (!error) return;
+        if (typeof error.message === 'string' && error.message.trim()) {
+          messages.push(error.message.trim());
+        }
+      });
+      const taskTypeError = resolveTaskTypeError();
+      if (taskTypeError) {
+        messages.push(taskTypeError);
+      }
+      if (showLogistics) {
+        if (!startCoordinates) {
+          messages.push(t('logisticsStartCoordinatesRequired'));
+        }
+        if (!finishCoordinates) {
+          messages.push(t('logisticsFinishCoordinatesRequired'));
+        }
+        if (viaPoints.length > 0) {
+          viaPoints.forEach((point, index) => {
+            if (!resolveViaCoordinates(point)) {
+              messages.push(
+                t('logisticsViaCoordinatesRequired', { index: index + 1 }),
+              );
+            }
+          });
+        }
+      }
+      return Array.from(new Set(messages));
+    },
+    [
+      finishCoordinates,
+      resolveTaskTypeError,
+      resolveViaCoordinates,
+      showLogistics,
+      startCoordinates,
+      t,
+      viaPoints,
+    ],
+  );
+  const formatErrorsMessage = React.useCallback((items: string[]) => {
+    const filtered = items.map((item) => item.trim()).filter(Boolean);
+    const unique = Array.from(new Set(filtered));
+    return unique.join('\n');
+  }, []);
+  const taskTypeError = resolveTaskTypeError();
+  const blockingErrors = React.useMemo(
+    () => collectErrorMessages(errors),
+    [collectErrorMessages, errors],
+  );
+  const hasBlockingErrors = editing && blockingErrors.length > 0;
   const titleRef = React.useRef<HTMLTextAreaElement | null>(null);
   const handleTitleRef = React.useCallback(
     (node: HTMLTextAreaElement | null) => {
@@ -1606,7 +1693,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         if (rawTaskType && taskTypeOptions.includes(rawTaskType)) {
           return rawTaskType;
         }
-        return DEFAULT_TASK_TYPE;
+        return '';
       })();
       const curPriority =
         normalizePriorityOption(taskData.priority as string) ||
@@ -2051,14 +2138,14 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         ? taskAssigneeIds
         : normalizeAssigneeList(values.assignees);
     const resolvedTaskType =
-      entityKind === 'request' ? DEFAULT_REQUEST_TYPE : taskType;
+      entityKind === 'request' ? DEFAULT_REQUEST_TYPE : taskType.trim();
     const resolvedTransportType = transportRequired
       ? transportType
       : DEFAULT_TRANSPORT;
 
     const payload: Record<string, unknown> = {
       title: titleValue,
-      task_type: resolvedTaskType,
+      task_type: resolvedTaskType || undefined,
       task_description: descriptionValue,
       comment,
       priority,
@@ -2254,6 +2341,22 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     setEndLink(resolved.link);
     setFinishCollectionId('');
   };
+
+  const clearStartPoint = React.useCallback(() => {
+    autoRouteRef.current = true;
+    setStart('');
+    setStartLink('');
+    setStartCoordinates(null);
+    setStartCollectionId('');
+  }, []);
+
+  const clearFinishPoint = React.useCallback(() => {
+    autoRouteRef.current = true;
+    setEnd('');
+    setEndLink('');
+    setFinishCoordinates(null);
+    setFinishCollectionId('');
+  }, []);
 
   const handleViaLinkChange = React.useCallback(
     async (id: string, value: string) => {
@@ -2763,6 +2866,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const submit = handleSubmit(
     async (formData) => {
       try {
+        const submitErrors: string[] = [];
         const creationDate = parseIsoDate(created);
         if (formData.startDate && creationDate) {
           const parsedStart = parseIsoDate(formData.startDate);
@@ -2774,8 +2878,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                 type: 'validate',
                 message: t('startBeforeCreated'),
               });
-              setAlertMsg(t('startBeforeCreated'));
-              return;
+              submitErrors.push(t('startBeforeCreated'));
             }
           }
         }
@@ -2872,43 +2975,44 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
             type: 'required',
             message: t('assigneeRequiredError'),
           });
-          setAlertMsg(t('assigneeRequiredError'));
-          return;
+          submitErrors.push(t('assigneeRequiredError'));
         }
         if (assignedList.length > MAX_ASSIGNEES) {
           setError('assignees', {
             type: 'validate',
             message: t('assigneeLimitError', { count: MAX_ASSIGNEES }),
           });
-          setAlertMsg(t('assigneeLimitError', { count: MAX_ASSIGNEES }));
-          return;
+          submitErrors.push(t('assigneeLimitError', { count: MAX_ASSIGNEES }));
         }
         const resolvedTaskType =
-          entityKind === 'request' ? DEFAULT_REQUEST_TYPE : taskType;
+          entityKind === 'request' ? DEFAULT_REQUEST_TYPE : taskType.trim();
+        if (!resolvedTaskType) {
+          submitErrors.push(t('taskTypeRequired'));
+        }
         if (showLogistics) {
           if (!startCoordinates) {
-            setAlertMsg(t('logisticsStartCoordinatesRequired'));
+            submitErrors.push(t('logisticsStartCoordinatesRequired'));
             startLinkInputRef.current?.focus();
-            return;
           }
           if (!finishCoordinates) {
-            setAlertMsg(t('logisticsFinishCoordinatesRequired'));
+            submitErrors.push(t('logisticsFinishCoordinatesRequired'));
             finishLinkInputRef.current?.focus();
-            return;
           }
           if (viaPoints.length > 0) {
-            const missingIndex = viaPoints.findIndex(
-              (point) => !resolveViaCoordinates(point),
-            );
-            if (missingIndex >= 0) {
-              setAlertMsg(
-                t('logisticsViaCoordinatesRequired', {
-                  index: missingIndex + 1,
-                }),
-              );
-              return;
-            }
+            viaPoints.forEach((point, index) => {
+              if (!resolveViaCoordinates(point)) {
+                submitErrors.push(
+                  t('logisticsViaCoordinatesRequired', {
+                    index: index + 1,
+                  }),
+                );
+              }
+            });
           }
+        }
+        if (submitErrors.length > 0) {
+          setAlertMsg(formatErrorsMessage(submitErrors));
+          return;
         }
         const resolvedTransportType = transportRequired
           ? transportType
@@ -3116,11 +3220,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       }
     },
     (formErrors: FieldErrors<TaskFormValues>) => {
-      if (formErrors.assignees) {
-        setIsSubmitting(false);
-        setAlertMsg(
-          String(formErrors.assignees.message || t('assigneeRequiredError')),
-        );
+      setIsSubmitting(false);
+      const allErrors = collectErrorMessages(formErrors);
+      if (allErrors.length > 0) {
+        setAlertMsg(formatErrorsMessage(allErrors));
       }
     },
   );
@@ -3565,6 +3668,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                       className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
                       disabled={!editing || entityKind === 'request'}
                     >
+                      <option value="">{t('taskTypePlaceholder')}</option>
                       {(entityKind === 'request'
                         ? requestTypeOptions
                         : taskTypeOptions
@@ -3574,6 +3678,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                         </option>
                       ))}
                     </select>
+                    {editing && taskTypeError && (
+                      <p className="mt-1 text-sm text-red-600">
+                        {taskTypeError}
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium">
@@ -3655,6 +3764,20 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                 className="focus:ring-brand-200 focus:border-accentPrimary min-w-0 flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
                                 disabled={!editing}
                               />
+                              {editing &&
+                              (startLink ||
+                                startCoordinates ||
+                                start.trim()) ? (
+                                <button
+                                  type="button"
+                                  onClick={clearStartPoint}
+                                  className="flex h-10 w-10 items-center justify-center rounded-full text-red-600 transition hover:bg-red-50"
+                                  title={t('clearPoint')}
+                                  aria-label={t('clearPoint')}
+                                >
+                                  <XMarkIcon className="h-5 w-5" />
+                                </button>
+                              ) : null}
                               <a
                                 href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
                                 target="_blank"
@@ -3692,6 +3815,36 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                 ))}
                               </select>
                             </div>
+                            {startLink || start || startCoordinates ? (
+                              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+                                {startLink ? (
+                                  <a
+                                    href={startLink}
+                                    target="_blank"
+                                    rel="noopener"
+                                    className="font-semibold text-accentPrimary underline decoration-dotted"
+                                  >
+                                    {buildPointLabel(
+                                      start,
+                                      startLink,
+                                      startCoordinates,
+                                      1,
+                                      2,
+                                    )}
+                                  </a>
+                                ) : (
+                                  <span className="font-semibold text-slate-700">
+                                    {buildPointLabel(
+                                      start,
+                                      startLink,
+                                      startCoordinates,
+                                      1,
+                                      2,
+                                    )}
+                                  </span>
+                                )}
+                              </div>
+                            ) : null}
                             {startCoordinates && (
                               <input
                                 id="task-start-coordinates"
@@ -3822,10 +3975,35 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                       ))}
                                     </select>
                                   </div>
-                                  {point.title ? (
-                                    <p className="mt-1 text-xs text-slate-500">
-                                      {point.title}
-                                    </p>
+                                  {point.title || point.link ? (
+                                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                                      {point.link ? (
+                                        <a
+                                          href={point.link}
+                                          target="_blank"
+                                          rel="noopener"
+                                          className="font-semibold text-accentPrimary underline decoration-dotted"
+                                        >
+                                          {buildPointLabel(
+                                            point.title,
+                                            point.link,
+                                            point.coordinates,
+                                            1,
+                                            2,
+                                          )}
+                                        </a>
+                                      ) : (
+                                        <span>
+                                          {buildPointLabel(
+                                            point.title,
+                                            point.link,
+                                            point.coordinates,
+                                            1,
+                                            2,
+                                          )}
+                                        </span>
+                                      )}
+                                    </div>
                                   ) : null}
                                   {collectionObjectsLoading ? (
                                     <p className="mt-1 text-xs text-slate-500">
@@ -3870,6 +4048,18 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                 className="focus:ring-brand-200 focus:border-accentPrimary min-w-0 flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
                                 disabled={!editing}
                               />
+                              {editing &&
+                              (endLink || finishCoordinates || end.trim()) ? (
+                                <button
+                                  type="button"
+                                  onClick={clearFinishPoint}
+                                  className="flex h-10 w-10 items-center justify-center rounded-full text-red-600 transition hover:bg-red-50"
+                                  title={t('clearPoint')}
+                                  aria-label={t('clearPoint')}
+                                >
+                                  <XMarkIcon className="h-5 w-5" />
+                                </button>
+                              ) : null}
                               <a
                                 href="https://maps.app.goo.gl/xsiC9fHdunCcifQF6"
                                 target="_blank"
@@ -3907,6 +4097,36 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                 ))}
                               </select>
                             </div>
+                            {endLink || end || finishCoordinates ? (
+                              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-600">
+                                {endLink ? (
+                                  <a
+                                    href={endLink}
+                                    target="_blank"
+                                    rel="noopener"
+                                    className="font-semibold text-accentPrimary underline decoration-dotted"
+                                  >
+                                    {buildPointLabel(
+                                      end,
+                                      endLink,
+                                      finishCoordinates,
+                                      1,
+                                      2,
+                                    )}
+                                  </a>
+                                ) : (
+                                  <span className="font-semibold text-slate-700">
+                                    {buildPointLabel(
+                                      end,
+                                      endLink,
+                                      finishCoordinates,
+                                      1,
+                                      2,
+                                    )}
+                                  </span>
+                                )}
+                              </div>
+                            ) : null}
                             {finishCoordinates && (
                               <input
                                 id="task-finish-coordinates"
@@ -4203,9 +4423,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                           {t('delete')}
                         </Button>
                       )}
-                      {editing && (
+                      {editing && !hasBlockingErrors && (
                         <Button
-                          variant="default"
+                          variant="success"
                           size="pill"
                           disabled={isSubmitting}
                           onClick={() => setShowSaveConfirm(true)}
@@ -4218,6 +4438,19 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                             t('create')
                           )}
                         </Button>
+                      )}
+                      {editing && hasBlockingErrors && (
+                        <div className="max-w-[320px] rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 sm:max-w-[360px]">
+                          <p className="font-semibold text-red-800">
+                            {t('taskValidationFailed')}
+                          </p>
+                          <textarea
+                            readOnly
+                            value={formatErrorsMessage(blockingErrors)}
+                            className="mt-2 w-full resize-none rounded-md border border-red-200 bg-white/70 p-2 text-[11px] leading-snug text-red-700 focus:outline-none"
+                            rows={Math.min(blockingErrors.length + 1, 6)}
+                          />
+                        </div>
                       )}
                     </div>
                   </div>

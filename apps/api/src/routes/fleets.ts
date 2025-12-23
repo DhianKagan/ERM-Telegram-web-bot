@@ -20,9 +20,13 @@ const limiter = createRateLimiter({
   name: 'fleets',
 });
 
-const middlewares = [
+const baseMiddlewares = [
   authMiddleware(),
   limiter as unknown as RequestHandler,
+];
+
+const adminMiddlewares = [
+  ...baseMiddlewares,
   Roles(ACCESS_ADMIN) as unknown as RequestHandler,
   rolesGuard as unknown as RequestHandler,
 ];
@@ -135,7 +139,7 @@ function mapVehicle(
 
 router.get(
   '/',
-  ...middlewares,
+  ...baseMiddlewares,
   query('page').optional().isInt({ min: 1 }),
   query('limit').optional().isInt({ min: 1, max: 100 }),
   async (req, res) => {
@@ -166,7 +170,7 @@ router.get(
 
 router.post(
   '/',
-  ...middlewares,
+  ...adminMiddlewares,
   ...(validateDto(CreateFleetDto) as RequestHandler[]),
   async (req, res) => {
     const payload = {
@@ -192,7 +196,7 @@ router.post(
 
 router.put(
   '/:id',
-  ...middlewares,
+  ...adminMiddlewares,
   param('id').isMongoId(),
   ...(validateDto(UpdateFleetDto) as RequestHandler[]),
   async (req, res) => {
@@ -249,7 +253,7 @@ router.put(
 
 router.delete(
   '/:id',
-  ...middlewares,
+  ...adminMiddlewares,
   param('id').isMongoId(),
   async (req, res) => {
     const deleted = await FleetVehicle.findByIdAndDelete(req.params.id);

@@ -1,0 +1,50 @@
+diff --git a/apps/api/src/utils/formatTask.ts b/apps/api/src/utils/formatTask.ts
+index a18d7f0..84fbbc1 100644
+--- a/apps/api/src/utils/formatTask.ts
++++ b/apps/api/src/utils/formatTask.ts
+@@ -858,6 +858,44 @@ export default function formatTask(
+       const arrow = start && end ? ' → ' : '';
+       logisticsLines.push(`📍 ${startLink}${arrow}${endLink}`);
+     }
++    const orderedPoints = Array.isArray(task.points)
++      ? [...task.points].sort((a, b) => a.order - b.order)
++      : [];
++    if (orderedPoints.length > 2) {
++      const startIndexRaw = orderedPoints.findIndex(
++        (point) => point.kind === 'start',
++      );
++      const startIndex = startIndexRaw >= 0 ? startIndexRaw : 0;
++      const finishIndexRaw =
++        orderedPoints.length -
++        1 -
++        [...orderedPoints].reverse().findIndex(
++          (point) => point.kind === 'finish',
++        );
++      const finishIndex =
++        finishIndexRaw >= 0 && finishIndexRaw < orderedPoints.length
++          ? finishIndexRaw
++          : orderedPoints.length - 1;
++      const viaPoints =
++        finishIndex - startIndex > 1
++          ? orderedPoints.slice(startIndex + 1, finishIndex)
++          : [];
++      viaPoints.forEach((point) => {
++        const label = buildPointLabel(
++          point.title ?? '',
++          point.sourceUrl,
++          point.coordinates ?? null,
++        );
++        if (!label) {
++          return;
++        }
++        const escapedLabel = mdEscape(label);
++        const viaLine = point.sourceUrl
++          ? `• [${escapedLabel}](${mdEscape(point.sourceUrl)})`
++          : `• ${escapedLabel}`;
++        logisticsLines.push(viaLine);
++      });
++    }
+     if (
+       task.route_distance_km !== undefined &&
+       task.route_distance_km !== null
+     ) {

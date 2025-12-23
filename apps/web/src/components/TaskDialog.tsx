@@ -3627,8 +3627,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
               </button>
             </div>
             <>
-              <div className="grid gap-6 lg:grid-cols-[minmax(0,1.8fr)_minmax(0,1fr)] xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-                <div className="space-y-5">
+              <div className="flex flex-col gap-6">
+                <div className="space-y-4">
                   <div>
                     <Controller
                       name="assignees"
@@ -3672,26 +3672,64 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                       )}
                     />
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium">
-                      {t('taskType')}
-                    </label>
-                    <select
-                      value={taskType}
-                      onChange={(e) => handleTaskTypeChange(e.target.value)}
-                      className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
-                      disabled={!editing || entityKind === 'request'}
-                    >
-                      <option value="">{t('taskTypePlaceholder')}</option>
-                      {(entityKind === 'request'
-                        ? requestTypeOptions
-                        : taskTypeOptions
-                      ).map((option) => (
-                        <option key={option} value={option}>
-                          {option}
-                        </option>
-                      ))}
-                    </select>
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                      <div>
+                        <label className="block text-sm font-medium">
+                          {t('taskType')}
+                        </label>
+                        <select
+                          value={taskType}
+                          onChange={(e) => handleTaskTypeChange(e.target.value)}
+                          className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                          disabled={!editing || entityKind === 'request'}
+                        >
+                          <option value="">{t('taskTypePlaceholder')}</option>
+                          {(entityKind === 'request'
+                            ? requestTypeOptions
+                            : taskTypeOptions
+                          ).map((option) => (
+                            <option key={option} value={option}>
+                              {option}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium">
+                          {t('status')}
+                        </label>
+                        <select
+                          value={status}
+                          onChange={(e) => setStatus(e.target.value)}
+                          className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                          disabled={!editing}
+                        >
+                          {statuses.map((option) => (
+                            <option key={option} value={option}>
+                              {option}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium">
+                          {t('priority')}
+                        </label>
+                        <select
+                          value={priority}
+                          onChange={(e) => setPriority(e.target.value)}
+                          className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                          disabled={!editing}
+                        >
+                          {priorities.map((option) => (
+                            <option key={option} value={option}>
+                              {option}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
                     {editing && taskTypeError && (
                       <p className="mt-1 text-sm text-red-600">
                         {taskTypeError}
@@ -4493,7 +4531,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                     />
                   )}
                 </div>
-                <aside className="space-y-5 rounded-xl border border-slate-200 bg-slate-50/80 p-5">
+                <aside className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/80 p-5">
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
                       <label
@@ -4548,40 +4586,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                         {payments.map((p) => (
                           <option key={p} value={p}>
                             {p}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium">
-                        {t('priority')}
-                      </label>
-                      <select
-                        value={priority}
-                        onChange={(e) => setPriority(e.target.value)}
-                        className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
-                        disabled={!editing}
-                      >
-                        {priorities.map((option) => (
-                          <option key={option} value={option}>
-                            {option}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium">
-                        {t('status')}
-                      </label>
-                      <select
-                        value={status}
-                        onChange={(e) => setStatus(e.target.value)}
-                        className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
-                        disabled={!editing}
-                      >
-                        {statuses.map((option) => (
-                          <option key={option} value={option}>
-                            {option}
                           </option>
                         ))}
                       </select>

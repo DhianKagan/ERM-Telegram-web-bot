@@ -619,10 +619,7 @@ const resolveLocationLink = async (
 };
 
 const trimPointLabel = (value: string, maxWords: number): string => {
-  const trimmed = value
-    .split(/[—–-]/)[0]
-    .split(',')[0]
-    .trim();
+  const trimmed = value.split(/[—–-]/)[0].split(',')[0].trim();
   if (!trimmed) return value.trim();
   const words = trimmed.split(/\s+/).filter(Boolean);
   if (!words.length) return value.trim();
@@ -879,7 +876,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     (user?.role ?? '').toLowerCase() === 'admin' ||
     hasAccess(accessMask, ACCESS_ADMIN) ||
     hasAccess(accessMask, ACCESS_TASK_DELETE);
-  const normalizedAccess = Number.isFinite(accessMask) ? accessMask : Number.NaN;
+  const normalizedAccess = Number.isFinite(accessMask)
+    ? accessMask
+    : Number.NaN;
   const canDeleteTask =
     Number.isFinite(normalizedAccess) &&
     (normalizedAccess & ACCESS_TASK_DELETE) === ACCESS_TASK_DELETE;
@@ -2094,51 +2093,48 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     return null;
   };
 
-  const buildPointsPayload = React.useCallback(
-    (): TaskPoint[] => {
-      const points: TaskPoint[] = [];
-      if (startCoordinates) {
-        points.push({
-          order: points.length,
-          kind: 'start',
-          coordinates: startCoordinates,
-          title: start.trim() || undefined,
-          sourceUrl: startLink.trim() || undefined,
-        });
-      }
-      viaPoints.forEach((point) => {
-        const coords = resolveViaCoordinates(point);
-        if (!coords) return;
-        points.push({
-          order: points.length,
-          kind: 'via',
-          coordinates: coords,
-          title: point.title.trim() || undefined,
-          sourceUrl: point.link.trim() || undefined,
-        });
+  const buildPointsPayload = React.useCallback((): TaskPoint[] => {
+    const points: TaskPoint[] = [];
+    if (startCoordinates) {
+      points.push({
+        order: points.length,
+        kind: 'start',
+        coordinates: startCoordinates,
+        title: start.trim() || undefined,
+        sourceUrl: startLink.trim() || undefined,
       });
-      if (finishCoordinates) {
-        points.push({
-          order: points.length,
-          kind: 'finish',
-          coordinates: finishCoordinates,
-          title: end.trim() || undefined,
-          sourceUrl: endLink.trim() || undefined,
-        });
-      }
-      return points;
-    },
-    [
-      end,
-      endLink,
-      finishCoordinates,
-      resolveViaCoordinates,
-      start,
-      startCoordinates,
-      startLink,
-      viaPoints,
-    ],
-  );
+    }
+    viaPoints.forEach((point) => {
+      const coords = resolveViaCoordinates(point);
+      if (!coords) return;
+      points.push({
+        order: points.length,
+        kind: 'via',
+        coordinates: coords,
+        title: point.title.trim() || undefined,
+        sourceUrl: point.link.trim() || undefined,
+      });
+    });
+    if (finishCoordinates) {
+      points.push({
+        order: points.length,
+        kind: 'finish',
+        coordinates: finishCoordinates,
+        title: end.trim() || undefined,
+        sourceUrl: endLink.trim() || undefined,
+      });
+    }
+    return points;
+  }, [
+    end,
+    endLink,
+    finishCoordinates,
+    resolveViaCoordinates,
+    start,
+    startCoordinates,
+    startLink,
+    viaPoints,
+  ]);
 
   const collectDraftPayload = React.useCallback(() => {
     const values = getValues();
@@ -2478,8 +2474,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     if (!startCoordinates || !finishCoordinates) return [];
     const viaCoords = viaPoints
       .map((point) => resolveViaCoordinates(point))
-      .filter(
-        (coords): coords is { lat: number; lng: number } => Boolean(coords),
+      .filter((coords): coords is { lat: number; lng: number } =>
+        Boolean(coords),
       );
     if (viaCoords.length !== viaPoints.length) return [];
     return [startCoordinates, ...viaCoords, finishCoordinates];
@@ -3811,7 +3807,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                 ref={startLinkInputRef}
                                 name="startLink"
                                 value={startLink}
-                                onChange={(e) => handleStartLink(e.target.value)}
+                                onChange={(e) =>
+                                  handleStartLink(e.target.value)
+                                }
                                 placeholder={t('googleMapsLink')}
                                 className="focus:ring-brand-200 focus:border-accentPrimary min-w-0 flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
                                 disabled={!editing}
@@ -3861,7 +3859,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                   {t('collectionAddressPlaceholder')}
                                 </option>
                                 {collectionOptions.map((option) => (
-                                  <option key={option.value} value={option.value}>
+                                  <option
+                                    key={option.value}
+                                    value={option.value}
+                                  >
                                     {option.label}
                                   </option>
                                 ))}
@@ -4143,7 +4144,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                   {t('collectionAddressPlaceholder')}
                                 </option>
                                 {collectionOptions.map((option) => (
-                                  <option key={option.value} value={option.value}>
+                                  <option
+                                    key={option.value}
+                                    value={option.value}
+                                  >
                                     {option.label}
                                   </option>
                                 ))}
@@ -4343,6 +4347,208 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                       readOnly={!editing}
                     />
                   </div>
+                  <aside className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/80 p-5">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <label
+                          className="block text-sm font-medium"
+                          htmlFor="task-dialog-start-date"
+                        >
+                          {t('startDate')}
+                        </label>
+                        <input
+                          id="task-dialog-start-date"
+                          type="datetime-local"
+                          {...register('startDate')}
+                          min={formatIsoForInput(created)}
+                          className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                          disabled={!editing}
+                        />
+                        {!isEdit && startDateNotice ? (
+                          <p className="mt-1 text-xs font-medium text-amber-600">
+                            {t('startDateAutoNotice', {
+                              date: startDateNotice,
+                            })}
+                          </p>
+                        ) : null}
+                      </div>
+                      <div>
+                        <label
+                          className="block text-sm font-medium"
+                          htmlFor="task-dialog-due-date"
+                        >
+                          {t('dueDate')}
+                        </label>
+                        <input
+                          id="task-dialog-due-date"
+                          type="datetime-local"
+                          {...register('dueDate', {
+                            onChange: handleDueDateChange,
+                          })}
+                          className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                          disabled={!editing}
+                        />
+                      </div>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <label className="block text-sm font-medium">
+                          {t('paymentMethod')}
+                        </label>
+                        <select
+                          value={paymentMethod}
+                          onChange={(e) => setPaymentMethod(e.target.value)}
+                          className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                          disabled={!editing}
+                        >
+                          {payments.map((p) => (
+                            <option key={p} value={p}>
+                              {p}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label
+                          className="block text-sm font-medium"
+                          htmlFor="task-dialog-completed-at"
+                        >
+                          {t('actualTime')}
+                        </label>
+                        <input
+                          type="datetime-local"
+                          id="task-dialog-completed-at"
+                          name="completedAtDisplay"
+                          value={
+                            completedAt ? formatIsoForInput(completedAt) : ''
+                          }
+                          readOnly
+                          placeholder="—"
+                          className="w-full rounded-md border border-slate-200 bg-slate-100 px-2.5 py-1.5 text-sm text-slate-700 focus:outline-none"
+                        />
+                      </div>
+                      <div className="sm:col-span-2">
+                        <label
+                          className="block text-sm font-medium"
+                          htmlFor="task-payment-amount"
+                        >
+                          {t('paymentAmount')}
+                        </label>
+                        <div
+                          className={`focus-within:border-accentPrimary focus-within:ring-brand-200 flex items-center rounded-md border border-slate-200 bg-white text-sm transition focus-within:ring ${
+                            editing ? '' : 'opacity-80'
+                          }`}
+                        >
+                          <input
+                            id="task-payment-amount"
+                            name="paymentAmount"
+                            value={paymentAmount}
+                            onChange={(e) => setPaymentAmount(e.target.value)}
+                            onBlur={(e) =>
+                              setPaymentAmount(
+                                formatCurrencyDisplay(e.target.value),
+                              )
+                            }
+                            className="min-w-0 flex-1 bg-transparent px-2.5 py-1.5 focus:outline-none"
+                            inputMode="decimal"
+                            disabled={!editing}
+                          />
+                          <span className="px-2 text-xs text-slate-500">
+                            грн
+                          </span>
+                        </div>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {t('paymentAmountFormat')}
+                        </p>
+                      </div>
+                    </div>
+                    {showTransportFields && (
+                      <div className="space-y-4">
+                        <div className="space-y-1.5">
+                          <SingleSelect
+                            label={t('transportDriver')}
+                            options={driverOptions}
+                            value={transportDriverId || null}
+                            onChange={(option) => {
+                              const value = option?.value ?? '';
+                              setTransportDriverId(value);
+                              if (!value) {
+                                setTransportDriverName('');
+                                return;
+                              }
+                              setTransportDriverName(option?.label ?? value);
+                            }}
+                            disabled={
+                              !canEditTransport || !transportRequiresDetails
+                            }
+                            placeholder={t('transportDriverPlaceholder')}
+                          />
+                          {transportOptionsLoading &&
+                          transportRequiresDetails ? (
+                            <p className="mt-1 text-xs text-slate-500">
+                              {t('transportOptionsLoading')}
+                            </p>
+                          ) : null}
+                          {transportOptionsError ? (
+                            <p className="mt-1 text-xs text-red-600">
+                              {transportOptionsError}
+                              {canEditTransport ? (
+                                <button
+                                  type="button"
+                                  className="ml-2 text-accentPrimary underline decoration-dotted"
+                                  onClick={() => {
+                                    setTransportOptionsLoaded(false);
+                                    void loadTransportOptions(true);
+                                  }}
+                                >
+                                  {t('transportOptionsReload')}
+                                </button>
+                              ) : null}
+                            </p>
+                          ) : null}
+                        </div>
+                        <div className="space-y-1.5">
+                          <SingleSelect
+                            label={t('transportVehicle')}
+                            options={vehicleSelectOptions}
+                            value={transportVehicleId || null}
+                            onChange={(option) => {
+                              const value = option?.value ?? '';
+                              setTransportVehicleId(value);
+                              if (!value) {
+                                setTransportVehicleName('');
+                                setTransportVehicleRegistration('');
+                                return;
+                              }
+                              const candidate = vehicleOptions.find(
+                                (vehicle) => vehicle.id === value,
+                              );
+                              if (candidate) {
+                                setTransportVehicleName(candidate.name);
+                                setTransportVehicleRegistration(
+                                  candidate.registrationNumber,
+                                );
+                              } else {
+                                setTransportVehicleName(option?.label ?? value);
+                                setTransportVehicleRegistration('');
+                              }
+                            }}
+                            disabled={
+                              !canEditTransport || !transportRequiresDetails
+                            }
+                            placeholder={t('transportVehiclePlaceholder')}
+                          />
+                          {!transportRequiresDetails && transportVehicleName ? (
+                            <p className="mt-1 text-xs text-slate-500">
+                              {transportVehicleRegistration
+                                ? `${transportVehicleName} (${transportVehicleRegistration})`
+                                : transportVehicleName}
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
+                    )}
+                  </aside>
                   {attachments.length > 0 && (
                     <div className="space-y-2">
                       <label className="block text-sm font-medium">
@@ -4531,203 +4737,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                     />
                   )}
                 </div>
-                <aside className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/80 p-5">
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <label
-                        className="block text-sm font-medium"
-                        htmlFor="task-dialog-start-date"
-                      >
-                        {t('startDate')}
-                      </label>
-                      <input
-                        id="task-dialog-start-date"
-                        type="datetime-local"
-                        {...register('startDate')}
-                        min={formatIsoForInput(created)}
-                        className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
-                        disabled={!editing}
-                      />
-                      {!isEdit && startDateNotice ? (
-                        <p className="mt-1 text-xs font-medium text-amber-600">
-                          {t('startDateAutoNotice', { date: startDateNotice })}
-                        </p>
-                      ) : null}
-                    </div>
-                    <div>
-                      <label
-                        className="block text-sm font-medium"
-                        htmlFor="task-dialog-due-date"
-                      >
-                        {t('dueDate')}
-                      </label>
-                      <input
-                        id="task-dialog-due-date"
-                        type="datetime-local"
-                        {...register('dueDate', {
-                          onChange: handleDueDateChange,
-                        })}
-                        className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
-                        disabled={!editing}
-                      />
-                    </div>
-                  </div>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <div>
-                      <label className="block text-sm font-medium">
-                        {t('paymentMethod')}
-                      </label>
-                      <select
-                        value={paymentMethod}
-                        onChange={(e) => setPaymentMethod(e.target.value)}
-                        className="focus:ring-brand-200 focus:border-accentPrimary w-full rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
-                        disabled={!editing}
-                      >
-                        {payments.map((p) => (
-                          <option key={p} value={p}>
-                            {p}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label
-                        className="block text-sm font-medium"
-                        htmlFor="task-dialog-completed-at"
-                      >
-                        {t('actualTime')}
-                      </label>
-                      <input
-                        type="datetime-local"
-                        id="task-dialog-completed-at"
-                        name="completedAtDisplay"
-                        value={
-                          completedAt ? formatIsoForInput(completedAt) : ''
-                        }
-                        readOnly
-                        placeholder="—"
-                        className="w-full rounded-md border border-slate-200 bg-slate-100 px-2.5 py-1.5 text-sm text-slate-700 focus:outline-none"
-                      />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <label
-                        className="block text-sm font-medium"
-                        htmlFor="task-payment-amount"
-                      >
-                        {t('paymentAmount')}
-                      </label>
-                      <div
-                        className={`focus-within:border-accentPrimary focus-within:ring-brand-200 flex items-center rounded-md border border-slate-200 bg-white text-sm transition focus-within:ring ${
-                          editing ? '' : 'opacity-80'
-                        }`}
-                      >
-                        <input
-                          id="task-payment-amount"
-                          name="paymentAmount"
-                          value={paymentAmount}
-                          onChange={(e) => setPaymentAmount(e.target.value)}
-                          onBlur={(e) =>
-                            setPaymentAmount(
-                              formatCurrencyDisplay(e.target.value),
-                            )
-                          }
-                          className="min-w-0 flex-1 bg-transparent px-2.5 py-1.5 focus:outline-none"
-                          inputMode="decimal"
-                          disabled={!editing}
-                        />
-                        <span className="px-2 text-xs text-slate-500">грн</span>
-                      </div>
-                      <p className="mt-1 text-xs text-slate-500">
-                        {t('paymentAmountFormat')}
-                      </p>
-                    </div>
-                  </div>
-                  {showTransportFields && (
-                    <div className="space-y-4">
-                      <div className="space-y-1.5">
-                        <SingleSelect
-                          label={t('transportDriver')}
-                          options={driverOptions}
-                          value={transportDriverId || null}
-                          onChange={(option) => {
-                            const value = option?.value ?? '';
-                            setTransportDriverId(value);
-                            if (!value) {
-                              setTransportDriverName('');
-                              return;
-                            }
-                            setTransportDriverName(option?.label ?? value);
-                          }}
-                          disabled={
-                            !canEditTransport || !transportRequiresDetails
-                          }
-                          placeholder={t('transportDriverPlaceholder')}
-                        />
-                        {transportOptionsLoading && transportRequiresDetails ? (
-                          <p className="mt-1 text-xs text-slate-500">
-                            {t('transportOptionsLoading')}
-                          </p>
-                        ) : null}
-                        {transportOptionsError ? (
-                          <p className="mt-1 text-xs text-red-600">
-                            {transportOptionsError}
-                            {canEditTransport ? (
-                              <button
-                                type="button"
-                                className="ml-2 text-accentPrimary underline decoration-dotted"
-                                onClick={() => {
-                                  setTransportOptionsLoaded(false);
-                                  void loadTransportOptions(true);
-                                }}
-                              >
-                                {t('transportOptionsReload')}
-                              </button>
-                            ) : null}
-                          </p>
-                        ) : null}
-                      </div>
-                      <div className="space-y-1.5">
-                        <SingleSelect
-                          label={t('transportVehicle')}
-                          options={vehicleSelectOptions}
-                          value={transportVehicleId || null}
-                          onChange={(option) => {
-                            const value = option?.value ?? '';
-                            setTransportVehicleId(value);
-                            if (!value) {
-                              setTransportVehicleName('');
-                              setTransportVehicleRegistration('');
-                              return;
-                            }
-                            const candidate = vehicleOptions.find(
-                              (vehicle) => vehicle.id === value,
-                            );
-                            if (candidate) {
-                              setTransportVehicleName(candidate.name);
-                              setTransportVehicleRegistration(
-                                candidate.registrationNumber,
-                              );
-                            } else {
-                              setTransportVehicleName(option?.label ?? value);
-                              setTransportVehicleRegistration('');
-                            }
-                          }}
-                          disabled={
-                            !canEditTransport || !transportRequiresDetails
-                          }
-                          placeholder={t('transportVehiclePlaceholder')}
-                        />
-                        {!transportRequiresDetails && transportVehicleName ? (
-                          <p className="mt-1 text-xs text-slate-500">
-                            {transportVehicleRegistration
-                              ? `${transportVehicleName} (${transportVehicleRegistration})`
-                              : transportVehicleName}
-                          </p>
-                        ) : null}
-                      </div>
-                    </div>
-                  )}
-                </aside>
               </div>
               {canDeleteTask && (
                 <ConfirmDialog

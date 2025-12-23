@@ -1,0 +1,538 @@
+diff --git a/apps/web/src/components/ui/UiButton.tsx b/apps/web/src/components/ui/UiButton.tsx
+new file mode 100644
+index 0000000..53225b3
+--- /dev/null
++++ b/apps/web/src/components/ui/UiButton.tsx
+@@ -0,0 +1,57 @@
++/**
++ * Назначение файла: кнопка на базе DaisyUI.
++ * Основные модули: React, cn.
++ */
++import * as React from 'react';
++
++import { cn } from '@/lib/utils';
++
++export type UiButtonVariant =
++  | 'primary'
++  | 'secondary'
++  | 'accent'
++  | 'neutral'
++  | 'ghost'
++  | 'link'
++  | 'outline';
++
++export type UiButtonSize = 'xs' | 'sm' | 'md' | 'lg';
++
++export type UiButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
++  variant?: UiButtonVariant;
++  size?: UiButtonSize;
++};
++
++const variantClasses: Record<UiButtonVariant, string> = {
++  primary: 'btn-primary',
++  secondary: 'btn-secondary',
++  accent: 'btn-accent',
++  neutral: 'btn-neutral',
++  ghost: 'btn-ghost',
++  link: 'btn-link',
++  outline: 'btn-outline',
++};
++
++const sizeClasses: Record<UiButtonSize, string> = {
++  xs: 'btn-xs',
++  sm: 'btn-sm',
++  md: 'btn-md',
++  lg: 'btn-lg',
++};
++
++const UiButton = React.forwardRef<HTMLButtonElement, UiButtonProps>(
++  ({ variant = 'primary', size = 'md', type = 'button', className, ...props }, ref) => {
++    return (
++      <button
++        ref={ref}
++        type={type}
++        className={cn('btn', variantClasses[variant], sizeClasses[size], className)}
++        {...props}
++      />
++    );
++  },
++);
++
++UiButton.displayName = 'UiButton';
++
++export { UiButton };
+
+diff --git a/apps/web/src/components/ui/UiCard.tsx b/apps/web/src/components/ui/UiCard.tsx
+new file mode 100644
+index 0000000..308fc74
+--- /dev/null
++++ b/apps/web/src/components/ui/UiCard.tsx
+@@ -0,0 +1,29 @@
++/**
++ * Назначение файла: карточка на базе DaisyUI.
++ * Основные модули: React, cn.
++ */
++import * as React from 'react';
++
++import { cn } from '@/lib/utils';
++
++export type UiCardProps = React.HTMLAttributes<HTMLDivElement> & {
++  bodyClassName?: string;
++};
++
++const UiCard = React.forwardRef<HTMLDivElement, UiCardProps>(
++  ({ className, bodyClassName, children, ...props }, ref) => {
++    return (
++      <div
++        ref={ref}
++        className={cn('card bg-base-100 shadow', className)}
++        {...props}
++      >
++        <div className={cn('card-body', bodyClassName)}>{children}</div>
++      </div>
++    );
++  },
++);
++
++UiCard.displayName = 'UiCard';
++
++export { UiCard };
+
+diff --git a/apps/web/src/components/ui/UiCheckbox.tsx b/apps/web/src/components/ui/UiCheckbox.tsx
+new file mode 100644
+index 0000000..4936ed2
+--- /dev/null
++++ b/apps/web/src/components/ui/UiCheckbox.tsx
+@@ -0,0 +1,29 @@
++/**
++ * Назначение файла: чекбокс на базе DaisyUI.
++ * Основные модули: React, cn.
++ */
++import * as React from 'react';
++
++import { cn } from '@/lib/utils';
++
++export type UiCheckboxProps = Omit<
++  React.InputHTMLAttributes<HTMLInputElement>,
++  'type'
++>;
++
++const UiCheckbox = React.forwardRef<HTMLInputElement, UiCheckboxProps>(
++  ({ className, ...props }, ref) => {
++    return (
++      <input
++        ref={ref}
++        type="checkbox"
++        className={cn('checkbox', className)}
++        {...props}
++      />
++    );
++  },
++);
++
++UiCheckbox.displayName = 'UiCheckbox';
++
++export { UiCheckbox };
+
+diff --git a/apps/web/src/components/ui/UiFormGroup.tsx b/apps/web/src/components/ui/UiFormGroup.tsx
+new file mode 100644
+index 0000000..2f25ddf
+--- /dev/null
++++ b/apps/web/src/components/ui/UiFormGroup.tsx
+@@ -0,0 +1,39 @@
++/**
++ * Назначение файла: группировка поля формы на базе DaisyUI.
++ * Основные модули: React, cn.
++ */
++import * as React from 'react';
++
++import { cn } from '@/lib/utils';
++
++export type UiFormGroupProps = React.HTMLAttributes<HTMLDivElement> & {
++  label?: React.ReactNode;
++  help?: React.ReactNode;
++  error?: React.ReactNode;
++  htmlFor?: string;
++};
++
++const UiFormGroup = React.forwardRef<HTMLDivElement, UiFormGroupProps>(
++  ({ className, label, help, error, htmlFor, children, ...props }, ref) => {
++    return (
++      <div ref={ref} className={cn('form-control w-full', className)} {...props}>
++        {label ? (
++          <label className="label" htmlFor={htmlFor}>
++            <span className="label-text">{label}</span>
++          </label>
++        ) : null}
++        {children}
++        {help ? (
++          <p className="mt-1 text-xs text-base-content/70">{help}</p>
++        ) : null}
++        {error ? (
++          <p className="mt-1 text-xs text-error">{error}</p>
++        ) : null}
++      </div>
++    );
++  },
++);
++
++UiFormGroup.displayName = 'UiFormGroup';
++
++export { UiFormGroup };
+
+diff --git a/apps/web/src/components/ui/UiInput.tsx b/apps/web/src/components/ui/UiInput.tsx
+new file mode 100644
+index 0000000..b45be47
+--- /dev/null
++++ b/apps/web/src/components/ui/UiInput.tsx
+@@ -0,0 +1,26 @@
++/**
++ * Назначение файла: поле ввода на базе DaisyUI.
++ * Основные модули: React, cn.
++ */
++import * as React from 'react';
++
++import { cn } from '@/lib/utils';
++
++export type UiInputProps = React.InputHTMLAttributes<HTMLInputElement>;
++
++const UiInput = React.forwardRef<HTMLInputElement, UiInputProps>(
++  ({ className, type = 'text', ...props }, ref) => {
++    return (
++      <input
++        ref={ref}
++        type={type}
++        className={cn('input input-bordered w-full', className)}
++        {...props}
++      />
++    );
++  },
++);
++
++UiInput.displayName = 'UiInput';
++
++export { UiInput };
+
+diff --git a/apps/web/src/components/ui/UiModal.tsx b/apps/web/src/components/ui/UiModal.tsx
+new file mode 100644
+index 0000000..73562ee
+--- /dev/null
++++ b/apps/web/src/components/ui/UiModal.tsx
+@@ -0,0 +1,32 @@
++/**
++ * Назначение файла: модальное окно на базе DaisyUI.
++ * Основные модули: React, cn.
++ */
++import * as React from 'react';
++
++import { cn } from '@/lib/utils';
++
++export type UiModalProps = Omit<
++  React.ComponentProps<'dialog'>,
++  'open' | 'children'
++> & {
++  open?: boolean;
++  children?: React.ReactNode;
++};
++
++const UiModal = React.forwardRef<HTMLDialogElement, UiModalProps>(
++  ({ className, open = false, children, ...props }, ref) => {
++    return (
++      <dialog ref={ref} open={open} className={cn('modal', className)} {...props}>
++        <div className="modal-box">{children}</div>
++        <form method="dialog" className="modal-backdrop">
++          <button type="submit">close</button>
++        </form>
++      </dialog>
++    );
++  },
++);
++
++UiModal.displayName = 'UiModal';
++
++export { UiModal };
+
+diff --git a/apps/web/src/components/ui/UiRadio.tsx b/apps/web/src/components/ui/UiRadio.tsx
+new file mode 100644
+index 0000000..5625e82
+--- /dev/null
++++ b/apps/web/src/components/ui/UiRadio.tsx
+@@ -0,0 +1,29 @@
++/**
++ * Назначение файла: радиокнопка на базе DaisyUI.
++ * Основные модули: React, cn.
++ */
++import * as React from 'react';
++
++import { cn } from '@/lib/utils';
++
++export type UiRadioProps = Omit<
++  React.InputHTMLAttributes<HTMLInputElement>,
++  'type'
++>;
++
++const UiRadio = React.forwardRef<HTMLInputElement, UiRadioProps>(
++  ({ className, ...props }, ref) => {
++    return (
++      <input
++        ref={ref}
++        type="radio"
++        className={cn('radio', className)}
++        {...props}
++      />
++    );
++  },
++);
++
++UiRadio.displayName = 'UiRadio';
++
++export { UiRadio };
+
+diff --git a/apps/web/src/components/ui/UiSelect.tsx b/apps/web/src/components/ui/UiSelect.tsx
+new file mode 100644
+index 0000000..8061b36
+--- /dev/null
++++ b/apps/web/src/components/ui/UiSelect.tsx
+@@ -0,0 +1,25 @@
++/**
++ * Назначение файла: селект на базе DaisyUI.
++ * Основные модули: React, cn.
++ */
++import * as React from 'react';
++
++import { cn } from '@/lib/utils';
++
++export type UiSelectProps = React.SelectHTMLAttributes<HTMLSelectElement>;
++
++const UiSelect = React.forwardRef<HTMLSelectElement, UiSelectProps>(
++  ({ className, ...props }, ref) => {
++    return (
++      <select
++        ref={ref}
++        className={cn('select select-bordered w-full', className)}
++        {...props}
++      />
++    );
++  },
++);
++
++UiSelect.displayName = 'UiSelect';
++
++export { UiSelect };
+
+diff --git a/apps/web/src/components/ui/UiTable.tsx b/apps/web/src/components/ui/UiTable.tsx
+new file mode 100644
+index 0000000..1289e1c
+--- /dev/null
++++ b/apps/web/src/components/ui/UiTable.tsx
+@@ -0,0 +1,76 @@
++/**
++ * Назначение файла: табличный компонент на базе DaisyUI.
++ * Основные модули: React, cn.
++ */
++import * as React from 'react';
++
++import { cn } from '@/lib/utils';
++
++export type UiTableColumn<T> = {
++  key: string;
++  header: React.ReactNode;
++  render?: (row: T) => React.ReactNode;
++  className?: string;
++  headerClassName?: string;
++};
++
++export type UiTableProps<T> = React.TableHTMLAttributes<HTMLTableElement> & {
++  columns: UiTableColumn<T>[];
++  rows: T[];
++  rowKey: (row: T) => string | number;
++  empty?: React.ReactNode;
++};
++
++const renderCellValue = <T,>(column: UiTableColumn<T>, row: T) => {
++  if (column.render) {
++    return column.render(row);
++  }
++  const record = row as Record<string, React.ReactNode>;
++  return record[column.key];
++};
++
++const UiTable = <T,>({
++  columns,
++  rows,
++  rowKey,
++  empty,
++  className,
++  ...props
++}: UiTableProps<T>) => {
++  const hasRows = rows.length > 0;
++
++  return (
++    <table className={cn('table w-full', className)} {...props}>
++      <thead>
++        <tr>
++          {columns.map((column) => (
++            <th key={column.key} className={column.headerClassName}>
++              {column.header}
++            </th>
++          ))}
++        </tr>
++      </thead>
++      <tbody>
++        {hasRows ? (
++          rows.map((row) => (
++            <tr key={rowKey(row)}>
++              {columns.map((column) => (
++                <td key={column.key} className={column.className}>
++                  {renderCellValue(column, row)}
++                </td>
++              ))}
++            </tr>
++          ))
++        ) : (
++          <tr>
++            <td colSpan={columns.length} className="text-center text-sm opacity-70">
++              {empty ?? 'Нет данных'}
++            </td>
++          </tr>
++        )}
++      </tbody>
++    </table>
++  );
++};
++
++export { UiTable };
+
+diff --git a/apps/web/src/components/ui/__tests__/UiComponents.test.tsx b/apps/web/src/components/ui/__tests__/UiComponents.test.tsx
+new file mode 100644
+index 0000000..10d93e0
+--- /dev/null
++++ b/apps/web/src/components/ui/__tests__/UiComponents.test.tsx
+@@ -0,0 +1,126 @@
++/**
++ * Назначение файла: базовые тесты для компонентов UI.
++ * Основные модули: React, @testing-library/react.
++ */
++import React from 'react';
++import { render, screen } from '@testing-library/react';
++
++import { UiButton } from '../UiButton';
++import { UiCard } from '../UiCard';
++import { UiCheckbox } from '../UiCheckbox';
++import { UiFormGroup } from '../UiFormGroup';
++import { UiInput } from '../UiInput';
++import { UiModal } from '../UiModal';
++import { UiRadio } from '../UiRadio';
++import { UiSelect } from '../UiSelect';
++import { UiTable } from '../UiTable';
++
++describe('Ui components', () => {
++  it('renders UiButton with variant and size classes', () => {
++    render(
++      <UiButton variant="secondary" size="lg">
++        Отправить
++      </UiButton>,
++    );
++
++    const button = screen.getByRole('button', { name: 'Отправить' });
++    expect(button).toHaveClass('btn', 'btn-secondary', 'btn-lg');
++  });
++
++  it('renders UiInput with className and placeholder', () => {
++    render(<UiInput placeholder="Email" className="custom-input" />);
++
++    const input = screen.getByPlaceholderText('Email');
++    expect(input).toHaveClass('input', 'custom-input');
++  });
++
++  it('renders UiSelect with options', () => {
++    render(
++      <UiSelect aria-label="Статус">
++        <option value="new">Новый</option>
++      </UiSelect>,
++    );
++
++    const select = screen.getByRole('combobox', { name: 'Статус' });
++    expect(select).toHaveClass('select');
++  });
++
++  it('renders UiCheckbox with DaisyUI class', () => {
++    render(<UiCheckbox data-testid="checkbox" className="custom-checkbox" />);
++
++    const checkbox = screen.getByTestId('checkbox');
++    expect(checkbox).toHaveClass('checkbox', 'custom-checkbox');
++  });
++
++  it('renders UiRadio with DaisyUI class', () => {
++    render(<UiRadio data-testid="radio" className="custom-radio" />);
++
++    const radio = screen.getByTestId('radio');
++    expect(radio).toHaveClass('radio', 'custom-radio');
++  });
++
++  it('renders UiCard with body content', () => {
++    render(
++      <UiCard>
++        <span>Карточка</span>
++      </UiCard>,
++    );
++
++    expect(screen.getByText('Карточка')).toBeInTheDocument();
++  });
++
++  it('renders UiFormGroup with label, help and error', () => {
++    render(
++      <UiFormGroup label="Название" help="Подсказка" error="Ошибка">
++        <UiInput aria-label="Название" />
++      </UiFormGroup>,
++    );
++
++    expect(screen.getByText('Название')).toBeInTheDocument();
++    expect(screen.getByText('Подсказка')).toBeInTheDocument();
++    expect(screen.getByText('Ошибка')).toBeInTheDocument();
++  });
++
++  it('renders UiTable with rows', () => {
++    const columns = [
++      { key: 'name', header: 'Имя' },
++      { key: 'role', header: 'Роль' },
++    ];
++    const rows = [{ id: 1, name: 'Аня', role: 'Менеджер' }];
++
++    render(
++      <UiTable
++        columns={columns}
++        rows={rows}
++        rowKey={(row) => row.id}
++      />,
++    );
++
++    expect(screen.getByText('Имя')).toBeInTheDocument();
++    expect(screen.getByText('Аня')).toBeInTheDocument();
++  });
++
++  it('renders UiTable empty state', () => {
++    render(
++      <UiTable
++        columns={[{ key: 'name', header: 'Имя' }]}
++        rows={[]}
++        rowKey={(row) => row.name}
++        empty="Пусто"
++      />,
++    );
++
++    expect(screen.getByText('Пусто')).toBeInTheDocument();
++  });
++
++  it('renders UiModal with content', () => {
++    render(
++      <UiModal open>
++        <p>Содержимое</p>
++      </UiModal>,
++    );
++
++    expect(screen.getByRole('dialog')).toBeInTheDocument();
++    expect(screen.getByText('Содержимое')).toBeInTheDocument();
++  });
++});
+

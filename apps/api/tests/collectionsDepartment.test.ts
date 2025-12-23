@@ -13,7 +13,10 @@ const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
 
 jest.mock('../src/utils/rateLimiter', () => () => (_req, _res, next) => next());
-jest.mock('../src/middleware/auth', () => () => (_req, _res, next) => next());
+jest.mock('../src/middleware/auth', () => () => (req, _res, next) => {
+  req.user = { role: 'admin', access: 2 };
+  next();
+});
 jest.mock(
   '../src/middleware/requireRole',
   () => () => (_req, _res, next) => next(),

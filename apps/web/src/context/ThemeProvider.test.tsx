@@ -18,8 +18,10 @@ describe('ThemeProvider', () => {
     cleanup();
     document.cookie = 'theme=;path=/;max-age=0';
     document.cookie = 'theme-tokens=;path=/;max-age=0';
+    window.localStorage.removeItem('theme');
     document.documentElement.className = '';
     document.documentElement.style.cssText = '';
+    document.documentElement.removeAttribute('data-theme');
   });
 
   function readCookie(name: string) {
@@ -42,6 +44,8 @@ describe('ThemeProvider', () => {
         document.documentElement.style.getPropertyValue('--background'),
       ).toBe(presets.dark.background),
     );
+    expect(document.documentElement.dataset.theme).toBe('erm-dark');
+    expect(window.localStorage.getItem('theme')).toBe('dark');
 
     const saved = readCookie('theme-tokens');
     expect(saved).not.toBe('not-json');
@@ -77,10 +81,12 @@ describe('ThemeProvider', () => {
     await waitFor(() =>
       expect(document.documentElement.classList.contains('dark')).toBe(true),
     );
+    expect(document.documentElement.dataset.theme).toBe('erm-dark');
     expect(
       document.documentElement.style.getPropertyValue('--background'),
     ).toBe(presets.dark.background);
 
+    expect(window.localStorage.getItem('theme')).toBe('dark');
     expect(readCookie('theme')).toBe('dark');
     const saved = readCookie('theme-tokens');
     expect(saved).not.toBeNull();

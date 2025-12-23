@@ -1,8 +1,10 @@
 // Назначение файла: инициализация темы до загрузки приложения.
 // Основные модули: document, JSON
 (function () {
+  const storedTheme = localStorage.getItem('theme');
   const m = document.cookie.match(/theme=([^;]+)/);
-  const t = m ? decodeURIComponent(m[1]) : 'light';
+  const cookieTheme = m ? decodeURIComponent(m[1]) : null;
+  const t = storedTheme || cookieTheme || 'light';
   const tokens = document.cookie.match(/theme-tokens=([^;]+)/);
   if (tokens) {
     try {
@@ -48,4 +50,5 @@
     }
   }
   if (t === 'dark') document.documentElement.classList.add('dark');
+  document.documentElement.dataset.theme = `erm-${t}`;
 })();

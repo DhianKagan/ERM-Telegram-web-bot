@@ -332,5 +332,39 @@ export default {
       },
     },
   },
+  daisyui: {
+    themes: [
+      {
+        'erm-light': {
+          'base-100': '#FFFFFF',
+          'base-200': '#F5F7FD',
+          'base-300': '#F1F5F9',
+          primary: '#2563EB',
+          secondary: '#80CAEE',
+          accent: '#465fff',
+          neutral: '#101828',
+          info: '#259AE6',
+          success: '#12b76a',
+          warning: '#f79009',
+          error: '#f04438',
+        },
+      },
+      {
+        'erm-dark': {
+          'base-100': '#1C2434',
+          'base-200': '#24303F',
+          'base-300': '#1A222C',
+          primary: '#2563EB',
+          secondary: '#80CAEE',
+          accent: '#465fff',
+          neutral: '#f2f4f7',
+          info: '#259AE6',
+          success: '#12b76a',
+          warning: '#f79009',
+          error: '#f04438',
+        },
+      },
+    ],
+  },
   plugins: [forms, typography, daisyui],
 } satisfies import('tailwindcss').Config;

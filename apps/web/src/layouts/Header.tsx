@@ -5,7 +5,7 @@ import { Bars3Icon, UserCircleIcon } from '@heroicons/react/24/outline';
 import { useTranslation } from 'react-i18next';
 
 import ProfileDropdown from '../components/ProfileDropdown';
-import ThemeToggle from '../components/ThemeToggle';
+import ThemeToggle from '../components/ui/ThemeToggle';
 import { useAuth } from '../context/useAuth';
 import { useSidebar } from '../context/useSidebar';
 import { Button } from '@/components/ui/button';

@@ -16,6 +16,7 @@ function setCookie(name: string, value: string) {
 
 const presetMap = presets as Record<string, ThemeTokens>;
 const defaultTheme = 'light';
+const themeStorageKey = 'theme';
 
 function sanitizeTokens(
   source: unknown,
@@ -33,9 +34,19 @@ function sanitizeTokens(
   return Object.keys(sanitized).length ? sanitized : null;
 }
 
-function readThemeCookie(): string {
+function readThemeStorage(): string | null {
+  if (typeof window === 'undefined') return null;
+  const stored = window.localStorage.getItem(themeStorageKey);
+  return stored && presetMap[stored] ? stored : null;
+}
+
+function readThemeCookie(): string | null {
   const cookieTheme = getCookie('theme');
-  return cookieTheme && presetMap[cookieTheme] ? cookieTheme : defaultTheme;
+  return cookieTheme && presetMap[cookieTheme] ? cookieTheme : null;
+}
+
+function readInitialTheme(): string {
+  return readThemeStorage() || readThemeCookie() || defaultTheme;
 }
 
 function readTokensCookie(
@@ -73,7 +84,7 @@ function mergeWithPreset(
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const initialTheme = readThemeCookie();
+  const initialTheme = readInitialTheme();
   const initialBase = presetMap[initialTheme] || presetMap[defaultTheme];
   const [theme, setTheme] = useState(initialTheme);
   const [tokens, setTokens] = useState<ThemeTokens>(() =>
@@ -105,6 +116,10 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
     appliedKeys.current = currentKeys;
     root.classList.toggle('dark', theme === 'dark');
+    root.dataset.theme = `erm-${theme}`;
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(themeStorageKey, theme);
+    }
     setCookie('theme', theme);
     setCookie('theme-tokens', JSON.stringify({ theme, tokens }));
   }, [tokens, theme]);

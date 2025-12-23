@@ -2746,7 +2746,7 @@ export default function CollectionsPage() {
                 ))}
               </select>
             </div>
-            <TabsList className="hidden h-auto gap-2 bg-transparent p-0 sm:grid sm:gap-2 sm:p-1 sm:[grid-template-columns:repeat(5,minmax(11rem,1fr))]">
+            <TabsList className="hidden h-auto gap-2 bg-transparent p-0 sm:grid sm:gap-2 sm:p-1 sm:[grid-template-columns:repeat(auto-fit,minmax(9.5rem,1fr))] lg:[grid-template-columns:repeat(auto-fit,minmax(11rem,1fr))]">
               {moduleTabs.map((tab) => {
                 const Icon = tab.icon;
                 const labelId = `${tab.key}-module-tab-label`;
@@ -2755,7 +2755,7 @@ export default function CollectionsPage() {
                     key={tab.key}
                     value={tab.key}
                     aria-labelledby={labelId}
-                    className="group flex h-full min-h-[3.4rem] w-full flex-col items-center justify-center gap-1.5 rounded-xl border border-transparent px-3 py-2 text-sm font-semibold text-[color:var(--color-gray-700)] transition-colors duration-200 ease-out hover:bg-[color:var(--color-gray-50)] focus-visible:ring-2 focus-visible:ring-[color:var(--color-brand-400)] focus-visible:ring-offset-2 dark:text-[color:var(--color-gray-200)] dark:hover:bg-[color:var(--color-gray-800)] data-[state=active]:border-[color:var(--color-gray-200)] data-[state=active]:bg-white data-[state=active]:text-[color:var(--color-brand-600)] data-[state=active]:shadow-sm dark:data-[state=active]:border-[color:var(--color-gray-700)] dark:data-[state=active]:bg-[color:var(--color-gray-dark)] dark:data-[state=active]:text-[color:var(--color-brand-300)]"
+                    className="group flex h-full min-h-[3.1rem] w-full flex-col items-center justify-center gap-1 rounded-xl border border-transparent px-3 py-2 text-sm font-semibold text-[color:var(--color-gray-700)] transition-colors duration-200 ease-out hover:bg-[color:var(--color-gray-50)] focus-visible:ring-2 focus-visible:ring-[color:var(--color-brand-400)] focus-visible:ring-offset-2 dark:text-[color:var(--color-gray-200)] dark:hover:bg-[color:var(--color-gray-800)] data-[state=active]:border-[color:var(--color-gray-200)] data-[state=active]:bg-white data-[state=active]:text-[color:var(--color-brand-600)] data-[state=active]:shadow-sm dark:data-[state=active]:border-[color:var(--color-gray-700)] dark:data-[state=active]:bg-[color:var(--color-gray-dark)] dark:data-[state=active]:text-[color:var(--color-brand-300)]"
                   >
                     <Icon className="size-5 flex-shrink-0 text-[color:var(--color-gray-500)] transition-colors group-data-[state=active]:text-[color:var(--color-brand-600)] dark:text-[color:var(--color-gray-300)] dark:group-data-[state=active]:text-[color:var(--color-brand-300)] sm:size-6" />
                     <span
@@ -2765,7 +2765,7 @@ export default function CollectionsPage() {
                       {tab.label}
                     </span>
                     {tab.description ? (
-                      <span className="hidden text-xs font-medium text-[color:var(--color-gray-500)] dark:text-[color:var(--color-gray-400)] sm:block">
+                      <span className="hidden text-xs font-medium text-[color:var(--color-gray-500)] dark:text-[color:var(--color-gray-400)] md:block">
                         {tab.description}
                       </span>
                     ) : null}
@@ -2809,7 +2809,7 @@ export default function CollectionsPage() {
                 ))}
               </select>
             </div>
-            <TabsList className="hidden gap-2 sm:grid sm:gap-2 sm:overflow-visible sm:p-1 sm:[grid-template-columns:repeat(7,minmax(9.5rem,1fr))]">
+            <TabsList className="hidden gap-2 sm:grid sm:gap-2 sm:overflow-visible sm:p-1 sm:[grid-template-columns:repeat(auto-fit,minmax(8.5rem,1fr))] lg:[grid-template-columns:repeat(auto-fit,minmax(9.5rem,1fr))]">
               {types.map((type) => {
                 const Icon = tabIcons[type.key as CollectionKey];
                 const labelId = `${type.key}-tab-label`;
@@ -2818,7 +2818,7 @@ export default function CollectionsPage() {
                     key={type.key}
                     value={type.key}
                     aria-labelledby={labelId}
-                    className="group flex h-full min-h-[3.1rem] w-full flex-col items-center justify-center gap-1.5 rounded-xl border border-transparent px-3 py-2 text-sm font-semibold text-[color:var(--color-gray-700)] transition-colors duration-200 ease-out hover:bg-[color:var(--color-gray-50)] focus-visible:ring-2 focus-visible:ring-[color:var(--color-brand-400)] focus-visible:ring-offset-2 dark:text-[color:var(--color-gray-200)] dark:hover:bg-[color:var(--color-gray-800)] data-[state=active]:border-[color:var(--color-gray-200)] data-[state=active]:bg-white data-[state=active]:text-[color:var(--color-brand-600)] data-[state=active]:shadow-sm dark:data-[state=active]:border-[color:var(--color-gray-700)] dark:data-[state=active]:bg-[color:var(--color-gray-dark)] dark:data-[state=active]:text-[color:var(--color-brand-300)]"
+                    className="group flex h-full min-h-[3rem] w-full flex-col items-center justify-center gap-1 rounded-xl border border-transparent px-3 py-2 text-sm font-semibold text-[color:var(--color-gray-700)] transition-colors duration-200 ease-out hover:bg-[color:var(--color-gray-50)] focus-visible:ring-2 focus-visible:ring-[color:var(--color-brand-400)] focus-visible:ring-offset-2 dark:text-[color:var(--color-gray-200)] dark:hover:bg-[color:var(--color-gray-800)] data-[state=active]:border-[color:var(--color-gray-200)] data-[state=active]:bg-white data-[state=active]:text-[color:var(--color-brand-600)] data-[state=active]:shadow-sm dark:data-[state=active]:border-[color:var(--color-gray-700)] dark:data-[state=active]:bg-[color:var(--color-gray-dark)] dark:data-[state=active]:text-[color:var(--color-brand-300)]"
                   >
                     {Icon ? (
                       <Icon className="size-5 flex-shrink-0 text-[color:var(--color-gray-500)] transition-colors group-data-[state=active]:text-[color:var(--color-brand-600)] dark:text-[color:var(--color-gray-300)] dark:group-data-[state=active]:text-[color:var(--color-brand-300)] sm:size-6" />
@@ -2832,7 +2832,7 @@ export default function CollectionsPage() {
                     {type.description ? (
                       <span
                         aria-hidden="true"
-                        className="hidden text-xs font-medium text-[color:var(--color-gray-500)] dark:text-[color:var(--color-gray-400)] sm:block"
+                        className="hidden text-xs font-medium text-[color:var(--color-gray-500)] dark:text-[color:var(--color-gray-400)] md:block"
                       >
                         {type.description}
                       </span>

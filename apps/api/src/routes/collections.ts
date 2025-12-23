@@ -18,6 +18,8 @@ import { sendProblem } from '../utils/problem';
 import validate from '../utils/validate';
 import { parseTelegramTopicUrl } from '../utils/telegramTopics';
 import { invalidateTaskTypeSettingsCache } from '../services/taskTypeSettings';
+import { ACCESS_ADMIN, ACCESS_USER, hasAccess } from '../utils/accessMask';
+import type { RequestWithUser } from '../types/request';
 
 const router: Router = Router();
 const limiter = createRateLimiter({
@@ -111,10 +113,25 @@ const prepareMetaByType = (
   return { meta: { ...(metaRaw as Record<string, unknown>) } };
 };
 
+const isAdminRequest = (req: RequestWithUser): boolean => {
+  const role = req.user?.role || 'user';
+  const mask = req.user?.access ?? ACCESS_USER;
+  return role === 'admin' || hasAccess(mask, ACCESS_ADMIN);
+};
+
+const allowEventLogCreate: RequestHandler = (req, res, next) => {
+  const type = typeof req.body?.type === 'string' ? req.body.type.trim() : '';
+  if (type === 'event_logs') {
+    next();
+    return;
+  }
+  requireRole('admin')(req, res, next);
+};
+
 router.post(
   '/',
   ...base,
-  requireRole('admin'),
+  allowEventLogCreate,
   ...validate([
     body('type')
       .isString()
@@ -200,7 +217,6 @@ router.post(
 router.put(
   '/:id',
   ...base,
-  requireRole('admin'),
   param('id').isMongoId(),
   ...validate([
     body('name')
@@ -225,6 +241,15 @@ router.put(
       );
       if (!existing) {
         res.sendStatus(404);
+        return;
+      }
+      if (existing.type !== 'event_logs' && !isAdminRequest(req)) {
+        sendProblem(req, res, {
+          type: 'about:blank',
+          title: 'Доступ запрещён',
+          status: 403,
+          detail: 'Forbidden',
+        });
         return;
       }
       const body = req.body as Partial<CollectionItemAttrs>;
@@ -297,12 +322,20 @@ router.put(
 router.delete(
   '/:id',
   ...base,
-  requireRole('admin'),
   param('id').isMongoId(),
   async (req, res) => {
     const item = await CollectionItem.findById(req.params.id);
     if (!item) {
       res.sendStatus(404);
+      return;
+    }
+    if (item.type !== 'event_logs' && !isAdminRequest(req)) {
+      sendProblem(req, res, {
+        type: 'about:blank',
+        title: 'Доступ запрещён',
+        status: 403,
+        detail: 'Forbidden',
+      });
       return;
     }
     if (item.type === 'departments') {

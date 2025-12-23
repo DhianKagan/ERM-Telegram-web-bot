@@ -119,6 +119,7 @@
   "nav": {
     "tasks": "Tasks",
     "requests": "Requests",
+    "events": "Event log",
     "profile": "Profile",
     "kanban": "Kanban",
     "reports": "Reports",

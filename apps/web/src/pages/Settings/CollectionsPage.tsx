@@ -33,6 +33,8 @@ import {
   CollectionItem,
   toCollectionObject,
   fetchCollectionObjects,
+  fetchAllCollectionObjects,
+  type CollectionObject,
 } from '../../services/collections';
 import CollectionForm, { CollectionFormState } from './CollectionForm';
 import ConfirmDialog from '../../components/ConfirmDialog';
@@ -50,6 +52,10 @@ import {
   collectionObjectColumns,
   type CollectionTableRow,
 } from '../../columns/collectionColumns';
+import {
+  fixedAssetColumns,
+  type FixedAssetRow,
+} from '../../columns/fixedAssetColumns';
 import { settingsUserColumns } from '../../columns/settingsUserColumns';
 import {
   settingsEmployeeColumns,
@@ -90,6 +96,7 @@ import {
   RectangleStackIcon,
   ShieldCheckIcon,
   MapPinIcon,
+  WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline';
 
 const moduleTabs = [
@@ -168,6 +175,11 @@ const types = [
     description: 'Транспорт и связанный состав',
   },
   {
+    key: 'fixed_assets',
+    label: 'Основные средства',
+    description: 'Генераторы, станки и оборудование',
+  },
+  {
     key: 'users',
     label: 'Пользователь',
     description: 'Учётные записи в системе',
@@ -224,6 +236,7 @@ const tabIcons: Record<
   objects: MapPinIcon,
   employees: UserGroupIcon,
   fleets: TruckIcon,
+  fixed_assets: WrenchScrewdriverIcon,
   users: KeyIcon,
   tasks: ClipboardDocumentListIcon,
 };
@@ -339,6 +352,11 @@ const KEY_LABEL_OVERRIDES: Record<string, string> = {
   tg_photos_url: 'Тема для фото',
   tg_photos_chat_id: 'ID чата фото',
   tg_photos_topic_id: 'ID темы фото',
+  inventoryNumber: 'Инвентарный номер',
+  description: 'Описание',
+  locationSource: 'Источник расположения',
+  locationAddress: 'Адрес',
+  locationObjectId: 'Объект',
 };
 
 const formatKeyLabel = (key: string): string => {
@@ -966,6 +984,7 @@ export default function CollectionsPage() {
   const [allDepartments, setAllDepartments] = useState<CollectionItem[]>([]);
   const [allDivisions, setAllDivisions] = useState<CollectionItem[]>([]);
   const [allPositions, setAllPositions] = useState<CollectionItem[]>([]);
+  const [allObjects, setAllObjects] = useState<CollectionObject[]>([]);
   const [allRoles, setAllRoles] = useState<Role[]>([]);
   const limit = 10;
   const [users, setUsers] = useState<User[]>([]);
@@ -1024,6 +1043,18 @@ export default function CollectionsPage() {
     },
     [searchParams, setSearchParams],
   );
+
+  const loadObjects = useCallback(async () => {
+    try {
+      const objects = await fetchAllCollectionObjects('', 200);
+      setAllObjects(objects);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Не удалось загрузить объекты';
+      setHint((prev) => prev || message);
+      setAllObjects([]);
+    }
+  }, []);
   const selectedCollectionInfo = useMemo(() => {
     if (
       !selectedCollection?.meta ||
@@ -1207,6 +1238,12 @@ export default function CollectionsPage() {
       void loadTaskSettings();
     }
   }, [active, loadTaskSettings]);
+
+  useEffect(() => {
+    if (active === 'fixed_assets' && allObjects.length === 0) {
+      void loadObjects();
+    }
+  }, [active, allObjects.length, loadObjects]);
 
   const saveTaskField = useCallback(
     async (item: CollectionItem, label: string) => {
@@ -1445,6 +1482,38 @@ export default function CollectionsPage() {
           longitude:
             object.longitude !== undefined ? object.longitude.toString() : '',
         });
+      } else if (item.type === 'fixed_assets') {
+        const meta = (item.meta ?? {}) as Record<string, unknown>;
+        const description =
+          typeof meta.description === 'string' ? meta.description : '';
+        const location = meta.location as Record<string, unknown> | undefined;
+        const locationSource =
+          location?.source === 'object' ? 'object' : 'manual';
+        const objectId =
+          typeof location?.objectId === 'string' ? location.objectId : '';
+        const address =
+          typeof location?.address === 'string' ? location.address : '';
+        const latitude =
+          typeof location?.latitude === 'number'
+            ? location.latitude.toString()
+            : '';
+        const longitude =
+          typeof location?.longitude === 'number'
+            ? location.longitude.toString()
+            : '';
+        setForm({
+          _id: item._id,
+          name: item.name,
+          value: item.value,
+          meta: {
+            description,
+            locationSource,
+            locationObjectId: objectId,
+          },
+          address,
+          latitude,
+          longitude,
+        });
       } else {
         setForm({
           _id: item._id,
@@ -1664,6 +1733,58 @@ export default function CollectionsPage() {
         meta.location = { lat: latitude, lng: longitude };
       }
       metaToSave = meta;
+    } else if (active === 'fixed_assets') {
+      valueToSave = form.value.trim();
+      if (!valueToSave) {
+        setHint('Укажите инвентарный номер.');
+        return;
+      }
+      const meta = (form.meta ?? {}) as Record<string, unknown>;
+      const description =
+        typeof meta.description === 'string' ? meta.description.trim() : '';
+      const locationSource =
+        meta.locationSource === 'object' ? 'object' : 'manual';
+      const location: Record<string, unknown> = {
+        source: locationSource,
+      };
+      if (locationSource === 'object') {
+        const objectId =
+          typeof meta.locationObjectId === 'string'
+            ? meta.locationObjectId.trim()
+            : '';
+        if (objectId) {
+          const selectedObject = allObjects.find(
+            (object) => object._id === objectId,
+          );
+          location.objectId = objectId;
+          if (selectedObject) {
+            location.address = selectedObject.address;
+            if (selectedObject.latitude !== undefined) {
+              location.latitude = selectedObject.latitude;
+            }
+            if (selectedObject.longitude !== undefined) {
+              location.longitude = selectedObject.longitude;
+            }
+          }
+        }
+      } else {
+        const address = (form.address ?? '').trim();
+        if (address) {
+          location.address = address;
+        }
+        const latitude = parseCoordinateInput(form.latitude);
+        const longitude = parseCoordinateInput(form.longitude);
+        if (latitude !== undefined) {
+          location.latitude = latitude;
+        }
+        if (longitude !== undefined) {
+          location.longitude = longitude;
+        }
+      }
+      metaToSave = {
+        ...(description ? { description } : {}),
+        location,
+      };
     } else {
       valueToSave = form.value.trim();
       if (!valueToSave) {
@@ -2159,6 +2280,148 @@ export default function CollectionsPage() {
     [],
   );
 
+  const renderFixedAssetValueField = useCallback(
+    (
+      currentForm: ItemForm,
+      handleChange: (next: ItemForm) => void,
+      options?: { readonly?: boolean },
+    ) => {
+      const readonly = options?.readonly;
+      const meta = (currentForm.meta ?? {}) as Record<string, unknown>;
+      const description =
+        typeof meta.description === 'string' ? meta.description : '';
+      const locationSource =
+        meta.locationSource === 'object' ? 'object' : 'manual';
+      const selectedObjectId =
+        typeof meta.locationObjectId === 'string' ? meta.locationObjectId : '';
+
+      const updateMeta = (nextMeta: Record<string, unknown>) =>
+        handleChange({ ...currentForm, meta: nextMeta });
+
+      return (
+        <div className="space-y-3">
+          <input
+            className="h-10 w-full rounded border px-3"
+            value={currentForm.value}
+            placeholder="Инвентарный номер"
+            onChange={(event) =>
+              handleChange({ ...currentForm, value: event.target.value })
+            }
+            required
+            disabled={readonly}
+          />
+          <div>
+            <label className="mb-1 block text-sm font-medium">Описание</label>
+            <textarea
+              className="min-h-[96px] w-full rounded border px-3 py-2 text-sm"
+              value={description}
+              placeholder="Описание, примечания"
+              onChange={(event) =>
+                updateMeta({ ...meta, description: event.target.value })
+              }
+              disabled={readonly}
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-sm font-medium">
+              Расположение
+            </label>
+            <div className="flex flex-wrap gap-3 text-sm">
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="asset-location-source"
+                  value="object"
+                  checked={locationSource === 'object'}
+                  onChange={() =>
+                    updateMeta({ ...meta, locationSource: 'object' })
+                  }
+                  disabled={readonly}
+                />
+                Из списка объектов
+              </label>
+              <label className="flex items-center gap-2">
+                <input
+                  type="radio"
+                  name="asset-location-source"
+                  value="manual"
+                  checked={locationSource === 'manual'}
+                  onChange={() =>
+                    updateMeta({ ...meta, locationSource: 'manual' })
+                  }
+                  disabled={readonly}
+                />
+                Вручную
+              </label>
+            </div>
+            {locationSource === 'object' ? (
+              <select
+                className="mt-2 h-10 w-full rounded border px-3"
+                value={selectedObjectId}
+                onChange={(event) =>
+                  updateMeta({
+                    ...meta,
+                    locationObjectId: event.target.value,
+                  })
+                }
+                disabled={readonly}
+              >
+                <option value="">Выберите объект</option>
+                {allObjects.map((object) => (
+                  <option key={object._id} value={object._id}>
+                    {object.name} — {object.address}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <div className="mt-2 space-y-2">
+                <input
+                  className="h-10 w-full rounded border px-3"
+                  value={currentForm.address ?? ''}
+                  placeholder="Адрес или описание места"
+                  onChange={(event) =>
+                    handleChange({
+                      ...currentForm,
+                      address: event.target.value,
+                    })
+                  }
+                  disabled={readonly}
+                />
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  <input
+                    className="h-10 w-full rounded border px-3"
+                    value={currentForm.latitude ?? ''}
+                    placeholder="Широта"
+                    onChange={(event) =>
+                      handleChange({
+                        ...currentForm,
+                        latitude: event.target.value,
+                      })
+                    }
+                    disabled={readonly}
+                  />
+                  <input
+                    className="h-10 w-full rounded border px-3"
+                    value={currentForm.longitude ?? ''}
+                    placeholder="Долгота"
+                    onChange={(event) =>
+                      handleChange({
+                        ...currentForm,
+                        longitude: event.target.value,
+                      })
+                    }
+                    disabled={readonly}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    },
+    [allObjects],
+  );
+
   const totalPages = Math.ceil(total / limit) || 1;
   const filteredUsers = useMemo(() => {
     const trimmed = userQuery.trim();
@@ -2614,7 +2877,73 @@ export default function CollectionsPage() {
                       ? positionColumns
                       : type.key === 'objects'
                         ? localizedObjectColumns
+                        : type.key === 'fixed_assets'
+                          ? fixedAssetColumns
                         : localizedCollectionColumns;
+
+              const fixedAssetRows: FixedAssetRow[] =
+                isActiveTab && type.key === 'fixed_assets'
+                  ? items.map((item) => {
+                      const meta = (item.meta ?? {}) as Record<string, unknown>;
+                      const location =
+                        meta.location && typeof meta.location === 'object'
+                          ? (meta.location as Record<string, unknown>)
+                          : undefined;
+                      const locationSource =
+                        location?.source === 'object' ? 'object' : 'manual';
+                      const objectId =
+                        typeof location?.objectId === 'string'
+                          ? location.objectId
+                          : '';
+                      const objectName =
+                        objectId && allObjects.length
+                          ? allObjects.find((object) => object._id === objectId)
+                              ?.name
+                          : '';
+                      const address =
+                        typeof location?.address === 'string'
+                          ? location.address
+                          : '';
+                      const latitude =
+                        typeof location?.latitude === 'number'
+                          ? location.latitude
+                          : undefined;
+                      const longitude =
+                        typeof location?.longitude === 'number'
+                          ? location.longitude
+                          : undefined;
+                      const locationLabel = (() => {
+                        if (locationSource === 'object') {
+                          if (objectName) return objectName;
+                          return objectId ? `Объект ${objectId}` : '—';
+                        }
+                        if (address) return address;
+                        if (
+                          latitude !== undefined ||
+                          longitude !== undefined
+                        ) {
+                          return [
+                            latitude?.toString() ?? '',
+                            longitude?.toString() ?? '',
+                          ]
+                            .filter(Boolean)
+                            .join(', ');
+                        }
+                        return '—';
+                      })();
+                      const description =
+                        typeof meta.description === 'string'
+                          ? meta.description
+                          : '';
+                      return {
+                        _id: item._id,
+                        name: item.name,
+                        inventoryNumber: item.value,
+                        location: locationLabel,
+                        description: description || '—',
+                      };
+                    })
+                  : [];
 
               if (type.key === 'users') {
                 const showEmpty = paginatedUsers.length === 0;
@@ -2728,7 +3057,10 @@ export default function CollectionsPage() {
                 );
               }
 
-              const showEmpty = rows.length === 0;
+              const showEmpty =
+                type.key === 'fixed_assets'
+                  ? fixedAssetRows.length === 0
+                  : rows.length === 0;
               return (
                 <TabsContent
                   key={type.key}
@@ -2754,6 +3086,26 @@ export default function CollectionsPage() {
                         {collectionEmptyAction}
                       </Button>
                     </div>
+                  ) : type.key === 'fixed_assets' ? (
+                    <DataTable
+                      columns={fixedAssetColumns}
+                      data={fixedAssetRows}
+                      pageIndex={page - 1}
+                      pageSize={limit}
+                      pageCount={totalPages}
+                      onPageChange={(index) => setPage(index + 1)}
+                      showGlobalSearch={false}
+                      showFilters={false}
+                      onRowClick={(row) =>
+                        openCollectionModal(
+                          items.find((item) => item._id === row._id),
+                        )
+                      }
+                      wrapCellsAsBadges
+                      badgeClassName={SETTINGS_BADGE_CLASS}
+                      badgeWrapperClassName={SETTINGS_BADGE_WRAPPER_CLASS}
+                      badgeEmptyPlaceholder={SETTINGS_BADGE_EMPTY}
+                    />
                   ) : (
                     <DataTable
                       columns={columnsForType}
@@ -2900,6 +3252,106 @@ export default function CollectionsPage() {
                       </div>
                     </dl>
                   </>
+                ) : selectedCollection.type === 'fixed_assets' ? (
+                  <>
+                    <h3 className="text-base font-semibold">
+                      Карточка основного средства
+                    </h3>
+                    <dl className="mt-2 space-y-3 text-sm">
+                      <div className="flex justify-between gap-4">
+                        <dt className="font-medium text-slate-500">ID</dt>
+                        <dd className="text-right text-slate-900">
+                          {selectedCollection._id}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <dt className="font-medium text-slate-500">Название</dt>
+                        <dd className="text-right text-slate-900">
+                          {selectedCollection.name}
+                        </dd>
+                      </div>
+                      <div className="flex justify-between gap-4">
+                        <dt className="font-medium text-slate-500">
+                          Инвентарный номер
+                        </dt>
+                        <dd className="text-right text-slate-900">
+                          {selectedCollection.value || '—'}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="font-medium text-slate-500">Описание</dt>
+                        <dd className="mt-1 rounded bg-white p-2 text-xs text-slate-900">
+                          {typeof selectedCollection.meta?.description ===
+                          'string'
+                            ? selectedCollection.meta.description
+                            : '—'}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="font-medium text-slate-500">
+                          Расположение
+                        </dt>
+                        <dd className="mt-1 rounded bg-white p-2 text-xs text-slate-900">
+                          {(() => {
+                            const meta = selectedCollection.meta as
+                              | Record<string, unknown>
+                              | undefined;
+                            const location =
+                              meta?.location &&
+                              typeof meta.location === 'object'
+                                ? (meta.location as Record<string, unknown>)
+                                : undefined;
+                            const source =
+                              location?.source === 'object'
+                                ? 'object'
+                                : 'manual';
+                            const objectId =
+                              typeof location?.objectId === 'string'
+                                ? location.objectId
+                                : '';
+                            if (source === 'object') {
+                              const objectName =
+                                objectId && allObjects.length
+                                  ? allObjects.find(
+                                      (object) => object._id === objectId,
+                                    )?.name
+                                  : '';
+                              return objectName || objectId || '—';
+                            }
+                            const address =
+                              typeof location?.address === 'string'
+                                ? location.address
+                                : '';
+                            if (address) return address;
+                            const latitude =
+                              typeof location?.latitude === 'number'
+                                ? location.latitude
+                                : undefined;
+                            const longitude =
+                              typeof location?.longitude === 'number'
+                                ? location.longitude
+                                : undefined;
+                            if (
+                              latitude !== undefined ||
+                              longitude !== undefined
+                            ) {
+                              return `${latitude ?? ''} ${longitude ?? ''}`.trim();
+                            }
+                            return '—';
+                          })()}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt className="font-medium text-slate-500">
+                          История событий
+                        </dt>
+                        <dd className="mt-1 text-xs text-slate-500">
+                          Привязанные события будут отображаться после наполнения
+                          журнала событий.
+                        </dd>
+                      </div>
+                    </dl>
+                  </>
                 ) : (
                   <>
                     <h3 className="text-base font-semibold">
@@ -2960,6 +3412,8 @@ export default function CollectionsPage() {
                       ? 'Отдел'
                       : active === 'objects'
                         ? 'Адрес'
+                        : active === 'fixed_assets'
+                          ? 'Инвентарный номер'
                         : undefined
               }
               renderValueField={
@@ -2971,6 +3425,8 @@ export default function CollectionsPage() {
                       ? renderPositionValueField
                       : active === 'objects'
                         ? renderObjectValueField
+                        : active === 'fixed_assets'
+                          ? renderFixedAssetValueField
                         : undefined
               }
               readonly={selectedCollectionInfo.readonly}

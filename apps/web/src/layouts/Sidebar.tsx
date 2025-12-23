@@ -12,6 +12,7 @@ import {
   Cog6ToothIcon,
   UserCircleIcon,
   XMarkIcon,
+  BookmarkSquareIcon,
 } from '@heroicons/react/24/outline';
 import { cn } from '@/lib/utils';
 
@@ -36,6 +37,11 @@ export default function Sidebar() {
         to: '/requests',
         label: t('nav.requests'),
         icon: InboxArrowDownIcon,
+      },
+      {
+        to: '/events',
+        label: t('nav.events'),
+        icon: BookmarkSquareIcon,
       },
       { to: '/profile', label: t('nav.profile'), icon: UserCircleIcon },
     ],

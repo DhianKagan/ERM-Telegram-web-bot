@@ -19,6 +19,7 @@ import ArchiveRoute from './components/ArchiveRoute';
 
 const TasksPage = lazy(() => import('./pages/TasksPage'));
 const RequestsPage = lazy(() => import('./pages/RequestsPage'));
+const EventLogPage = lazy(() => import('./pages/EventLog'));
 const Reports = lazy(() => import('./pages/Reports'));
 const LogsPage = lazy(() => import('./pages/Logs'));
 const Profile = lazy(() => import('./pages/Profile'));
@@ -80,6 +81,14 @@ function AppShell() {
                 element={
                   <ProtectedRoute>
                     <RequestsPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/events"
+                element={
+                  <ProtectedRoute>
+                    <EventLogPage />
                   </ProtectedRoute>
                 }
               />

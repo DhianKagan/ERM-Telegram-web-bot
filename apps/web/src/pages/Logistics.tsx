@@ -10,6 +10,8 @@ import type {
 
 import { Button } from '@/components/ui/button';
 import StatusBadge, { mapStatusTone } from '@/components/ui/StatusBadge';
+import { UiFormGroup } from '@/components/ui/UiFormGroup';
+import { UiSelect } from '@/components/ui/UiSelect';
 import Breadcrumbs from '../components/Breadcrumbs';
 import SkeletonCard from '../components/SkeletonCard';
 import { useAuth } from '../context/useAuth';
@@ -152,14 +154,13 @@ export default function Logistics() {
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-          <label
-            className="flex flex-col text-sm font-medium text-foreground"
+          <UiFormGroup
+            label="Статус"
             htmlFor="logistics-status-filter"
+            className="sm:w-48"
           >
-            Статус
-            <select
+            <UiSelect
               id="logistics-status-filter"
-              className="mt-1 min-w-[160px] rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[var(--color-muted)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-400)]"
               value={statusFilter}
               onChange={(event) =>
                 setStatusFilter(
@@ -172,8 +173,8 @@ export default function Logistics() {
                   {option.label}
                 </option>
               ))}
-            </select>
-          </label>
+            </UiSelect>
+          </UiFormGroup>
           <Button
             onClick={() => void loadPlans()}
             disabled={loading}

@@ -13,6 +13,12 @@ import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
+import { UiCard } from '@/components/ui/UiCard';
+import { UiFormGroup } from '@/components/ui/UiFormGroup';
+import { UiInput } from '@/components/ui/UiInput';
+import { UiSelect } from '@/components/ui/UiSelect';
+import { UiRadio } from '@/components/ui/UiRadio';
+import { UiTable, type UiTableColumn } from '@/components/ui/UiTable';
 import {
   Tabs,
   TabsList,
@@ -22,7 +28,6 @@ import {
 import ActionBar from '../../components/ActionBar';
 import Breadcrumbs from '../../components/Breadcrumbs';
 import CopyableId from '../../components/CopyableId';
-import DataTable from '../../components/DataTable';
 import Spinner from '../../components/Spinner';
 import {
   fetchCollectionItems,
@@ -47,20 +52,9 @@ import ArchivePage from '../Archive';
 import LogsPage from '../Logs';
 import StoragePage from '../Storage';
 import HealthCheckTab from './HealthCheckTab';
-import {
-  collectionColumns,
-  collectionObjectColumns,
-  type CollectionTableRow,
-} from '../../columns/collectionColumns';
-import {
-  fixedAssetColumns,
-  type FixedAssetRow,
-} from '../../columns/fixedAssetColumns';
-import { settingsUserColumns } from '../../columns/settingsUserColumns';
-import {
-  settingsEmployeeColumns,
-  type EmployeeRow,
-} from '../../columns/settingsEmployeeColumns';
+import { type CollectionTableRow } from '../../columns/collectionColumns';
+import { type FixedAssetRow } from '../../columns/fixedAssetColumns';
+import { type EmployeeRow } from '../../columns/settingsEmployeeColumns';
 import {
   fetchUsers,
   createUser as createUserApi,
@@ -240,6 +234,130 @@ const tabIcons: Record<
   users: KeyIcon,
   tasks: ClipboardDocumentListIcon,
 };
+
+const collectionTableColumns: UiTableColumn<CollectionTableRow>[] = [
+  { key: 'name', header: 'Название' },
+  { key: 'value', header: 'Значение' },
+  { key: 'displayValue', header: 'Связанные данные' },
+  { key: 'type', header: 'Тип' },
+  { key: '_id', header: 'Идентификатор' },
+  { key: 'metaSummary', header: 'Доп. сведения' },
+];
+
+const collectionObjectTableColumns: UiTableColumn<CollectionTableRow>[] = [
+  { key: 'name', header: 'Название' },
+  { key: 'address', header: 'Адрес' },
+  { key: 'coordinates', header: 'Координаты' },
+  { key: '_id', header: 'Идентификатор' },
+];
+
+const fixedAssetTableColumns: UiTableColumn<FixedAssetRow>[] = [
+  { key: 'name', header: 'Название' },
+  { key: 'inventoryNumber', header: 'Инвентарный номер' },
+  { key: 'location', header: 'Расположение' },
+  { key: 'description', header: 'Описание' },
+  { key: '_id', header: 'ID' },
+];
+
+const userTableColumns: UiTableColumn<User>[] = [
+  { key: 'telegram_id', header: 'Telegram ID' },
+  {
+    key: 'username',
+    header: 'Логин',
+    render: (row) => row.telegram_username ?? row.username ?? '',
+  },
+  { key: 'name', header: 'Имя' },
+  { key: 'phone', header: 'Телефон' },
+  { key: 'mobNumber', header: 'Моб. номер' },
+  { key: 'email', header: 'E-mail' },
+  {
+    key: 'role',
+    header: 'Роль',
+    render: (row) => formatRoleName(row.role),
+  },
+  {
+    key: 'access',
+    header: 'Доступ',
+    render: (row) => (row.access === undefined ? '—' : String(row.access)),
+  },
+  { key: 'roleId', header: 'Роль ID' },
+  { key: 'departmentId', header: 'Департамент' },
+  { key: 'divisionId', header: 'Отдел' },
+  { key: 'positionId', header: 'Должность' },
+];
+
+const employeeTableColumns: UiTableColumn<EmployeeRow>[] = [
+  { key: 'telegram_id', header: 'Telegram ID' },
+  {
+    key: 'username',
+    header: 'Логин',
+    render: (row) => row.telegram_username ?? row.username ?? '',
+  },
+  { key: 'name', header: 'Имя' },
+  { key: 'phone', header: 'Телефон' },
+  { key: 'mobNumber', header: 'Моб. номер' },
+  { key: 'email', header: 'E-mail' },
+  {
+    key: 'role',
+    header: 'Роль',
+    render: (row) => formatRoleName(row.role),
+  },
+  {
+    key: 'access',
+    header: 'Доступ',
+    render: (row) => (row.access === undefined ? '—' : String(row.access)),
+  },
+  {
+    key: 'roleId',
+    header: 'Роль ID',
+    render: (row) => row.roleName || row.roleId || '—',
+  },
+  {
+    key: 'departmentId',
+    header: 'Департамент',
+    render: (row) => row.departmentName || '—',
+  },
+  {
+    key: 'divisionId',
+    header: 'Отдел',
+    render: (row) => row.divisionName || '—',
+  },
+  {
+    key: 'positionId',
+    header: 'Должность',
+    render: (row) => row.positionName || '—',
+  },
+];
+
+const renderPaginationControls = (
+  pageIndex: number,
+  totalPagesValue: number,
+  onChange: (page: number) => void,
+) => (
+  <div className="flex flex-wrap items-center justify-between gap-3 pt-3">
+    <span className="text-sm text-[color:var(--color-gray-600)] dark:text-[color:var(--color-gray-300)]">
+      Страница {pageIndex} из {totalPagesValue || 1}
+    </span>
+    <div className="flex flex-wrap gap-2">
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => onChange(Math.max(1, pageIndex - 1))}
+        disabled={pageIndex <= 1}
+      >
+        Назад
+      </Button>
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => onChange(Math.min(totalPagesValue || 1, pageIndex + 1))}
+        disabled={pageIndex >= totalPagesValue}
+      >
+        Вперёд
+      </Button>
+    </div>
+  </div>
+);
 
 const renderBadgeList = (items: string[]) => {
   if (!items.length) {
@@ -946,9 +1064,11 @@ const hasAccessorKey = (
   column: CollectionColumn,
 ): column is CollectionColumn & { accessorKey: string } =>
   typeof (column as { accessorKey?: unknown }).accessorKey === 'string';
-  
- 
-const formatCoordinatesValue = (latitude?: number, longitude?: number): string => {
+
+const formatCoordinatesValue = (
+  latitude?: number,
+  longitude?: number,
+): string => {
   const parts: string[] = [];
   if (typeof latitude === 'number' && Number.isFinite(latitude)) {
     parts.push(latitude.toString());
@@ -959,8 +1079,8 @@ const formatCoordinatesValue = (latitude?: number, longitude?: number): string =
   if (!parts.length) return SETTINGS_BADGE_EMPTY;
   return parts.join(', ');
 };
-const formatCoordinates = formatCoordinatesValue; 
-  
+const formatCoordinates = formatCoordinatesValue;
+
 export default function CollectionsPage() {
   const { t } = useTranslation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -2003,7 +2123,6 @@ export default function CollectionsPage() {
     return summary || SETTINGS_BADGE_EMPTY;
   }, []);
 
-
   const parseCoordinateInput = useCallback((value?: string) => {
     if (!value) return undefined;
     const trimmed = value.trim();
@@ -2233,24 +2352,30 @@ export default function CollectionsPage() {
       const readonly = options?.readonly;
       const addressValue = currentForm.address ?? currentForm.value;
       return (
-        <div className="space-y-2">
-          <input
-            className="h-10 w-full rounded border px-3"
-            value={addressValue}
-            placeholder="Адрес объекта"
-            onChange={(event) =>
-              handleChange({
-                ...currentForm,
-                address: event.target.value,
-                value: event.target.value,
-              })
-            }
-            required
-            disabled={readonly}
-          />
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            <input
-              className="h-10 w-full rounded border px-3"
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <UiFormGroup
+            className="sm:col-span-2"
+            label="Адрес объекта"
+            htmlFor="collection-object-address"
+          >
+            <UiInput
+              id="collection-object-address"
+              value={addressValue}
+              placeholder="Адрес объекта"
+              onChange={(event) =>
+                handleChange({
+                  ...currentForm,
+                  address: event.target.value,
+                  value: event.target.value,
+                })
+              }
+              required
+              disabled={readonly}
+            />
+          </UiFormGroup>
+          <UiFormGroup label="Широта" htmlFor="collection-object-lat">
+            <UiInput
+              id="collection-object-lat"
               value={currentForm.latitude ?? ''}
               placeholder="Широта"
               onChange={(event) =>
@@ -2261,8 +2386,10 @@ export default function CollectionsPage() {
               }
               disabled={readonly}
             />
-            <input
-              className="h-10 w-full rounded border px-3"
+          </UiFormGroup>
+          <UiFormGroup label="Долгота" htmlFor="collection-object-lng">
+            <UiInput
+              id="collection-object-lng"
               value={currentForm.longitude ?? ''}
               placeholder="Долгота"
               onChange={(event) =>
@@ -2273,7 +2400,7 @@ export default function CollectionsPage() {
               }
               disabled={readonly}
             />
-          </div>
+          </UiFormGroup>
         </div>
       );
     },
@@ -2299,21 +2426,27 @@ export default function CollectionsPage() {
         handleChange({ ...currentForm, meta: nextMeta });
 
       return (
-        <div className="space-y-3">
-          <input
-            className="h-10 w-full rounded border px-3"
-            value={currentForm.value}
-            placeholder="Инвентарный номер"
-            onChange={(event) =>
-              handleChange({ ...currentForm, value: event.target.value })
-            }
-            required
-            disabled={readonly}
-          />
-          <div>
-            <label className="mb-1 block text-sm font-medium">Описание</label>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <UiFormGroup label="Инвентарный номер" htmlFor="fixed-asset-number">
+            <UiInput
+              id="fixed-asset-number"
+              value={currentForm.value}
+              placeholder="Инвентарный номер"
+              onChange={(event) =>
+                handleChange({ ...currentForm, value: event.target.value })
+              }
+              required
+              disabled={readonly}
+            />
+          </UiFormGroup>
+          <UiFormGroup
+            className="sm:col-span-2 lg:col-span-3"
+            label="Описание"
+            htmlFor="fixed-asset-description"
+          >
             <textarea
-              className="min-h-[96px] w-full rounded border px-3 py-2 text-sm"
+              id="fixed-asset-description"
+              className="textarea textarea-bordered min-h-[96px] w-full"
               value={description}
               placeholder="Описание, примечания"
               onChange={(event) =>
@@ -2321,15 +2454,15 @@ export default function CollectionsPage() {
               }
               disabled={readonly}
             />
-          </div>
-          <div>
-            <label className="mb-1 block text-sm font-medium">
-              Расположение
-            </label>
-            <div className="flex flex-wrap gap-3 text-sm">
-              <label className="flex items-center gap-2">
-                <input
-                  type="radio"
+          </UiFormGroup>
+          <UiFormGroup
+            className="sm:col-span-2 lg:col-span-3"
+            label="Расположение"
+            htmlFor="asset-location-source"
+          >
+            <div className="flex flex-wrap gap-4">
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <UiRadio
                   name="asset-location-source"
                   value="object"
                   checked={locationSource === 'object'}
@@ -2340,9 +2473,8 @@ export default function CollectionsPage() {
                 />
                 Из списка объектов
               </label>
-              <label className="flex items-center gap-2">
-                <input
-                  type="radio"
+              <label className="flex items-center gap-2 text-sm font-medium">
+                <UiRadio
                   name="asset-location-source"
                   value="manual"
                   checked={locationSource === 'manual'}
@@ -2355,8 +2487,8 @@ export default function CollectionsPage() {
               </label>
             </div>
             {locationSource === 'object' ? (
-              <select
-                className="mt-2 h-10 w-full rounded border px-3"
+              <UiSelect
+                className="mt-2"
                 value={selectedObjectId}
                 onChange={(event) =>
                   updateMeta({
@@ -2372,50 +2504,56 @@ export default function CollectionsPage() {
                     {object.name} — {object.address}
                   </option>
                 ))}
-              </select>
+              </UiSelect>
             ) : (
-              <div className="mt-2 space-y-2">
-                <input
-                  className="h-10 w-full rounded border px-3"
-                  value={currentForm.address ?? ''}
-                  placeholder="Адрес или описание места"
-                  onChange={(event) =>
-                    handleChange({
-                      ...currentForm,
-                      address: event.target.value,
-                    })
-                  }
-                  disabled={readonly}
-                />
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  <input
-                    className="h-10 w-full rounded border px-3"
-                    value={currentForm.latitude ?? ''}
-                    placeholder="Широта"
+              <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <UiFormGroup label="Адрес" htmlFor="fixed-asset-address">
+                  <UiInput
+                    id="fixed-asset-address"
+                    value={currentForm.address ?? ''}
+                    placeholder="Адрес или описание места"
                     onChange={(event) =>
                       handleChange({
                         ...currentForm,
-                        latitude: event.target.value,
+                        address: event.target.value,
                       })
                     }
                     disabled={readonly}
                   />
-                  <input
-                    className="h-10 w-full rounded border px-3"
-                    value={currentForm.longitude ?? ''}
-                    placeholder="Долгота"
-                    onChange={(event) =>
-                      handleChange({
-                        ...currentForm,
-                        longitude: event.target.value,
-                      })
-                    }
-                    disabled={readonly}
-                  />
+                </UiFormGroup>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:col-span-1">
+                  <UiFormGroup label="Широта" htmlFor="fixed-asset-lat">
+                    <UiInput
+                      id="fixed-asset-lat"
+                      value={currentForm.latitude ?? ''}
+                      placeholder="Широта"
+                      onChange={(event) =>
+                        handleChange({
+                          ...currentForm,
+                          latitude: event.target.value,
+                        })
+                      }
+                      disabled={readonly}
+                    />
+                  </UiFormGroup>
+                  <UiFormGroup label="Долгота" htmlFor="fixed-asset-lng">
+                    <UiInput
+                      id="fixed-asset-lng"
+                      value={currentForm.longitude ?? ''}
+                      placeholder="Долгота"
+                      onChange={(event) =>
+                        handleChange({
+                          ...currentForm,
+                          longitude: event.target.value,
+                        })
+                      }
+                      disabled={readonly}
+                    />
+                  </UiFormGroup>
                 </div>
               </div>
             )}
-          </div>
+          </UiFormGroup>
         </div>
       );
     },
@@ -2622,22 +2760,20 @@ export default function CollectionsPage() {
         : () => openUserModal();
       return (
         <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div className="flex w-full flex-col gap-1 sm:w-72">
-            <label htmlFor="settings-users-search" className="sr-only">
-              {collectionSearchCta}
-            </label>
-            <input
+          <UiFormGroup
+            className="sm:w-72"
+            label={collectionSearchCta}
+            htmlFor="settings-users-search"
+            help={collectionSearchHint}
+          >
+            <UiInput
               id="settings-users-search"
-              className="h-10 w-full rounded-2xl border border-[color:var(--color-gray-200)] bg-white px-3 text-sm text-[color:var(--color-gray-900)] shadow-sm outline-none transition focus:border-[color:var(--color-brand-400)] focus:ring-2 focus:ring-[color:var(--color-brand-200)] dark:border-[color:var(--color-gray-700)] dark:bg-[color:var(--color-gray-dark)] dark:text-white"
               value={userSearchDraft}
               onChange={(event) => setUserSearchDraft(event.target.value)}
               onKeyDown={handleUserSearchKeyDown}
               placeholder={placeholder}
             />
-            <span className="text-[11px] text-[color:var(--color-gray-500)] dark:text-[color:var(--color-gray-300)]">
-              {collectionSearchHint}
-            </span>
-          </div>
+          </UiFormGroup>
           <div className="flex flex-wrap items-center gap-2">
             <Button size="sm" onClick={() => submitUserSearch()}>
               {collectionSearchCta}
@@ -2662,13 +2798,14 @@ export default function CollectionsPage() {
     if (isCollectionSearchSupported) {
       return (
         <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div className="flex w-full flex-col gap-1 sm:w-72">
-            <label htmlFor="settings-collections-search" className="sr-only">
-              {collectionSearchCta}
-            </label>
-            <input
+          <UiFormGroup
+            className="sm:w-72"
+            label={collectionSearchCta}
+            htmlFor="settings-collections-search"
+            help={collectionSearchHint}
+          >
+            <UiInput
               id="settings-collections-search"
-              className="h-10 w-full rounded-2xl border border-[color:var(--color-gray-200)] bg-white px-3 text-sm text-[color:var(--color-gray-900)] shadow-sm outline-none transition focus:border-[color:var(--color-brand-400)] focus:ring-2 focus:ring-[color:var(--color-brand-200)] dark:border-[color:var(--color-gray-700)] dark:bg-[color:var(--color-gray-dark)] dark:text-white"
               value={currentSearchDraft}
               onChange={(event) =>
                 updateCollectionSearchDraft(event.target.value)
@@ -2676,10 +2813,7 @@ export default function CollectionsPage() {
               onKeyDown={handleCollectionSearchKeyDown}
               placeholder={collectionSearchPlaceholder}
             />
-            <span className="text-[11px] text-[color:var(--color-gray-500)] dark:text-[color:var(--color-gray-300)]">
-              {collectionSearchHint}
-            </span>
-          </div>
+          </UiFormGroup>
           <div className="flex flex-wrap items-center gap-2">
             <Button size="sm" onClick={() => submitCollectionSearch()}>
               {collectionSearchCta}
@@ -2879,7 +3013,7 @@ export default function CollectionsPage() {
                         ? localizedObjectColumns
                         : type.key === 'fixed_assets'
                           ? fixedAssetColumns
-                        : localizedCollectionColumns;
+                          : localizedCollectionColumns;
 
               const fixedAssetRows: FixedAssetRow[] =
                 isActiveTab && type.key === 'fixed_assets'
@@ -2918,10 +3052,7 @@ export default function CollectionsPage() {
                           return objectId ? `Объект ${objectId}` : '—';
                         }
                         if (address) return address;
-                        if (
-                          latitude !== undefined ||
-                          longitude !== undefined
-                        ) {
+                        if (latitude !== undefined || longitude !== undefined) {
                           return [
                             latitude?.toString() ?? '',
                             longitude?.toString() ?? '',
@@ -2969,21 +3100,37 @@ export default function CollectionsPage() {
                         </Button>
                       </div>
                     ) : (
-                      <DataTable
-                        columns={settingsUserColumns}
-                        data={paginatedUsers}
-                        pageIndex={userPage - 1}
-                        pageSize={limit}
-                        pageCount={userTotalPages}
-                        onPageChange={(index) => setUserPage(index + 1)}
-                        showGlobalSearch={false}
-                        showFilters={false}
-                        onRowClick={(row) => openUserModal(row)}
-                        wrapCellsAsBadges
-                        badgeClassName={SETTINGS_BADGE_CLASS}
-                        badgeWrapperClassName={SETTINGS_BADGE_WRAPPER_CLASS}
-                        badgeEmptyPlaceholder={SETTINGS_BADGE_EMPTY}
-                      />
+                      <UiCard bodyClassName="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-base font-semibold text-[color:var(--color-gray-800)] dark:text-white">
+                            Пользователи
+                          </h3>
+                          <span className="badge badge-neutral badge-sm">
+                            {paginatedUsers.length} записей
+                          </span>
+                        </div>
+                        <div className="overflow-x-auto rounded-box border border-base-200">
+                          <UiTable
+                            className="table-zebra table-compact"
+                            columns={userTableColumns}
+                            rows={paginatedUsers}
+                            rowKey={(row) =>
+                              row._id ??
+                              row.telegram_id ??
+                              row.username ??
+                              row.email ??
+                              row.name
+                            }
+                            onRowClick={(row) => openUserModal(row)}
+                            empty={SETTINGS_BADGE_EMPTY}
+                          />
+                        </div>
+                        {renderPaginationControls(
+                          userPage,
+                          userTotalPages,
+                          setUserPage,
+                        )}
+                      </UiCard>
                     )}
                   </TabsContent>
                 );
@@ -3013,21 +3160,37 @@ export default function CollectionsPage() {
                         </Button>
                       </div>
                     ) : (
-                      <DataTable
-                        columns={settingsEmployeeColumns}
-                        data={employeeRows}
-                        pageIndex={userPage - 1}
-                        pageSize={limit}
-                        pageCount={userTotalPages}
-                        onPageChange={(index) => setUserPage(index + 1)}
-                        showGlobalSearch={false}
-                        showFilters={false}
-                        onRowClick={(row) => openEmployeeModal(row)}
-                        wrapCellsAsBadges
-                        badgeClassName={SETTINGS_BADGE_CLASS}
-                        badgeWrapperClassName={SETTINGS_BADGE_WRAPPER_CLASS}
-                        badgeEmptyPlaceholder={SETTINGS_BADGE_EMPTY}
-                      />
+                      <UiCard bodyClassName="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-base font-semibold text-[color:var(--color-gray-800)] dark:text-white">
+                            Сотрудники
+                          </h3>
+                          <span className="badge badge-neutral badge-sm">
+                            {employeeRows.length} записей
+                          </span>
+                        </div>
+                        <div className="overflow-x-auto rounded-box border border-base-200">
+                          <UiTable
+                            className="table-zebra table-compact"
+                            columns={employeeTableColumns}
+                            rows={employeeRows}
+                            rowKey={(row) =>
+                              row._id ??
+                              row.telegram_id ??
+                              row.username ??
+                              row.email ??
+                              row.name
+                            }
+                            onRowClick={(row) => openEmployeeModal(row)}
+                            empty={SETTINGS_BADGE_EMPTY}
+                          />
+                        </div>
+                        {renderPaginationControls(
+                          userPage,
+                          userTotalPages,
+                          setUserPage,
+                        )}
+                      </UiCard>
                     )}
                   </TabsContent>
                 );
@@ -3087,41 +3250,57 @@ export default function CollectionsPage() {
                       </Button>
                     </div>
                   ) : type.key === 'fixed_assets' ? (
-                    <DataTable
-                      columns={fixedAssetColumns}
-                      data={fixedAssetRows}
-                      pageIndex={page - 1}
-                      pageSize={limit}
-                      pageCount={totalPages}
-                      onPageChange={(index) => setPage(index + 1)}
-                      showGlobalSearch={false}
-                      showFilters={false}
-                      onRowClick={(row) =>
-                        openCollectionModal(
-                          items.find((item) => item._id === row._id),
-                        )
-                      }
-                      wrapCellsAsBadges
-                      badgeClassName={SETTINGS_BADGE_CLASS}
-                      badgeWrapperClassName={SETTINGS_BADGE_WRAPPER_CLASS}
-                      badgeEmptyPlaceholder={SETTINGS_BADGE_EMPTY}
-                    />
+                    <UiCard bodyClassName="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-base font-semibold text-[color:var(--color-gray-800)] dark:text-white">
+                          Основные средства
+                        </h3>
+                        <span className="badge badge-neutral badge-sm">
+                          {fixedAssetRows.length} записей
+                        </span>
+                      </div>
+                      <div className="overflow-x-auto rounded-box border border-base-200">
+                        <UiTable
+                          className="table-zebra table-compact"
+                          columns={fixedAssetTableColumns}
+                          rows={fixedAssetRows}
+                          rowKey={(row) => row._id}
+                          onRowClick={(row) =>
+                            openCollectionModal(
+                              items.find((item) => item._id === row._id),
+                            )
+                          }
+                          empty={SETTINGS_BADGE_EMPTY}
+                        />
+                      </div>
+                      {renderPaginationControls(page, totalPages, setPage)}
+                    </UiCard>
                   ) : (
-                    <DataTable
-                      columns={columnsForType}
-                      data={rows}
-                      pageIndex={page - 1}
-                      pageSize={limit}
-                      pageCount={totalPages}
-                      onPageChange={(index) => setPage(index + 1)}
-                      showGlobalSearch={false}
-                      showFilters={false}
-                      onRowClick={(row) => openCollectionModal(row)}
-                      wrapCellsAsBadges
-                      badgeClassName={SETTINGS_BADGE_CLASS}
-                      badgeWrapperClassName={SETTINGS_BADGE_WRAPPER_CLASS}
-                      badgeEmptyPlaceholder={SETTINGS_BADGE_EMPTY}
-                    />
+                    <UiCard bodyClassName="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-base font-semibold text-[color:var(--color-gray-800)] dark:text-white">
+                          {type.label}
+                        </h3>
+                        <span className="badge badge-neutral badge-sm">
+                          {rows.length} записей
+                        </span>
+                      </div>
+                      <div className="overflow-x-auto rounded-box border border-base-200">
+                        <UiTable
+                          className="table-zebra table-compact"
+                          columns={
+                            type.key === 'objects'
+                              ? collectionObjectTableColumns
+                              : collectionTableColumns
+                          }
+                          rows={rows}
+                          rowKey={(row) => row._id}
+                          onRowClick={(row) => openCollectionModal(row)}
+                          empty={SETTINGS_BADGE_EMPTY}
+                        />
+                      </div>
+                      {renderPaginationControls(page, totalPages, setPage)}
+                    </UiCard>
                   )}
                 </TabsContent>
               );
@@ -3346,8 +3525,8 @@ export default function CollectionsPage() {
                           История событий
                         </dt>
                         <dd className="mt-1 text-xs text-slate-500">
-                          Привязанные события будут отображаться после наполнения
-                          журнала событий.
+                          Привязанные события будут отображаться после
+                          наполнения журнала событий.
                         </dd>
                       </div>
                     </dl>
@@ -3414,7 +3593,7 @@ export default function CollectionsPage() {
                         ? 'Адрес'
                         : active === 'fixed_assets'
                           ? 'Инвентарный номер'
-                        : undefined
+                          : undefined
               }
               renderValueField={
                 active === 'departments'
@@ -3427,7 +3606,7 @@ export default function CollectionsPage() {
                         ? renderObjectValueField
                         : active === 'fixed_assets'
                           ? renderFixedAssetValueField
-                        : undefined
+                          : undefined
               }
               readonly={selectedCollectionInfo.readonly}
               readonlyNotice={selectedCollectionInfo.notice}

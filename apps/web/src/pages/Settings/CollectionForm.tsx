@@ -3,6 +3,9 @@
 import React from 'react';
 
 import { Button } from '@/components/ui/button';
+import { UiCard } from '@/components/ui/UiCard';
+import { UiFormGroup } from '@/components/ui/UiFormGroup';
+import { UiInput } from '@/components/ui/UiInput';
 import ConfirmDialog from '../../components/ConfirmDialog';
 
 export interface CollectionFormState {
@@ -52,69 +55,94 @@ export default function CollectionForm({
   };
 
   return (
-    <form onSubmit={submit} className="space-y-2">
-      <div>
-        <label className="block text-sm font-medium">Имя</label>
-        <input
-          id="collection-form-name"
-          name="collectionName"
-          className="h-10 w-full rounded border px-3"
-          value={form.name}
-          onChange={(e) => onChange({ ...form, name: e.target.value })}
-          required
-          disabled={readonly}
-        />
+    <UiCard className="bg-base-100" bodyClassName="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold text-base-content">
+          Основные параметры
+        </h3>
+        {form._id ? (
+          <span className="badge badge-neutral badge-sm">ID {form._id}</span>
+        ) : null}
       </div>
-      <div>
-        <label className="block text-sm font-medium">{valueLabel}</label>
-        {renderValueField ? (
-          renderValueField(form, readonly ? () => undefined : onChange, {
-            readonly,
-          })
-        ) : (
-          <input
-            id="collection-form-value"
-            name="collectionValue"
-            className="h-10 w-full rounded border px-3"
-            value={form.value}
-            onChange={(e) => onChange({ ...form, value: e.target.value })}
+      <form
+        onSubmit={submit}
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+      >
+        <UiFormGroup
+          className="sm:col-span-2 lg:col-span-1"
+          label="Имя"
+          htmlFor="collection-form-name"
+        >
+          <UiInput
+            id="collection-form-name"
+            name="collectionName"
+            value={form.name}
+            onChange={(e) => onChange({ ...form, name: e.target.value })}
             required
             disabled={readonly}
           />
-        )}
-      </div>
-      {readonly ? (
-        <p className="rounded border border-amber-200 bg-amber-50 p-2 text-sm text-amber-900">
-          {readonlyNotice ?? 'Элемент доступен только для чтения.'}
-        </p>
-      ) : null}
-      <div className="flex gap-2">
-        <Button type="submit" disabled={readonly}>
-          Сохранить
-        </Button>
-        {form._id ? (
-          <Button
-            type="button"
-            variant="destructive"
-            disabled={readonly}
-            onClick={() => {
-              if (readonly) return;
-              setConfirmDelete(true);
-            }}
-          >
-            Удалить
+        </UiFormGroup>
+        <UiFormGroup
+          className="sm:col-span-2 lg:col-span-2"
+          label={valueLabel}
+          htmlFor="collection-form-value"
+        >
+          {renderValueField ? (
+            renderValueField(form, readonly ? () => undefined : onChange, {
+              readonly,
+            })
+          ) : (
+            <UiInput
+              id="collection-form-value"
+              name="collectionValue"
+              value={form.value}
+              onChange={(e) => onChange({ ...form, value: e.target.value })}
+              required
+              disabled={readonly}
+            />
+          )}
+        </UiFormGroup>
+        {readonly ? (
+          <div className="sm:col-span-2 lg:col-span-3">
+            <div className="collapse collapse-arrow bg-amber-50 text-amber-900">
+              <input type="checkbox" defaultChecked />
+              <div className="collapse-title text-sm font-medium">
+                Режим только для чтения
+              </div>
+              <div className="collapse-content text-sm">
+                {readonlyNotice ?? 'Элемент доступен только для чтения.'}
+              </div>
+            </div>
+          </div>
+        ) : null}
+        <div className="sm:col-span-2 lg:col-span-3 flex flex-wrap gap-2">
+          <Button type="submit" disabled={readonly}>
+            Сохранить
           </Button>
-        ) : (
-          <Button
-            type="button"
-            variant="outline"
-            onClick={onReset}
-            disabled={readonly}
-          >
-            Очистить
-          </Button>
-        )}
-      </div>
+          {form._id ? (
+            <Button
+              type="button"
+              variant="destructive"
+              disabled={readonly}
+              onClick={() => {
+                if (readonly) return;
+                setConfirmDelete(true);
+              }}
+            >
+              Удалить
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={onReset}
+              disabled={readonly}
+            >
+              Очистить
+            </Button>
+          )}
+        </div>
+      </form>
       <ConfirmDialog
         open={confirmSave}
         message="Сохранить изменения?"
@@ -134,6 +162,6 @@ export default function CollectionForm({
         }}
         onCancel={() => setConfirmDelete(false)}
       />
-    </form>
+    </UiCard>
   );
 }

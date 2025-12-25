@@ -1508,9 +1508,9 @@ export default class TasksController {
     messageId: number,
     expectedTopic?: number,
     actualTopic?: number,
-  ): Promise<boolean> {
+  ): Promise<'deleted' | 'missing' | 'forbidden' | 'skipped' | 'failed'> {
     if (!Number.isFinite(messageId)) {
-      return false;
+      return 'failed';
     }
     if (!this.areTopicsEqual(expectedTopic, actualTopic)) {
       console.warn('Пропускаем удаление сообщения задачи из другой темы', {
@@ -1518,25 +1518,58 @@ export default class TasksController {
         actualTopic,
         messageId,
       });
-      return false;
+      return 'skipped';
     }
     try {
       await bot.telegram.deleteMessage(chat, messageId);
-      return true;
+      return 'deleted';
     } catch (error) {
       if (this.isMessageMissingOnDeleteError(error)) {
         console.info(`Сообщение ${messageId} задачи уже удалено в Telegram`);
-        return true;
+        return 'missing';
       }
       if (this.isMessageForbiddenToDeleteError(error)) {
         console.warn(
           `Сообщение ${messageId} задачи нельзя удалить в Telegram`,
           error,
         );
-        return true;
+        return 'forbidden';
       }
       console.error(
         `Не удалось удалить сообщение ${messageId} задачи в Telegram`,
+        error,
+      );
+      return 'failed';
+    }
+  }
+
+  private async editTaskMessageInPlace(
+    chat: string | number,
+    messageId: number,
+    message: string,
+    keyboard: ReturnType<typeof taskStatusKeyboard>,
+    topicId?: number,
+  ): Promise<boolean> {
+    const keyboardMarkup = this.extractKeyboardMarkup(keyboard);
+    const options: Parameters<typeof bot.telegram.editMessageText>[4] = {
+      parse_mode: 'MarkdownV2',
+      link_preview_options: { is_disabled: true },
+      ...(keyboardMarkup ? { reply_markup: keyboardMarkup } : {}),
+    };
+    const topicOptions =
+      typeof topicId === 'number'
+        ? ({ message_thread_id: topicId } as const)
+        : {};
+    const text = message.slice(0, TELEGRAM_MESSAGE_LIMIT);
+    try {
+      await bot.telegram.editMessageText(chat, messageId, undefined, text, {
+        ...options,
+        ...topicOptions,
+      });
+      return true;
+    } catch (error) {
+      console.error(
+        `Не удалось обновить сообщение ${messageId} задачи в Telegram без удаления`,
         error,
       );
       return false;
@@ -2227,72 +2260,104 @@ export default class TasksController {
 
     if (groupChatId) {
       try {
+        let reuseExistingMessage = false;
+        let previousMessageId: number | undefined;
         if (previousPlain) {
-          const previousMessageId =
+          previousMessageId =
             typeof previousPlain.telegram_message_id === 'number'
               ? previousPlain.telegram_message_id
               : undefined;
-          const previousPreviewIds = normalizeMessageIds(
-            previousPlain.telegram_preview_message_ids,
-          );
-          const previousAttachmentIds = normalizeMessageIds(
-            previousPlain.telegram_attachments_message_ids,
-          );
-          const cleanupTargets = new Set<number>();
-          if (typeof previousPlain.telegram_history_message_id === 'number') {
-            cleanupTargets.add(previousPlain.telegram_history_message_id);
-          }
-          if (typeof previousPlain.telegram_status_message_id === 'number') {
-            cleanupTargets.add(previousPlain.telegram_status_message_id);
-          }
-          if (typeof previousPlain.telegram_comment_message_id === 'number') {
-            cleanupTargets.add(previousPlain.telegram_comment_message_id);
-          }
-          if (previousMessageId) {
-            await this.deleteTaskMessageSafely(
+          const deletionResult = previousMessageId
+            ? await this.deleteTaskMessageSafely(
+                groupChatId,
+                previousMessageId,
+                previousTopicId,
+                topicId,
+              )
+            : 'failed';
+          if (deletionResult === 'forbidden' && previousMessageId) {
+            const updatedInPlace = await this.editTaskMessageInPlace(
               groupChatId,
               previousMessageId,
-              previousTopicId,
-              topicId,
+              message,
+              keyboard,
+              previousTopicId ?? topicId,
             );
-          }
-          if (previousPreviewIds.length) {
-            const previousAttachmentChatId =
-              previousPhotosChatId ?? normalizedGroupChatId;
-            if (previousAttachmentChatId) {
-              await this.deleteAttachmentMessages(
-                previousAttachmentChatId,
-                previousPreviewIds,
+            if (updatedInPlace) {
+              reuseExistingMessage = true;
+              groupMessageId = previousMessageId;
+              messageLink = buildChatMessageLink(
+                groupChatId,
+                previousMessageId,
+                previousTopicId ?? topicId,
               );
+              previewMessageIds = normalizeMessageIds(
+                previousPlain.telegram_preview_message_ids,
+              );
+              attachmentMessageIds = normalizeMessageIds(
+                previousPlain.telegram_attachments_message_ids,
+              );
+              photosMessageId = previousPhotosMessageId;
+              photosChatId = previousPhotosChatId ?? normalizedGroupChatId;
+              photosTopicId = previousPhotosTopicId;
             }
           }
-          if (previousAttachmentIds.length) {
-            const previousAttachmentChatId =
-              previousPhotosChatId ?? normalizedGroupChatId;
-            if (previousAttachmentChatId) {
-              await this.deleteAttachmentMessages(
-                previousAttachmentChatId,
-                previousAttachmentIds,
-              );
-            }
-          }
-          for (const messageId of cleanupTargets) {
-            await this.deleteTaskMessageSafely(
-              groupChatId,
-              messageId,
-              previousTopicId,
-              topicId,
+
+          if (!reuseExistingMessage) {
+            const previousPreviewIds = normalizeMessageIds(
+              previousPlain.telegram_preview_message_ids,
             );
-          }
-          if (previousPhotosMessageId) {
-            const photosChat = previousPhotosChatId ?? normalizedGroupChatId;
-            if (photosChat) {
+            const previousAttachmentIds = normalizeMessageIds(
+              previousPlain.telegram_attachments_message_ids,
+            );
+            const cleanupTargets = new Set<number>();
+            if (typeof previousPlain.telegram_history_message_id === 'number') {
+              cleanupTargets.add(previousPlain.telegram_history_message_id);
+            }
+            if (typeof previousPlain.telegram_status_message_id === 'number') {
+              cleanupTargets.add(previousPlain.telegram_status_message_id);
+            }
+            if (typeof previousPlain.telegram_comment_message_id === 'number') {
+              cleanupTargets.add(previousPlain.telegram_comment_message_id);
+            }
+            if (previousPreviewIds.length) {
+              const previousAttachmentChatId =
+                previousPhotosChatId ?? normalizedGroupChatId;
+              if (previousAttachmentChatId) {
+                await this.deleteAttachmentMessages(
+                  previousAttachmentChatId,
+                  previousPreviewIds,
+                );
+              }
+            }
+            if (previousAttachmentIds.length) {
+              const previousAttachmentChatId =
+                previousPhotosChatId ?? normalizedGroupChatId;
+              if (previousAttachmentChatId) {
+                await this.deleteAttachmentMessages(
+                  previousAttachmentChatId,
+                  previousAttachmentIds,
+                );
+              }
+            }
+            for (const messageId of cleanupTargets) {
               await this.deleteTaskMessageSafely(
-                photosChat,
-                previousPhotosMessageId,
-                previousPhotosTopicId,
-                previousPhotosTopicId,
+                groupChatId,
+                messageId,
+                previousTopicId,
+                topicId,
               );
+            }
+            if (previousPhotosMessageId) {
+              const photosChat = previousPhotosChatId ?? normalizedGroupChatId;
+              if (photosChat) {
+                await this.deleteTaskMessageSafely(
+                  photosChat,
+                  previousPhotosMessageId,
+                  previousPhotosTopicId,
+                  previousPhotosTopicId,
+                );
+              }
             }
           }
         }
@@ -2331,152 +2396,154 @@ export default class TasksController {
             (useSeparatePhotosChat || useSeparatePhotosTopic),
         );
 
-        const media = this.collectSendableAttachments(
-          plain,
-          formatted.inlineImages,
-        );
-        const sendResult = await this.sendTaskMessageWithPreview(
-          groupChatId,
-          message,
-          formatted.sections,
-          media,
-          keyboard,
-          topicId,
-          { skipAlbum: shouldSendAttachmentsSeparately },
-        );
-        groupMessageId = sendResult.messageId;
-        previewMessageIds = sendResult.previewMessageIds ?? [];
-        messageLink = buildChatMessageLink(
-          groupChatId,
-          groupMessageId,
-          topicId,
-        );
-        if (
-          !shouldSendAttachmentsSeparately &&
-          Array.isArray(sendResult.previewMessageIds) &&
-          sendResult.previewMessageIds.length > 0
-        ) {
-          const albumMessageId = sendResult.previewMessageIds[0];
-          if (typeof albumMessageId === 'number') {
-            albumLinkForKeyboard = buildChatMessageLink(
-              groupChatId,
-              albumMessageId,
-              topicId,
-            );
-          }
-        }
-        const consumedUrls = new Set(
-          (sendResult.consumedAttachmentUrls ?? []).filter((url) =>
-            Boolean(url),
-          ),
-        );
-        const extras = shouldSendAttachmentsSeparately
-          ? media.extras
-          : consumedUrls.size
-            ? media.extras.filter((attachment) =>
-                attachment.kind === 'image'
-                  ? !consumedUrls.has(attachment.url)
-                  : true,
-              )
-            : media.extras;
-        let albumIntroMessageId: number | undefined;
-
-        if (extras.length) {
-          const shouldSendAlbumIntro = shouldSendAttachmentsSeparately;
-          let albumMessageId: number | undefined;
-          if (shouldSendAlbumIntro && normalizedAttachmentsChatId) {
-            const intro = this.buildPhotoAlbumIntro(plain, {
-              messageLink,
-              appLink: taskAppLink ?? null,
-              topicId: attachmentsTopicIdForSend ?? undefined,
-            });
-            try {
-              const response = await bot.telegram.sendMessage(
-                normalizedAttachmentsChatId,
-                intro.text,
-                intro.options,
-              );
-              if (response?.message_id) {
-                albumMessageId = response.message_id;
-                albumIntroMessageId = response.message_id;
-              }
-            } catch (error) {
-              console.error(
-                'Не удалось отправить описание альбома задачи',
-                error,
-              );
-            }
-          }
-          const shouldReplyToGroup = Boolean(
-            normalizedAttachmentsChatId &&
-              this.areChatsEqual(
-                normalizedAttachmentsChatId,
-                normalizedGroupChatId,
-              ) &&
-              this.areTopicsEqual(attachmentsTopicIdForSend, topicId),
+        if (!reuseExistingMessage) {
+          const media = this.collectSendableAttachments(
+            plain,
+            formatted.inlineImages,
           );
-          if (attachmentsChatValue) {
-            try {
-              const replyTo = albumMessageId
-                ? albumMessageId
-                : shouldReplyToGroup
-                  ? groupMessageId
-                  : undefined;
-              attachmentMessageIds = await this.sendTaskAttachments(
-                attachmentsChatValue,
-                extras,
-                attachmentsTopicIdForSend,
-                replyTo,
-                sendResult.cache,
-              );
-              if (
-                typeof albumMessageId === 'number' &&
-                normalizedAttachmentsChatId
-              ) {
-                photosMessageId = albumMessageId;
-                photosChatId = normalizedAttachmentsChatId;
-                photosTopicId =
-                  typeof attachmentsTopicIdForSend === 'number'
-                    ? attachmentsTopicIdForSend
-                    : undefined;
-                albumLinkForKeyboard =
-                  buildChatMessageLink(
-                    normalizedAttachmentsChatId,
-                    albumMessageId,
-                    attachmentsTopicIdForSend,
-                  ) ?? albumLinkForKeyboard;
-              }
-            } catch (error) {
-              console.error('Не удалось отправить вложения задачи', error);
-            }
-          }
-        }
-
-        if (
-          typeof albumIntroMessageId === 'number' &&
-          normalizedAttachmentsChatId
-        ) {
-          await delay(ALBUM_MESSAGE_DELAY_MS);
-        }
-
-        if (
-          groupMessageId &&
-          groupChatId &&
-          docId &&
-          typeof docId === 'string'
-        ) {
-          const currentStatus =
-            typeof plain.status === 'string'
-              ? (plain.status as SharedTask['status'])
-              : undefined;
-          await this.updateTaskAlbumKeyboard(
+          const sendResult = await this.sendTaskMessageWithPreview(
+            groupChatId,
+            message,
+            formatted.sections,
+            media,
+            keyboard,
+            topicId,
+            { skipAlbum: shouldSendAttachmentsSeparately },
+          );
+          groupMessageId = sendResult.messageId;
+          previewMessageIds = sendResult.previewMessageIds ?? [];
+          messageLink = buildChatMessageLink(
             groupChatId,
             groupMessageId,
-            docId,
-            currentStatus,
-            kind,
-            albumLinkForKeyboard,
+            topicId,
           );
+          if (
+            !shouldSendAttachmentsSeparately &&
+            Array.isArray(sendResult.previewMessageIds) &&
+            sendResult.previewMessageIds.length > 0
+          ) {
+            const albumMessageId = sendResult.previewMessageIds[0];
+            if (typeof albumMessageId === 'number') {
+              albumLinkForKeyboard = buildChatMessageLink(
+                groupChatId,
+                albumMessageId,
+                topicId,
+              );
+            }
+          }
+          const consumedUrls = new Set(
+            (sendResult.consumedAttachmentUrls ?? []).filter((url) =>
+              Boolean(url),
+            ),
+          );
+          const extras = shouldSendAttachmentsSeparately
+            ? media.extras
+            : consumedUrls.size
+              ? media.extras.filter((attachment) =>
+                  attachment.kind === 'image'
+                    ? !consumedUrls.has(attachment.url)
+                    : true,
+                )
+              : media.extras;
+          let albumIntroMessageId: number | undefined;
+
+          if (extras.length) {
+            const shouldSendAlbumIntro = shouldSendAttachmentsSeparately;
+            let albumMessageId: number | undefined;
+            if (shouldSendAlbumIntro && normalizedAttachmentsChatId) {
+              const intro = this.buildPhotoAlbumIntro(plain, {
+                messageLink,
+                appLink: taskAppLink ?? null,
+                topicId: attachmentsTopicIdForSend ?? undefined,
+              });
+              try {
+                const response = await bot.telegram.sendMessage(
+                  normalizedAttachmentsChatId,
+                  intro.text,
+                  intro.options,
+                );
+                if (response?.message_id) {
+                  albumMessageId = response.message_id;
+                  albumIntroMessageId = response.message_id;
+                }
+              } catch (error) {
+                console.error(
+                  'Не удалось отправить описание альбома задачи',
+                  error,
+                );
+              }
+            }
+            const shouldReplyToGroup = Boolean(
+              normalizedAttachmentsChatId &&
+                this.areChatsEqual(
+                  normalizedAttachmentsChatId,
+                  normalizedGroupChatId,
+                ) &&
+                this.areTopicsEqual(attachmentsTopicIdForSend, topicId),
+            );
+            if (attachmentsChatValue) {
+              try {
+                const replyTo = albumMessageId
+                  ? albumMessageId
+                  : shouldReplyToGroup
+                    ? groupMessageId
+                    : undefined;
+                attachmentMessageIds = await this.sendTaskAttachments(
+                  attachmentsChatValue,
+                  extras,
+                  attachmentsTopicIdForSend,
+                  replyTo,
+                  sendResult.cache,
+                );
+                if (
+                  typeof albumMessageId === 'number' &&
+                  normalizedAttachmentsChatId
+                ) {
+                  photosMessageId = albumMessageId;
+                  photosChatId = normalizedAttachmentsChatId;
+                  photosTopicId =
+                    typeof attachmentsTopicIdForSend === 'number'
+                      ? attachmentsTopicIdForSend
+                      : undefined;
+                  albumLinkForKeyboard =
+                    buildChatMessageLink(
+                      normalizedAttachmentsChatId,
+                      albumMessageId,
+                      attachmentsTopicIdForSend,
+                    ) ?? albumLinkForKeyboard;
+                }
+              } catch (error) {
+                console.error('Не удалось отправить вложения задачи', error);
+              }
+            }
+          }
+
+          if (
+            typeof albumIntroMessageId === 'number' &&
+            normalizedAttachmentsChatId
+          ) {
+            await delay(ALBUM_MESSAGE_DELAY_MS);
+          }
+
+          if (
+            groupMessageId &&
+            groupChatId &&
+            docId &&
+            typeof docId === 'string'
+          ) {
+            const currentStatus =
+              typeof plain.status === 'string'
+                ? (plain.status as SharedTask['status'])
+                : undefined;
+            await this.updateTaskAlbumKeyboard(
+              groupChatId,
+              groupMessageId,
+              docId,
+              currentStatus,
+              kind,
+              albumLinkForKeyboard,
+            );
+          }
         }
       } catch (error) {
         console.error('Не удалось отправить уведомление в группу', error);

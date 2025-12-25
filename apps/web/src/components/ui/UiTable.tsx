@@ -19,6 +19,7 @@ export type UiTableProps<T> = React.TableHTMLAttributes<HTMLTableElement> & {
   rows: T[];
   rowKey: (row: T) => string | number;
   empty?: React.ReactNode;
+  onRowClick?: (row: T) => void;
 };
 
 const renderCellValue = <T,>(column: UiTableColumn<T>, row: T) => {
@@ -34,10 +35,12 @@ const UiTable = <T,>({
   rows,
   rowKey,
   empty,
+  onRowClick,
   className,
   ...props
 }: UiTableProps<T>) => {
   const hasRows = rows.length > 0;
+  const isClickable = typeof onRowClick === 'function';
 
   return (
     <table className={cn('table w-full', className)} {...props}>
@@ -53,7 +56,11 @@ const UiTable = <T,>({
       <tbody>
         {hasRows ? (
           rows.map((row) => (
-            <tr key={rowKey(row)}>
+            <tr
+              key={rowKey(row)}
+              className={cn({ 'cursor-pointer hover': isClickable })}
+              onClick={isClickable ? () => onRowClick(row) : undefined}
+            >
               {columns.map((column) => (
                 <td key={column.key} className={column.className}>
                   {renderCellValue(column, row)}
@@ -63,7 +70,10 @@ const UiTable = <T,>({
           ))
         ) : (
           <tr>
-            <td colSpan={columns.length} className="text-center text-sm opacity-70">
+            <td
+              colSpan={columns.length}
+              className="text-center text-sm opacity-70"
+            >
               {empty ?? 'Нет данных'}
             </td>
           </tr>

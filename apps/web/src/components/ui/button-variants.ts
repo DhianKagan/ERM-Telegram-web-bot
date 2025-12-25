@@ -29,12 +29,13 @@ export const buttonVariants = cva(
       },
       size: {
         md: 'min-h-[var(--btn-height)] px-[var(--btn-padding-x)] py-[var(--btn-padding-y)] text-sm',
-        sm: 'min-h-[36px] px-3 py-2 text-sm',
-        lg: 'min-h-[44px] px-5 py-3 text-base',
-        xs: 'min-h-[32px] px-3 py-1.5 text-xs',
-        pill: 'min-h-[32px] px-3 py-1 text-xs',
-        icon: 'min-h-[36px] min-w-[36px] rounded-full p-2',
-        'icon-lg': 'min-h-[44px] min-w-[44px] rounded-full p-0',
+        sm: 'min-h-[var(--touch-target)] px-3 py-2 text-sm',
+        lg: 'min-h-[var(--touch-target)] px-5 py-3 text-base',
+        xs: 'min-h-[var(--touch-target)] px-3 py-1.5 text-xs',
+        pill: 'min-h-[var(--touch-target)] px-4 py-2 text-sm',
+        icon: 'min-h-[var(--touch-target)] min-w-[var(--touch-target)] rounded-full p-2',
+        'icon-lg':
+          'min-h-[var(--touch-target)] min-w-[var(--touch-target)] rounded-full p-0',
       },
     },
     defaultVariants: {

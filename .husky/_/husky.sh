@@ -1,23 +1,9 @@
-#!/bin/sh
+echo "husky - DEPRECATED
 
-if [ -z "$husky_skip_init" ]; then
-  debug() {
-    [ "$HUSKY_DEBUG" = "1" ] && echo "husky: $*"
-  }
+Please remove the following two lines from $0:
 
-  readonly hook_name="$(basename "$0")"
-  debug "starting $hook_name..."
+#!/usr/bin/env sh
+. \"\$(dirname -- \"\$0\")/_/husky.sh\"
 
-  if [ "$HUSKY" = "0" ]; then
-    debug "HUSKY env variable is set to 0, skipping hook"
-    exit 0
-  fi
-
-  if [ -f ~/.huskyrc ]; then
-    debug "~/.huskyrc found, sourcing..."
-    . ~/.huskyrc
-  fi
-
-  export husky_skip_init=1
-  sh -e "$0" "$@"
-fi
+They WILL FAIL in v10.0.0
+"

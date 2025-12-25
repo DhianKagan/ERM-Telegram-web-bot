@@ -182,6 +182,19 @@
   [role='button']:not(:disabled) {
     cursor: pointer;
   }
+
+  button,
+  [role='button'],
+  input,
+  select,
+  textarea {
+    min-height: var(--touch-target);
+  }
+
+  button,
+  [role='button'] {
+    min-width: var(--touch-target);
+  }
   body {
     @apply font-outfit relative z-1 bg-gray-50 font-normal;
   }

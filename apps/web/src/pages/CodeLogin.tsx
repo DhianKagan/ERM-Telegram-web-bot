@@ -52,7 +52,8 @@ export default function CodeLogin() {
       <input
         id="code-login-telegram-id"
         name="telegramId"
-        className="border p-2"
+        aria-label="Telegram ID"
+        className="min-h-[var(--touch-target)] rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-sm text-[var(--color-muted)] placeholder-[var(--color-muted)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-400)]"
         placeholder="Telegram ID"
         value={telegramId}
         onChange={(e) => setTelegramId(e.target.value)}
@@ -69,13 +70,17 @@ export default function CodeLogin() {
         <input
           id="code-login-code"
           name="verificationCode"
-          className="border p-2"
+          aria-label="Код подтверждения"
+          className="min-h-[var(--touch-target)] rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-sm text-[var(--color-muted)] placeholder-[var(--color-muted)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-400)]"
           placeholder="Код"
           value={code}
           onChange={(e) => setCode(e.target.value)}
         />
       )}
-      <button type="submit" className="bg-primary p-2 text-white">
+      <button
+        type="submit"
+        className="min-h-[var(--touch-target)] rounded-[var(--radius)] bg-[var(--color-primary)] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--color-primary-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-400)]"
+      >
         {sent ? 'Войти по коду' : 'Отправить код'}
       </button>
     </form>

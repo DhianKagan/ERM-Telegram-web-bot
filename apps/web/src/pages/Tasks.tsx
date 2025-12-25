@@ -76,10 +76,11 @@ export default function Tasks() {
         <input
           id="task-create-description"
           name="taskDescription"
+          aria-label="Описание задачи"
           value={text}
           onChange={(e) => setText(e.target.value)}
           required
-          className="h-10 flex-1 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-sm text-[var(--color-muted)] placeholder-[var(--color-muted)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-400)]"
+          className="min-h-[var(--touch-target)] flex-1 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-sm text-[var(--color-muted)] placeholder-[var(--color-muted)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-400)]"
           placeholder="Описание"
         />
         <Button type="submit" className="xsm:w-full">

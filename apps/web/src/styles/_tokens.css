@@ -9,9 +9,10 @@
   --bg-muted: #f6fbfb;
   --border: #e6e9ee;
   --radius: 8px;
+  --touch-target: 44px;
   --btn-padding-y: 10px;
   --btn-padding-x: 16px;
-  --btn-height: 40px;
+  --btn-height: var(--touch-target);
   --table-row-height: 48px;
   --table-padding-x: 16px;
   --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04);

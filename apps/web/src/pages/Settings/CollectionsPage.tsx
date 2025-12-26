@@ -100,6 +100,92 @@ import {
   WrenchScrewdriverIcon,
 } from '@heroicons/react/24/outline';
 
+type AssetLocationInfo = { label: string; raw: string };
+
+type AssetEventLogEntry = {
+  id: string;
+  number: string;
+  dateLabel: string;
+  dateValue: Date | null;
+  eventType: string;
+  eventTypeLabel: string;
+  operationLabel: string;
+  location: string;
+  locationLink?: string;
+  transferLocation: string;
+  description: string;
+};
+
+const EVENT_LOG_TYPE_LABELS: Record<string, string> = {
+  refuel: 'Заправка',
+  maintenance: 'Обслуживание',
+  repair: 'Ремонт',
+  transfer: 'Перемещение',
+};
+
+const EVENT_LOG_OPERATION_LABELS: Record<string, string> = {
+  self_service: 'Самообслуживание',
+  service: 'Сервис',
+};
+
+const formatEventDateTimeLabel = (value?: string): string => {
+  if (!value) return '—';
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) return value;
+  return new Intl.DateTimeFormat('ru-RU', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(parsed);
+};
+
+const toObjectIdDate = (id?: string): Date | null => {
+  if (!id || typeof id !== 'string' || id.length < 8) return null;
+  const timestamp = Number.parseInt(id.slice(0, 8), 16);
+  if (Number.isNaN(timestamp)) return null;
+  return new Date(timestamp * 1000);
+};
+
+const normalizeLocationValue = (value: string): string =>
+  value.trim().replace(/\s+/g, ' ').toLowerCase();
+
+const resolveAssetLocation = (
+  meta: unknown,
+  objects: CollectionObject[],
+): AssetLocationInfo => {
+  if (!meta || typeof meta !== 'object') {
+    return { label: '—', raw: '' };
+  }
+  const location =
+    (meta as Record<string, unknown>).location &&
+    typeof (meta as Record<string, unknown>).location === 'object'
+      ? ((meta as Record<string, unknown>).location as Record<string, unknown>)
+      : undefined;
+  const source = location?.source === 'object' ? 'object' : 'manual';
+  const objectId =
+    typeof location?.objectId === 'string' ? location.objectId : '';
+  const address = typeof location?.address === 'string' ? location.address : '';
+  const latitude =
+    typeof location?.latitude === 'number' ? location.latitude : undefined;
+  const longitude =
+    typeof location?.longitude === 'number' ? location.longitude : undefined;
+
+  if (source === 'object') {
+    const objectName = objectId
+      ? objects.find((object) => object._id === objectId)?.name
+      : '';
+    const label = objectName || objectId || '—';
+    return { label, raw: objectName || objectId }; // raw без плейсхолдера
+  }
+  if (address) {
+    return { label: address, raw: address };
+  }
+  if (latitude !== undefined || longitude !== undefined) {
+    const coords = `${latitude ?? ''} ${longitude ?? ''}`.trim();
+    return { label: coords || '—', raw: coords };
+  }
+  return { label: '—', raw: '' };
+};
+
 const moduleTabs = [
   {
     key: 'directories',
@@ -1134,6 +1220,10 @@ export default function CollectionsPage() {
   const [taskFieldItems, setTaskFieldItems] = useState<CollectionItem[]>([]);
   const [taskTypeItems, setTaskTypeItems] = useState<CollectionItem[]>([]);
   const [tasksLoading, setTasksLoading] = useState(false);
+  const [eventLogs, setEventLogs] = useState<CollectionItem[]>([]);
+  const [eventLogsLoading, setEventLogsLoading] = useState(false);
+  const [eventLogsError, setEventLogsError] = useState<string | null>(null);
+  const [showAssetEvents, setShowAssetEvents] = useState(false);
   const { user: currentUser } = useAuth();
   const [confirmUserDelete, setConfirmUserDelete] = useState(false);
   const [confirmEmployeeDelete, setConfirmEmployeeDelete] = useState(false);
@@ -1182,6 +1272,21 @@ export default function CollectionsPage() {
       setAllObjects([]);
     }
   }, []);
+  const loadEventLogs = useCallback(async () => {
+    setEventLogsLoading(true);
+    try {
+      const events = await fetchAllCollectionItems('event_logs', '', 200);
+      setEventLogs(events);
+      setEventLogsError(null);
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Не удалось загрузить события';
+      setEventLogsError(message);
+      setEventLogs([]);
+    } finally {
+      setEventLogsLoading(false);
+    }
+  }, []);
   const selectedCollectionInfo = useMemo(() => {
     if (
       !selectedCollection?.meta ||
@@ -1212,6 +1317,113 @@ export default function CollectionsPage() {
         : null,
     [selectedCollection],
   );
+
+  const selectedAssetLocation = useMemo<AssetLocationInfo>(
+    () =>
+      selectedCollection?.type === 'fixed_assets'
+        ? resolveAssetLocation(selectedCollection.meta, allObjects)
+        : { label: '—', raw: '' },
+    [allObjects, selectedCollection],
+  );
+
+  const assetEvents = useMemo<AssetEventLogEntry[]>(() => {
+    if (!selectedCollection || selectedCollection.type !== 'fixed_assets') {
+      return [];
+    }
+    const assetId = selectedCollection._id;
+    return eventLogs
+      .map((item) => {
+        const meta = (item.meta ?? {}) as Record<string, unknown>;
+        const metaAssetId =
+          typeof meta.assetId === 'string' ? meta.assetId : '';
+        const assetType =
+          typeof meta.assetType === 'string' ? meta.assetType : '';
+        if (assetType && assetType !== 'fixed_asset') return null;
+        if (metaAssetId !== assetId) return null;
+        const eventType =
+          typeof meta.eventType === 'string' ? meta.eventType : '';
+        const operation =
+          typeof meta.operation === 'string' ? meta.operation : 'self_service';
+        const datetimeRaw =
+          typeof meta.datetime === 'string'
+            ? meta.datetime
+            : typeof meta.date === 'string'
+              ? meta.date
+              : '';
+        const parsedDate = datetimeRaw ? new Date(datetimeRaw) : null;
+        const dateValue =
+          parsedDate && !Number.isNaN(parsedDate.getTime())
+            ? parsedDate
+            : toObjectIdDate(item._id);
+        const dateLabel = formatEventDateTimeLabel(
+          parsedDate && !Number.isNaN(parsedDate.getTime())
+            ? parsedDate.toISOString()
+            : dateValue?.toISOString(),
+        );
+        const locationObjectId =
+          typeof meta.locationObjectId === 'string'
+            ? meta.locationObjectId
+            : '';
+        const locationObject = locationObjectId
+          ? allObjects.find((object) => object._id === locationObjectId)
+          : undefined;
+        const location =
+          (typeof meta.location === 'string' && meta.location) ||
+          locationObject?.address ||
+          locationObject?.name ||
+          '';
+        const transferLocation =
+          typeof meta.transferLocation === 'string'
+            ? meta.transferLocation
+            : '';
+        const description =
+          (typeof meta.description === 'string' && meta.description) ||
+          item.value ||
+          '';
+        const locationLink =
+          typeof meta.locationLink === 'string' ? meta.locationLink : undefined;
+        return {
+          id: item._id,
+          number: item.name ?? '—',
+          dateLabel,
+          dateValue: dateValue ?? null,
+          eventType,
+          eventTypeLabel: EVENT_LOG_TYPE_LABELS[eventType] ?? '—',
+          operationLabel: EVENT_LOG_OPERATION_LABELS[operation] ?? '—',
+          location,
+          locationLink,
+          transferLocation,
+          description,
+        } as AssetEventLogEntry;
+      })
+      .filter((item): item is AssetEventLogEntry => Boolean(item))
+      .sort(
+        (a, b) => (b.dateValue?.getTime() ?? 0) - (a.dateValue?.getTime() ?? 0),
+      );
+  }, [allObjects, eventLogs, selectedCollection]);
+
+  const latestTransferEvent = useMemo(
+    () =>
+      assetEvents.find(
+        (entry) =>
+          entry.eventType === 'transfer' &&
+          entry.transferLocation.trim().length,
+      ) || null,
+    [assetEvents],
+  );
+
+  const transferLocationDiffers = useMemo(() => {
+    if (!latestTransferEvent) return false;
+    const assetLocationNormalized = normalizeLocationValue(
+      selectedAssetLocation.raw,
+    );
+    const transferLocationNormalized = normalizeLocationValue(
+      latestTransferEvent.transferLocation,
+    );
+    if (!transferLocationNormalized) return false;
+    if (!assetLocationNormalized) return true;
+    return assetLocationNormalized !== transferLocationNormalized;
+  }, [latestTransferEvent, selectedAssetLocation.raw]);
 
   const breadcrumbs = useMemo(
     () => [
@@ -1371,6 +1583,12 @@ export default function CollectionsPage() {
       void loadObjects();
     }
   }, [active, allObjects.length, loadObjects]);
+
+  useEffect(() => {
+    if (active === 'fixed_assets') {
+      void loadEventLogs();
+    }
+  }, [active, loadEventLogs]);
 
   const saveTaskField = useCallback(
     async (item: CollectionItem, label: string) => {
@@ -3451,12 +3669,6 @@ export default function CollectionsPage() {
                         </dd>
                       </div>
                       <div className="flex justify-between gap-4">
-                        <dt className="font-medium text-slate-500">Название</dt>
-                        <dd className="text-right text-slate-900">
-                          {selectedCollection.name}
-                        </dd>
-                      </div>
-                      <div className="flex justify-between gap-4">
                         <dt className="font-medium text-slate-500">
                           Инвентарный номер
                         </dt>
@@ -3478,62 +3690,127 @@ export default function CollectionsPage() {
                           Расположение
                         </dt>
                         <dd className="mt-1 rounded bg-white p-2 text-xs text-slate-900">
-                          {(() => {
-                            const meta = selectedCollection.meta as
-                              | Record<string, unknown>
-                              | undefined;
-                            const location =
-                              meta?.location &&
-                              typeof meta.location === 'object'
-                                ? (meta.location as Record<string, unknown>)
-                                : undefined;
-                            const source =
-                              location?.source === 'object'
-                                ? 'object'
-                                : 'manual';
-                            const objectId =
-                              typeof location?.objectId === 'string'
-                                ? location.objectId
-                                : '';
-                            if (source === 'object') {
-                              const objectName =
-                                objectId && allObjects.length
-                                  ? allObjects.find(
-                                      (object) => object._id === objectId,
-                                    )?.name
-                                  : '';
-                              return objectName || objectId || '—';
-                            }
-                            const address =
-                              typeof location?.address === 'string'
-                                ? location.address
-                                : '';
-                            if (address) return address;
-                            const latitude =
-                              typeof location?.latitude === 'number'
-                                ? location.latitude
-                                : undefined;
-                            const longitude =
-                              typeof location?.longitude === 'number'
-                                ? location.longitude
-                                : undefined;
-                            if (
-                              latitude !== undefined ||
-                              longitude !== undefined
-                            ) {
-                              return `${latitude ?? ''} ${longitude ?? ''}`.trim();
-                            }
-                            return '—';
-                          })()}
+                          {selectedAssetLocation.label}
                         </dd>
+                        {transferLocationDiffers && latestTransferEvent ? (
+                          <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-800">
+                            <p className="font-semibold">
+                              Последнее перемещение:{' '}
+                              {latestTransferEvent.transferLocation}
+                            </p>
+                            <p className="mt-1 text-amber-700">
+                              Текущее расположение в карточке:{' '}
+                              {selectedAssetLocation.label}
+                            </p>
+                          </div>
+                        ) : null}
                       </div>
                       <div>
                         <dt className="font-medium text-slate-500">
                           История событий
                         </dt>
-                        <dd className="mt-1 text-xs text-slate-500">
-                          Привязанные события будут отображаться после
-                          наполнения журнала событий.
+                        <dd className="mt-2 space-y-2">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() =>
+                                setShowAssetEvents((prev) => !prev)
+                              }
+                              disabled={eventLogsLoading}
+                            >
+                              {showAssetEvents
+                                ? 'Скрыть историю'
+                                : 'Показать историю'}
+                            </Button>
+                            <span className="badge badge-neutral badge-sm">
+                              {assetEvents.length}
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => void loadEventLogs()}
+                              disabled={eventLogsLoading}
+                            >
+                              Обновить
+                            </Button>
+                          </div>
+                          {eventLogsError ? (
+                            <p className="text-xs text-red-600">
+                              {eventLogsError}
+                            </p>
+                          ) : null}
+                          {showAssetEvents ? (
+                            eventLogsLoading ? (
+                              <div className="flex items-center gap-2 text-xs text-slate-600">
+                                <Spinner className="h-4 w-4 text-[color:var(--color-brand-500)]" />
+                                <span>Загружаем события...</span>
+                              </div>
+                            ) : assetEvents.length === 0 ? (
+                              <p className="text-xs text-slate-500">
+                                События для этого основного средства не найдены.
+                              </p>
+                            ) : (
+                              <div className="space-y-2">
+                                {assetEvents.map((event) => (
+                                  <div
+                                    key={event.id}
+                                    className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
+                                  >
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                      <span className="font-semibold text-slate-800">
+                                        {event.number}
+                                      </span>
+                                      <span className="text-xs text-slate-500">
+                                        {event.dateLabel}
+                                      </span>
+                                    </div>
+                                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                                      <span
+                                        className="ui-status-badge"
+                                        data-tone="brand"
+                                      >
+                                        {event.eventTypeLabel}
+                                      </span>
+                                      <span
+                                        className="ui-status-badge"
+                                        data-tone="muted"
+                                      >
+                                        {event.operationLabel}
+                                      </span>
+                                      {event.location ? (
+                                        <span
+                                          className="ui-status-badge"
+                                          data-tone="muted"
+                                        >
+                                          {event.location}
+                                        </span>
+                                      ) : null}
+                                      {event.transferLocation ? (
+                                        <span
+                                          className="ui-status-badge"
+                                          data-tone="warning"
+                                        >
+                                          Место перемещения:{' '}
+                                          {event.transferLocation}
+                                        </span>
+                                      ) : null}
+                                    </div>
+                                    {event.description ? (
+                                      <p className="mt-2 text-sm text-slate-700">
+                                        {event.description}
+                                      </p>
+                                    ) : null}
+                                  </div>
+                                ))}
+                              </div>
+                            )
+                          ) : (
+                            <p className="text-xs text-slate-500">
+                              Нажмите, чтобы развернуть историю событий по
+                              основному средству.
+                            </p>
+                          )}
                         </dd>
                       </div>
                     </dl>

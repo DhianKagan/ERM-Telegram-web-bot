@@ -11,6 +11,8 @@ import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import Spinner from '../components/Spinner';
 import { showToast } from '../utils/toast';
+import { useAuth } from '../context/useAuth';
+import type { User } from '../types/user';
 import {
   fetchCollectionItems,
   createCollectionItem,
@@ -29,7 +31,7 @@ const PAGE_LIMIT = 10;
 
 type AssetType = 'fixed_asset' | 'fleet' | '';
 
-type EventType = 'refuel' | 'maintenance' | 'repair' | '';
+type EventType = 'refuel' | 'maintenance' | 'repair' | 'transfer' | '';
 type EventOperation = 'self_service' | 'service';
 
 type EventLogMeta = {
@@ -41,6 +43,7 @@ type EventLogMeta = {
   location?: string;
   locationObjectId?: string;
   locationLink?: string;
+  transferLocation?: string;
   description?: string;
   performer?: string;
   eventType?: EventType;
@@ -60,6 +63,7 @@ type EventLogForm = {
   locationLink: string;
   location: string;
   locationObjectId: string;
+  transferLocation: string;
   description: string;
 };
 
@@ -75,6 +79,7 @@ const emptyForm: EventLogForm = {
   locationLink: '',
   location: '',
   locationObjectId: '',
+  transferLocation: '',
   description: '',
 };
 
@@ -85,6 +90,7 @@ const EVENT_TYPE_OPTIONS: { value: Exclude<EventType, ''>; label: string }[] = [
   { value: 'refuel', label: 'Заправка' },
   { value: 'maintenance', label: 'Обслуживание' },
   { value: 'repair', label: 'Ремонт' },
+  { value: 'transfer', label: 'Перемещение' },
 ];
 
 const EVENT_OPERATION_OPTIONS: { value: EventOperation; label: string }[] = [
@@ -126,6 +132,16 @@ const resolveOperationLabel = (value: EventOperation): string =>
   EVENT_OPERATION_OPTIONS.find((option) => option.value === value)?.label ||
   '—';
 
+const resolvePerformerLabel = (user: User | null): string => {
+  if (!user) return '';
+  const name = (user.name ?? '').trim();
+  if (name) return name;
+  const username = (user.username ?? user.telegram_username ?? '').trim();
+  if (username) return username;
+  if (user.telegram_id) return String(user.telegram_id);
+  return '';
+};
+
 const resolveAssetLocation = (asset: CollectionItem | undefined): string => {
   if (!asset) return '';
   const meta = (asset.meta ?? {}) as Record<string, unknown>;
@@ -161,6 +177,7 @@ export default function EventLog() {
   const [fleetVehicles, setFleetVehicles] = React.useState<FleetVehicleDto[]>(
     [],
   );
+  const { user: currentUser } = useAuth();
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_LIMIT));
 
@@ -226,6 +243,14 @@ export default function EventLog() {
     void loadReferences();
   }, [loadReferences]);
 
+  React.useEffect(() => {
+    if (!modalOpen || form.id) return;
+    const performerLabel = resolvePerformerLabel(currentUser);
+    if (!performerLabel) return;
+    if (performerLabel === form.performer) return;
+    setForm((prev) => ({ ...prev, performer: performerLabel }));
+  }, [currentUser, form.id, form.performer, modalOpen]);
+
   const assetMap = React.useMemo(() => {
     const map = new Map<string, string>();
     assets.forEach((asset) => map.set(asset._id, asset.name));
@@ -277,6 +302,11 @@ export default function EventLog() {
         const operation = (meta.operation as EventOperation) ?? 'self_service';
         const dateTime = meta.datetime || meta.date || '';
         const performer = meta.performer?.trim() || '—';
+        const transferLocation =
+          typeof meta.transferLocation === 'string'
+            ? meta.transferLocation.trim()
+            : '';
+        const isTransfer = eventType === 'transfer';
         return {
           id: item._id,
           number: item.name ?? '—',
@@ -285,8 +315,10 @@ export default function EventLog() {
           operation: resolveOperationLabel(operation),
           performer,
           asset: assetLabel,
-          location: locationLabel || '—',
+          location: locationLabel,
           locationLink: meta.locationLink,
+          transferLocation,
+          isTransfer,
           description: meta.description || item.value || '—',
         };
       }),
@@ -301,6 +333,7 @@ export default function EventLog() {
       dateTime: now,
       date: now ? now.slice(0, 10) : '',
       eventType: 'refuel',
+      performer: resolvePerformerLabel(currentUser),
     });
     setModalOpen(true);
   };
@@ -321,6 +354,7 @@ export default function EventLog() {
       locationLink: meta.locationLink ?? '',
       location: meta.location ?? '',
       locationObjectId: meta.locationObjectId ?? '',
+      transferLocation: meta.transferLocation ?? '',
       description: meta.description ?? item.value ?? '',
     });
     setModalOpen(true);
@@ -338,6 +372,7 @@ export default function EventLog() {
     const isoDateTime = toIsoDateTime(dateTimeValue);
     const date = dateTimeValue ? dateTimeValue.slice(0, 10) : form.date.trim();
     const performer = form.performer.trim();
+    const transferLocation = form.transferLocation.trim();
     const eventType = form.eventType;
     const operation = form.operation;
     const description = form.description.trim();
@@ -354,7 +389,11 @@ export default function EventLog() {
       return;
     }
     if (!performer) {
-      showToast('Укажите исполнителя.', 'error');
+      showToast('Создатель события не определён.', 'error');
+      return;
+    }
+    if (eventType === 'transfer' && !transferLocation) {
+      showToast('Укажите место перемещения.', 'error');
       return;
     }
     if (!description) {
@@ -385,6 +424,10 @@ export default function EventLog() {
           location: form.location || undefined,
           locationObjectId: form.locationObjectId || undefined,
           locationLink: locationLink || undefined,
+          transferLocation:
+            eventType === 'transfer' && transferLocation
+              ? transferLocation
+              : undefined,
           description,
         },
       };
@@ -540,18 +583,21 @@ export default function EventLog() {
               </div>
               <div className="space-y-1">
                 <label className="text-sm font-semibold text-[color:var(--color-gray-700)]">
-                  Исполнитель
+                  Событие
                 </label>
-                <Input
-                  value={form.performer}
-                  onChange={(event) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      performer: event.target.value,
-                    }))
-                  }
-                  placeholder="ФИО или подразделение"
-                />
+                <div className="flex flex-wrap gap-2">
+                  <span
+                    className="ui-status-badge"
+                    data-badge-label={form.performer || '—'}
+                    data-tone="brand"
+                  >
+                    {form.performer || '—'}
+                  </span>
+                </div>
+                <p className="text-xs text-[color:var(--color-gray-600)]">
+                  Создатель события определяется автоматически и недоступен для
+                  редактирования.
+                </p>
               </div>
               <div className="space-y-1">
                 <label className="text-sm font-semibold text-[color:var(--color-gray-700)]">
@@ -744,6 +790,23 @@ export default function EventLog() {
                   }
                   placeholder="Адрес или описание места"
                 />
+                {form.eventType === 'transfer' ? (
+                  <div className="space-y-1">
+                    <span className="text-xs text-[color:var(--color-gray-600)]">
+                      Место перемещения
+                    </span>
+                    <Input
+                      value={form.transferLocation}
+                      onChange={(event) =>
+                        setForm((prev) => ({
+                          ...prev,
+                          transferLocation: event.target.value,
+                        }))
+                      }
+                      placeholder="Адрес нового местоположения"
+                    />
+                  </div>
+                ) : null}
                 <p className="text-xs text-[color:var(--color-gray-500)]">
                   При самообслуживании адрес подставляется из карточки объекта.
                 </p>

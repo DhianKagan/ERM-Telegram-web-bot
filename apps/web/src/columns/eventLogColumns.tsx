@@ -58,6 +58,7 @@ export const eventLogColumns: ColumnDef<EventLogRow>[] = [
         row.original;
       const hasLocation = Boolean(location?.trim());
       const hasTransferLocation = Boolean(transferLocation?.trim());
+      const badgeClassName = 'ui-status-badge whitespace-pre-line';
       if (!hasLocation && !hasTransferLocation) {
         return (
           <span className="ui-status-badge" data-tone="muted">
@@ -73,7 +74,7 @@ export const eventLogColumns: ColumnDef<EventLogRow>[] = [
                 href={locationLink}
                 target="_blank"
                 rel="noopener"
-                className="ui-status-badge"
+                className={badgeClassName}
                 data-badge-label={location}
                 data-tone="in_progress"
               >
@@ -81,7 +82,7 @@ export const eventLogColumns: ColumnDef<EventLogRow>[] = [
               </a>
             ) : (
               <span
-                className="ui-status-badge"
+                className={badgeClassName}
                 data-badge-label={location}
                 data-tone="muted"
               >
@@ -91,7 +92,7 @@ export const eventLogColumns: ColumnDef<EventLogRow>[] = [
           ) : null}
           {isTransfer && hasTransferLocation ? (
             <span
-              className="ui-status-badge"
+              className={badgeClassName}
               data-badge-label={`Место перемещения: ${transferLocation}`}
               data-tone="warning"
             >

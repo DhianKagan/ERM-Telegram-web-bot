@@ -22,6 +22,38 @@ const DEFAULTS: Required<Options> = {
   baseDelayMs: 1000,
 };
 
+type TelegramError = {
+  code?: unknown;
+  errno?: unknown;
+  message?: unknown;
+  description?: unknown;
+};
+
+const extractErrorDetails = (
+  error: unknown,
+): { code: string | number | null; message?: string } => {
+  if (!error) {
+    return { code: null, message: undefined };
+  }
+  const candidate = error as TelegramError;
+  const codeCandidate =
+    typeof candidate.code === 'string' || typeof candidate.code === 'number'
+      ? candidate.code
+      : typeof candidate.errno === 'string' ||
+          typeof candidate.errno === 'number'
+        ? candidate.errno
+        : null;
+  const message =
+    typeof candidate.message === 'string'
+      ? candidate.message
+      : typeof candidate.description === 'string'
+        ? candidate.description
+        : typeof error === 'string'
+          ? error
+          : undefined;
+  return { code: codeCandidate, message };
+};
+
 function wait(ms: number) {
   return new Promise((res) => setTimeout(res, ms));
 }
@@ -37,11 +69,7 @@ export async function safeStartBot(opts?: Options): Promise<boolean> {
       return true;
     } catch (err) {
       // Логируем подробно — важно для диагностики (code/errno, message)
-      const code = (err as any)?.code ?? (err as any)?.errno ?? null;
-      const message =
-        (err as any)?.message ||
-        (err as any)?.description ||
-        (typeof err === 'string' ? err : undefined);
+      const { code, message } = extractErrorDetails(err);
       console.error(
         `safeStartBot: попытка ${i + 1} из ${attempts} завершилась ошибкой. code=${String(
           code,
@@ -61,8 +89,9 @@ export async function safeStartBot(opts?: Options): Promise<boolean> {
 
       // Экспоненциальный бэкофф перед следующей попыткой
       const delay = baseDelayMs * Math.pow(2, i);
-      console.info(`safeStartBot: ожидание ${delay}ms перед следующей попыткой...`);
-      // eslint-disable-next-line no-await-in-loop
+      console.info(
+        `safeStartBot: ожидание ${delay}ms перед следующей попыткой...`,
+      );
       await wait(delay);
     }
   }

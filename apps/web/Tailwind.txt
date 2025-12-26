@@ -1,215 +1,188 @@
-Унификация дизайна фронтенда с Tailwind CSS и DaisyUI
+Унификация дизайна фронтенда (Tailwind + DaisyUI)
 Цель
 
-Привести все элементы пользовательского интерфейса к единому современному стилю с помощью Tailwind CSS и DaisyUI. Реализовать поддержку светлой и тёмной темы; обеспечить консистентность дизайна для всех компонентов (кнопки, формы, таблицы, карточки, навигация, выпадающие списки, фильтры, export-контролы и т.д.); улучшить юзабилити наиболее нагруженных страниц (особенно страницу настроек /cp/settings), не нарушая бизнес-логику приложения.
+Привести весь фронтенд (apps/web) к единому, выдержанному стилю на базе Tailwind CSS + DaisyUI. Поддержать две темы (erm-light, erm-dark), стандартизировать все элементы интерфейса (кнопки, формы, таблицы, карточки, модалки, фильтры, экспорт, пагинация, skeletons, навигация и т.д.) через общий набор Ui-примитивов в src/components/ui/. Не менять бизнес-логику.
 
-Ожидаемый результат
+Коротко — ожидаемый результат
 
-По всем страницам элементы интерфейса оформлены в едином стиле на базе Tailwind/DaisyUI и единой палитры токенов (цвета, радиусы, тени, spacing).
+Единый набор токенов (цвета, радиусы, тени, размеры) — центр правды.
 
-Поддержка двух тем: erm-light и erm-dark через data-theme на элементе документа.
+Все визуальные элементы делаются через DaisyUI классы или через наши Ui-обёртки (UiButton, UiInput, UiFormGroup, UiCard, UiModal, UiTable, UiPagination, UiSkeleton, UiBadge, UiFilterRow, ThemeToggle и т.д.).
 
-Все повторяющиеся элементы вынесены в переиспользуемые UI-примитивы в папке apps/web/src/components/ui/.
+Тема переключается data-theme="erm-light" / data-theme="erm-dark".
 
-/cp/settings переработана: настройки сгруппированы в визуально понятные блоки/карточки/аккордеоны, адаптивна и удобна.
+Мелкие PR, тесты, визуальная приёмка для каждой итерации.
 
-Изменения делаются поэтапно, малые PR, тесты и визуальная приёмка для каждого PR.
+Обязательные правила (конкретно и без воды)
+Tokens и тема
 
-Обязательные принципы и соглашения
+Единый файл токенов (_tokens.css) — все цвета, радиусы, отступы, размеры кнопок и тени.
 
-Tokens как единственный источник правды.
-Вся визуальная палитра и размерные параметры (цвета, радиусы, отступы, высоты кнопок, тени и пр.) задаются CSS-переменными в одном файле tokens (например _tokens.css). Во всех стилях и компонентах использовать var(--...). Любой новый токен добавляется только в этот файл с документированным назначением.
+В JSX и компонентах нельзя использовать var(--color-...) напрямую: только через токены/темы.
 
-DaisyUI + Tailwind.
-Использовать DaisyUI для базовых семантических классов (btn, card, input, table и т.д.) и Tailwind утилиты для layout/адаптивности. Конфигурация Tailwind должна содержать описанные темы erm-light/erm-dark и прочие расширения, согласованные с tokens.
+DaisyUI конфигурация должна определять темы erm-light и erm-dark и получать значения от токенов.
 
-Тема управляется data-theme.
-Переключатель темы должен устанавливать document.documentElement.dataset.theme = 'erm-light' или 'erm-dark'. Это — контракт между ThemeToggle и Tailwind/DaisyUI: темы в конфиге должны соответствовать этим именам.
+Шрифты и типографика
 
-Ui-примитивы в src/components/ui/.
-Все переиспользуемые компоненты (UiButton, UiCard, UiInput, UiFormGroup, UiTable, UiPagination, UiModal, UiBadge, UiSkeleton, UiFilterRow, ThemeToggle и т.п.) должны жить в этой директории и экспортировать стандартный API: className, variant, size, asChild/slot, ref, и т.п. Компоненты должны быть forwardRef-совместимыми.
+Использовать системный стек / Inter (через Tailwind). Базовый текст — text-base. Заголовки — предопределённые размеры (text-title-*).
 
-Миграция — retrofit, не rewrite.
-Новые компоненты создаются/уточняются, затем страницы мигрируются поэтапно. Каждый PR должен менять небольшое число файлов и включать визуальную проверку.
+Межстрочный интервал и отступы использовать утилиты Tailwind, не хардкодить значения.
 
-Доступность и UX.
-Модальные окна, таблицы и формы обязаны поддерживать aria-атрибуты, keyboard navigation (focus trap/escape close) и достаточную контрастность текста.
+Ui-примитивы (обязательный контракт)
 
-Словарь сопоставлений (старое → новое)
+Все переиспользуемые компоненты живут в src/components/ui/ и export'ят стандартный API: className, variant, size, asChild, ref.
 
-Старый кастомный Button / ad-hoc кнопки → UiButton (варианты: primary, secondary, outline, ghost, link, destructive, success, pill, icon; размеры: xs/sm/md/lg).
+Компоненты должны быть forwardRef-совместимыми и использовать DaisyUI классы внутри.
 
-Локальный Modal → UiModal (dialog с фокус-трапом и aria).
+Любой новый UI-компонент — только как UiXxx, опираясь на DaisyUI. Нельзя добавлять ad-hoc стили.
 
-Инлайновые input/textarea/select → UiInput / UiTextarea / UiSelect внутри UiFormGroup (label + helper + error).
+Кнопки
 
-Самодельные Pagination → UiPagination.
+Все кнопки — через UiButton. Варианты: primary, secondary, accent, neutral, ghost, link, outline, destructive, success, pill, icon. Размеры: xs, sm, md, lg, pill, icon.
 
-Самодельные Table → UiTable / UiTableContainer.
+Запрещено: прямой class="btn" и прямое использование старого buttonVariants в страницах.
 
-Карточки с bg-white p-4 shadow-sm → UiCard (card + card-body).
+Дефолтное поведение: hover/active/disabled — через UiButton.
 
-Статусы/бейджи → UiBadge / ui-status-badge с data-tone.
+Формы
 
-Фильтровая строка → UiFilterRow (wrapper + inputs area + actions).
+Все поля — через UiInput, UiSelect, UiTextarea, UiCheckbox, UiRadio.
 
-Фазовый план работ (пошагово)
-Фаза 0 — Подготовка
+Группировка — через UiFormGroup (label + field + helper + error). Error отображать с input-error и text-error.
 
-Создать рабочую ветку feat/ui/unify-all и отдельные ветки для подзадач (feat/ui/buttons, feat/ui/forms, feat/ui/modals и т.д.).
+Фильтры — использовать UiFilterRow (контейнер с area inputs + actions). Layout фильтров — grid с responsive breakpoints.
 
-Записать baseline: запустить сборку и тесты на main и сохранить результаты (для регрессионной проверки).
+Модалки и диалоги
 
-Фаза 1 — Токены и тема
+Только UiModal. Обязателен focus trap, aria-атрибуты, esc-закрытие и возврат фокуса.
 
-Убедиться, что в проекте есть единый файл токенов с набором переменных: цвета (primary, primary-600, accent, neutral, success, danger, warning), bg-surface, bg-muted, border, radius, touch-target, btn-padding-x/y, btn-height, shadow-sm и т.п.
+Алерты — через DaisyUI alert или UiAlert. Подтверждения — через UiModal + UiButton.
 
-Уточнить/дополнить токены при необходимости.
+Таблицы и пагинация
 
-Настроить DaisyUI темы erm-light и erm-dark в tailwind.config.ts, сопоставив цвета с токенами. Убедиться, что darkMode — class и переключение темы управляется data-theme.
+Таблицы — UiTable/UiTableContainer с поддержкой sticky header, zebra, responsive scroll. Вёрстка semantic <thead>/<tbody>.
 
-Критерий сдачи: токены покрывают все базовые параметры; переключение темы меняет вид основных элементов.
+Пагинация — UiPagination реализуется через DaisyUI join + btn join-item / btn-active для текущей страницы. Старый Pagination.tsx заменить.
 
-Фаза 2 — UiButton и миграция кнопок
+Skeletons / Loading
 
-Проверить/финализировать компонент Button с использованием cva или эквивалента. Определить mapping variant/size.
+Использовать DaisyUI skeleton (обёртка UiSkeleton). Не делать loading-элементы через bg-gray-* и animate-pulse вручную.
 
-Заменить ad-hoc кнопки в шапке, сайдбаре, и ключевых страницах на UiButton. В PR — не более 20 файлов.
+Навигация и layout
 
-Проверить визуально все состояния (hover, active, disabled) и размеры.
+Header — DaisyUI navbar. Sidebar/drawer — DaisyUI drawer. Контент — UiCard/card.
 
-Критерий сдачи: все критичные места используют UiButton, визуальное соответствие дизайн-токенам.
+Избегать bespoke классов (например, border-stroke, rounded-badge) — заменять на border, rounded, card и токены.
 
-Фаза 3 — Формы и фильтры
+Иконки
 
-Реализовать UiFormGroup и UiInput/UiSelect/UiTextarea. UiFormGroup обязан показывать label, helper и error.
+Использовать единый набор (например, heroicons). Размер в кнопках — 16px (h-4 w-4), gap между иконкой и текстом — gap-2.
 
-Мигрировать фильтровые панели и формы на ключевых страницах (/cp/settings, Tasks, таблицы). Фильтры — grid layout с responsive поведением.
+Доступность
 
-Экспортные контролы (export) стандартизировать: UiButton variant outline size sm + индикатор загрузки.
+ARIA на модалках, таблицах, фильтрах. Фокус видим (focus-visible). Цветовой контраст не ниже 4.5:1 для основного текста.
 
-Критерий сдачи: формы и фильтры единообразны; валидация видна; экспорт работает и отображает spinner.
+Запрещено (коротко)
 
-Фаза 4 — Модалы и диалоги
+Прямое использование кастомных цветов и переменных в JSX (var(--color-...)), кроме токенов.
 
-Создать/проверить UiModal с focus-trap, aria и поддержкой действий в footer.
+Самодельные стили вместо DaisyUI/Ui-обёрток.
 
-Заменить модальные окна в AlertDialog/ConfirmDialog/CKEditorPopup и т.д.
+Прямое использование старых устаревших компонентов/вариантов вместо Ui-примитивов.
 
-Проверить keyboard navigation и возврат фокуса.
+Большие PR без визуальной проверки.
 
-Критерий сдачи: модалки доступны, корректно закрываются по Escape, focus возвращается.
+Mapping (старое → новое)
 
-Фаза 5 — Таблицы, пагинация, skeletons
+Button (старый) → UiButton
 
-Реализовать UiTable + UiTableContainer (sticky header, zebra, responsive).
+Inline <input>/select → UiInput / UiSelect внутри UiFormGroup
 
-Реализовать UiPagination и заменить все самодельные пагинации.
+Modal/ConfirmDialog → UiModal
 
-Заменить skeletons на UiSkeleton/UiSkeletonCard.
+card-divs → UiCard
 
-Критерий сдачи: таблицы выглядят консистентно, пагинация работает, skeletons единообразны.
+Custom Pagination → UiPagination (join + btn)
 
-Фаза 6 — Навигация, карточки, статус-бейджи
+ad-hoc skeletons → UiSkeleton (skeleton class)
 
-Унифицировать Header/Nav/Sidebar, использовать UiCard для блоков, UiBadge для статусов.
+border-stroke, bg-white p-4 shadow-sm → UiCard / токены
 
-Обеспечить responsive-поведение для меню (drawer/burger).
+Фазовый план (микро-PRы)
+Фаза A — Tokens & Theme
 
-Критерий сдачи: навигация адаптивна, карточки и бейджи единообразны.
+Уточнить/дополнить _tokens.css. Настроить DaisyUI темы erm-light/erm-dark. darkMode: 'class'. Тест: ThemeToggle меняет data-theme и внешний вид.
 
-Фаза 7 — Sweep & polish
+Фаза B — Buttons & Card
 
-Пройти grep/поиск и удалить остатки старых стилей: inline-цвета, устаревшие классы (border-stroke, bg-white p-4 shadow-sm и т.д.), заменить их на вызовы Ui-примитивов или на токены.
+Финализировать UiButton. Мигрировать Header, Sidebar, основные экраны (до 20 файлов/PR). Visual check.
 
-Пометить старые компоненты deprecated, не удалять сразу — удалить после нескольких стабильных релизов.
+Фаза C — Forms & Filters
 
-Критерий сдачи: в репозитории не осталось рефакторных участков старого стиля; все новые правки документированы.
+Реализовать UiFormGroup, UiInput, UiSelect. Мигрировать формы /cp/settings (первый блок). Проверить валидацию.
 
-Правила для PR-ов и ревью
+Фаза D — Modals & Alerts
 
-Каждый PR — маленький и осмысленный: максимум 3–5 файлов для критичных, до 20–30 для массовой замены при уверенной автоматике.
+Реализовать UiModal. Заменить ConfirmDialog/AlertDialog и CKEditor popup. Accessibility check.
 
-PR-описание должно содержать: что сделано, почему, mapping старого→нового, список страниц, инструкции для ревью, шаги проверки (ручные и автоматические).
+Фаза E — Tables, Pagination, Skeletons
 
-Обязательные проверки перед мержем:
+UiTable, UiPagination, UiSkeleton. Мигрировать ключевые таблицы и фильтры.
 
-Сборка приложения проходит.
+Фаза F — Sweep
+
+Grep всех старых классов, удалить/перенести, пометить deprecated компоненты. Финальное визуальное сканирование.
+
+Automation / Discovery (grep patterns)
+
+Искать и собрать список файлов по шаблонам:
+
+import { Button } from '@/components/ui/button'
+
+import Modal from './Modal' / ConfirmDialog
+
+className="bg-white p-4 shadow-sm" / border-stroke / rounded-badge
+
+Inline input/select с кастомными классами
+
+Pagination.tsx, SkeletonCard, TableSkeleton
+
+Собрать таблицу: файл → найденный элемент → предложенная замена.
+
+PR требования и чеклист (обязательно)
+
+Перед мержем:
+
+Build проходит.
 
 TypeScript компиляция проходит.
 
-Unit-тесты/интеграционные тесты зеленые (если есть).
+Unit tests green (если есть).
 
-Визуальная проверка (скриншоты desktop + mobile + dark).
+Smoke тесты: create/save/open modal/filter/export работает.
 
-Accessibility: модальные окна, таблицы и формы — aria, focus, contrast.
+Visual: скриншоты до/после для desktop/mobile/dark.
 
-How to discover и автоматизировать поиск мест для замены
+Accessibility: модалки focus, aria, contrast.
 
-Запускать grep по репозиторию для выявления:
+PR описывает: что сделано, mapping старое→новое, страницы для проверки, команды для запуска, скриншоты.
 
-Импортов старого Button (например, import { Button } from '@/components/ui/button' или собственные button-компоненты).
+Acceptance criteria (финальный «done»)
 
-Modal (локальных реализаций).
+Все критичные страницы используют Ui-примитивы для кнопок, форм, модалей, таблиц и карточек.
 
-Инлайновых input/select с кастомными классами/переменными.
+Тема erm-light/erm-dark корректно работает через data-theme.
 
-Классов border-stroke, bg-white p-4 shadow-sm, --color-* и иных признаком кастомных стилей.
+Нет оставшихся ad-hoc стилей для основных элементов в ключевых файлах.
 
-Составить таблицу: файл → устаревший элемент → план замены (Ui-компонент и mapping props).
+PRs малы, с тестами и визуальной проверкой; accessibility соблюдена.
 
-Тесты и приёмка (шаги проверки)
+Быстрые рекомендации для выполнения (Codex / автоматизация)
 
-Для каждого PR выполнить:
+Менять импорт, а не JSX, где возможно: import { UiButton as Button } ... — минимизировать diff.
 
-Локальная сборка: приложение собирается.
+Использовать cva / class-variance-authority для вариантности компонентов.
 
-TS-проверка: tsc проходит.
+Каждый новый компонент — forwardRef и API variant/size/className.
 
-Unit tests: проходят.
-
-Smoke тесты вручную: создать сущность, открыть модал, сохранить, фильтровать, экспортировать.
-
-Visual check: скриншоты до/после для desktop/mobile/dark.
-
-Accessibility check: проверить ключевые сценарии (модалки, табы, таблицы) — focus trap, esc close, aria labels и контрастность.
-
-Regression sweep: проверить что старые стили не остались в ключевых файлах (grep).
-
-Acceptance criteria (конкретно)
-
-UI-примитивы реализованы и используются повсеместно: кнопки, формы, карточки, таблицы, пагинация, модалки, фильтры, экспорт.
-
-Тема erm-light / erm-dark корректно применяется через data-theme и изменяет визуал на всех страницах.
-
-/cp/settings полностью переработана и читабельна; элементы группированы и адаптивны.
-
-В репозитории минимально или вовсе отсутствуют старые, разрозненные стили; все основные визуальные параметры берутся из tokens.
-
-PRы маленькие, с тестами и инструкциями, и успешно проходят сборку, типизацию и визуальную проверку.
-
-Рекомендации по приоритету работ
-
-Завершить tokens и DaisyUI темизацию.
-
-Стабилизировать Button и Card, затем мигрировать Header/Sidebar.
-
-Сделать FormGroup + Input, мигрировать критичные формы и фильтры.
-
-Модалки, таблицы и пагинация.
-
-Sweep — удалить старые стили и пометить deprecated.
-
-Примеры коротких задач для Codex (для очереди)
-
-Создать/проверить UiFormGroup + UiInput и заменить форму первой секции на /cp/settings.
-
-Полностью заменить все ad-hoc кнопки в Header и Sidebar на UiButton.
-
-Реализовать UiTableContainer и заменить таблицу на странице логов.
-
-Сделать UiModal и заменить ConfirmDialog/AlertDialog.
-
-Завершающее замечание
-
-Работа должна вестись итеративно, с фокусом на минимальные PR и тщательную визуальную проверку. При каждой итерации фиксировать, какие токены использовались, какие компоненты созданы/модифицированы и какие страницы протестированы. После первой волны миграции выполнить sweep по репо и подготовить список остаточных мест с устаревшими стилями.
+Распараллеливать миграцию: кнопки → формы → модалки → таблицы → sweep.

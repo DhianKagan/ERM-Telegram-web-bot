@@ -508,7 +508,7 @@ const resetLongPollingSession = async (): Promise<void> => {
     );
   }
   try {
-    await bot.telegram.deleteWebhook({ drop_pending_updates: true });
+    await safeDeleteWebhook({ drop_pending_updates: true });
     console.warn(
       'Webhook удалён, обновления сброшены перед повторным запуском',
     );
@@ -1874,7 +1874,7 @@ const retryableCodes = new Set([409, 429, 502, 504]);
 
 export async function startBot(retry = 0): Promise<void> {
   try {
-    await bot.telegram.deleteWebhook({ drop_pending_updates: true });
+    await safeDeleteWebhook({ drop_pending_updates: true });
     await bot.launch({ dropPendingUpdates: true });
     console.log('Бот запущен');
   } catch (err: unknown) {

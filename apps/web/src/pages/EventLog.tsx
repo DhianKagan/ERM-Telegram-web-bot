@@ -26,6 +26,7 @@ import {
 import { listFleetVehicles } from '../services/fleets';
 import { eventLogColumns, type EventLogRow } from '../columns/eventLogColumns';
 import type { FleetVehicleDto } from 'shared';
+import extractCoords from '../utils/extractCoords';
 
 const PAGE_LIMIT = 10;
 
@@ -44,6 +45,7 @@ type EventLogMeta = {
   locationObjectId?: string;
   locationLink?: string;
   transferLocation?: string;
+  transferLocationObjectId?: string;
   description?: string;
   performer?: string;
   eventType?: EventType;
@@ -64,6 +66,7 @@ type EventLogForm = {
   location: string;
   locationObjectId: string;
   transferLocation: string;
+  transferLocationObjectId: string;
   description: string;
 };
 
@@ -80,6 +83,7 @@ const emptyForm: EventLogForm = {
   location: '',
   locationObjectId: '',
   transferLocation: '',
+  transferLocationObjectId: '',
   description: '',
 };
 
@@ -97,6 +101,222 @@ const EVENT_OPERATION_OPTIONS: { value: EventOperation; label: string }[] = [
   { value: 'self_service', label: 'Самообслуживание' },
   { value: 'service', label: 'Сервис' },
 ];
+
+type LocationDetails = {
+  title?: string;
+  address?: string;
+  coords?: string;
+  source?: 'object' | 'link' | 'manual';
+};
+
+const truncateWords = (value: string, limit = 3): string => {
+  const normalized = value.trim();
+  if (!normalized) return '';
+  const words = normalized.split(/\s+/);
+  if (words.length <= limit) return normalized;
+  return words.slice(0, limit).join(' ');
+};
+
+const formatCoords = (
+  coords?: { lat?: number; lng?: number } | null,
+): string | undefined => {
+  if (!coords || coords.lat === undefined || coords.lng === undefined)
+    return undefined;
+  const lat = Number.isFinite(coords.lat)
+    ? coords.lat.toFixed(6)
+    : String(coords.lat);
+  const lng = Number.isFinite(coords.lng)
+    ? coords.lng.toFixed(6)
+    : String(coords.lng);
+  return `${lat}, ${lng}`;
+};
+
+const resolveObjectCoords = (
+  object?: CollectionObject,
+): { lat: number; lng: number } | null => {
+  if (!object) return null;
+  const meta = object.meta ?? {};
+  const lat =
+    typeof object.latitude === 'number'
+      ? object.latitude
+      : typeof meta.latitude === 'number'
+        ? meta.latitude
+        : typeof meta.location?.lat === 'number'
+          ? meta.location.lat
+          : undefined;
+  const lng =
+    typeof object.longitude === 'number'
+      ? object.longitude
+      : typeof meta.longitude === 'number'
+        ? meta.longitude
+        : typeof meta.location?.lng === 'number'
+          ? meta.location.lng
+          : undefined;
+  if (lat === undefined || lng === undefined) return null;
+  return { lat, lng };
+};
+
+const decodeLabel = (raw?: string | null): string => {
+  if (!raw) return '';
+  try {
+    return decodeURIComponent(raw.replace(/\+/g, ' ')).trim();
+  } catch {
+    return raw.replace(/\+/g, ' ').trim();
+  }
+};
+
+const parseGoogleLabel = (
+  link: string,
+): { name?: string; address?: string } => {
+  const candidates: string[] = [];
+  const placeMatch = link.match(/\/place\/([^/@]+)/);
+  if (placeMatch?.[1]) {
+    candidates.push(decodeLabel(placeMatch[1]));
+  }
+  const qMatch = link.match(/[?&]q=([^&]+)/);
+  if (qMatch?.[1]) {
+    candidates.push(decodeLabel(qMatch[1]));
+  }
+  try {
+    const parsed = new URL(link);
+    const params = ['q', 'query', 'destination'];
+    for (const key of params) {
+      const value = decodeLabel(parsed.searchParams.get(key));
+      if (value) {
+        candidates.push(value);
+      }
+    }
+  } catch {
+    // игнорируем ошибки парсинга — в этом случае просто вернём пустую метку
+  }
+
+  const label = candidates.find(Boolean);
+  if (!label) return {};
+  const parts = label
+    .split(',')
+    .map((part) => part.trim())
+    .filter(Boolean);
+  if (!parts.length) return {};
+  if (parts.length === 1) {
+    const [single] = parts;
+    const words = single.split(/\s+/);
+    if (words.length <= 3) {
+      return { name: single };
+    }
+    return { name: truncateWords(single), address: single };
+  }
+  const [first, ...rest] = parts;
+  return { name: truncateWords(first), address: rest.join(', ') };
+};
+
+const buildLocationDetails = ({
+  object,
+  link,
+  text,
+}: {
+  object?: CollectionObject;
+  link?: string;
+  text?: string;
+}): LocationDetails | null => {
+  if (object) {
+    const coords = formatCoords(resolveObjectCoords(object));
+    const meta = object.meta ?? {};
+    const address =
+      typeof object.address === 'string' && object.address.trim()
+        ? object.address.trim()
+        : typeof meta.address === 'string'
+          ? meta.address.trim()
+          : undefined;
+    return {
+      title: object.name?.trim() || undefined,
+      address,
+      coords,
+      source: 'object',
+    };
+  }
+
+  const trimmedLink = link?.trim();
+  if (trimmedLink) {
+    const coords = formatCoords(extractCoords(trimmedLink));
+    const { name, address } = parseGoogleLabel(trimmedLink);
+    return {
+      title: name || undefined,
+      address: address || undefined,
+      coords: coords || undefined,
+      source: 'link',
+    };
+  }
+
+  const trimmedText = text?.trim();
+  if (trimmedText) {
+    const coords = formatCoords(extractCoords(trimmedText));
+    return {
+      title: undefined,
+      address: trimmedText,
+      coords: coords || undefined,
+      source: 'manual',
+    };
+  }
+
+  return null;
+};
+
+const formatLocationDetails = (details?: LocationDetails | null): string => {
+  if (!details) return '';
+  const lines: string[] = [];
+  if (details.title) {
+    lines.push(details.title);
+  }
+  if (details.address) {
+    lines.push(details.address);
+  }
+  if (details.coords) {
+    if (lines.length) {
+      lines.push('');
+    }
+    lines.push(details.coords);
+  }
+  return lines.join('\n').trim();
+};
+
+const parseCoordsFromString = (
+  value?: string,
+): { lat: number; lng: number } | null => {
+  if (!value) return null;
+  const [latRaw, lngRaw] = value.split(',').map((part) => part.trim());
+  const lat = Number.parseFloat(latRaw);
+  const lng = Number.parseFloat(lngRaw);
+  if (Number.isFinite(lat) && Number.isFinite(lng)) {
+    return { lat, lng };
+  }
+  return null;
+};
+
+const buildMapLink = (
+  details?: LocationDetails | null,
+  link?: string,
+  text?: string,
+): string | undefined => {
+  const trimmedLink = link?.trim();
+  if (trimmedLink) {
+    return trimmedLink;
+  }
+  const coordsFromDetails = parseCoordsFromString(details?.coords);
+  const coordsFromText = extractCoords(text ?? '') ?? coordsFromDetails;
+  const coords = coordsFromDetails ?? coordsFromText;
+  if (coords) {
+    const latValue = Number.isFinite(coords.lat)
+      ? coords.lat
+      : Number.parseFloat(String(coords.lat));
+    const lngValue = Number.isFinite(coords.lng)
+      ? coords.lng
+      : Number.parseFloat(String(coords.lng));
+    if (Number.isFinite(latValue) && Number.isFinite(lngValue)) {
+      return `https://www.google.com/maps/search/?api=1&query=${latValue},${lngValue}`;
+    }
+  }
+  return undefined;
+};
 
 const toLocalDateTimeInput = (value?: string | Date): string => {
   if (!value) return '';
@@ -142,9 +362,25 @@ const resolvePerformerLabel = (user: User | null): string => {
   return '';
 };
 
-const resolveAssetLocation = (asset: CollectionItem | undefined): string => {
-  if (!asset) return '';
+const resolveAssetLocation = (
+  asset: CollectionItem | undefined,
+  objectsMap: Map<string, CollectionObject>,
+): { location: string; locationObjectId?: string } => {
+  if (!asset) return { location: '', locationObjectId: undefined };
   const meta = (asset.meta ?? {}) as Record<string, unknown>;
+  const locationObjectId =
+    typeof meta.locationObjectId === 'string'
+      ? meta.locationObjectId
+      : undefined;
+
+  if (locationObjectId) {
+    const object = objectsMap.get(locationObjectId);
+    const formatted = formatLocationDetails(buildLocationDetails({ object }));
+    if (formatted) {
+      return { location: formatted, locationObjectId };
+    }
+  }
+
   const locationFromMeta =
     typeof meta.location === 'string'
       ? meta.location
@@ -157,12 +393,13 @@ const resolveAssetLocation = (asset: CollectionItem | undefined): string => {
     locationFromMeta ||
     addressFromMeta ||
     (asset.value ? asset.value.trim() : '');
-  return candidate?.trim() ?? '';
+  return { location: candidate?.trim() ?? '', locationObjectId };
 };
 
 export default function EventLog() {
   const [items, setItems] = React.useState<CollectionItem[]>([]);
   const [total, setTotal] = React.useState(0);
+  const [eventTotal, setEventTotal] = React.useState(0);
   const [page, setPage] = React.useState(1);
   const [search, setSearch] = React.useState('');
   const [searchDraft, setSearchDraft] = React.useState('');
@@ -181,6 +418,23 @@ export default function EventLog() {
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_LIMIT));
 
+  const refreshEventTotal = React.useCallback(async (): Promise<number> => {
+    try {
+      const data = (await fetchCollectionItems('event_logs', '', 1, 1)) as {
+        items?: CollectionItem[];
+        total?: number;
+      };
+      const itemsCount = Array.isArray(data.items) ? data.items.length : 0;
+      const resolvedTotal =
+        typeof data.total === 'number' ? data.total : itemsCount;
+      setEventTotal(resolvedTotal);
+      return resolvedTotal;
+    } catch (error) {
+      console.error('Не удалось обновить счётчик событий', error);
+      return eventTotal;
+    }
+  }, [eventTotal]);
+
   const load = React.useCallback(async () => {
     setLoading(true);
     try {
@@ -191,9 +445,12 @@ export default function EventLog() {
         PAGE_LIMIT,
       )) as { items?: CollectionItem[]; total?: number };
       setItems(Array.isArray(data.items) ? data.items : []);
-      setTotal(
-        typeof data.total === 'number' ? data.total : (data.items?.length ?? 0),
-      );
+      const resolvedTotal =
+        typeof data.total === 'number' ? data.total : (data.items?.length ?? 0);
+      setTotal(resolvedTotal);
+      if (!search.trim()) {
+        setEventTotal(resolvedTotal);
+      }
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Не удалось загрузить события';
@@ -244,6 +501,10 @@ export default function EventLog() {
   }, [loadReferences]);
 
   React.useEffect(() => {
+    void refreshEventTotal();
+  }, [refreshEventTotal]);
+
+  React.useEffect(() => {
     if (!modalOpen || form.id) return;
     const performerLabel = resolvePerformerLabel(currentUser);
     if (!performerLabel) return;
@@ -257,6 +518,12 @@ export default function EventLog() {
     return map;
   }, [assets]);
 
+  const objectsMap = React.useMemo(() => {
+    const map = new Map<string, CollectionObject>();
+    objects.forEach((object) => map.set(object._id, object));
+    return map;
+  }, [objects]);
+
   const fleetMap = React.useMemo(() => {
     const map = new Map<string, string>();
     fleetVehicles.forEach((vehicle) => map.set(vehicle.id, vehicle.name));
@@ -269,13 +536,76 @@ export default function EventLog() {
     if (!form.assetId) return;
     if (form.location.trim()) return;
     const asset = assets.find((candidate) => candidate._id === form.assetId);
-    const locationFromAsset = resolveAssetLocation(asset);
+    const { location: locationFromAsset, locationObjectId } =
+      resolveAssetLocation(asset, objectsMap);
     if (!locationFromAsset) return;
     setForm((prev) => ({
       ...prev,
       location: prev.location || locationFromAsset,
+      locationObjectId: prev.locationObjectId || locationObjectId || '',
     }));
-  }, [assets, form.assetId, form.assetType, form.location, form.operation]);
+  }, [
+    assets,
+    form.assetId,
+    form.assetType,
+    form.location,
+    form.operation,
+    objectsMap,
+  ]);
+
+  const locationObject = React.useMemo(
+    () =>
+      form.locationObjectId ? objectsMap.get(form.locationObjectId) : undefined,
+    [form.locationObjectId, objectsMap],
+  );
+
+  const transferObject = React.useMemo(
+    () =>
+      form.transferLocationObjectId
+        ? objectsMap.get(form.transferLocationObjectId)
+        : undefined,
+    [form.transferLocationObjectId, objectsMap],
+  );
+
+  const locationDetails = React.useMemo(
+    () =>
+      buildLocationDetails({
+        object: locationObject,
+        link: form.locationLink,
+        text: form.location || form.locationLink,
+      }),
+    [form.location, form.locationLink, locationObject],
+  );
+
+  const transferDetails = React.useMemo(
+    () =>
+      buildLocationDetails({
+        object: transferObject,
+        link: form.transferLocation,
+        text: form.transferLocation,
+      }),
+    [form.transferLocation, transferObject],
+  );
+
+  const locationPreview = React.useMemo(
+    () => formatLocationDetails(locationDetails),
+    [locationDetails],
+  );
+
+  const transferPreview = React.useMemo(
+    () => formatLocationDetails(transferDetails),
+    [transferDetails],
+  );
+
+  const locationMapLink = React.useMemo(
+    () => buildMapLink(locationDetails, form.locationLink, form.location),
+    [form.location, form.locationLink, locationDetails],
+  );
+
+  const transferMapLink = React.useMemo(
+    () => buildMapLink(transferDetails, undefined, form.transferLocation),
+    [form.transferLocation, transferDetails],
+  );
 
   const rows = React.useMemo<EventLogRow[]>(
     () =>
@@ -291,9 +621,15 @@ export default function EventLog() {
               : undefined;
         const assetLabel = assetName || meta.assetName || assetId || '—';
         const locationObject = meta.locationObjectId
-          ? objects.find((object) => object._id === meta.locationObjectId)
+          ? objectsMap.get(meta.locationObjectId)
           : undefined;
+        const locationDetails = buildLocationDetails({
+          object: locationObject,
+          link: meta.locationLink,
+          text: meta.location,
+        });
         const locationLabel =
+          formatLocationDetails(locationDetails) ||
           meta.location ||
           locationObject?.address ||
           locationObject?.name ||
@@ -302,10 +638,15 @@ export default function EventLog() {
         const operation = (meta.operation as EventOperation) ?? 'self_service';
         const dateTime = meta.datetime || meta.date || '';
         const performer = meta.performer?.trim() || '—';
-        const transferLocation =
-          typeof meta.transferLocation === 'string'
-            ? meta.transferLocation.trim()
-            : '';
+        const transferObject = meta.transferLocationObjectId
+          ? objectsMap.get(meta.transferLocationObjectId)
+          : undefined;
+        const transferDetails = buildLocationDetails({
+          object: transferObject,
+          link: meta.transferLocation,
+          text: meta.transferLocation,
+        });
+        const transferLocation = formatLocationDetails(transferDetails);
         const isTransfer = eventType === 'transfer';
         return {
           id: item._id,
@@ -316,20 +657,26 @@ export default function EventLog() {
           performer,
           asset: assetLabel,
           location: locationLabel,
-          locationLink: meta.locationLink,
+          locationLink: buildMapLink(
+            locationDetails,
+            meta.locationLink,
+            meta.location,
+          ),
           transferLocation,
           isTransfer,
           description: meta.description || item.value || '—',
         };
       }),
-    [items, assetMap, fleetMap, objects],
+    [items, assetMap, fleetMap, objectsMap],
   );
 
-  const openCreate = () => {
+  const openCreate = async () => {
     const now = toLocalDateTimeInput(new Date());
+    const latestTotal = await refreshEventTotal();
+    const baseTotal = latestTotal || eventTotal || total;
     setForm({
       ...emptyForm,
-      number: formatEventNumber(total + 1),
+      number: formatEventNumber(baseTotal + 1),
       dateTime: now,
       date: now ? now.slice(0, 10) : '',
       eventType: 'refuel',
@@ -355,6 +702,7 @@ export default function EventLog() {
       location: meta.location ?? '',
       locationObjectId: meta.locationObjectId ?? '',
       transferLocation: meta.transferLocation ?? '',
+      transferLocationObjectId: meta.transferLocationObjectId ?? '',
       description: meta.description ?? item.value ?? '',
     });
     setModalOpen(true);
@@ -373,6 +721,7 @@ export default function EventLog() {
     const date = dateTimeValue ? dateTimeValue.slice(0, 10) : form.date.trim();
     const performer = form.performer.trim();
     const transferLocation = form.transferLocation.trim();
+    const transferLocationObjectId = form.transferLocationObjectId.trim();
     const eventType = form.eventType;
     const operation = form.operation;
     const description = form.description.trim();
@@ -428,6 +777,10 @@ export default function EventLog() {
             eventType === 'transfer' && transferLocation
               ? transferLocation
               : undefined,
+          transferLocationObjectId:
+            eventType === 'transfer' && transferLocationObjectId
+              ? transferLocationObjectId
+              : undefined,
           description,
         },
       };
@@ -441,6 +794,7 @@ export default function EventLog() {
       showToast('Событие сохранено', 'success');
       closeModal();
       await load();
+      await refreshEventTotal();
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Не удалось сохранить событие';
@@ -457,6 +811,7 @@ export default function EventLog() {
       showToast('Событие удалено', 'success');
       closeModal();
       await load();
+      await refreshEventTotal();
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Не удалось удалить событие';
@@ -491,7 +846,11 @@ export default function EventLog() {
             >
               Сбросить
             </Button>
-            <Button size="sm" variant="success" onClick={openCreate}>
+            <Button
+              size="sm"
+              variant="success"
+              onClick={() => void openCreate()}
+            >
               Новое событие
             </Button>
           </>
@@ -663,6 +1022,8 @@ export default function EventLog() {
                           assetType: 'fixed_asset',
                           assetId: '',
                           location: '',
+                          locationObjectId: '',
+                          transferLocationObjectId: '',
                         }))
                       }
                     />
@@ -681,6 +1042,8 @@ export default function EventLog() {
                           assetType: 'fleet',
                           assetId: '',
                           location: '',
+                          locationObjectId: '',
+                          transferLocationObjectId: '',
                         }))
                       }
                     />
@@ -703,11 +1066,27 @@ export default function EventLog() {
                     }
                   >
                     <option value="">Выберите объект</option>
-                    {assets.map((asset) => (
-                      <option key={asset._id} value={asset._id}>
-                        {asset.name}
-                      </option>
-                    ))}
+                    {assets.map((asset) => {
+                      const meta = (asset.meta ?? {}) as Record<
+                        string,
+                        unknown
+                      >;
+                      const locationObjectId =
+                        typeof meta.locationObjectId === 'string'
+                          ? meta.locationObjectId
+                          : '';
+                      const locationObject = objectsMap.get(locationObjectId);
+                      const objectLabel =
+                        locationObject?.name || locationObject?.address;
+                      const label = objectLabel
+                        ? `${asset.name} — ${objectLabel}`
+                        : asset.name;
+                      return (
+                        <option key={asset._id} value={asset._id}>
+                          {label}
+                        </option>
+                      );
+                    })}
                   </select>
                 ) : form.assetType === 'fleet' ? (
                   <select
@@ -740,16 +1119,38 @@ export default function EventLog() {
                     <span className="text-xs text-[color:var(--color-gray-600)]">
                       Ссылка на карту или вложения
                     </span>
-                    <Input
-                      value={form.locationLink}
-                      onChange={(event) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          locationLink: event.target.value,
-                        }))
-                      }
-                      placeholder="https://maps.app..."
-                    />
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2">
+                        <Input
+                          value={form.locationLink}
+                          onChange={(event) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              locationLink: event.target.value,
+                            }))
+                          }
+                          placeholder="https://maps.app..."
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          className="h-[var(--touch-target)]"
+                          disabled={!locationMapLink}
+                          onClick={() => {
+                            if (locationMapLink) {
+                              window.open(
+                                locationMapLink,
+                                '_blank',
+                                'noopener',
+                              );
+                            }
+                          }}
+                        >
+                          Google Map
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                   <div className="space-y-1">
                     <span className="text-xs text-[color:var(--color-gray-600)]">
@@ -760,13 +1161,17 @@ export default function EventLog() {
                       value={form.locationObjectId}
                       onChange={(event) => {
                         const value = event.target.value;
-                        const selectedObject = objects.find(
-                          (object) => object._id === value,
+                        const selectedObject = objectsMap.get(value);
+                        const formatted = formatLocationDetails(
+                          buildLocationDetails({ object: selectedObject }),
                         );
                         setForm((prev) => ({
                           ...prev,
                           locationObjectId: value,
-                          location: selectedObject?.address || '',
+                          location:
+                            formatted ||
+                            selectedObject?.address ||
+                            prev.location,
                         }));
                       }}
                     >
@@ -790,21 +1195,81 @@ export default function EventLog() {
                   }
                   placeholder="Адрес или описание места"
                 />
+                {locationPreview ? (
+                  <div className="whitespace-pre-line rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[color:var(--color-gray-700)]">
+                    {locationPreview}
+                  </div>
+                ) : null}
                 {form.eventType === 'transfer' ? (
-                  <div className="space-y-1">
-                    <span className="text-xs text-[color:var(--color-gray-600)]">
-                      Место перемещения
-                    </span>
-                    <Input
-                      value={form.transferLocation}
-                      onChange={(event) =>
-                        setForm((prev) => ({
-                          ...prev,
-                          transferLocation: event.target.value,
-                        }))
-                      }
-                      placeholder="Адрес нового местоположения"
-                    />
+                  <div className="space-y-3">
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1">
+                        <span className="text-xs text-[color:var(--color-gray-600)]">
+                          Место перемещения
+                        </span>
+                        <Input
+                          value={form.transferLocation}
+                          onChange={(event) =>
+                            setForm((prev) => ({
+                              ...prev,
+                              transferLocation: event.target.value,
+                              transferLocationObjectId: '',
+                            }))
+                          }
+                          placeholder="Адрес нового местоположения"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-xs text-[color:var(--color-gray-600)]">
+                          Адрес перемещения из коллекции
+                        </span>
+                        <select
+                          className="min-h-[var(--touch-target)] w-full rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2 text-sm shadow-xs focus-visible:border-[var(--color-primary-300)] focus-visible:ring-[3px] focus-visible:ring-[var(--color-primary-200)] focus-visible:outline-none"
+                          value={form.transferLocationObjectId}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            const selectedObject = objectsMap.get(value);
+                            const formatted = formatLocationDetails(
+                              buildLocationDetails({ object: selectedObject }),
+                            );
+                            setForm((prev) => ({
+                              ...prev,
+                              transferLocationObjectId: value,
+                              transferLocation:
+                                formatted ||
+                                selectedObject?.address ||
+                                prev.transferLocation,
+                            }));
+                          }}
+                        >
+                          <option value="">
+                            Выберите объект (опционально)
+                          </option>
+                          {objects.map((object) => (
+                            <option key={object._id} value={object._id}>
+                              {object.name} — {object.address}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+                    {transferPreview ? (
+                      <div className="space-y-1">
+                        <div className="whitespace-pre-line rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2 text-sm text-[color:var(--color-gray-700)]">
+                          {transferPreview}
+                        </div>
+                        {transferMapLink ? (
+                          <a
+                            href={transferMapLink}
+                            target="_blank"
+                            rel="noopener"
+                            className="text-xs font-medium text-[color:var(--color-primary-600)] hover:underline"
+                          >
+                            Открыть в Google Maps
+                          </a>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
                 ) : null}
                 <p className="text-xs text-[color:var(--color-gray-500)]">

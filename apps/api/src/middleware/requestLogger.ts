@@ -24,8 +24,15 @@ function sanitizeHeaders(h: Record<string, unknown> | undefined) {
   return out;
 }
 
-export default function requestLogger(req: Request, res: Response, next: NextFunction) {
-  const headerReqId = typeof req.headers['x-request-id'] === 'string' ? req.headers['x-request-id'] as string : undefined;
+export default function requestLogger(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  const headerReqId =
+    typeof req.headers['x-request-id'] === 'string'
+      ? (req.headers['x-request-id'] as string)
+      : undefined;
   const requestId = headerReqId || randomUUID();
 
   // attach requestId for downstream usage
@@ -43,11 +50,10 @@ export default function requestLogger(req: Request, res: Response, next: NextFun
         url: req.originalUrl,
         headers: sanitizeHeaders(req.headers as Record<string, unknown>),
       },
-      'Incoming HTTP request'
+      'Incoming HTTP request',
     );
   } catch (err) {
     // avoid breaking request on logging error
-    // eslint-disable-next-line no-console
     console.error('Failed to log incoming request', err);
   }
 
@@ -56,11 +62,16 @@ export default function requestLogger(req: Request, res: Response, next: NextFun
     const duration = Date.now() - start;
     try {
       logger.info(
-        { reqId: requestId, method: req.method, url: req.originalUrl, status: res.statusCode, durationMs: duration },
-        'Request finished'
+        {
+          reqId: requestId,
+          method: req.method,
+          url: req.originalUrl,
+          status: res.statusCode,
+          durationMs: duration,
+        },
+        'Request finished',
       );
     } catch (err) {
-      // eslint-disable-next-line no-console
       console.error('Failed to log finished request', err);
     }
   });
@@ -69,9 +80,16 @@ export default function requestLogger(req: Request, res: Response, next: NextFun
   req.on('aborted', () => {
     const duration = Date.now() - start;
     try {
-      logger.warn({ reqId: requestId, method: req.method, url: req.originalUrl, durationMs: duration }, 'Request aborted by client');
+      logger.warn(
+        {
+          reqId: requestId,
+          method: req.method,
+          url: req.originalUrl,
+          durationMs: duration,
+        },
+        'Request aborted by client',
+      );
     } catch (err) {
-      // eslint-disable-next-line no-console
       console.error('Failed to log aborted request', err);
     }
   });

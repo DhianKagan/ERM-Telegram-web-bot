@@ -120,14 +120,16 @@ router.get(
       try {
         logger.warn(
           {
-            err: err instanceof Error ? { name: err.name, message: err.message } : err,
+            err:
+              err instanceof Error
+                ? { name: err.name, message: err.message }
+                : err,
             points,
           },
           'routeGeometry failed - returning empty coordinates',
         );
       } catch {
         // swallow logging errors
-        // eslint-disable-next-line no-console
         console.warn('routeGeometry failed', err);
       }
       res.json({ coordinates: [] });

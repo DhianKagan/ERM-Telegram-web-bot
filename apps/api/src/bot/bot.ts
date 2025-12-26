@@ -60,6 +60,38 @@ if (process.env.NODE_ENV !== 'production') {
 
 export const bot: Telegraf<Context> = new Telegraf(botToken!);
 
+type TelegramError = {
+  code?: unknown;
+  errno?: unknown;
+  message?: unknown;
+  description?: unknown;
+};
+
+const extractErrorDetails = (
+  error: unknown,
+): { code: string | number | null; message?: string } => {
+  if (!error) {
+    return { code: null, message: undefined };
+  }
+  const candidate = error as TelegramError;
+  const codeCandidate =
+    typeof candidate.code === 'string' || typeof candidate.code === 'number'
+      ? candidate.code
+      : typeof candidate.errno === 'string' ||
+          typeof candidate.errno === 'number'
+        ? candidate.errno
+        : null;
+  const message =
+    typeof candidate.message === 'string'
+      ? candidate.message
+      : typeof candidate.description === 'string'
+        ? candidate.description
+        : typeof error === 'string'
+          ? error
+          : undefined;
+  return { code: codeCandidate, message };
+};
+
 /**
  * Безопасный вызов deleteWebhook с ретраями и экспоненциальным бэкоффом.
  * Передаём опции напрямую в bot.telegram.deleteWebhook(options).
@@ -85,11 +117,7 @@ async function safeDeleteWebhook(
       console.info('safeDeleteWebhook: deleteWebhook выполнен успешно');
       return;
     } catch (err) {
-      const code = (err as any)?.code ?? (err as any)?.errno ?? null;
-      const message =
-        (err as any)?.message ??
-        (err as any)?.description ??
-        (typeof err === 'string' ? err : undefined);
+      const { code, message } = extractErrorDetails(err);
 
       console.error(
         `safeDeleteWebhook: попытка ${attempt}/${attempts} завершилась ошибкой — code=${String(
@@ -107,13 +135,13 @@ async function safeDeleteWebhook(
       }
 
       const delay = baseDelayMs * Math.pow(2, attempt - 1);
-      console.info(`safeDeleteWebhook: ожидание ${delay}ms перед следующей попыткой...`);
-      // eslint-disable-next-line no-await-in-loop
+      console.info(
+        `safeDeleteWebhook: ожидание ${delay}ms перед следующей попыткой...`,
+      );
       await wait(delay);
     }
   }
 }
-
 
 const taskSyncController = new TaskSyncController(bot);
 const reportGenerator = new ReportGeneratorService(new TasksService(queries));
@@ -783,10 +811,7 @@ const isCoordsLabel = (value: string): boolean =>
   /^-?\d+(?:\.\d+)?\s*,\s*-?\d+(?:\.\d+)?$/.test(value.trim());
 
 const trimPointName = (value: string, maxWords: number): string => {
-  const trimmed = value
-    .split(/[—–-]/)[0]
-    .split(',')[0]
-    .trim();
+  const trimmed = value.split(/[—–-]/)[0].split(',')[0].trim();
   if (!trimmed) return value.trim();
   const words = trimmed.split(/\s+/).filter(Boolean);
   if (!words.length) return value.trim();
@@ -811,9 +836,7 @@ const buildPointLabel = (
     return coordLabel;
   }
   if (isGooglePoint) {
-    return isCoordsLabel(baseLabel)
-      ? baseLabel
-      : trimPointName(baseLabel, 2);
+    return isCoordsLabel(baseLabel) ? baseLabel : trimPointName(baseLabel, 2);
   }
   return trimPointName(baseLabel, 2) || baseLabel;
 };

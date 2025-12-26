@@ -52,7 +52,11 @@ import ArchivePage from '../Archive';
 import LogsPage from '../Logs';
 import StoragePage from '../Storage';
 import HealthCheckTab from './HealthCheckTab';
-import { type CollectionTableRow } from '../../columns/collectionColumns';
+import {
+  type CollectionTableRow,
+  collectionColumns,
+  collectionObjectColumns,
+} from '../../columns/collectionColumns';
 import { type FixedAssetRow } from '../../columns/fixedAssetColumns';
 import { type EmployeeRow } from '../../columns/settingsEmployeeColumns';
 import {

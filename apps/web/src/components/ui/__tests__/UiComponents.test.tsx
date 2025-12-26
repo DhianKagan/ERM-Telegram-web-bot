@@ -3,7 +3,7 @@
  * Основные модули: React, @testing-library/react.
  */
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 
 import { UiButton } from '../UiButton';
 import { UiCard } from '../UiCard';
@@ -88,13 +88,7 @@ describe('Ui components', () => {
     ];
     const rows = [{ id: 1, name: 'Аня', role: 'Менеджер' }];
 
-    render(
-      <UiTable
-        columns={columns}
-        rows={rows}
-        rowKey={(row) => row.id}
-      />,
-    );
+    render(<UiTable columns={columns} rows={rows} rowKey={(row) => row.id} />);
 
     expect(screen.getByText('Имя')).toBeInTheDocument();
     expect(screen.getByText('Аня')).toBeInTheDocument();
@@ -113,6 +107,43 @@ describe('Ui components', () => {
     expect(screen.getByText('Пусто')).toBeInTheDocument();
   });
 
+  it('renders UiTable custom renderers and handles row clicks', () => {
+    const onRowClick = jest.fn();
+    const columns = [
+      {
+        key: 'name',
+        header: 'Имя',
+        headerClassName: 'header-class',
+        className: 'cell-class',
+        render: (row: { name: string }) => (
+          <span>{row.name.toUpperCase()}</span>
+        ),
+      },
+    ];
+    const rows = [{ id: 1, name: 'тест' }];
+
+    render(
+      <UiTable
+        columns={columns}
+        rows={rows}
+        rowKey={(row) => row.id}
+        onRowClick={onRowClick}
+      />,
+    );
+
+    const header = screen.getByText('Имя').closest('th');
+    expect(header).toHaveClass('header-class');
+
+    const cell = screen.getByText('ТЕСТ');
+    expect(cell.closest('td')).toHaveClass('cell-class');
+
+    const row = cell.closest('tr');
+    expect(row).toHaveClass('cursor-pointer');
+
+    fireEvent.click(row as HTMLTableRowElement);
+    expect(onRowClick).toHaveBeenCalledWith(rows[0]);
+  });
+
   it('renders UiModal with content', () => {
     render(
       <UiModal open>
@@ -122,5 +153,16 @@ describe('Ui components', () => {
 
     expect(screen.getByRole('dialog')).toBeInTheDocument();
     expect(screen.getByText('Содержимое')).toBeInTheDocument();
+  });
+
+  it('does not mark UiModal as open when flag is false', () => {
+    render(
+      <UiModal>
+        <p>Закрыто</p>
+      </UiModal>,
+    );
+
+    const dialog = screen.getByRole('dialog');
+    expect(dialog).not.toHaveAttribute('open');
   });
 });

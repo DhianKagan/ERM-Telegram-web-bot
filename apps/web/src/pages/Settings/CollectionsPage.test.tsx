@@ -11,7 +11,7 @@ import {
   within,
 } from '@testing-library/react';
 import CollectionsPage from './CollectionsPage';
-import { MemoryRouter } from 'react-router-dom';
+import { Router } from 'react-router-dom';
 import { I18nextProvider } from 'react-i18next';
 import i18n from '../../i18n';
 import type { CollectionItem } from '../../services/collections';
@@ -24,6 +24,7 @@ import { settingsUserColumns } from '../../columns/settingsUserColumns';
 import { settingsEmployeeColumns } from '../../columns/settingsEmployeeColumns';
 import { fetchUsers } from '../../services/users';
 import type { User } from '../../types/user';
+import { createMemoryHistory } from 'history';
 
 jest.mock('../../services/roles', () => ({
   fetchRoles: jest.fn().mockResolvedValue([]),
@@ -60,6 +61,16 @@ jest.mock('../../services/users', () => ({
 }));
 
 jest.mock('./FleetVehiclesTab', () => () => <div data-testid="fleet-tab" />);
+
+jest.mock('../AnalyticsDashboard', () => () => (
+  <div data-testid="analytics-dashboard" />
+));
+jest.mock('../Archive', () => () => <div data-testid="archive-page" />);
+jest.mock('../Logs', () => () => <div data-testid="logs-page" />);
+jest.mock('../Storage', () => () => <div data-testid="storage-page" />);
+jest.mock('./HealthCheckTab', () => () => (
+  <div data-testid="health-check-tab" />
+));
 
 jest.mock('../../components/DataTable', () => ({
   __esModule: true,
@@ -453,14 +464,19 @@ describe('CollectionsPage', () => {
     jest.clearAllMocks();
   });
 
-  const renderCollectionsPage = () =>
+  const renderCollectionsPage = (initialEntry = '/cp/settings') => {
+    const history = createMemoryHistory({ initialEntries: [initialEntry] });
+
     render(
       <I18nextProvider i18n={i18n}>
-        <MemoryRouter initialEntries={['/cp/settings']}>
+        <Router location={history.location} navigator={history}>
           <CollectionsPage />
-        </MemoryRouter>
+        </Router>
       </I18nextProvider>,
     );
+
+    return history;
+  };
 
   it('возвращает список при смене вкладки, не перенося предыдущий фильтр', async () => {
     renderCollectionsPage();
@@ -510,6 +526,31 @@ describe('CollectionsPage', () => {
       name: 'Добавить элемент',
     });
     expect(addButtons.length).toBeGreaterThan(0);
+  });
+
+  it('открывает модуль из query-параметра module', async () => {
+    renderCollectionsPage('/cp/settings?module=logs');
+
+    await screen.findByTestId('logs-page');
+
+    expect(screen.getByRole('tab', { name: 'Логи' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+  });
+
+  it('сбрасывает module-параметр при возврате к справочникам', async () => {
+    const history = renderCollectionsPage('/cp/settings?module=reports');
+
+    await screen.findByTestId('analytics-dashboard');
+
+    const directoriesTab = screen.getByRole('tab', { name: 'Справочники' });
+    fireEvent.click(directoriesTab);
+
+    await screen.findByText('Главный департамент');
+
+    await waitFor(() => expect(history.location.search).toBe(''));
+    expect(directoriesTab).toHaveAttribute('aria-selected', 'true');
   });
 
   it('копирует идентификатор коллекции при клике по значку', async () => {

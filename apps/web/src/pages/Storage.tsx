@@ -921,19 +921,19 @@ export default function StoragePage() {
                   <img
                     src={preview.inlineUrl}
                     alt={selectedRow.name}
-                    className="max-h-[300px] w-full rounded-md object-contain"
+                    className="w-full max-h-[60vh] rounded-md object-contain"
                   />
                 ) : preview.mode === 'video' ? (
                   <video
                     controls
                     src={preview.inlineUrl}
-                    className="max-h-[320px] w-full rounded-md"
+                    className="w-full max-h-[60vh] rounded-md"
                   />
                 ) : preview.mode === 'pdf' ? (
                   <iframe
                     title={selectedRow.name}
                     src={preview.inlineUrl}
-                    className="h-[320px] w-full rounded-md"
+                    className="w-full min-h-[18rem] max-h-[70vh] rounded-md"
                   />
                 ) : preview.mode === 'text' ? (
                   preview.loading ? (
@@ -943,7 +943,7 @@ export default function StoragePage() {
                   ) : preview.error ? (
                     <div className="text-sm text-red-500">{preview.error}</div>
                   ) : (
-                    <pre className="max-h-[320px] overflow-auto rounded bg-muted p-3 text-xs">
+                    <pre className="max-h-[60vh] overflow-auto rounded bg-muted p-3 text-xs">
                       {preview.content}
                     </pre>
                   )

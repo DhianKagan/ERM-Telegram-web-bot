@@ -57,7 +57,10 @@ import {
   collectionColumns,
   collectionObjectColumns,
 } from '../../columns/collectionColumns';
-import { type FixedAssetRow } from '../../columns/fixedAssetColumns';
+import {
+  type FixedAssetRow,
+  fixedAssetColumns,
+} from '../../columns/fixedAssetColumns';
 import { type EmployeeRow } from '../../columns/settingsEmployeeColumns';
 import {
   fetchUsers,

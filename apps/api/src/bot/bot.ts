@@ -60,6 +60,61 @@ if (process.env.NODE_ENV !== 'production') {
 
 export const bot: Telegraf<Context> = new Telegraf(botToken!);
 
+/**
+ * Безопасный вызов deleteWebhook с ретраями и экспоненциальным бэкоффом.
+ * Передаём опции напрямую в bot.telegram.deleteWebhook(options).
+ *
+ * Примечание: функция НЕ бросает исключение при окончательной неудаче,
+ * а логирует подробности и возвращает управление — чтобы старт процесса
+ * не падал из-за временных сетевых проблем (ETIMEDOUT и т.п.).
+ */
+async function safeDeleteWebhook(
+  options?: Record<string, unknown>,
+  attempts = 3,
+  baseDelayMs = 1000,
+): Promise<void> {
+  function wait(ms: number) {
+    return new Promise((res) => setTimeout(res, ms));
+  }
+
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      // Выполняем удаление webhook с переданными опциями
+      // (пример опций: { drop_pending_updates: true })
+      await bot.telegram.deleteWebhook(options);
+      console.info('safeDeleteWebhook: deleteWebhook выполнен успешно');
+      return;
+    } catch (err) {
+      const code = (err as any)?.code ?? (err as any)?.errno ?? null;
+      const message =
+        (err as any)?.message ??
+        (err as any)?.description ??
+        (typeof err === 'string' ? err : undefined);
+
+      console.error(
+        `safeDeleteWebhook: попытка ${attempt}/${attempts} завершилась ошибкой — code=${String(
+          code,
+        )} message=${String(message)}`,
+        err,
+      );
+
+      if (attempt === attempts) {
+        console.error(
+          'safeDeleteWebhook: не удалось удалить webhook после всех попыток. ' +
+            'Продолжаем запуск процесса (не падаем). Проверьте доступность api.telegram.org, настройки прокси/egress и корректность BOT_TOKEN.',
+        );
+        return;
+      }
+
+      const delay = baseDelayMs * Math.pow(2, attempt - 1);
+      console.info(`safeDeleteWebhook: ожидание ${delay}ms перед следующей попыткой...`);
+      // eslint-disable-next-line no-await-in-loop
+      await wait(delay);
+    }
+  }
+}
+
+
 const taskSyncController = new TaskSyncController(bot);
 const reportGenerator = new ReportGeneratorService(new TasksService(queries));
 const REQUEST_TYPE_NAME = 'Заявка';

@@ -3852,7 +3852,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                     applyCollectionPoint('start', value);
                                   }
                                 }}
-                                className="focus:ring-brand-200 focus:border-accentPrimary min-w-[200px] rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                                className="focus:ring-brand-200 focus:border-accentPrimary min-w-[12rem] rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
                                 disabled={!editing || collectionObjectsLoading}
                               >
                                 <option value="">
@@ -4010,7 +4010,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                           );
                                         }
                                       }}
-                                      className="focus:ring-brand-200 focus:border-accentPrimary min-w-[200px] rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                                      className="focus:ring-brand-200 focus:border-accentPrimary min-w-[12rem] rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
                                       disabled={
                                         !editing || collectionObjectsLoading
                                       }
@@ -4137,7 +4137,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                     applyCollectionPoint('finish', value);
                                   }
                                 }}
-                                className="focus:ring-brand-200 focus:border-accentPrimary min-w-[200px] rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
+                                className="focus:ring-brand-200 focus:border-accentPrimary min-w-[12rem] rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
                                 disabled={!editing || collectionObjectsLoading}
                               >
                                 <option value="">
@@ -4698,7 +4698,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                         </Button>
                       )}
                       {editing && hasBlockingErrors && (
-                        <div className="max-w-[320px] rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 sm:max-w-[360px]">
+                        <div className="max-w-sm rounded-lg border border-red-200 bg-red-50 p-3 text-xs text-red-700 sm:max-w-md">
                           <p className="font-semibold text-red-800">
                             {t('taskValidationFailed')}
                           </p>

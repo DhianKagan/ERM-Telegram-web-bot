@@ -13,6 +13,8 @@ export interface EventLogRow {
   asset: string;
   location: string;
   locationLink?: string;
+  transferLocation?: string;
+  isTransfer?: boolean;
   description: string;
 }
 
@@ -52,29 +54,51 @@ export const eventLogColumns: ColumnDef<EventLogRow>[] = [
     header: 'Место',
     meta: { minWidth: '10rem', maxWidth: '20rem', renderAsBadges: false },
     cell: ({ row }) => {
-      const { location, locationLink } = row.original;
-      if (locationLink) {
+      const { location, locationLink, transferLocation, isTransfer } =
+        row.original;
+      const hasLocation = Boolean(location?.trim());
+      const hasTransferLocation = Boolean(transferLocation?.trim());
+      if (!hasLocation && !hasTransferLocation) {
         return (
-          <a
-            href={locationLink}
-            target="_blank"
-            rel="noopener"
-            className="ui-status-badge"
-            data-badge-label={location}
-            data-tone="in_progress"
-          >
-            {location}
-          </a>
+          <span className="ui-status-badge" data-tone="muted">
+            —
+          </span>
         );
       }
       return (
-        <span
-          className="ui-status-badge"
-          data-badge-label={location}
-          data-tone="muted"
-        >
-          {location}
-        </span>
+        <div className="flex flex-col gap-1">
+          {hasLocation ? (
+            locationLink ? (
+              <a
+                href={locationLink}
+                target="_blank"
+                rel="noopener"
+                className="ui-status-badge"
+                data-badge-label={location}
+                data-tone="in_progress"
+              >
+                {location}
+              </a>
+            ) : (
+              <span
+                className="ui-status-badge"
+                data-badge-label={location}
+                data-tone="muted"
+              >
+                {location}
+              </span>
+            )
+          ) : null}
+          {isTransfer && hasTransferLocation ? (
+            <span
+              className="ui-status-badge"
+              data-badge-label={`Место перемещения: ${transferLocation}`}
+              data-tone="warning"
+            >
+              Место перемещения: {transferLocation}
+            </span>
+          ) : null}
+        </div>
       );
     },
   },

@@ -22,37 +22,37 @@ export const eventLogColumns: ColumnDef<EventLogRow>[] = [
   {
     accessorKey: 'number',
     header: 'Номер',
-    meta: { minWidth: '8rem', maxWidth: '12rem' },
+    meta: { minWidth: '8rem', truncate: true },
   },
   {
     accessorKey: 'dateTime',
     header: 'Дата и время',
-    meta: { minWidth: '10rem', maxWidth: '14rem' },
+    meta: { minWidth: '8rem', truncate: true },
   },
   {
     accessorKey: 'eventType',
     header: 'Тип',
-    meta: { minWidth: '10rem', maxWidth: '16rem' },
+    meta: { minWidth: '8rem', truncate: true },
   },
   {
     accessorKey: 'operation',
     header: 'Операция',
-    meta: { minWidth: '10rem', maxWidth: '16rem' },
+    meta: { minWidth: '8rem', truncate: true },
   },
   {
     accessorKey: 'performer',
     header: 'Исполнитель',
-    meta: { minWidth: '10rem', maxWidth: '18rem' },
+    meta: { minWidth: '8rem', truncate: true },
   },
   {
     accessorKey: 'asset',
     header: 'Объект',
-    meta: { minWidth: '12rem', maxWidth: '20rem' },
+    meta: { minWidth: '10rem', truncate: true },
   },
   {
     accessorKey: 'location',
     header: 'Место',
-    meta: { minWidth: '10rem', maxWidth: '20rem', renderAsBadges: false },
+    meta: { minWidth: '10rem', renderAsBadges: false },
     cell: ({ row }) => {
       const { location, locationLink, transferLocation, isTransfer } =
         row.original;
@@ -77,6 +77,7 @@ export const eventLogColumns: ColumnDef<EventLogRow>[] = [
                 className={badgeClassName}
                 data-badge-label={location}
                 data-tone="in_progress"
+                title={location}
               >
                 {location}
               </a>
@@ -85,6 +86,7 @@ export const eventLogColumns: ColumnDef<EventLogRow>[] = [
                 className={badgeClassName}
                 data-badge-label={location}
                 data-tone="muted"
+                title={location}
               >
                 {location}
               </span>
@@ -106,11 +108,12 @@ export const eventLogColumns: ColumnDef<EventLogRow>[] = [
   {
     accessorKey: 'description',
     header: 'Описание',
-    meta: { minWidth: '16rem', maxWidth: '28rem', renderAsBadges: false },
+    meta: { minWidth: '10rem', renderAsBadges: false, truncate: true },
     cell: ({ row }) => (
       <span
-        className="block text-sm text-[color:var(--color-gray-800)]"
+        className="block truncate text-sm text-[color:var(--color-gray-800)]"
         data-badge-label={row.original.description}
+        title={row.original.description}
       >
         {row.original.description}
       </span>

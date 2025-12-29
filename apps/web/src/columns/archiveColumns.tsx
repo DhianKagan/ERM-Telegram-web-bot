@@ -64,7 +64,7 @@ export default function archiveColumns({
           />
         );
       },
-      meta: { width: '3rem', minWidth: '3rem', maxWidth: '3rem' },
+      meta: { width: '3rem', minWidth: '3rem' },
     });
   }
   columns.push(
@@ -74,7 +74,7 @@ export default function archiveColumns({
       meta: {
         width: '8rem',
         minWidth: '6rem',
-        maxWidth: '8rem',
+        truncate: true,
         cellClassName: 'font-mono text-xs sm:text-sm',
       },
       cell: ({ row }) => row.original.task_number || row.original.id || '—',
@@ -85,7 +85,7 @@ export default function archiveColumns({
       meta: {
         width: '16rem',
         minWidth: '10rem',
-        maxWidth: '22rem',
+        truncate: true,
         cellClassName: 'whitespace-normal',
       },
       cell: ({ row }) => {
@@ -101,7 +101,7 @@ export default function archiveColumns({
       meta: {
         width: '8rem',
         minWidth: '6rem',
-        maxWidth: '10rem',
+        truncate: true,
       },
       cell: ({ row }) => row.original.status || '—',
     },
@@ -111,7 +111,7 @@ export default function archiveColumns({
       meta: {
         width: '10rem',
         minWidth: '8rem',
-        maxWidth: '12rem',
+        truncate: true,
       },
       cell: ({ row }) => formatDate(row.original.archived_at),
     },

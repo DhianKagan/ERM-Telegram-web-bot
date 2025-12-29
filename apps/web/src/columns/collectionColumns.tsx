@@ -14,32 +14,32 @@ export const collectionColumns: ColumnDef<CollectionTableRow>[] = [
   {
     accessorKey: 'name',
     header: 'Название',
-    meta: { minWidth: '8rem', maxWidth: '16rem' },
+    meta: { minWidth: '8rem', truncate: true },
   },
   {
     accessorKey: 'value',
     header: 'Значение',
-    meta: { minWidth: '8rem', maxWidth: '20rem' },
+    meta: { minWidth: '8rem', truncate: true },
   },
   {
     accessorKey: 'displayValue',
     header: 'Связанные данные',
-    meta: { minWidth: '10rem', maxWidth: '24rem' },
+    meta: { minWidth: '10rem', truncate: true },
   },
   {
     accessorKey: 'type',
     header: 'Тип',
-    meta: { minWidth: '6rem', maxWidth: '12rem' },
+    meta: { minWidth: '6rem', truncate: true },
   },
   {
     accessorKey: '_id',
     header: 'Идентификатор',
-    meta: { minWidth: '10rem', maxWidth: '16rem' },
+    meta: { minWidth: '10rem', truncate: true },
   },
   {
     accessorKey: 'metaSummary',
     header: 'Доп. сведения',
-    meta: { minWidth: '10rem', maxWidth: '24rem' },
+    meta: { minWidth: '10rem', truncate: true },
   },
 ];
 
@@ -47,21 +47,21 @@ export const collectionObjectColumns: ColumnDef<CollectionTableRow>[] = [
   {
     accessorKey: 'name',
     header: 'Название',
-    meta: { minWidth: '8rem', maxWidth: '16rem' },
+    meta: { minWidth: '8rem', truncate: true },
   },
   {
     accessorKey: 'address',
     header: 'Адрес',
-    meta: { minWidth: '10rem', maxWidth: '20rem' },
+    meta: { minWidth: '10rem', truncate: true },
   },
   {
     accessorKey: 'coordinates',
     header: 'Координаты',
-    meta: { minWidth: '8rem', maxWidth: '14rem' },
+    meta: { minWidth: '8rem', truncate: true },
   },
   {
     accessorKey: '_id',
     header: 'Идентификатор',
-    meta: { minWidth: '10rem', maxWidth: '16rem' },
+    meta: { minWidth: '10rem', truncate: true },
   },
 ];

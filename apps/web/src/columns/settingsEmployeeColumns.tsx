@@ -18,69 +18,76 @@ export const settingsEmployeeColumns: ColumnDef<EmployeeRow>[] = [
   {
     accessorKey: 'telegram_id',
     header: 'Telegram ID',
-    meta: { minWidth: '8rem' },
+    meta: { minWidth: '8rem', truncate: true },
   },
   {
     accessorKey: 'username',
     header: 'Логин',
-    cell: ({ row }) =>
-      row.original.telegram_username ?? row.original.username ?? '',
-    meta: { minWidth: '8rem', maxWidth: '16rem' },
+    cell: ({ row }) => {
+      const value =
+        row.original.telegram_username ?? row.original.username ?? '';
+      return (
+        <span className="block truncate" title={value}>
+          {value}
+        </span>
+      );
+    },
+    meta: { minWidth: '8rem', truncate: true },
   },
   {
     accessorKey: 'name',
     header: 'Имя',
-    meta: { minWidth: '8rem', maxWidth: '16rem' },
+    meta: { minWidth: '8rem', truncate: true },
   },
   {
     accessorKey: 'phone',
     header: 'Телефон',
-    meta: { minWidth: '8rem', maxWidth: '16rem' },
+    meta: { minWidth: '8rem', truncate: true },
   },
   {
     accessorKey: 'mobNumber',
     header: 'Моб. номер',
-    meta: { minWidth: '8rem', maxWidth: '16rem' },
+    meta: { minWidth: '8rem', truncate: true },
   },
   {
     accessorKey: 'email',
     header: 'E-mail',
-    meta: { minWidth: '10rem', maxWidth: '20rem' },
+    meta: { minWidth: '8rem', truncate: true },
   },
   {
     accessorKey: 'role',
     header: 'Роль',
     cell: ({ getValue }) => formatRoleName(getValue<string | undefined>()),
-    meta: { minWidth: '6rem', maxWidth: '12rem' },
+    meta: { minWidth: '6rem', truncate: true },
   },
   {
     accessorKey: 'access',
     header: 'Доступ',
     cell: ({ getValue }) => renderAccess(getValue<number | undefined>()),
-    meta: { minWidth: '6rem', maxWidth: '10rem' },
+    meta: { minWidth: '6rem' },
   },
   {
     accessorKey: 'roleId',
     header: 'Роль ID',
     cell: ({ row }) => formatRoleName(row.original.roleName),
-    meta: { minWidth: '8rem', maxWidth: '16rem' },
+    meta: { minWidth: '8rem', truncate: true },
   },
   {
     accessorKey: 'departmentId',
     header: 'Департамент',
     cell: ({ row }) => row.original.departmentName || '—',
-    meta: { minWidth: '8rem', maxWidth: '16rem' },
+    meta: { minWidth: '8rem', truncate: true },
   },
   {
     accessorKey: 'divisionId',
     header: 'Отдел',
     cell: ({ row }) => row.original.divisionName || '—',
-    meta: { minWidth: '8rem', maxWidth: '16rem' },
+    meta: { minWidth: '8rem', truncate: true },
   },
   {
     accessorKey: 'positionId',
     header: 'Должность',
     cell: ({ row }) => row.original.positionName || '—',
-    meta: { minWidth: '8rem', maxWidth: '16rem' },
+    meta: { minWidth: '8rem', truncate: true },
   },
 ];

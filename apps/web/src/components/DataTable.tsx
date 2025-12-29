@@ -20,6 +20,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import TableToolbar from './TableToolbar';
+import { cn } from '@/lib/utils';
 
 interface DataTableProps<T> {
   columns: ColumnDef<T, unknown>[];
@@ -52,6 +53,7 @@ interface ColumnMeta {
   headerClassName?: string;
   renderAsBadges?: boolean;
   align?: 'left' | 'center' | 'right';
+  truncate?: boolean;
 }
 
 export const defaultBadgeClassName = 'ui-status-badge ui-status-badge--muted';
@@ -228,9 +230,23 @@ export default function DataTable<T>({
   const virtualizationContainerRef = React.useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = React.useState(0);
   const [viewportHeight, setViewportHeight] = React.useState(maxBodyHeight);
+  const [isSmUp, setIsSmUp] = React.useState(false);
 
   const virtualizationActive =
-    enableVirtualization && rows.length > virtualizationThreshold;
+    enableVirtualization && isSmUp && rows.length > virtualizationThreshold;
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const mediaQuery = window.matchMedia('(min-width: 640px)');
+    const updateIsSmUp = () => setIsSmUp(mediaQuery.matches);
+    updateIsSmUp();
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', updateIsSmUp);
+      return () => mediaQuery.removeEventListener('change', updateIsSmUp);
+    }
+    mediaQuery.addListener(updateIsSmUp);
+    return () => mediaQuery.removeListener(updateIsSmUp);
+  }, []);
 
   React.useLayoutEffect(() => {
     if (!virtualizationActive) return;
@@ -287,6 +303,36 @@ export default function DataTable<T>({
 
   const columnCount = Math.max(table.getVisibleLeafColumns().length, 1);
 
+  const getSizingStyle = (meta: ColumnMeta, computedWidth?: string) => {
+    const style: React.CSSProperties = {};
+    if (computedWidth) style.width = computedWidth;
+    if (meta.minWidth) style.minWidth = meta.minWidth;
+    if (meta.maxWidth) style.maxWidth = meta.maxWidth;
+    return style;
+  };
+
+  const getCellContent = (
+    cell: ReturnType<
+      TableType<T>['getRowModel']
+    >['rows'][number]['getVisibleCells'][number],
+    meta: ColumnMeta,
+  ) => {
+    const cellContent = flexRender(
+      cell.column.columnDef.cell,
+      cell.getContext(),
+    );
+    const shouldWrapWithBadges =
+      wrapCellsAsBadges && meta.renderAsBadges !== false;
+    return shouldWrapWithBadges
+      ? renderBadgeContent(
+          cellContent,
+          badgeClassName,
+          badgeWrapperClassName,
+          badgeEmptyPlaceholder,
+        )
+      : cellContent;
+  };
+
   return (
     <div className="w-full space-y-3 px-0 font-ui text-[13px] sm:px-1.5 sm:text-sm">
       <TableToolbar
@@ -296,13 +342,57 @@ export default function DataTable<T>({
       >
         {toolbarChildren}
       </TableToolbar>
+      <div className="space-y-2 sm:hidden">
+        {!rows.length ? (
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-3 text-center text-sm text-muted-foreground shadow-sm">
+            Нет данных для отображения
+          </div>
+        ) : (
+          rows.map((row) => (
+            <div
+              key={row.id}
+              className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-3 shadow-sm"
+              onClick={() => onRowClick?.(row.original)}
+              role={onRowClick ? 'button' : undefined}
+            >
+              {row.getVisibleCells().map((cell) => {
+                const meta =
+                  (cell.column.columnDef.meta as ColumnMeta | undefined) || {};
+                const contentTitle = meta.truncate
+                  ? normalizeToText(cell.getValue()) || undefined
+                  : undefined;
+                return (
+                  <div key={cell.id} className="flex items-start gap-3">
+                    <div className="min-w-[7rem] text-[13px] font-semibold text-muted-foreground">
+                      {flexRender(
+                        cell.column.columnDef.header,
+                        cell.getContext(),
+                      )}
+                    </div>
+                    <div
+                      className={cn(
+                        'flex min-w-0 flex-1 items-center gap-2 text-sm',
+                        meta.truncate && 'truncate',
+                      )}
+                      title={contentTitle}
+                    >
+                      {getCellContent(cell, meta)}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ))
+        )}
+      </div>
       <Table
         zebra
         stickyHeader
         rowHeight={rowHeight}
-        className="table-fixed"
+        className="hidden table-auto sm:table"
         containerProps={{
           ref: virtualizationContainerRef,
+          className: 'hidden overflow-x-auto sm:block',
           style: virtualizationActive
             ? { maxHeight: maxBodyHeight }
             : undefined,
@@ -329,11 +419,7 @@ export default function DataTable<T>({
                 return (
                   <TableHead
                     key={header.id}
-                    style={{
-                      width: computedWidth,
-                      minWidth: meta.minWidth ?? '4rem',
-                      maxWidth: meta.maxWidth ?? '24rem',
-                    }}
+                    style={getSizingStyle(meta, computedWidth)}
                     align={meta.align}
                     className={headerClassName}
                   >
@@ -378,31 +464,25 @@ export default function DataTable<T>({
                 const cellClassName = [meta.cellClassName]
                   .filter(Boolean)
                   .join(' ');
-                const cellContent = flexRender(
-                  cell.column.columnDef.cell,
-                  cell.getContext(),
-                );
-                const shouldWrapWithBadges =
-                  wrapCellsAsBadges && meta.renderAsBadges !== false;
+                const cellTitle = meta.truncate
+                  ? normalizeToText(cell.getValue()) || undefined
+                  : undefined;
                 return (
                   <TableCell
                     key={cell.id}
-                    style={{
-                      width: computedWidth,
-                      minWidth: meta.minWidth ?? '4rem',
-                      maxWidth: meta.maxWidth ?? '24rem',
-                    }}
+                    style={getSizingStyle(meta, computedWidth)}
                     align={meta.align}
-                    className={cellClassName}
+                    className={cn(cellClassName, meta.truncate && 'min-w-0')}
                   >
-                    {shouldWrapWithBadges
-                      ? renderBadgeContent(
-                          cellContent,
-                          badgeClassName,
-                          badgeWrapperClassName,
-                          badgeEmptyPlaceholder,
-                        )
-                      : cellContent}
+                    <div
+                      className={cn(
+                        'flex min-w-0 flex-1 items-center gap-2',
+                        meta.truncate && 'truncate',
+                      )}
+                      title={cellTitle}
+                    >
+                      {getCellContent(cell, meta)}
+                    </div>
                   </TableCell>
                 );
               })}

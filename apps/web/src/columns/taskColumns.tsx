@@ -985,7 +985,7 @@ export default function taskColumns(
       meta: {
         width: 'clamp(4.25rem, 8vw, 6.25rem)',
         minWidth: '4rem',
-        maxWidth: '6.5rem',
+        truncate: true,
         cellClassName:
           'whitespace-nowrap text-center font-mono tabular-nums sm:text-left sm:pl-1.5',
         headerClassName: 'whitespace-nowrap text-center sm:text-left',
@@ -1021,7 +1021,7 @@ export default function taskColumns(
       meta: {
         width: 'clamp(9rem, 18vw, 14rem)',
         minWidth: '8.5rem',
-        maxWidth: '16rem',
+        truncate: true,
         cellClassName: 'whitespace-nowrap',
       },
       cell: ({ row }) => {
@@ -1064,7 +1064,7 @@ export default function taskColumns(
       meta: {
         width: 'clamp(8rem, 18vw, 18rem)',
         minWidth: '7rem',
-        maxWidth: '18rem',
+        truncate: true,
         cellClassName: 'align-top',
       },
       cell: (p) => {
@@ -1104,7 +1104,7 @@ export default function taskColumns(
       meta: {
         width: 'clamp(7rem, 20vw, 13rem)',
         minWidth: '6rem',
-        maxWidth: '13rem',
+        truncate: true,
       },
       cell: ({ row }) => {
         const ids = Array.isArray(row.original.assignees)
@@ -1149,7 +1149,7 @@ export default function taskColumns(
       meta: {
         width: 'clamp(4.5rem, 8vw, 6.5rem)',
         minWidth: '4.5rem',
-        maxWidth: '6.5rem',
+        truncate: true,
         cellClassName: 'whitespace-nowrap',
       },
       cell: (p) => {
@@ -1170,7 +1170,7 @@ export default function taskColumns(
       meta: {
         width: 'clamp(8.5rem, 15vw, 12.5rem)',
         minWidth: '8.5rem',
-        maxWidth: '12.5rem',
+        truncate: true,
         cellClassName: 'whitespace-nowrap',
       },
       cell: (p) => {
@@ -1194,7 +1194,7 @@ export default function taskColumns(
       meta: {
         width: 'clamp(6.75rem, 11vw, 8.75rem)',
         minWidth: '6.5rem',
-        maxWidth: '9rem',
+        truncate: true,
         cellClassName: 'whitespace-nowrap text-xs sm:text-sm',
       },
       cell: (p) => renderDateCell(p.getValue<string>()),
@@ -1205,7 +1205,7 @@ export default function taskColumns(
       meta: {
         width: 'clamp(10.5rem, 20vw, 15.5rem)',
         minWidth: '10rem',
-        maxWidth: '16.5rem',
+        truncate: true,
         cellClassName: 'whitespace-nowrap text-xs sm:text-sm',
       },
       cell: (p) => {
@@ -1249,7 +1249,7 @@ export default function taskColumns(
       meta: {
         width: 'clamp(10.5rem, 20vw, 15.5rem)',
         minWidth: '10rem',
-        maxWidth: '16.5rem',
+        truncate: true,
         cellClassName: 'whitespace-nowrap text-xs sm:text-sm',
       },
       cell: (p) => {
@@ -1272,7 +1272,7 @@ export default function taskColumns(
       meta: {
         width: 'clamp(4.5rem, 8vw, 6.5rem)',
         minWidth: '4.5rem',
-        maxWidth: '6.5rem',
+        truncate: true,
         cellClassName: 'whitespace-nowrap',
       },
       cell: (p) => {
@@ -1296,7 +1296,7 @@ export default function taskColumns(
       meta: {
         width: 'clamp(5.5rem, 14vw, 9.5rem)',
         minWidth: '5rem',
-        maxWidth: '9.5rem',
+        truncate: true,
         cellClassName: 'whitespace-nowrap',
       },
       cell: ({ row }) => {
@@ -1329,7 +1329,7 @@ export default function taskColumns(
       meta: {
         width: 'clamp(5.5rem, 14vw, 9.5rem)',
         minWidth: '5rem',
-        maxWidth: '9.5rem',
+        truncate: true,
         cellClassName: 'whitespace-nowrap',
       },
       cell: ({ row }) => {
@@ -1362,7 +1362,7 @@ export default function taskColumns(
       meta: {
         width: 'clamp(3.25rem, 6vw, 4.75rem)',
         minWidth: '3rem',
-        maxWidth: '4.75rem',
+        truncate: true,
         cellClassName: 'whitespace-nowrap text-center sm:text-left',
         headerClassName: 'text-center sm:text-left',
       },

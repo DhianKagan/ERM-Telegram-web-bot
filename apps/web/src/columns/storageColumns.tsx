@@ -65,7 +65,7 @@ export default function createStorageColumns(
     {
       header: labels.name,
       accessorKey: 'name',
-      meta: { minWidth: '12rem', maxWidth: '20rem', renderAsBadges: false },
+      meta: { minWidth: '10rem', renderAsBadges: false, truncate: true },
       cell: ({ row }) => {
         const file = row.original;
         return (
@@ -153,7 +153,7 @@ export default function createStorageColumns(
     {
       header: labels.user,
       accessorKey: 'userDisplay',
-      meta: { minWidth: '8rem', maxWidth: '12rem', renderAsBadges: false },
+      meta: { minWidth: '8rem', renderAsBadges: false, truncate: true },
       cell: ({ row }) => {
         const file = row.original;
         const label = file.userDisplay;
@@ -179,19 +179,19 @@ export default function createStorageColumns(
     {
       header: labels.type,
       accessorKey: 'type',
-      meta: { minWidth: '8rem', maxWidth: '10rem' },
+      meta: { minWidth: '8rem', truncate: true },
       cell: ({ row }) => row.original.type || '',
     },
     {
       header: labels.size,
       accessorKey: 'sizeLabel',
-      meta: { minWidth: '6rem', maxWidth: '8rem' },
+      meta: { minWidth: '6rem' },
       cell: ({ row }) => row.original.sizeLabel,
     },
     {
       header: labels.task,
       accessorKey: 'taskDisplay',
-      meta: { minWidth: '10rem', maxWidth: '16rem', renderAsBadges: false },
+      meta: { minWidth: '10rem', renderAsBadges: false, truncate: true },
       cell: ({ row }) => {
         const file = row.original;
         const content = (
@@ -248,7 +248,7 @@ export default function createStorageColumns(
     {
       header: labels.uploaded,
       accessorKey: 'uploadedLabel',
-      meta: { minWidth: '10rem', maxWidth: '12rem' },
+      meta: { minWidth: '8rem', truncate: true },
       cell: ({ row }) => row.original.uploadedLabel,
     },
   ];

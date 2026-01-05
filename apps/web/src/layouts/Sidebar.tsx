@@ -22,13 +22,33 @@ type SidebarItem = {
   icon: React.ComponentType<React.ComponentProps<'svg'>>;
 };
 
+export const SIDEBAR_ID = 'app-sidebar';
+
 export default function Sidebar() {
-  const { open, toggle } = useSidebar();
+  const { open, toggle, setOpen, isDesktop } = useSidebar();
   const { pathname, search } = useLocation();
   const { user } = useAuth();
   const { t } = useTranslation();
   const role = user?.role || 'user';
   const access = typeof user?.access === 'number' ? user.access : 0;
+
+  React.useEffect(() => {
+    if (!isDesktop) {
+      setOpen(false);
+    }
+  }, [pathname, search, isDesktop, setOpen]);
+
+  React.useEffect(() => {
+    if (isDesktop || typeof document === 'undefined') return undefined;
+    if (!open) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [open, isDesktop]);
 
   const baseItems = React.useMemo<SidebarItem[]>(
     () => [
@@ -91,11 +111,14 @@ export default function Sidebar() {
   return (
     <aside
       className={cn(
-        'fixed inset-y-0 left-0 z-50 flex h-full w-64 flex-col border-r border-stroke bg-white p-4 shadow-lg transition-transform duration-200 ease-in-out dark:bg-slate-900',
+        'fixed inset-y-0 left-0 z-50 flex h-full w-64 max-w-[70vw] flex-col border-r border-stroke bg-white p-4 shadow-lg transition-transform duration-200 ease-in-out dark:bg-slate-900 lg:w-56',
         open ? 'translate-x-0' : '-translate-x-full',
-        'lg:shadow-none',
+        'lg:shadow-none lg:translate-x-0 lg:relative',
       )}
-      aria-hidden={!open}
+      aria-hidden={isDesktop ? false : !open}
+      aria-modal={!isDesktop && open ? true : undefined}
+      role={isDesktop ? 'complementary' : 'dialog'}
+      id={SIDEBAR_ID}
     >
       <div className="flex items-center justify-between">
         <button

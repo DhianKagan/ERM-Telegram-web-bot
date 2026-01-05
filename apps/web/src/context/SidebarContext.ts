@@ -4,6 +4,8 @@ import { createContext } from 'react';
 export interface SidebarState {
   open: boolean;
   toggle: () => void;
+  setOpen: (value: boolean) => void;
+  isDesktop: boolean;
 }
 
 export const SidebarContext = createContext<SidebarState | undefined>(

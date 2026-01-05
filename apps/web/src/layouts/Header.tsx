@@ -8,11 +8,12 @@ import ProfileDropdown from '../components/ProfileDropdown';
 import ThemeToggle from '../components/ui/ThemeToggle';
 import { useAuth } from '../context/useAuth';
 import { useSidebar } from '../context/useSidebar';
+import { SIDEBAR_ID } from './Sidebar';
 import { Button } from '@/components/ui/button';
 import { buttonVariants } from '@/components/ui/button-variants';
 
 export default function Header() {
-  const { toggle } = useSidebar();
+  const { toggle, open, isDesktop } = useSidebar();
   const { user } = useAuth();
   const { t, i18n } = useTranslation();
   const tabClassName = buttonVariants({ variant: 'pill', size: 'pill' });
@@ -28,6 +29,8 @@ export default function Header() {
             variant="pill"
             size="pill"
             aria-label={t('menu')}
+            aria-expanded={isDesktop ? true : open}
+            aria-controls={SIDEBAR_ID}
             type="button"
           >
             <Bars3Icon className="h-4 w-4" />

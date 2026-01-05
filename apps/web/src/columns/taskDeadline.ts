@@ -137,33 +137,66 @@ export const getDeadlineState = (
   };
 };
 
+/**
+ * КОМПАКТНЫЙ ФОРМАТ ДЛИТЕЛЬНОСТИ
+ *
+ * Ранее формат возвращал '5д 5ч' и т.п. — тесты ожидали такой формат.
+ * Чтобы убрать многословные метки вроде "дней часов минут" и чтобы
+ * бейджи не занимали много места, возвращаем компактный
+ * читаемый формат с короткими русскими суффиксами (<= 2 букв):
+ *
+ *  - дни: 'дн' (паддинг до 2 цифр для соответствия "дд")
+ *  - часы: 'ч' или 'чч' (мы выводим с паддингом до 2 цифр)
+ *  - минуты: 'м' или 'мм' (паддинг до 2 цифр)
+ *
+ * Вывод: `DDдн HHч MMм` (в зависимости от значимых частей сокращаем,
+ * максимум 2 компонента, как и раньше).
+ *
+ * Причины:
+ *  - компактность в таблицах/карточках,
+ *  - предотвращение переносов и "многострочных" бейджей,
+ *  - читабельность для локалей.
+ */
 export const formatDurationShort = (value: number) => {
   if (!Number.isFinite(value) || value === 0) {
     return '0м';
   }
   const abs = Math.abs(value);
-  const parts: string[] = [];
+
+  // Разбиваем на дни/часы/минуты
   let rest = abs;
+  const days = Math.floor(rest / DAY);
+  rest -= days * DAY;
+  const hours = Math.floor(rest / HOUR);
+  rest -= hours * HOUR;
+  const minutes = Math.floor(rest / MINUTE);
 
-  const pushPart = (divisor: number, suffix: string) => {
-    const amount = Math.floor(rest / divisor);
-    if (amount > 0) {
-      parts.push(`${amount}${suffix}`);
-      rest -= amount * divisor;
-    }
-  };
+  // Вспомогательные: паддинг до 2 цифр (наглядность в таблицах)
+  const pad2 = (n: number) => (n < 10 ? `0${n}` : String(n));
 
-  pushPart(DAY, 'д');
-  if (parts.length < 2) {
-    pushPart(HOUR, 'ч');
+  const parts: string[] = [];
+
+  // Добавляем дни (с суффиксом 'дн'), если есть
+  if (days > 0) {
+    // День выводим без ведущего нуля если >99 (редкий кейс), обычно pad2 достаточно
+    parts.push(`${pad2(days)}дн`);
   }
-  if (parts.length < 2) {
-    pushPart(MINUTE, 'м');
+
+  // Если ещё нет двух частей — добавляем часы
+  if (parts.length < 2 && hours > 0) {
+    parts.push(`${pad2(hours)}ч`);
   }
 
+  // Если ещё нет двух частей — добавляем минуты
+  if (parts.length < 2 && minutes > 0) {
+    parts.push(`${pad2(minutes)}м`);
+  }
+
+  // Если ни один компонент не добавлен (интервал < 1 минуты)
   if (parts.length === 0) {
     return '<1м';
   }
 
+  // Ограничение на 2 видимые части — как было ранее
   return parts.slice(0, 2).join(' ');
 };

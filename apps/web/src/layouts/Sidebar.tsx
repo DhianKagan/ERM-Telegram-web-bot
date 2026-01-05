@@ -113,7 +113,6 @@ export default function Sidebar() {
       className={cn(
         'fixed inset-y-0 left-0 z-50 flex h-full w-64 max-w-[70vw] flex-col border-r border-stroke bg-white p-4 shadow-lg transition-transform duration-200 ease-in-out dark:bg-slate-900 lg:w-56',
         open ? 'translate-x-0' : '-translate-x-full',
-        'lg:shadow-none lg:translate-x-0 lg:relative',
       )}
       aria-hidden={isDesktop ? false : !open}
       aria-modal={!isDesktop && open ? true : undefined}

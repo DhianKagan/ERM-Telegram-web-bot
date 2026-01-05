@@ -2,7 +2,11 @@
 // Модули: React, контексты, сервисы задач, shared
 import React from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { UiButton } from '@/components/ui/UiButton';
 import TaskTable from '../components/TaskTable';
+import Spinner from '../components/Spinner';
+import ActionBar from '../components/ActionBar';
+import Breadcrumbs from '../components/Breadcrumbs';
 import useTasks from '../context/useTasks';
 import {
   useTaskIndex,
@@ -202,52 +206,60 @@ export default function TasksPage() {
   if (!canView)
     return <div className="p-4">У вас нет прав для просмотра задач</div>;
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-        Панель управления задачами
-      </h2>
-      {loading && <div>Загрузка...</div>}
-      <TaskTable
-        tasks={tasks}
-        users={userMap}
-        page={page}
-        pageCount={Math.ceil((meta.total ?? tasks.length) / 25)}
-        mine={isPrivileged ? mine : true}
-        onPageChange={setPage}
-        onMineChange={
-          isPrivileged
-            ? (v) => {
-                setMine(v);
-                if (v) params.set('mine', '1');
-                else params.delete('mine');
-                setParams(params);
-              }
-            : undefined
-        }
-        onRowClick={(id) => {
-          params.set('task', id);
-          setParams(params);
-        }}
-        toolbarChildren={
-          <>
-            <button
-              onClick={refresh}
-              className="rounded bg-blue-600 px-2 py-1 text-sm text-white hover:bg-blue-700"
-            >
+    <div className="space-y-4">
+      <ActionBar
+        breadcrumbs={<Breadcrumbs items={[{ label: 'Задачи' }]} />}
+        title="Панель управления задачами"
+        description="Единое представление по задачам и назначенным исполнителям."
+        toolbar={
+          <div className="flex flex-wrap items-center gap-2">
+            <UiButton size="sm" variant="outline" onClick={refresh}>
               Обновить
-            </button>
-            <button
+            </UiButton>
+            <UiButton
+              size="sm"
+              variant="accent"
               onClick={() => {
                 params.set('newTask', '1');
                 setParams(params);
               }}
-              className="rounded bg-blue-600 px-2 py-1 text-sm text-white hover:bg-blue-700"
             >
               Новая задача
-            </button>
-          </>
+            </UiButton>
+          </div>
         }
       />
+
+      <div className="rounded-3xl border border-[color:var(--color-gray-200)] bg-white p-3 shadow-[var(--shadow-theme-sm)] dark:border-[color:var(--color-gray-700)] dark:bg-[color:var(--color-gray-dark)] sm:p-4">
+        {loading ? (
+          <div className="flex min-h-[12rem] items-center justify-center">
+            <Spinner className="h-6 w-6 text-[color:var(--color-brand-500)]" />
+          </div>
+        ) : (
+          <TaskTable
+            tasks={tasks}
+            users={userMap}
+            page={page}
+            pageCount={Math.ceil((meta.total ?? tasks.length) / 25)}
+            mine={isPrivileged ? mine : true}
+            onPageChange={setPage}
+            onMineChange={
+              isPrivileged
+                ? (v) => {
+                    setMine(v);
+                    if (v) params.set('mine', '1');
+                    else params.delete('mine');
+                    setParams(params);
+                  }
+                : undefined
+            }
+            onRowClick={(id) => {
+              params.set('task', id);
+              setParams(params);
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }

@@ -2,8 +2,11 @@
 // Модули: React, контексты, сервисы задач, shared
 import React from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
+import { UiButton } from '@/components/ui/UiButton';
 import TaskTable from '../components/TaskTable';
+import ActionBar from '../components/ActionBar';
+import Breadcrumbs from '../components/Breadcrumbs';
+import Spinner from '../components/Spinner';
 import useTasks from '../context/useTasks';
 import {
   useTaskIndex,
@@ -117,46 +120,57 @@ export default function RequestsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-        Панель заявок
-      </h2>
-      {loading && <div>Загрузка...</div>}
-      <TaskTable
-        tasks={tasks}
-        users={map}
-        page={page}
-        pageCount={Math.ceil((meta.total ?? tasks.length) / 25)}
-        mine={mine}
-        entityKind="request"
-        onPageChange={setPage}
-        onMineChange={(value) => {
-          setMine(value);
-          if (value) params.set('mine', '1');
-          else params.delete('mine');
-          setParams(params);
-        }}
-        onRowClick={(id) => {
-          params.set('task', id);
-          setParams(params);
-        }}
-        toolbarChildren={
+    <div className="space-y-4">
+      <ActionBar
+        breadcrumbs={<Breadcrumbs items={[{ label: 'Заявки' }]} />}
+        title="Панель заявок"
+        description="Единый список заявок с фильтрами и экспортом."
+        toolbar={
           <div className="flex flex-wrap items-center gap-2">
-            <Button variant="secondary" size="sm" onClick={refresh}>
+            <UiButton size="sm" variant="outline" onClick={refresh}>
               Обновить
-            </Button>
-            <Button
+            </UiButton>
+            <UiButton
               size="sm"
+              variant="accent"
               onClick={() => {
                 params.set('newRequest', '1');
                 setParams(params);
               }}
             >
               Новая заявка
-            </Button>
+            </UiButton>
           </div>
         }
       />
+
+      <div className="rounded-3xl border border-[color:var(--color-gray-200)] bg-white p-3 shadow-[var(--shadow-theme-sm)] dark:border-[color:var(--color-gray-700)] dark:bg-[color:var(--color-gray-dark)] sm:p-4">
+        {loading ? (
+          <div className="flex min-h-[12rem] items-center justify-center">
+            <Spinner className="h-6 w-6 text-[color:var(--color-brand-500)]" />
+          </div>
+        ) : (
+          <TaskTable
+            tasks={tasks}
+            users={map}
+            page={page}
+            pageCount={Math.ceil((meta.total ?? tasks.length) / 25)}
+            mine={mine}
+            entityKind="request"
+            onPageChange={setPage}
+            onMineChange={(value) => {
+              setMine(value);
+              if (value) params.set('mine', '1');
+              else params.delete('mine');
+              setParams(params);
+            }}
+            onRowClick={(id) => {
+              params.set('task', id);
+              setParams(params);
+            }}
+          />
+        )}
+      </div>
     </div>
   );
 }

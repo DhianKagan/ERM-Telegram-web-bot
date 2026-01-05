@@ -880,29 +880,31 @@ export default function EventLog() {
         </div>
       </ActionBar>
 
-      {loading ? (
-        <div className="flex min-h-[12rem] items-center justify-center rounded-2xl border border-[color:var(--color-gray-200)] bg-white shadow-sm dark:border-[color:var(--color-gray-700)] dark:bg-[color:var(--color-gray-dark)]">
-          <Spinner className="h-6 w-6 text-[color:var(--color-brand-500)]" />
-        </div>
-      ) : (
-        <DataTable
-          columns={eventLogColumns}
-          data={rows}
-          pageIndex={page - 1}
-          pageSize={PAGE_LIMIT}
-          pageCount={totalPages}
-          onPageChange={(index) => setPage(index + 1)}
-          showGlobalSearch={false}
-          showFilters={false}
-          wrapCellsAsBadges
-          onRowClick={(row) => {
-            const item = items.find((entry) => entry._id === row.id);
-            if (item) {
-              openEdit(item);
-            }
-          }}
-        />
-      )}
+      <div className="rounded-3xl border border-[color:var(--color-gray-200)] bg-white p-3 shadow-[var(--shadow-theme-sm)] dark:border-[color:var(--color-gray-700)] dark:bg-[color:var(--color-gray-dark)] sm:p-4">
+        {loading ? (
+          <div className="flex min-h-[12rem] items-center justify-center">
+            <Spinner className="h-6 w-6 text-[color:var(--color-brand-500)]" />
+          </div>
+        ) : (
+          <DataTable
+            columns={eventLogColumns}
+            data={rows}
+            pageIndex={page - 1}
+            pageSize={PAGE_LIMIT}
+            pageCount={totalPages}
+            onPageChange={(index) => setPage(index + 1)}
+            showGlobalSearch={false}
+            showFilters={false}
+            wrapCellsAsBadges
+            onRowClick={(row) => {
+              const item = items.find((entry) => entry._id === row.id);
+              if (item) {
+                openEdit(item);
+              }
+            }}
+          />
+        )}
+      </div>
 
       <Modal open={modalOpen} onClose={closeModal}>
         <div className="space-y-5">

@@ -12,7 +12,7 @@ import { matchSorter, rankings } from 'match-sorter';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 
-import { Button } from '@/components/ui/button';
+import { UiButton } from '@/components/ui/UiButton';
 import { UiCard } from '@/components/ui/UiCard';
 import { UiFormGroup } from '@/components/ui/UiFormGroup';
 import { UiInput } from '@/components/ui/UiInput';
@@ -432,22 +432,22 @@ const renderPaginationControls = (
       Страница {pageIndex} из {totalPagesValue || 1}
     </span>
     <div className="flex flex-wrap gap-2">
-      <Button
+      <UiButton
         size="sm"
         variant="outline"
         onClick={() => onChange(Math.max(1, pageIndex - 1))}
         disabled={pageIndex <= 1}
       >
         Назад
-      </Button>
-      <Button
+      </UiButton>
+      <UiButton
         size="sm"
         variant="outline"
         onClick={() => onChange(Math.min(totalPagesValue || 1, pageIndex + 1))}
         disabled={pageIndex >= totalPagesValue}
       >
         Вперёд
-      </Button>
+      </UiButton>
     </div>
   </div>
 );
@@ -3000,10 +3000,10 @@ export default function CollectionsPage() {
             />
           </UiFormGroup>
           <div className="flex flex-wrap items-center gap-2">
-            <Button size="sm" onClick={() => submitUserSearch()}>
+            <UiButton size="sm" onClick={() => submitUserSearch()}>
               {collectionSearchCta}
-            </Button>
-            <Button
+            </UiButton>
+            <UiButton
               size="sm"
               variant="outline"
               onClick={() => {
@@ -3012,10 +3012,10 @@ export default function CollectionsPage() {
               }}
             >
               {collectionResetCta}
-            </Button>
-            <Button size="sm" variant="success" onClick={handleAdd}>
+            </UiButton>
+            <UiButton size="sm" variant="accent" onClick={handleAdd}>
               {addLabel}
-            </Button>
+            </UiButton>
           </div>
         </div>
       );
@@ -3040,32 +3040,36 @@ export default function CollectionsPage() {
             />
           </UiFormGroup>
           <div className="flex flex-wrap items-center gap-2">
-            <Button size="sm" onClick={() => submitCollectionSearch()}>
+            <UiButton size="sm" onClick={() => submitCollectionSearch()}>
               {collectionSearchCta}
-            </Button>
-            <Button size="sm" variant="outline" onClick={resetCollectionSearch}>
-              {collectionResetCta}
-            </Button>
-            <Button
+            </UiButton>
+            <UiButton
               size="sm"
-              variant="success"
+              variant="outline"
+              onClick={resetCollectionSearch}
+            >
+              {collectionResetCta}
+            </UiButton>
+            <UiButton
+              size="sm"
+              variant="accent"
               onClick={() => openCollectionModal()}
             >
               {collectionAddCta}
-            </Button>
+            </UiButton>
           </div>
         </div>
       );
     }
     return (
       <div className="flex flex-wrap items-center gap-2">
-        <Button
+        <UiButton
           size="sm"
-          variant="success"
+          variant="accent"
           onClick={() => openCollectionModal()}
         >
           {collectionAddCta}
-        </Button>
+        </UiButton>
       </div>
     );
   })();
@@ -3317,12 +3321,12 @@ export default function CollectionsPage() {
                         <p className="max-w-md text-sm text-[color:var(--color-gray-600)] dark:text-[color:var(--color-gray-300)]">
                           {collectionEmptyDescription}
                         </p>
-                        <Button
-                          variant="success"
+                        <UiButton
+                          variant="accent"
                           onClick={() => openUserModal()}
                         >
                           {userAddCta}
-                        </Button>
+                        </UiButton>
                       </div>
                     ) : (
                       <UiCard bodyClassName="space-y-3">
@@ -3377,12 +3381,12 @@ export default function CollectionsPage() {
                         <p className="max-w-md text-sm text-[color:var(--color-gray-600)] dark:text-[color:var(--color-gray-300)]">
                           {collectionEmptyDescription}
                         </p>
-                        <Button
-                          variant="success"
+                        <UiButton
+                          variant="accent"
                           onClick={() => openEmployeeModal()}
                         >
                           {employeeAddCta}
-                        </Button>
+                        </UiButton>
                       </div>
                     ) : (
                       <UiCard bodyClassName="space-y-3">
@@ -3467,12 +3471,12 @@ export default function CollectionsPage() {
                       <p className="max-w-md text-sm text-[color:var(--color-gray-600)] dark:text-[color:var(--color-gray-300)]">
                         {collectionEmptyDescription}
                       </p>
-                      <Button
-                        variant="success"
+                      <UiButton
+                        variant="accent"
                         onClick={() => openCollectionModal()}
                       >
                         {collectionEmptyAction}
-                      </Button>
+                      </UiButton>
                     </div>
                   ) : type.key === 'fixed_assets' ? (
                     <UiCard bodyClassName="space-y-3">
@@ -3711,7 +3715,7 @@ export default function CollectionsPage() {
                         </dt>
                         <dd className="mt-2 space-y-2">
                           <div className="flex flex-wrap items-center gap-2">
-                            <Button
+                            <UiButton
                               variant="outline"
                               size="sm"
                               onClick={() =>
@@ -3722,18 +3726,18 @@ export default function CollectionsPage() {
                               {showAssetEvents
                                 ? 'Скрыть историю'
                                 : 'Показать историю'}
-                            </Button>
+                            </UiButton>
                             <span className="badge badge-neutral badge-sm">
                               {assetEvents.length}
                             </span>
-                            <Button
+                            <UiButton
                               variant="ghost"
                               size="sm"
                               onClick={() => void loadEventLogs()}
                               disabled={eventLogsLoading}
                             >
                               Обновить
-                            </Button>
+                            </UiButton>
                           </div>
                           {eventLogsError ? (
                             <p className="text-xs text-red-600">
@@ -3910,14 +3914,14 @@ export default function CollectionsPage() {
                   </p>
                 </div>
                 {canManageUsers && userForm.telegram_id ? (
-                  <Button
+                  <UiButton
                     type="button"
-                    variant="destructive"
-                    className="h-9 px-3 text-sm"
+                    variant="outline"
+                    className="btn-error h-9 px-3 text-sm"
                     onClick={() => setConfirmUserDelete(true)}
                   >
                     Удалить
-                  </Button>
+                  </UiButton>
                 ) : null}
               </header>
               <dl className="mt-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
@@ -4017,14 +4021,14 @@ export default function CollectionsPage() {
                     </p>
                   </div>
                   {canManageUsers && selectedEmployee.telegram_id ? (
-                    <Button
+                    <UiButton
                       type="button"
-                      variant="destructive"
-                      className="h-9 px-3 text-sm"
+                      variant="outline"
+                      className="btn-error h-9 px-3 text-sm"
                       onClick={() => setConfirmEmployeeDelete(true)}
                     >
                       Удалить
-                    </Button>
+                    </UiButton>
                   ) : null}
                 </header>
                 <dl className="mt-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">

@@ -2986,7 +2986,7 @@ export default function CollectionsPage() {
       return (
         <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <UiFormGroup
-            className="sm:w-72"
+            className="w-full sm:flex-1"
             label={collectionSearchCta}
             htmlFor="settings-users-search"
             help={collectionSearchHint}
@@ -2999,7 +2999,7 @@ export default function CollectionsPage() {
               placeholder={placeholder}
             />
           </UiFormGroup>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 sm:flex-shrink-0">
             <UiButton size="sm" onClick={() => submitUserSearch()}>
               {collectionSearchCta}
             </UiButton>
@@ -3024,7 +3024,7 @@ export default function CollectionsPage() {
       return (
         <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
           <UiFormGroup
-            className="sm:w-72"
+            className="w-full sm:flex-1"
             label={collectionSearchCta}
             htmlFor="settings-collections-search"
             help={collectionSearchHint}
@@ -3039,7 +3039,7 @@ export default function CollectionsPage() {
               placeholder={collectionSearchPlaceholder}
             />
           </UiFormGroup>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2 sm:flex-shrink-0">
             <UiButton size="sm" onClick={() => submitCollectionSearch()}>
               {collectionSearchCta}
             </UiButton>

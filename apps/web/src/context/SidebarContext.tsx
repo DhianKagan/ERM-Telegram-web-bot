@@ -18,6 +18,8 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({
     const handleChange = (event: MediaQueryListEvent) => {
       setIsDesktop(event.matches);
       if (event.matches) {
+        // На десктопе по умолчанию панель открыта,
+        // но это не мешает пользователю её закрыть вручную.
         setOpen(true);
       } else {
         setOpen(false);
@@ -31,11 +33,9 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
-  const toggle = () =>
-    setOpen((value) => {
-      if (isDesktop) return true;
-      return !value;
-    });
+  // Разрешаем переключать панель независимо от размера экрана.
+  const toggle = () => setOpen((value) => !value);
+
   return (
     <SidebarContext.Provider
       value={{

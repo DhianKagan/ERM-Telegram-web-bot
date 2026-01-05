@@ -5,12 +5,12 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { PROJECT_TIMEZONE, PROJECT_TIMEZONE_LABEL, type Task } from 'shared';
 import { QuestionMarkCircleIcon } from '@heroicons/react/20/solid';
 import EmployeeLink from '../components/EmployeeLink';
+import { badgeVariants } from '../components/ui/Badge';
 import { getDeadlineState, type DeadlineState } from './taskDeadline';
 import type { User as AppUser } from '../types/user';
 
 // Оформление бейджей статусов и приоритетов на дизайн-токенах
-const badgeBaseClass =
-  'inline-flex min-w-0 items-center gap-0.5 whitespace-nowrap rounded-full px-1.5 py-0.5 text-center text-[0.66rem] font-semibold uppercase tracking-wide shadow-xs';
+const badgeBaseClass = badgeVariants({ variant: 'solid', size: 'sm' });
 const badgeTextClass = 'text-black dark:text-white';
 
 const buildBadgeClass = (tones: string, extraClass = '') =>
@@ -20,9 +20,7 @@ const buildBadgeClass = (tones: string, extraClass = '') =>
 
 const focusableBadgeClass =
   'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background';
-
-const pillBadgeBaseClass =
-  'inline-flex max-w-full min-w-0 items-center gap-0.5 whitespace-nowrap rounded-full px-1.5 py-0.5 text-left text-[0.7rem] font-semibold leading-tight tracking-normal shadow-xs sm:px-1.5 sm:text-[0.76rem]';
+const pillBadgeBaseClass = badgeVariants({ variant: 'pill', size: 'sm' });
 
 const dateBadgeClass = `${pillBadgeBaseClass} font-mono normal-case ${badgeTextClass} ring-1 ring-slate-500/30 bg-slate-500/10 dark:bg-slate-500/20 dark:ring-slate-400/30`;
 

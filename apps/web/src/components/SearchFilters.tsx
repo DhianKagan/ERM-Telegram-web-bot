@@ -57,7 +57,7 @@ export default function SearchFilters({ inline = false }: Props) {
   };
 
   const content = (
-    <div className="flex w-52 flex-col gap-1.5 text-sm">
+    <div className="grid w-full min-w-0 grid-cols-1 gap-3 text-sm sm:grid-cols-2">
       <div>
         <span className="block text-xs font-semibold uppercase tracking-wide text-gray-600">
           Статус
@@ -164,14 +164,14 @@ export default function SearchFilters({ inline = false }: Props) {
       <div className="flex items-center gap-1.5">
         <input
           type="date"
-          className="rounded border px-1.5 py-1 text-[13px]"
+          className="w-full rounded border px-1.5 py-1 text-[13px]"
           name="from"
           value={local.from}
           onChange={(e) => setLocal({ ...local, from: e.target.value })}
         />
         <input
           type="date"
-          className="rounded border px-1.5 py-1 text-[13px]"
+          className="w-full rounded border px-1.5 py-1 text-[13px]"
           name="to"
           value={local.to}
           onChange={(e) => setLocal({ ...local, to: e.target.value })}

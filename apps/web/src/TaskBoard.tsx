@@ -522,8 +522,8 @@ export default function TaskBoard() {
             updateParamsWithFilters(nextFilters);
           }}
         >
-          <div className="ui-filter-row__inputs">
-            <div className="flex min-w-[12rem] flex-col gap-1">
+          <div className="ui-filter-row__inputs grid w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
               <label
                 htmlFor="kanban-search"
                 className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
@@ -532,6 +532,7 @@ export default function TaskBoard() {
               </label>
               <Input
                 id="kanban-search"
+                className="w-full"
                 value={formState.search}
                 onChange={(event) => {
                   const next = event.target.value;
@@ -540,7 +541,7 @@ export default function TaskBoard() {
                 placeholder={t('kanban.filters.searchPlaceholder') ?? ''}
               />
             </div>
-            <div className="flex min-w-[10rem] flex-col gap-1">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
               <label
                 htmlFor="kanban-transport"
                 className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
@@ -554,7 +555,7 @@ export default function TaskBoard() {
                   const next = event.target.value as TransportFilter;
                   setFormState((prev) => ({ ...prev, transport: next }));
                 }}
-                className="h-10 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-sm text-[var(--color-muted)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-400)]"
+                className="h-10 w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-sm text-[var(--color-muted)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-400)]"
               >
                 <option value="any">{t('kanban.filters.transportAny')}</option>
                 <option value="car">{t('kanban.filters.transportCar')}</option>
@@ -566,7 +567,7 @@ export default function TaskBoard() {
                 </option>
               </select>
             </div>
-            <div className="flex min-w-[10rem] flex-col gap-1">
+            <div className="flex min-w-0 flex-1 flex-col gap-1">
               <label
                 htmlFor="kanban-sort"
                 className="text-xs font-medium uppercase tracking-wide text-muted-foreground"
@@ -580,7 +581,7 @@ export default function TaskBoard() {
                   const next = event.target.value as SortOption;
                   setFormState((prev) => ({ ...prev, sort: next }));
                 }}
-                className="h-10 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-sm text-[var(--color-muted)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-400)]"
+                className="h-10 w-full rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-surface)] px-3 text-sm text-[var(--color-muted)] shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-400)]"
               >
                 <option value="title_asc">
                   {t('kanban.filters.sortTitleAsc')}
@@ -591,7 +592,9 @@ export default function TaskBoard() {
                 <option value="number_asc">
                   {t('kanban.filters.sortNumberAsc')}
                 </option>
-                <option value="type_asc">{t('kanban.filters.sortTypeAsc')}</option>
+                <option value="type_asc">
+                  {t('kanban.filters.sortTypeAsc')}
+                </option>
                 <option value="status_asc">
                   {t('kanban.filters.sortStatusAsc')}
                 </option>

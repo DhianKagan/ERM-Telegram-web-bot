@@ -36,20 +36,20 @@ const ThemeProviderLazy = lazy(async () => {
 
 function AppShell() {
   const { user } = useAuth();
-  const { open, toggle } = useSidebar();
+  const { open, setOpen, isDesktop } = useSidebar();
   const { t } = useTranslation();
-  const contentOffsetClass = open ? 'lg:pl-64' : 'lg:pl-0';
+  const contentOffsetClass = open ? 'lg:pl-56' : 'lg:pl-0';
   return (
     <>
       {user && <Sidebar />}
-      {user && open && (
+      {user && open && !isDesktop && (
         <div
           className="fixed inset-0 z-40 bg-black/40 lg:hidden"
           tabIndex={-1}
           ref={(el) => el?.focus()}
           onClick={() => {
             (document.activeElement as HTMLElement | null)?.blur();
-            toggle();
+            setOpen(false);
           }}
         />
       )}

@@ -1,16 +1,48 @@
 // Контекст управления боковой панелью
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { SidebarContext, type SidebarState } from './SidebarContext';
 
 export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  const [open, setOpen] = useState(true);
+  const [isDesktop, setIsDesktop] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return window.matchMedia('(min-width: 1024px)').matches;
+  });
+  const [open, setOpen] = useState(isDesktop);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const mediaQuery = window.matchMedia('(min-width: 1024px)');
+
+    const handleChange = (event: MediaQueryListEvent) => {
+      setIsDesktop(event.matches);
+      if (event.matches) {
+        setOpen(true);
+      } else {
+        setOpen(false);
+      }
+    };
+
+    setIsDesktop(mediaQuery.matches);
+    setOpen(mediaQuery.matches);
+    mediaQuery.addEventListener('change', handleChange);
+
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
+  const toggle = () =>
+    setOpen((value) => {
+      if (isDesktop) return true;
+      return !value;
+    });
   return (
     <SidebarContext.Provider
       value={{
         open,
-        toggle: () => setOpen((v) => !v),
+        toggle,
+        setOpen,
+        isDesktop,
       }}
     >
       {children}

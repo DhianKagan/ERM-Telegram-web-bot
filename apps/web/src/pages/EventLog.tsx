@@ -2,8 +2,8 @@
 // Основные модули: React, collections service, DataTable, Modal
 import React from 'react';
 
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import { UiButton } from '@/components/ui/UiButton';
+import { UiInput } from '@/components/ui/UiInput';
 import ActionBar from '../components/ActionBar';
 import Breadcrumbs from '../components/Breadcrumbs';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -831,40 +831,42 @@ export default function EventLog() {
         title="Журнал событий"
         description="Фиксация событий по основным средствам и автопарку."
         toolbar={
-          <>
-            <Button size="sm" variant="outline" onClick={applySearch}>
-              Поиск
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setSearchDraft('');
-                setSearch('');
-                setPage(1);
-              }}
-            >
-              Сбросить
-            </Button>
-            <Button
-              size="sm"
-              variant="success"
-              onClick={() => void openCreate()}
-            >
-              Новое событие
-            </Button>
-          </>
+          <div className="flex flex-wrap items-center gap-2 sm:justify-end sm:gap-3">
+            <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
+              <UiButton size="sm" variant="outline" onClick={applySearch}>
+                Поиск
+              </UiButton>
+              <UiButton
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setSearchDraft('');
+                  setSearch('');
+                  setPage(1);
+                }}
+              >
+                Сбросить
+              </UiButton>
+              <UiButton
+                size="sm"
+                variant="accent"
+                onClick={() => void openCreate()}
+              >
+                Новое событие
+              </UiButton>
+            </div>
+          </div>
         }
       >
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div className="flex w-full flex-col gap-1 sm:w-72">
+          <div className="flex w-full flex-1 flex-col gap-1">
             <label
               htmlFor="events-search"
               className="text-xs font-semibold text-[color:var(--color-gray-700)]"
             >
               Поиск
             </label>
-            <Input
+            <UiInput
               id="events-search"
               value={searchDraft}
               onChange={(event) => setSearchDraft(event.target.value)}

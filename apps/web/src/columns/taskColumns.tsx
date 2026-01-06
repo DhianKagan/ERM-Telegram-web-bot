@@ -399,6 +399,30 @@ const formatCountdownParts = (remainingMs: number) => {
   };
 };
 
+const formatDurationBadge = (
+  parts: ReturnType<typeof formatCountdownParts>,
+): string => {
+  const segments: string[] = [];
+
+  if (parts.days) {
+    segments.push(`${parts.paddedDays}дн`);
+  }
+
+  if (parts.hours || segments.length) {
+    segments.push(`${parts.paddedHours}ч`);
+  }
+
+  if (segments.length < 2 || parts.minutes) {
+    segments.push(`${parts.paddedMinutes}м`);
+  }
+
+  if (!segments.length) {
+    return '00м';
+  }
+
+  return segments.join(' ');
+};
+
 const getRussianPlural = (value: number, forms: [string, string, string]) => {
   const absValue = Math.abs(value) % 100;
   if (absValue >= 11 && absValue <= 14) {
@@ -427,38 +451,14 @@ const getCountdownToneKey = (
 };
 
 const buildCountdownLabel = (state: CountdownLikeState) => {
-  const { days, hours, minutes } = formatCountdownParts(state.remainingMs);
+  const duration = formatDurationBadge(formatCountdownParts(state.remainingMs));
   if (state.kind === 'overdue') {
-    return `Просрочено на ${days} ${getRussianPlural(days, [
-      'день',
-      'дня',
-      'дней',
-    ])} ${hours} ${getRussianPlural(hours, [
-      'час',
-      'часа',
-      'часов',
-    ])} ${minutes} ${getRussianPlural(minutes, ['минута', 'минуты', 'минут'])}`;
+    return `Просрочено на ${duration}`;
   }
   if (state.kind === 'pending') {
-    return `Начало через ${days} ${getRussianPlural(days, [
-      'день',
-      'дня',
-      'дней',
-    ])} ${hours} ${getRussianPlural(hours, [
-      'час',
-      'часа',
-      'часов',
-    ])} ${minutes} ${getRussianPlural(minutes, ['минута', 'минуты', 'минут'])}`;
+    return `Начало через ${duration}`;
   }
-  return `До дедлайна ${days} ${getRussianPlural(days, [
-    'день',
-    'дня',
-    'дней',
-  ])} ${hours} ${getRussianPlural(hours, [
-    'час',
-    'часа',
-    'часов',
-  ])} ${minutes} ${getRussianPlural(minutes, ['минута', 'минуты', 'минут'])}`;
+  return `До дедлайна ${duration}`;
 };
 
 const buildCountdownTitle = (
@@ -627,7 +627,7 @@ export function DeadlineCountdownBadge({
             {parts.paddedDays}
           </span>
           <span className="text-[9px] font-medium text-black/80 dark:text-white/80">
-            {getRussianPlural(parts.days, ['день', 'дня', 'дней'])}
+            дн
           </span>
         </span>
         <span className="flex flex-col items-center leading-tight">
@@ -635,7 +635,7 @@ export function DeadlineCountdownBadge({
             {parts.paddedHours}
           </span>
           <span className="text-[9px] font-medium text-black/80 dark:text-white/80">
-            {getRussianPlural(parts.hours, ['час', 'часа', 'часов'])}
+            ч
           </span>
         </span>
         <span className="flex flex-col items-center leading-tight">
@@ -643,7 +643,7 @@ export function DeadlineCountdownBadge({
             {parts.paddedMinutes}
           </span>
           <span className="text-[9px] font-medium text-black/80 dark:text-white/80">
-            {getRussianPlural(parts.minutes, ['минута', 'минуты', 'минут'])}
+            м
           </span>
         </span>
       </span>
@@ -676,18 +676,7 @@ const formatDurationPhrase = (
       ? `${entityWord(entityKind, 'nominative')} завершена менее чем за минуту`
       : 'Затрачено менее минуты';
   }
-  const dayLabel = `${days} ${getRussianPlural(days, ['день', 'дня', 'дней'])}`;
-  const hourLabel = `${hours} ${getRussianPlural(hours, [
-    'час',
-    'часа',
-    'часов',
-  ])}`;
-  const minuteLabel = `${minutes} ${getRussianPlural(minutes, [
-    'минута',
-    'минуты',
-    'минут',
-  ])}`;
-  const phrase = `${dayLabel} ${hourLabel} ${minuteLabel}`;
+  const phrase = formatDurationBadge(parts);
   return variant === 'completed'
     ? `${entityWord(entityKind, 'nominative')} завершена за ${phrase}`
     : `Затрачено ${phrase}`;
@@ -920,7 +909,7 @@ function ActualTimeCell({
                 {durationParts.paddedDays}
               </span>
               <span className="text-[9px] font-medium text-black/80 dark:text-white/80">
-                {getRussianPlural(durationParts.days, ['день', 'дня', 'дней'])}
+                дн
               </span>
             </span>
             <span className="flex flex-col items-center leading-tight">
@@ -928,11 +917,7 @@ function ActualTimeCell({
                 {durationParts.paddedHours}
               </span>
               <span className="text-[9px] font-medium text-black/80 dark:text-white/80">
-                {getRussianPlural(durationParts.hours, [
-                  'час',
-                  'часа',
-                  'часов',
-                ])}
+                ч
               </span>
             </span>
             <span className="flex flex-col items-center leading-tight">
@@ -940,11 +925,7 @@ function ActualTimeCell({
                 {durationParts.paddedMinutes}
               </span>
               <span className="text-[9px] font-medium text-black/80 dark:text-white/80">
-                {getRussianPlural(durationParts.minutes, [
-                  'минута',
-                  'минуты',
-                  'минут',
-                ])}
+                м
               </span>
             </span>
           </span>

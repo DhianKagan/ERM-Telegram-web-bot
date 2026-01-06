@@ -2,6 +2,7 @@
 // Основные модули: React, collections service, DataTable, Modal
 import React from 'react';
 
+import { Input } from '@/components/ui/input';
 import { UiButton } from '@/components/ui/UiButton';
 import { UiInput } from '@/components/ui/UiInput';
 import ActionBar from '../components/ActionBar';

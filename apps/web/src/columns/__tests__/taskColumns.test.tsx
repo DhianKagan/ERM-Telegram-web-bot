@@ -86,7 +86,7 @@ describe('taskColumns', () => {
     expect(
       within(datePart.closest('time') as HTMLElement).getByText('19:30'),
     ).toBeInTheDocument();
-    const label = screen.getByText('До дедлайна 4 дня 5 часов 30 минут');
+    const label = screen.getByText('До дедлайна 04дн 05ч 30м');
     const badge = label.closest('[title]');
     expect(badge).not.toBeNull();
     expect(badge as HTMLElement).toHaveClass('bg-emerald-500/25');
@@ -122,7 +122,7 @@ describe('taskColumns', () => {
 
     const datePart = screen.getByText('05.03.2024');
     expect(datePart.closest('time')).toHaveAttribute('dateTime', row.due_date);
-    const label = screen.getByText('Просрочено на 4 дня 15 часов 45 минут');
+    const label = screen.getByText('Просрочено на 04дн 15ч 45м');
     const badge = label.closest('[title]');
     expect(badge).not.toBeNull();
     expect(badge as HTMLElement).toHaveClass('bg-rose-500/30');
@@ -190,7 +190,7 @@ describe('taskColumns', () => {
       }),
     ).toBeNull();
     const countdownLabel = within(dueContainer).getByText(
-      'До дедлайна 2 дня 0 часов 0 минут',
+      'До дедлайна 02дн 00ч',
     );
     expect(countdownLabel).toBeInTheDocument();
     expect(jest.getTimerCount()).toBe(0);
@@ -228,9 +228,7 @@ describe('taskColumns', () => {
 
     const timeBadge = screen.getByText('03.03.2024').closest('time');
     expect(timeBadge).toHaveAttribute('dateTime', row.completed_at);
-    const durationLabel = screen.getByText(
-      'Задача завершена за 2 дня 1 час 30 минут',
-    );
+    const durationLabel = screen.getByText('Задача завершена за 02дн 01ч 30м');
     expect(durationLabel).toBeInTheDocument();
     expect(jest.getTimerCount()).toBe(0);
   });
@@ -322,7 +320,7 @@ describe('taskColumns', () => {
       jest.advanceTimersByTime(60 * 60 * 1000);
     });
 
-    const updatedLabel = screen.getByText('Затрачено 0 дней 1 час 0 минут');
+    const updatedLabel = screen.getByText('Затрачено 01ч 00м');
     expect(updatedLabel).toBeInTheDocument();
     expect(jest.getTimerCount()).toBeGreaterThan(0);
   });

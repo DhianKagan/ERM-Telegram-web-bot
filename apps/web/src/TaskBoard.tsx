@@ -1,8 +1,24 @@
 // Назначение: канбан-доска задач с перетаскиванием
-// Основные модули: React, @hello-pangea/dnd, сервис задач
+// Основные модули: React, dnd-kit, сервис задач
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { DragDropContext, Draggable, Droppable } from '@hello-pangea/dnd';
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  type DragEndEvent,
+  closestCorners,
+  useDroppable,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  rectSortingStrategy,
+  useSortable,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/components/ui/button';
@@ -36,6 +52,11 @@ type FilterState = {
   search: string;
   transport: TransportFilter;
   sort: SortOption;
+};
+
+type LayoutConfig = {
+  gapClass: string;
+  cardClass: string;
 };
 
 const DEFAULT_FILTERS: FilterState = {
@@ -209,6 +230,87 @@ const resolveOrderValue = (value: string, orderMap: Map<string, number>) => {
   const order = orderMap.get(value);
   return typeof order === 'number' ? order : orderMap.size + 1;
 };
+
+type SortableTaskCardProps = {
+  task: KanbanTask;
+  onOpen: (taskId: string) => void;
+  cardClass: string;
+};
+
+function SortableTaskCard({ task, onOpen, cardClass }: SortableTaskCardProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: task._id,
+    data: { column: task.status },
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.9 : 1,
+  } as const;
+
+  return (
+    <div
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      style={style}
+      className={cn('flex shrink-0', cardClass)}
+    >
+      <TaskCard task={task} onOpen={onOpen} />
+    </div>
+  );
+}
+
+type KanbanColumnProps = {
+  status: string;
+  tasks: KanbanTask[];
+  layout: LayoutConfig;
+  onOpen: (taskId: string) => void;
+};
+
+function KanbanColumn({ status, tasks, layout, onOpen }: KanbanColumnProps) {
+  const { setNodeRef, isOver } = useDroppable({
+    id: status,
+    data: { column: status },
+  });
+
+  return (
+    <section className="rounded-lg bg-gray-100 p-3">
+      <h3 className="mb-3 font-semibold">{status.replace('_', ' ')}</h3>
+      <SortableContext
+        id={status}
+        items={tasks.map((task) => task._id)}
+        strategy={rectSortingStrategy}
+      >
+        <div
+          ref={setNodeRef}
+          className={cn(
+            'flex min-h-[11rem] flex-wrap content-start items-start pb-1',
+            layout.gapClass,
+            isOver && 'ring-2 ring-primary/40',
+          )}
+        >
+          {tasks.map((task) => (
+            <SortableTaskCard
+              key={task._id}
+              task={task}
+              onOpen={onOpen}
+              cardClass={layout.cardClass}
+            />
+          ))}
+        </div>
+      </SortableContext>
+    </section>
+  );
+}
 
 export default function TaskBoard() {
   const { t } = useTranslation();
@@ -426,36 +528,70 @@ export default function TaskBoard() {
     };
   }, [version]);
 
-  const onDragEnd = async ({ destination, draggableId }) => {
-    if (!destination) return;
-    const status = columns[Number(destination.droppableId)];
-    const task = tasks.find((item) => item._id === draggableId);
-    if (!task || task.status === status) return;
-    const prevStatus = task.status;
-    const creatorId = Number((task as { created_by?: unknown }).created_by);
-    const assignedUserId = Number(
-      (task as { assigned_user_id?: unknown }).assigned_user_id,
-    );
-    const assignees = Array.isArray(task.assignees) ? task.assignees : [];
-    const isExecutor =
-      (Number.isFinite(assignedUserId) && assignedUserId === currentUserId) ||
-      (currentUserId !== null && assignees.includes(currentUserId));
-    const isCreator = Number.isFinite(creatorId) && currentUserId === creatorId;
-    const isTerminal = prevStatus === 'Выполнена' || prevStatus === 'Отменена';
-    if (isTerminal && !isAdmin) {
-      window.alert(t('taskSaveFailed'));
-      return;
-    }
-    if (!(isExecutor || isCreator || isAdmin)) {
-      window.alert(t('taskSaveFailed'));
-      return;
-    }
-    setTasks((ts) =>
-      ts.map((t) => (t._id === draggableId ? { ...t, status } : t)),
-    );
-    try {
-      const res = await updateTaskStatus(draggableId, status);
-      if (!res.ok) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 4,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    }),
+  );
+
+  const onDragEnd = useCallback(
+    async (event: DragEndEvent) => {
+      const { active, over } = event;
+      if (!over) return;
+
+      const droppableStatus =
+        typeof over.data.current?.column === 'string'
+          ? (over.data.current.column as string)
+          : undefined;
+      const status =
+        droppableStatus ?? columns.find((item) => item === over.id);
+      const draggableId = String(active.id);
+      const task = tasks.find((item) => item._id === draggableId);
+
+      if (!status || !task || task.status === status) return;
+      const prevStatus = task.status;
+      const creatorId = Number((task as { created_by?: unknown }).created_by);
+      const assignedUserId = Number(
+        (task as { assigned_user_id?: unknown }).assigned_user_id,
+      );
+      const assignees = Array.isArray(task.assignees) ? task.assignees : [];
+      const isExecutor =
+        (Number.isFinite(assignedUserId) && assignedUserId === currentUserId) ||
+        (currentUserId !== null && assignees.includes(currentUserId));
+      const isCreator =
+        Number.isFinite(creatorId) && currentUserId === creatorId;
+      const isTerminal =
+        prevStatus === 'Выполнена' || prevStatus === 'Отменена';
+
+      if (isTerminal && !isAdmin) {
+        window.alert(t('taskSaveFailed'));
+        return;
+      }
+      if (!(isExecutor || isCreator || isAdmin)) {
+        window.alert(t('taskSaveFailed'));
+        return;
+      }
+
+      setTasks((ts) =>
+        ts.map((t) => (t._id === draggableId ? { ...t, status } : t)),
+      );
+
+      try {
+        const res = await updateTaskStatus(draggableId, status);
+        if (!res.ok) {
+          setTasks((ts) =>
+            ts.map((t) =>
+              t._id === draggableId ? { ...t, status: prevStatus } : t,
+            ),
+          );
+          window.alert(t('taskSaveFailed'));
+        }
+      } catch (error) {
         setTasks((ts) =>
           ts.map((t) =>
             t._id === draggableId ? { ...t, status: prevStatus } : t,
@@ -463,15 +599,9 @@ export default function TaskBoard() {
         );
         window.alert(t('taskSaveFailed'));
       }
-    } catch (error) {
-      setTasks((ts) =>
-        ts.map((t) =>
-          t._id === draggableId ? { ...t, status: prevStatus } : t,
-        ),
-      );
-      window.alert(t('taskSaveFailed'));
-    }
-  };
+    },
+    [currentUserId, isAdmin, t, tasks],
+  );
 
   const openTaskDialog = useCallback(
     (taskId: string) => {
@@ -636,56 +766,24 @@ export default function TaskBoard() {
         </form>
       </section>
       <div>
-        <DragDropContext onDragEnd={onDragEnd}>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          autoScroll
+          onDragEnd={onDragEnd}
+        >
           <div className="flex flex-col gap-6">
-            {columns.map((key, idx) => {
-              const columnTasks = tasksByStatus.get(key) ?? [];
-              return (
-                <Droppable
-                  droppableId={String(idx)}
-                  key={key}
-                  direction="horizontal"
-                >
-                  {(provided) => (
-                    <section className="rounded-lg bg-gray-100 p-3">
-                      <h3 className="mb-3 font-semibold">
-                        {key.replace('_', ' ')}
-                      </h3>
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.droppableProps}
-                        className={cn(
-                          'flex min-h-[11rem] flex-wrap content-start items-start pb-1',
-                          layout.gapClass,
-                        )}
-                      >
-                        {columnTasks.map((t, i) => (
-                          <Draggable key={t._id} draggableId={t._id} index={i}>
-                            {(prov) => (
-                              <div
-                                ref={prov.innerRef}
-                                {...prov.draggableProps}
-                                {...prov.dragHandleProps}
-                                className={cn(
-                                  'flex shrink-0',
-                                  layout.cardClass,
-                                )}
-                                style={{ ...(prov.draggableProps.style ?? {}) }}
-                              >
-                                <TaskCard task={t} onOpen={openTaskDialog} />
-                              </div>
-                            )}
-                          </Draggable>
-                        ))}
-                        {provided.placeholder}
-                      </div>
-                    </section>
-                  )}
-                </Droppable>
-              );
-            })}
+            {columns.map((key) => (
+              <KanbanColumn
+                key={key}
+                status={key}
+                tasks={tasksByStatus.get(key) ?? []}
+                layout={layout}
+                onOpen={openTaskDialog}
+              />
+            ))}
           </div>
-        </DragDropContext>
+        </DndContext>
       </div>
       {open && (
         <TaskDialog

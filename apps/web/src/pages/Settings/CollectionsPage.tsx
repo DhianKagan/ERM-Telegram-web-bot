@@ -18,10 +18,7 @@ import { FormGroup } from '@/components/ui/form-group';
 import { Input } from '@/components/ui/input';
 import { Radio } from '@/components/ui/radio';
 import { Select } from '@/components/ui/select';
-import {
-  SimpleTable,
-  type SimpleTableColumn,
-} from '@/components/ui/simple-table';
+import DataTable from '@/components/DataTable';
 import {
   Tabs,
   TabsList,
@@ -64,7 +61,11 @@ import {
   type FixedAssetRow,
   fixedAssetColumns,
 } from '../../columns/fixedAssetColumns';
-import { type EmployeeRow } from '../../columns/settingsEmployeeColumns';
+import {
+  type EmployeeRow,
+  settingsEmployeeColumns,
+} from '../../columns/settingsEmployeeColumns';
+import { settingsUserColumns } from '../../columns/settingsUserColumns';
 import {
   fetchUsers,
   createUser as createUserApi,
@@ -330,130 +331,6 @@ const tabIcons: Record<
   users: KeyIcon,
   tasks: ClipboardDocumentListIcon,
 };
-
-const collectionTableColumns: SimpleTableColumn<CollectionTableRow>[] = [
-  { key: 'name', header: 'Название' },
-  { key: 'value', header: 'Значение' },
-  { key: 'displayValue', header: 'Связанные данные' },
-  { key: 'type', header: 'Тип' },
-  { key: '_id', header: 'Идентификатор' },
-  { key: 'metaSummary', header: 'Доп. сведения' },
-];
-
-const collectionObjectTableColumns: SimpleTableColumn<CollectionTableRow>[] = [
-  { key: 'name', header: 'Название' },
-  { key: 'address', header: 'Адрес' },
-  { key: 'coordinates', header: 'Координаты' },
-  { key: '_id', header: 'Идентификатор' },
-];
-
-const fixedAssetTableColumns: SimpleTableColumn<FixedAssetRow>[] = [
-  { key: 'name', header: 'Название' },
-  { key: 'inventoryNumber', header: 'Инвентарный номер' },
-  { key: 'location', header: 'Расположение' },
-  { key: 'description', header: 'Описание' },
-  { key: '_id', header: 'ID' },
-];
-
-const userTableColumns: SimpleTableColumn<User>[] = [
-  { key: 'telegram_id', header: 'Telegram ID' },
-  {
-    key: 'username',
-    header: 'Логин',
-    render: (row) => row.telegram_username ?? row.username ?? '',
-  },
-  { key: 'name', header: 'Имя' },
-  { key: 'phone', header: 'Телефон' },
-  { key: 'mobNumber', header: 'Моб. номер' },
-  { key: 'email', header: 'E-mail' },
-  {
-    key: 'role',
-    header: 'Роль',
-    render: (row) => formatRoleName(row.role),
-  },
-  {
-    key: 'access',
-    header: 'Доступ',
-    render: (row) => (row.access === undefined ? '—' : String(row.access)),
-  },
-  { key: 'roleId', header: 'Роль ID' },
-  { key: 'departmentId', header: 'Департамент' },
-  { key: 'divisionId', header: 'Отдел' },
-  { key: 'positionId', header: 'Должность' },
-];
-
-const employeeTableColumns: SimpleTableColumn<EmployeeRow>[] = [
-  { key: 'telegram_id', header: 'Telegram ID' },
-  {
-    key: 'username',
-    header: 'Логин',
-    render: (row) => row.telegram_username ?? row.username ?? '',
-  },
-  { key: 'name', header: 'Имя' },
-  { key: 'phone', header: 'Телефон' },
-  { key: 'mobNumber', header: 'Моб. номер' },
-  { key: 'email', header: 'E-mail' },
-  {
-    key: 'role',
-    header: 'Роль',
-    render: (row) => formatRoleName(row.role),
-  },
-  {
-    key: 'access',
-    header: 'Доступ',
-    render: (row) => (row.access === undefined ? '—' : String(row.access)),
-  },
-  {
-    key: 'roleId',
-    header: 'Роль ID',
-    render: (row) => row.roleName || row.roleId || '—',
-  },
-  {
-    key: 'departmentId',
-    header: 'Департамент',
-    render: (row) => row.departmentName || '—',
-  },
-  {
-    key: 'divisionId',
-    header: 'Отдел',
-    render: (row) => row.divisionName || '—',
-  },
-  {
-    key: 'positionId',
-    header: 'Должность',
-    render: (row) => row.positionName || '—',
-  },
-];
-
-const renderPaginationControls = (
-  pageIndex: number,
-  totalPagesValue: number,
-  onChange: (page: number) => void,
-) => (
-  <div className="flex flex-wrap items-center justify-between gap-3 pt-3">
-    <span className="text-sm text-[color:var(--color-gray-600)] dark:text-[color:var(--color-gray-300)]">
-      Страница {pageIndex} из {totalPagesValue || 1}
-    </span>
-    <div className="flex flex-wrap gap-2">
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={() => onChange(Math.max(1, pageIndex - 1))}
-        disabled={pageIndex <= 1}
-      >
-        Назад
-      </Button>
-      <Button
-        size="sm"
-        variant="outline"
-        onClick={() => onChange(Math.min(totalPagesValue || 1, pageIndex + 1))}
-        disabled={pageIndex >= totalPagesValue}
-      >
-        Вперёд
-      </Button>
-    </div>
-  </div>
-);
 
 const renderBadgeList = (items: string[]) => {
   if (!items.length) {
@@ -3337,27 +3214,21 @@ export default function CollectionsPage() {
                             {paginatedUsers.length} записей
                           </span>
                         </div>
-                        <div className="overflow-x-auto rounded-box border border-base-200">
-                          <SimpleTable
-                            className="table-zebra table-compact"
-                            columns={userTableColumns}
-                            rows={paginatedUsers}
-                            rowKey={(row) =>
-                              row._id ??
-                              row.telegram_id ??
-                              row.username ??
-                              row.email ??
-                              row.name
-                            }
-                            onRowClick={(row) => openUserModal(row)}
-                            empty={SETTINGS_BADGE_EMPTY}
-                          />
-                        </div>
-                        {renderPaginationControls(
-                          userPage,
-                          userTotalPages,
-                          setUserPage,
-                        )}
+                        <DataTable<User>
+                          columns={settingsUserColumns}
+                          data={paginatedUsers}
+                          pageIndex={userPage - 1}
+                          pageSize={limit}
+                          pageCount={userTotalPages}
+                          onPageChange={(next) => setUserPage(next + 1)}
+                          showGlobalSearch={false}
+                          showFilters={false}
+                          wrapCellsAsBadges
+                          badgeClassName={SETTINGS_BADGE_CLASS}
+                          badgeWrapperClassName={SETTINGS_BADGE_WRAPPER_CLASS}
+                          badgeEmptyPlaceholder={SETTINGS_BADGE_EMPTY}
+                          onRowClick={(row) => openUserModal(row)}
+                        />
                       </Card>
                     )}
                   </TabsContent>
@@ -3397,27 +3268,23 @@ export default function CollectionsPage() {
                             {employeeRows.length} записей
                           </span>
                         </div>
-                        <div className="overflow-x-auto rounded-box border border-base-200">
-                          <SimpleTable
-                            className="table-zebra table-compact"
-                            columns={employeeTableColumns}
-                            rows={employeeRows}
-                            rowKey={(row) =>
-                              row._id ??
-                              row.telegram_id ??
-                              row.username ??
-                              row.email ??
-                              row.name
-                            }
-                            onRowClick={(row) => openEmployeeModal(row)}
-                            empty={SETTINGS_BADGE_EMPTY}
-                          />
-                        </div>
-                        {renderPaginationControls(
-                          userPage,
-                          userTotalPages,
-                          setUserPage,
-                        )}
+                        <DataTable<EmployeeRow>
+                          columns={settingsEmployeeColumns}
+                          data={employeeRows}
+                          pageIndex={userPage - 1}
+                          pageSize={limit}
+                          pageCount={userTotalPages}
+                          onPageChange={(next) => setUserPage(next + 1)}
+                          showGlobalSearch={false}
+                          showFilters={false}
+                          wrapCellsAsBadges
+                          badgeClassName={SETTINGS_BADGE_CLASS}
+                          badgeWrapperClassName={SETTINGS_BADGE_WRAPPER_CLASS}
+                          badgeEmptyPlaceholder={SETTINGS_BADGE_EMPTY}
+                          onRowClick={(row) => openEmployeeModal(row)}
+                          enableVirtualization
+                          virtualizationThreshold={limit}
+                        />
                       </Card>
                     )}
                   </TabsContent>
@@ -3487,21 +3354,25 @@ export default function CollectionsPage() {
                           {fixedAssetRows.length} записей
                         </span>
                       </div>
-                      <div className="overflow-x-auto rounded-box border border-base-200">
-                        <SimpleTable
-                          className="table-zebra table-compact"
-                          columns={fixedAssetTableColumns}
-                          rows={fixedAssetRows}
-                          rowKey={(row) => row._id}
-                          onRowClick={(row) =>
-                            openCollectionModal(
-                              items.find((item) => item._id === row._id),
-                            )
-                          }
-                          empty={SETTINGS_BADGE_EMPTY}
-                        />
-                      </div>
-                      {renderPaginationControls(page, totalPages, setPage)}
+                      <DataTable<FixedAssetRow>
+                        columns={fixedAssetColumns}
+                        data={fixedAssetRows}
+                        pageIndex={page - 1}
+                        pageSize={limit}
+                        pageCount={totalPages}
+                        onPageChange={(next) => setPage(next + 1)}
+                        showGlobalSearch={false}
+                        showFilters={false}
+                        wrapCellsAsBadges
+                        badgeClassName={SETTINGS_BADGE_CLASS}
+                        badgeWrapperClassName={SETTINGS_BADGE_WRAPPER_CLASS}
+                        badgeEmptyPlaceholder={SETTINGS_BADGE_EMPTY}
+                        onRowClick={(row) =>
+                          openCollectionModal(
+                            items.find((item) => item._id === row._id),
+                          )
+                        }
+                      />
                     </Card>
                   ) : (
                     <Card bodyClassName="space-y-3">
@@ -3513,21 +3384,27 @@ export default function CollectionsPage() {
                           {rows.length} записей
                         </span>
                       </div>
-                      <div className="overflow-x-auto rounded-box border border-base-200">
-                        <SimpleTable
-                          className="table-zebra table-compact"
-                          columns={
-                            type.key === 'objects'
-                              ? collectionObjectTableColumns
-                              : collectionTableColumns
-                          }
-                          rows={rows}
-                          rowKey={(row) => row._id}
-                          onRowClick={(row) => openCollectionModal(row)}
-                          empty={SETTINGS_BADGE_EMPTY}
-                        />
-                      </div>
-                      {renderPaginationControls(page, totalPages, setPage)}
+                      <DataTable<CollectionTableRow>
+                        columns={
+                          type.key === 'objects'
+                            ? localizedObjectColumns
+                            : columnsForType
+                        }
+                        data={rows}
+                        pageIndex={page - 1}
+                        pageSize={limit}
+                        pageCount={totalPages}
+                        onPageChange={(next) => setPage(next + 1)}
+                        showGlobalSearch={false}
+                        showFilters={false}
+                        wrapCellsAsBadges
+                        badgeClassName={SETTINGS_BADGE_CLASS}
+                        badgeWrapperClassName={SETTINGS_BADGE_WRAPPER_CLASS}
+                        badgeEmptyPlaceholder={SETTINGS_BADGE_EMPTY}
+                        onRowClick={(row) => openCollectionModal(row)}
+                        enableVirtualization
+                        virtualizationThreshold={limit}
+                      />
                     </Card>
                   )}
                 </TabsContent>

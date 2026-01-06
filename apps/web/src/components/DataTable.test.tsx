@@ -54,4 +54,53 @@ describe('DataTable', () => {
     expect(screen.queryByText(/Новый/)).not.toBeNull();
     expect(screen.queryByText(/Подпись/)).not.toBeNull();
   });
+
+  it('включает виртуализацию для больших списков', () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: true,
+      media: query,
+      onchange: null,
+      addEventListener: jest.fn(),
+      removeEventListener: jest.fn(),
+      addListener: jest.fn(),
+      removeListener: jest.fn(),
+      dispatchEvent: jest.fn(),
+    })) as typeof window.matchMedia;
+
+    const data = Array.from({ length: 120 }, (_, index) => ({
+      html: `<span>Row ${index}</span>`,
+      titleOnly: `Title ${index}`,
+    }));
+
+    render(
+      <DataTable
+        columns={columns}
+        data={data}
+        pageIndex={0}
+        pageSize={data.length}
+        pageCount={1}
+        onPageChange={() => undefined}
+        showFilters={false}
+        showGlobalSearch={false}
+        enableVirtualization
+        virtualizationThreshold={10}
+        rowHeight={40}
+        maxBodyHeight={200}
+      />,
+    );
+
+    const container = document.querySelector('[data-slot="table-container"]');
+    expect(container?.getAttribute('style')).toContain('max-height: 200px');
+
+    const renderedRows = document.querySelectorAll('[data-slot="table-row"]');
+    expect(renderedRows.length).toBeLessThan(30);
+
+    if (originalMatchMedia) {
+      window.matchMedia = originalMatchMedia;
+    } else {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      delete (window as any).matchMedia;
+    }
+  });
 });

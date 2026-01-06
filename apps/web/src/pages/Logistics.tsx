@@ -10,8 +10,8 @@ import type {
 
 import { Button } from '@/components/ui/button';
 import StatusBadge, { mapStatusTone } from '@/components/ui/StatusBadge';
-import { UiFormGroup } from '@/components/ui/UiFormGroup';
-import { UiSelect } from '@/components/ui/UiSelect';
+import { FormGroup } from '@/components/ui/form-group';
+import { Select } from '@/components/ui/select';
 import Breadcrumbs from '../components/Breadcrumbs';
 import SkeletonCard from '../components/SkeletonCard';
 import { useAuth } from '../context/useAuth';
@@ -154,12 +154,12 @@ export default function Logistics() {
           </p>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-          <UiFormGroup
+          <FormGroup
             label="Статус"
             htmlFor="logistics-status-filter"
             className="sm:w-48"
           >
-            <UiSelect
+            <Select
               id="logistics-status-filter"
               value={statusFilter}
               onChange={(event) =>
@@ -173,8 +173,8 @@ export default function Logistics() {
                   {option.label}
                 </option>
               ))}
-            </UiSelect>
-          </UiFormGroup>
+            </Select>
+          </FormGroup>
           <Button
             onClick={() => void loadPlans()}
             disabled={loading}

@@ -2,11 +2,8 @@
 // Основные модули: React, collections service, DataTable, Modal
 import React from 'react';
 
-import { Input } from '@/components/ui/input';
-import { UiButton } from '@/components/ui/UiButton';
-import { UiInput } from '@/components/ui/UiInput';
-// Подключаем компонент кнопки из библиотеки UI
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import ActionBar from '../components/ActionBar';
 import Breadcrumbs from '../components/Breadcrumbs';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -865,10 +862,10 @@ export default function EventLog() {
         toolbar={
           <div className="flex flex-wrap items-center gap-2 sm:justify-end sm:gap-3">
             <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
-              <UiButton size="sm" variant="outline" onClick={applySearch}>
+              <Button size="sm" variant="outline" onClick={applySearch}>
                 Поиск
-              </UiButton>
-              <UiButton
+              </Button>
+              <Button
                 size="sm"
                 variant="outline"
                 onClick={() => {
@@ -878,14 +875,14 @@ export default function EventLog() {
                 }}
               >
                 Сбросить
-              </UiButton>
-              <UiButton
+              </Button>
+              <Button
                 size="sm"
                 variant="accent"
                 onClick={() => void openCreate()}
               >
                 Новое событие
-              </UiButton>
+              </Button>
             </div>
           </div>
         }
@@ -898,7 +895,7 @@ export default function EventLog() {
             >
               Поиск
             </label>
-            <UiInput
+            <Input
               id="events-search"
               value={searchDraft}
               onChange={(event) => setSearchDraft(event.target.value)}

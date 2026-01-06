@@ -12,6 +12,10 @@ export const buttonVariants = cva(
           'bg-[var(--color-primary)] text-white border-transparent hover:bg-[var(--color-primary-600)] active:bg-[var(--color-primary-600)] focus-visible:ring-[var(--color-primary-400)]',
         secondary:
           'border-[var(--border)] bg-[var(--bg-surface)] text-[var(--color-primary)] hover:bg-[var(--bg-muted)] active:bg-[var(--bg-muted)] focus-visible:ring-[var(--color-primary-400)]',
+        accent:
+          'border-transparent bg-[var(--color-accent)] text-white hover:bg-[color-mix(in_srgb,var(--color-accent)_85%,#000_15%)] active:bg-[color-mix(in_srgb,var(--color-accent)_75%,#000_25%)] focus-visible:ring-[var(--color-accent)]',
+        neutral:
+          'border-[var(--border)] bg-[var(--bg-muted)] text-[var(--color-muted)] hover:bg-[color-mix(in_srgb,var(--bg-muted)_85%,#000_15%)] active:bg-[color-mix(in_srgb,var(--bg-muted)_75%,#000_25%)] focus-visible:ring-[var(--color-primary-400)]',
         ghost:
           'border-transparent bg-transparent text-[var(--color-primary)] hover:bg-[var(--bg-muted)] focus-visible:ring-[var(--color-primary-400)]',
         danger:

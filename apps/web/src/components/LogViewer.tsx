@@ -8,7 +8,7 @@ import FiltersPanel from './FiltersPanel';
 const DataTable = lazy(() => import('./DataTable'));
 import logColumns from '../columns/logColumns';
 import useLogsQuery, { LogFilters } from '../hooks/useLogsQuery';
-import { UiButton } from '@/components/ui/UiButton';
+import { Button } from '@/components/ui/button';
 
 export default function LogViewer() {
   const [filters, setFilters] = React.useState<LogFilters>({});
@@ -54,9 +54,9 @@ export default function LogViewer() {
               />
               Автообновление
             </label>
-            <UiButton size="sm" variant="outline" onClick={refreshNow}>
+            <Button size="sm" variant="outline" onClick={refreshNow}>
               Обновить
-            </UiButton>
+            </Button>
           </div>
         }
       />
@@ -74,9 +74,9 @@ export default function LogViewer() {
             toolbarChildren={
               <div className="flex w-full flex-wrap items-center gap-2">
                 <FiltersPanel filters={filters} onChange={setFilters} />
-                <UiButton size="sm" variant="secondary" onClick={resetFilters}>
+                <Button size="sm" variant="secondary" onClick={resetFilters}>
                   Сбросить фильтры
-                </UiButton>
+                </Button>
               </div>
             }
           />

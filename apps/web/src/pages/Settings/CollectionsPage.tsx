@@ -12,13 +12,16 @@ import { matchSorter, rankings } from 'match-sorter';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 
-import { UiButton } from '@/components/ui/UiButton';
-import { UiCard } from '@/components/ui/UiCard';
-import { UiFormGroup } from '@/components/ui/UiFormGroup';
-import { UiInput } from '@/components/ui/UiInput';
-import { UiSelect } from '@/components/ui/UiSelect';
-import { UiRadio } from '@/components/ui/UiRadio';
-import { UiTable, type UiTableColumn } from '@/components/ui/UiTable';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { FormGroup } from '@/components/ui/form-group';
+import { Input } from '@/components/ui/input';
+import { Radio } from '@/components/ui/radio';
+import { Select } from '@/components/ui/select';
+import {
+  SimpleTable,
+  type SimpleTableColumn,
+} from '@/components/ui/simple-table';
 import {
   Tabs,
   TabsList,
@@ -328,7 +331,7 @@ const tabIcons: Record<
   tasks: ClipboardDocumentListIcon,
 };
 
-const collectionTableColumns: UiTableColumn<CollectionTableRow>[] = [
+const collectionTableColumns: SimpleTableColumn<CollectionTableRow>[] = [
   { key: 'name', header: 'Название' },
   { key: 'value', header: 'Значение' },
   { key: 'displayValue', header: 'Связанные данные' },
@@ -337,14 +340,14 @@ const collectionTableColumns: UiTableColumn<CollectionTableRow>[] = [
   { key: 'metaSummary', header: 'Доп. сведения' },
 ];
 
-const collectionObjectTableColumns: UiTableColumn<CollectionTableRow>[] = [
+const collectionObjectTableColumns: SimpleTableColumn<CollectionTableRow>[] = [
   { key: 'name', header: 'Название' },
   { key: 'address', header: 'Адрес' },
   { key: 'coordinates', header: 'Координаты' },
   { key: '_id', header: 'Идентификатор' },
 ];
 
-const fixedAssetTableColumns: UiTableColumn<FixedAssetRow>[] = [
+const fixedAssetTableColumns: SimpleTableColumn<FixedAssetRow>[] = [
   { key: 'name', header: 'Название' },
   { key: 'inventoryNumber', header: 'Инвентарный номер' },
   { key: 'location', header: 'Расположение' },
@@ -352,7 +355,7 @@ const fixedAssetTableColumns: UiTableColumn<FixedAssetRow>[] = [
   { key: '_id', header: 'ID' },
 ];
 
-const userTableColumns: UiTableColumn<User>[] = [
+const userTableColumns: SimpleTableColumn<User>[] = [
   { key: 'telegram_id', header: 'Telegram ID' },
   {
     key: 'username',
@@ -379,7 +382,7 @@ const userTableColumns: UiTableColumn<User>[] = [
   { key: 'positionId', header: 'Должность' },
 ];
 
-const employeeTableColumns: UiTableColumn<EmployeeRow>[] = [
+const employeeTableColumns: SimpleTableColumn<EmployeeRow>[] = [
   { key: 'telegram_id', header: 'Telegram ID' },
   {
     key: 'username',
@@ -432,22 +435,22 @@ const renderPaginationControls = (
       Страница {pageIndex} из {totalPagesValue || 1}
     </span>
     <div className="flex flex-wrap gap-2">
-      <UiButton
+      <Button
         size="sm"
         variant="outline"
         onClick={() => onChange(Math.max(1, pageIndex - 1))}
         disabled={pageIndex <= 1}
       >
         Назад
-      </UiButton>
-      <UiButton
+      </Button>
+      <Button
         size="sm"
         variant="outline"
         onClick={() => onChange(Math.min(totalPagesValue || 1, pageIndex + 1))}
         disabled={pageIndex >= totalPagesValue}
       >
         Вперёд
-      </UiButton>
+      </Button>
     </div>
   </div>
 );
@@ -2578,12 +2581,12 @@ export default function CollectionsPage() {
       const addressValue = currentForm.address ?? currentForm.value;
       return (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          <UiFormGroup
+          <FormGroup
             className="sm:col-span-2"
             label="Адрес объекта"
             htmlFor="collection-object-address"
           >
-            <UiInput
+            <Input
               id="collection-object-address"
               value={addressValue}
               placeholder="Адрес объекта"
@@ -2597,9 +2600,9 @@ export default function CollectionsPage() {
               required
               disabled={readonly}
             />
-          </UiFormGroup>
-          <UiFormGroup label="Широта" htmlFor="collection-object-lat">
-            <UiInput
+          </FormGroup>
+          <FormGroup label="Широта" htmlFor="collection-object-lat">
+            <Input
               id="collection-object-lat"
               value={currentForm.latitude ?? ''}
               placeholder="Широта"
@@ -2611,9 +2614,9 @@ export default function CollectionsPage() {
               }
               disabled={readonly}
             />
-          </UiFormGroup>
-          <UiFormGroup label="Долгота" htmlFor="collection-object-lng">
-            <UiInput
+          </FormGroup>
+          <FormGroup label="Долгота" htmlFor="collection-object-lng">
+            <Input
               id="collection-object-lng"
               value={currentForm.longitude ?? ''}
               placeholder="Долгота"
@@ -2625,7 +2628,7 @@ export default function CollectionsPage() {
               }
               disabled={readonly}
             />
-          </UiFormGroup>
+          </FormGroup>
         </div>
       );
     },
@@ -2652,8 +2655,8 @@ export default function CollectionsPage() {
 
       return (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <UiFormGroup label="Инвентарный номер" htmlFor="fixed-asset-number">
-            <UiInput
+          <FormGroup label="Инвентарный номер" htmlFor="fixed-asset-number">
+            <Input
               id="fixed-asset-number"
               value={currentForm.value}
               placeholder="Инвентарный номер"
@@ -2663,8 +2666,8 @@ export default function CollectionsPage() {
               required
               disabled={readonly}
             />
-          </UiFormGroup>
-          <UiFormGroup
+          </FormGroup>
+          <FormGroup
             className="sm:col-span-2 lg:col-span-3"
             label="Описание"
             htmlFor="fixed-asset-description"
@@ -2679,15 +2682,15 @@ export default function CollectionsPage() {
               }
               disabled={readonly}
             />
-          </UiFormGroup>
-          <UiFormGroup
+          </FormGroup>
+          <FormGroup
             className="sm:col-span-2 lg:col-span-3"
             label="Расположение"
             htmlFor="asset-location-source"
           >
             <div className="flex flex-wrap gap-4">
               <label className="flex items-center gap-2 text-sm font-medium">
-                <UiRadio
+                <Radio
                   name="asset-location-source"
                   value="object"
                   checked={locationSource === 'object'}
@@ -2699,7 +2702,7 @@ export default function CollectionsPage() {
                 Из списка объектов
               </label>
               <label className="flex items-center gap-2 text-sm font-medium">
-                <UiRadio
+                <Radio
                   name="asset-location-source"
                   value="manual"
                   checked={locationSource === 'manual'}
@@ -2712,7 +2715,7 @@ export default function CollectionsPage() {
               </label>
             </div>
             {locationSource === 'object' ? (
-              <UiSelect
+              <Select
                 className="mt-2"
                 value={selectedObjectId}
                 onChange={(event) =>
@@ -2729,11 +2732,11 @@ export default function CollectionsPage() {
                     {object.name} — {object.address}
                   </option>
                 ))}
-              </UiSelect>
+              </Select>
             ) : (
               <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <UiFormGroup label="Адрес" htmlFor="fixed-asset-address">
-                  <UiInput
+                <FormGroup label="Адрес" htmlFor="fixed-asset-address">
+                  <Input
                     id="fixed-asset-address"
                     value={currentForm.address ?? ''}
                     placeholder="Адрес или описание места"
@@ -2745,10 +2748,10 @@ export default function CollectionsPage() {
                     }
                     disabled={readonly}
                   />
-                </UiFormGroup>
+                </FormGroup>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:col-span-1">
-                  <UiFormGroup label="Широта" htmlFor="fixed-asset-lat">
-                    <UiInput
+                  <FormGroup label="Широта" htmlFor="fixed-asset-lat">
+                    <Input
                       id="fixed-asset-lat"
                       value={currentForm.latitude ?? ''}
                       placeholder="Широта"
@@ -2760,9 +2763,9 @@ export default function CollectionsPage() {
                       }
                       disabled={readonly}
                     />
-                  </UiFormGroup>
-                  <UiFormGroup label="Долгота" htmlFor="fixed-asset-lng">
-                    <UiInput
+                  </FormGroup>
+                  <FormGroup label="Долгота" htmlFor="fixed-asset-lng">
+                    <Input
                       id="fixed-asset-lng"
                       value={currentForm.longitude ?? ''}
                       placeholder="Долгота"
@@ -2774,11 +2777,11 @@ export default function CollectionsPage() {
                       }
                       disabled={readonly}
                     />
-                  </UiFormGroup>
+                  </FormGroup>
                 </div>
               </div>
             )}
-          </UiFormGroup>
+          </FormGroup>
         </div>
       );
     },
@@ -2985,25 +2988,25 @@ export default function CollectionsPage() {
         : () => openUserModal();
       return (
         <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <UiFormGroup
+          <FormGroup
             className="w-full sm:flex-1"
             label={collectionSearchCta}
             htmlFor="settings-users-search"
             help={collectionSearchHint}
           >
-            <UiInput
+            <Input
               id="settings-users-search"
               value={userSearchDraft}
               onChange={(event) => setUserSearchDraft(event.target.value)}
               onKeyDown={handleUserSearchKeyDown}
               placeholder={placeholder}
             />
-          </UiFormGroup>
+          </FormGroup>
           <div className="flex flex-wrap items-center gap-2 sm:flex-shrink-0">
-            <UiButton size="sm" onClick={() => submitUserSearch()}>
+            <Button size="sm" onClick={() => submitUserSearch()}>
               {collectionSearchCta}
-            </UiButton>
-            <UiButton
+            </Button>
+            <Button
               size="sm"
               variant="outline"
               onClick={() => {
@@ -3012,10 +3015,10 @@ export default function CollectionsPage() {
               }}
             >
               {collectionResetCta}
-            </UiButton>
-            <UiButton size="sm" variant="accent" onClick={handleAdd}>
+            </Button>
+            <Button size="sm" variant="accent" onClick={handleAdd}>
               {addLabel}
-            </UiButton>
+            </Button>
           </div>
         </div>
       );
@@ -3023,13 +3026,13 @@ export default function CollectionsPage() {
     if (isCollectionSearchSupported) {
       return (
         <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <UiFormGroup
+          <FormGroup
             className="w-full sm:flex-1"
             label={collectionSearchCta}
             htmlFor="settings-collections-search"
             help={collectionSearchHint}
           >
-            <UiInput
+            <Input
               id="settings-collections-search"
               value={currentSearchDraft}
               onChange={(event) =>
@@ -3038,38 +3041,34 @@ export default function CollectionsPage() {
               onKeyDown={handleCollectionSearchKeyDown}
               placeholder={collectionSearchPlaceholder}
             />
-          </UiFormGroup>
+          </FormGroup>
           <div className="flex flex-wrap items-center gap-2 sm:flex-shrink-0">
-            <UiButton size="sm" onClick={() => submitCollectionSearch()}>
+            <Button size="sm" onClick={() => submitCollectionSearch()}>
               {collectionSearchCta}
-            </UiButton>
-            <UiButton
-              size="sm"
-              variant="outline"
-              onClick={resetCollectionSearch}
-            >
+            </Button>
+            <Button size="sm" variant="outline" onClick={resetCollectionSearch}>
               {collectionResetCta}
-            </UiButton>
-            <UiButton
+            </Button>
+            <Button
               size="sm"
               variant="accent"
               onClick={() => openCollectionModal()}
             >
               {collectionAddCta}
-            </UiButton>
+            </Button>
           </div>
         </div>
       );
     }
     return (
       <div className="flex flex-wrap items-center gap-2">
-        <UiButton
+        <Button
           size="sm"
           variant="accent"
           onClick={() => openCollectionModal()}
         >
           {collectionAddCta}
-        </UiButton>
+        </Button>
       </div>
     );
   })();
@@ -3321,15 +3320,15 @@ export default function CollectionsPage() {
                         <p className="max-w-md text-sm text-[color:var(--color-gray-600)] dark:text-[color:var(--color-gray-300)]">
                           {collectionEmptyDescription}
                         </p>
-                        <UiButton
+                        <Button
                           variant="accent"
                           onClick={() => openUserModal()}
                         >
                           {userAddCta}
-                        </UiButton>
+                        </Button>
                       </div>
                     ) : (
-                      <UiCard bodyClassName="space-y-3">
+                      <Card bodyClassName="space-y-3">
                         <div className="flex items-center justify-between">
                           <h3 className="text-base font-semibold text-[color:var(--color-gray-800)] dark:text-white">
                             Пользователи
@@ -3339,7 +3338,7 @@ export default function CollectionsPage() {
                           </span>
                         </div>
                         <div className="overflow-x-auto rounded-box border border-base-200">
-                          <UiTable
+                          <SimpleTable
                             className="table-zebra table-compact"
                             columns={userTableColumns}
                             rows={paginatedUsers}
@@ -3359,7 +3358,7 @@ export default function CollectionsPage() {
                           userTotalPages,
                           setUserPage,
                         )}
-                      </UiCard>
+                      </Card>
                     )}
                   </TabsContent>
                 );
@@ -3381,15 +3380,15 @@ export default function CollectionsPage() {
                         <p className="max-w-md text-sm text-[color:var(--color-gray-600)] dark:text-[color:var(--color-gray-300)]">
                           {collectionEmptyDescription}
                         </p>
-                        <UiButton
+                        <Button
                           variant="accent"
                           onClick={() => openEmployeeModal()}
                         >
                           {employeeAddCta}
-                        </UiButton>
+                        </Button>
                       </div>
                     ) : (
-                      <UiCard bodyClassName="space-y-3">
+                      <Card bodyClassName="space-y-3">
                         <div className="flex items-center justify-between">
                           <h3 className="text-base font-semibold text-[color:var(--color-gray-800)] dark:text-white">
                             Сотрудники
@@ -3399,7 +3398,7 @@ export default function CollectionsPage() {
                           </span>
                         </div>
                         <div className="overflow-x-auto rounded-box border border-base-200">
-                          <UiTable
+                          <SimpleTable
                             className="table-zebra table-compact"
                             columns={employeeTableColumns}
                             rows={employeeRows}
@@ -3419,7 +3418,7 @@ export default function CollectionsPage() {
                           userTotalPages,
                           setUserPage,
                         )}
-                      </UiCard>
+                      </Card>
                     )}
                   </TabsContent>
                 );
@@ -3471,15 +3470,15 @@ export default function CollectionsPage() {
                       <p className="max-w-md text-sm text-[color:var(--color-gray-600)] dark:text-[color:var(--color-gray-300)]">
                         {collectionEmptyDescription}
                       </p>
-                      <UiButton
+                      <Button
                         variant="accent"
                         onClick={() => openCollectionModal()}
                       >
                         {collectionEmptyAction}
-                      </UiButton>
+                      </Button>
                     </div>
                   ) : type.key === 'fixed_assets' ? (
-                    <UiCard bodyClassName="space-y-3">
+                    <Card bodyClassName="space-y-3">
                       <div className="flex items-center justify-between">
                         <h3 className="text-base font-semibold text-[color:var(--color-gray-800)] dark:text-white">
                           Основные средства
@@ -3489,7 +3488,7 @@ export default function CollectionsPage() {
                         </span>
                       </div>
                       <div className="overflow-x-auto rounded-box border border-base-200">
-                        <UiTable
+                        <SimpleTable
                           className="table-zebra table-compact"
                           columns={fixedAssetTableColumns}
                           rows={fixedAssetRows}
@@ -3503,9 +3502,9 @@ export default function CollectionsPage() {
                         />
                       </div>
                       {renderPaginationControls(page, totalPages, setPage)}
-                    </UiCard>
+                    </Card>
                   ) : (
-                    <UiCard bodyClassName="space-y-3">
+                    <Card bodyClassName="space-y-3">
                       <div className="flex items-center justify-between">
                         <h3 className="text-base font-semibold text-[color:var(--color-gray-800)] dark:text-white">
                           {type.label}
@@ -3515,7 +3514,7 @@ export default function CollectionsPage() {
                         </span>
                       </div>
                       <div className="overflow-x-auto rounded-box border border-base-200">
-                        <UiTable
+                        <SimpleTable
                           className="table-zebra table-compact"
                           columns={
                             type.key === 'objects'
@@ -3529,7 +3528,7 @@ export default function CollectionsPage() {
                         />
                       </div>
                       {renderPaginationControls(page, totalPages, setPage)}
-                    </UiCard>
+                    </Card>
                   )}
                 </TabsContent>
               );
@@ -3715,7 +3714,7 @@ export default function CollectionsPage() {
                         </dt>
                         <dd className="mt-2 space-y-2">
                           <div className="flex flex-wrap items-center gap-2">
-                            <UiButton
+                            <Button
                               variant="outline"
                               size="sm"
                               onClick={() =>
@@ -3726,18 +3725,18 @@ export default function CollectionsPage() {
                               {showAssetEvents
                                 ? 'Скрыть историю'
                                 : 'Показать историю'}
-                            </UiButton>
+                            </Button>
                             <span className="badge badge-neutral badge-sm">
                               {assetEvents.length}
                             </span>
-                            <UiButton
+                            <Button
                               variant="ghost"
                               size="sm"
                               onClick={() => void loadEventLogs()}
                               disabled={eventLogsLoading}
                             >
                               Обновить
-                            </UiButton>
+                            </Button>
                           </div>
                           {eventLogsError ? (
                             <p className="text-xs text-red-600">
@@ -3914,14 +3913,14 @@ export default function CollectionsPage() {
                   </p>
                 </div>
                 {canManageUsers && userForm.telegram_id ? (
-                  <UiButton
+                  <Button
                     type="button"
                     variant="outline"
                     className="btn-error h-9 px-3 text-sm"
                     onClick={() => setConfirmUserDelete(true)}
                   >
                     Удалить
-                  </UiButton>
+                  </Button>
                 ) : null}
               </header>
               <dl className="mt-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
@@ -4021,14 +4020,14 @@ export default function CollectionsPage() {
                     </p>
                   </div>
                   {canManageUsers && selectedEmployee.telegram_id ? (
-                    <UiButton
+                    <Button
                       type="button"
                       variant="outline"
                       className="btn-error h-9 px-3 text-sm"
                       onClick={() => setConfirmEmployeeDelete(true)}
                     >
                       Удалить
-                    </UiButton>
+                    </Button>
                   ) : null}
                 </header>
                 <dl className="mt-2 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">

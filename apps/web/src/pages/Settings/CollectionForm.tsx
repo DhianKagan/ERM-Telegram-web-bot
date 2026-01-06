@@ -3,9 +3,9 @@
 import React from 'react';
 
 import { Button } from '@/components/ui/button';
-import { UiCard } from '@/components/ui/UiCard';
-import { UiFormGroup } from '@/components/ui/UiFormGroup';
-import { UiInput } from '@/components/ui/UiInput';
+import { Card } from '@/components/ui/card';
+import { FormGroup } from '@/components/ui/form-group';
+import { Input } from '@/components/ui/input';
 import ConfirmDialog from '../../components/ConfirmDialog';
 
 export interface CollectionFormState {
@@ -55,7 +55,7 @@ export default function CollectionForm({
   };
 
   return (
-    <UiCard className="bg-base-100" bodyClassName="space-y-4">
+    <Card className="bg-base-100" bodyClassName="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-base-content">
           Основные параметры
@@ -68,12 +68,12 @@ export default function CollectionForm({
         onSubmit={submit}
         className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
       >
-        <UiFormGroup
+        <FormGroup
           className="sm:col-span-2 lg:col-span-1"
           label="Имя"
           htmlFor="collection-form-name"
         >
-          <UiInput
+          <Input
             id="collection-form-name"
             name="collectionName"
             value={form.name}
@@ -81,8 +81,8 @@ export default function CollectionForm({
             required
             disabled={readonly}
           />
-        </UiFormGroup>
-        <UiFormGroup
+        </FormGroup>
+        <FormGroup
           className="sm:col-span-2 lg:col-span-2"
           label={valueLabel}
           htmlFor="collection-form-value"
@@ -92,7 +92,7 @@ export default function CollectionForm({
               readonly,
             })
           ) : (
-            <UiInput
+            <Input
               id="collection-form-value"
               name="collectionValue"
               value={form.value}
@@ -101,7 +101,7 @@ export default function CollectionForm({
               disabled={readonly}
             />
           )}
-        </UiFormGroup>
+        </FormGroup>
         {readonly ? (
           <div className="sm:col-span-2 lg:col-span-3">
             <div className="collapse collapse-arrow bg-amber-50 text-amber-900">
@@ -162,6 +162,6 @@ export default function CollectionForm({
         }}
         onCancel={() => setConfirmDelete(false)}
       />
-    </UiCard>
+    </Card>
   );
 }

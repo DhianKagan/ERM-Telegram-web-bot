@@ -2,10 +2,17 @@
 // Основные модули: authFetch, buildTaskFormData
 // eslint-disable-next-line @typescript-eslint/triple-slash-reference
 /// <reference path="../types/telegram.d.ts" />
+import {
+  useQueryClient,
+  type UseMutationOptions,
+  type UseQueryOptions,
+} from '@tanstack/react-query';
+import { queryClient } from '../lib/queryClient';
 import authFetch from '../utils/authFetch';
 import { buildTaskFormData } from './buildTaskFormData';
 import type { Task, User } from 'shared';
 import type { Attachment } from '../types/task';
+import { useApiMutation, useApiQuery } from '../hooks/useApiQuery';
 
 const STATUS_HINTS: Record<number, string> = {
   400: 'Сервер отклонил запрос: проверьте заполненные поля.',
@@ -115,6 +122,25 @@ export class TaskRequestError extends Error {
   }
 }
 
+export const tasksKeys = {
+  root: ['tasks'] as const,
+  list: (params: Record<string, unknown>, userId?: number, scope?: string) =>
+    [...tasksKeys.root, 'list', scope ?? null, params, userId] as const,
+};
+
+export interface TaskSubmitPayload {
+  data: Record<string, unknown>;
+  files?: FileList | File[];
+  onProgress?: (e: ProgressEvent) => void;
+}
+
+export type TaskMutationResult = { _id?: string; id?: string };
+
+const invalidateTasksQueries = () =>
+  queryClient
+    .invalidateQueries({ queryKey: tasksKeys.root })
+    .catch(() => undefined);
+
 export const fetchKanban = () =>
   authFetch('/api/v1/tasks?kanban=true&kind=task')
     .then((r) => (r.ok ? r.json() : []))
@@ -127,6 +153,10 @@ export const updateTaskStatus = (id: string, status: string) =>
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({ status }),
+  }).then((response) => {
+    clearTasksCache();
+    void invalidateTasksQueries();
+    return response;
   });
 
 const submitTask = async (
@@ -154,6 +184,7 @@ const submitTask = async (
     window.Telegram.WebApp.sendData(`task_created:${id}`);
   }
   clearTasksCache();
+  void invalidateTasksQueries();
   return result;
 };
 
@@ -169,9 +200,69 @@ export const createRequest = async (
   onProgress?: (e: ProgressEvent) => void,
 ) => submitTask('/api/v1/tasks/requests', data, files, onProgress);
 
+export const useCreateTaskMutation = (
+  options?: Omit<
+    UseMutationOptions<
+      TaskMutationResult,
+      TaskRequestError,
+      TaskSubmitPayload,
+      unknown
+    >,
+    'mutationFn'
+  >,
+) => {
+  const queryClient = useQueryClient();
+  return useApiMutation<
+    TaskMutationResult,
+    TaskRequestError,
+    TaskSubmitPayload
+  >({
+    mutationFn: ({ data, files, onProgress }) =>
+      createTask(data, files, onProgress),
+    onSuccess: (data, variables, context) => {
+      clearTasksCache();
+      void queryClient.invalidateQueries({ queryKey: tasksKeys.root });
+      options?.onSuccess?.(data, variables, context);
+    },
+    ...options,
+  });
+};
+
+export const useCreateRequestMutation = (
+  options?: Omit<
+    UseMutationOptions<
+      TaskMutationResult,
+      TaskRequestError,
+      TaskSubmitPayload,
+      unknown
+    >,
+    'mutationFn'
+  >,
+) => {
+  const queryClient = useQueryClient();
+  return useApiMutation<
+    TaskMutationResult,
+    TaskRequestError,
+    TaskSubmitPayload
+  >({
+    mutationFn: ({ data, files, onProgress }) =>
+      createRequest(data, files, onProgress),
+    onSuccess: (data, variables, context) => {
+      clearTasksCache();
+      void queryClient.invalidateQueries({ queryKey: tasksKeys.root });
+      options?.onSuccess?.(data, variables, context);
+    },
+    ...options,
+  });
+};
+
 export const deleteTask = (id: string) =>
   authFetch(`/api/v1/tasks/${id}`, {
     method: 'DELETE',
+  }).then((response) => {
+    clearTasksCache();
+    void invalidateTasksQueries();
+    return response;
   });
 
 export const updateTask = async (
@@ -194,6 +285,7 @@ export const updateTask = async (
     });
   }
   clearTasksCache();
+  void invalidateTasksQueries();
   return response;
 };
 
@@ -408,3 +500,24 @@ export const fetchTasks = (
       return d;
     });
 };
+
+export const useTasksQuery = (
+  params: Record<string, unknown>,
+  userId?: number,
+  scope?: string,
+  options?: Omit<
+    UseQueryOptions<
+      TasksResponse,
+      Error,
+      TasksResponse,
+      ReturnType<typeof tasksKeys.list>
+    >,
+    'queryKey' | 'queryFn'
+  >,
+) =>
+  useApiQuery<TasksResponse>({
+    queryKey: tasksKeys.list(params, userId, scope),
+    queryFn: () => fetchTasks(params, userId, true),
+    keepPreviousData: true,
+    ...options,
+  });

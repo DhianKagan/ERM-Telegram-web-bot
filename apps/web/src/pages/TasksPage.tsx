@@ -12,8 +12,8 @@ import {
   useTaskIndex,
   useTaskIndexMeta,
 } from '../controllers/taskStateController';
-import { fetchTasks } from '../services/tasks';
-import authFetch from '../utils/authFetch';
+import { useTasksQuery } from '../services/tasks';
+import { useApiQuery } from '../hooks/useApiQuery';
 import { type Task, type User } from 'shared';
 import { useAuth } from '../context/useAuth';
 
@@ -25,7 +25,6 @@ type TaskExtra = Task & {
 export default function TasksPage() {
   const [page, setPage] = React.useState(0);
   const [users, setUsers] = React.useState<User[]>([]);
-  const [loading, setLoading] = React.useState(true);
   const [params, setParams] = useSearchParams();
   const [mine, setMine] = React.useState(params.get('mine') === '1');
   const { version, refresh, controller, filters, setFilterUsers } = useTasks();
@@ -94,84 +93,54 @@ export default function TasksPage() {
     [setFilterUsers],
   );
 
-  const load = React.useCallback(() => {
-    if (!user?.telegram_id) {
-      controller.setIndex(scopeKey, [], {
-        kind: 'task',
-        mine: effectiveMine,
-        userId: undefined,
-        pageSize: 25,
-        total: 0,
-        sort: 'desc',
-      });
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    const queryParams: Record<string, unknown> = {
+  const queryParams = React.useMemo(() => {
+    const query: Record<string, unknown> = {
       page: page + 1,
       limit: 25,
       mine: !isPrivileged || mine ? 1 : undefined,
       kind: 'task',
     };
     if (filters.status.length) {
-      queryParams.status = filters.status.join(',');
+      query.status = filters.status.join(',');
     }
     if (filters.taskTypes.length) {
-      queryParams.taskType = filters.taskTypes.join(',');
+      query.taskType = filters.taskTypes.join(',');
     }
     if (filters.assignees.length) {
-      queryParams.assignees = filters.assignees.join(',');
+      query.assignees = filters.assignees.join(',');
     }
-    fetchTasks(queryParams, user.telegram_id, true)
-      .then((data) => {
-        const rawTasks = data.tasks as TaskExtra[];
-        const filteredTasks = isPrivileged
-          ? rawTasks
-          : rawTasks.filter((t) => {
-              const assigned =
-                t.assignees || (t.assigned_user_id ? [t.assigned_user_id] : []);
-              const uid = user.telegram_id;
-              return assigned.includes(uid) || t.created_by === uid;
-            });
-        controller.setIndex(scopeKey, filteredTasks, {
-          kind: 'task',
-          mine: effectiveMine,
-          userId: user.telegram_id,
-          pageSize: 25,
-          total: data.total || filteredTasks.length,
-          sort: 'desc',
-        });
-        const list = Array.isArray(data.users)
-          ? (data.users as User[])
-          : (Object.values(data.users || {}) as User[]);
-        setUsers(list);
-        updateFilterUserList(list);
-      })
-      .finally(() => setLoading(false));
-    if (isPrivileged) {
-      authFetch('/api/v1/users')
-        .then((r) => (r.ok ? r.json() : []))
-        .then((list) => {
-          const normalized = Array.isArray(list)
-            ? (list as User[])
-            : (Object.values(list || {}) as User[]);
-          setUsers(normalized);
-          updateFilterUserList(normalized);
-        })
-        .catch(() => undefined);
-    }
+    return query;
   }, [
-    controller,
-    effectiveMine,
+    filters.assignees,
+    filters.status,
+    filters.taskTypes,
     isPrivileged,
     mine,
     page,
-    scopeKey,
-    user,
-    filters,
-    updateFilterUserList,
   ]);
+
+  const tasksQuery = useTasksQuery(queryParams, user?.telegram_id, scopeKey, {
+    enabled: canView && !!user?.telegram_id,
+  });
+  const {
+    data: tasksResponse,
+    isFetching: isTasksFetching,
+    isLoading: isTasksLoading,
+    refetch: refetchTasks,
+  } = tasksQuery;
+
+  const usersQuery = useApiQuery<User[]>({
+    queryKey: ['users', 'tasks'],
+    url: '/api/v1/users',
+    enabled: isPrivileged && !!user?.telegram_id,
+    parse: async (response) => {
+      if (!response.ok) return [];
+      const payload = (await response.json().catch(() => [])) as unknown;
+      return Array.isArray(payload)
+        ? (payload as User[])
+        : (Object.values(payload || {}) as User[]);
+    },
+  });
 
   React.useEffect(() => {
     if (authLoading) return;
@@ -188,11 +157,63 @@ export default function TasksPage() {
 
   React.useEffect(() => {
     if (authLoading) return;
-    if (!canView) return;
-    if (!user?.telegram_id) return;
-    load();
-    // после загрузки профиля инициируем загрузку задач
-  }, [authLoading, user, load, version, page, mine, canView]);
+    if (!user?.telegram_id) {
+      controller.setIndex(scopeKey, [], {
+        kind: 'task',
+        mine: effectiveMine,
+        userId: undefined,
+        pageSize: 25,
+        total: 0,
+        sort: 'desc',
+      });
+      setUsers([]);
+    }
+  }, [authLoading, controller, effectiveMine, scopeKey, user?.telegram_id]);
+
+  React.useEffect(() => {
+    if (!tasksResponse || !user?.telegram_id) return;
+    const rawTasks = tasksResponse.tasks as TaskExtra[];
+    const filteredTasks = isPrivileged
+      ? rawTasks
+      : rawTasks.filter((t) => {
+          const assigned =
+            t.assignees || (t.assigned_user_id ? [t.assigned_user_id] : []);
+          const uid = user.telegram_id;
+          return assigned.includes(uid) || t.created_by === uid;
+        });
+    controller.setIndex(scopeKey, filteredTasks, {
+      kind: 'task',
+      mine: effectiveMine,
+      userId: user.telegram_id,
+      pageSize: 25,
+      total: tasksResponse.total || filteredTasks.length,
+      sort: 'desc',
+    });
+    const responseUsers = Array.isArray(tasksResponse.users)
+      ? (tasksResponse.users as User[])
+      : (Object.values(tasksResponse.users || {}) as User[]);
+    const normalizedUsers =
+      usersQuery.data && usersQuery.data.length
+        ? usersQuery.data
+        : responseUsers;
+    setUsers(normalizedUsers);
+    updateFilterUserList(normalizedUsers);
+  }, [
+    controller,
+    effectiveMine,
+    isPrivileged,
+    scopeKey,
+    tasksResponse,
+    updateFilterUserList,
+    user?.telegram_id,
+    usersQuery.data,
+  ]);
+
+  React.useEffect(() => {
+    if (version === 0) return;
+    if (!canView || !user?.telegram_id) return;
+    void refetchTasks();
+  }, [canView, refetchTasks, user?.telegram_id, version]);
 
   const userMap = React.useMemo(() => {
     const map: Record<number, User> = {};
@@ -201,6 +222,8 @@ export default function TasksPage() {
     });
     return map;
   }, [users]);
+
+  const showSpinner = isTasksLoading || (isTasksFetching && tasks.length === 0);
 
   if (authLoading) return <div>Загрузка...</div>;
   if (!canView)
@@ -231,7 +254,7 @@ export default function TasksPage() {
       />
 
       <div className="rounded-3xl border border-[color:var(--color-gray-200)] bg-white p-3 shadow-[var(--shadow-theme-sm)] dark:border-[color:var(--color-gray-700)] dark:bg-[color:var(--color-gray-dark)] sm:p-4">
-        {loading ? (
+        {showSpinner ? (
           <div className="flex min-h-[12rem] items-center justify-center">
             <Spinner className="h-6 w-6 text-[color:var(--color-brand-500)]" />
           </div>

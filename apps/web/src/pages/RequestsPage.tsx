@@ -12,8 +12,8 @@ import {
   useTaskIndex,
   useTaskIndexMeta,
 } from '../controllers/taskStateController';
-import { fetchTasks } from '../services/tasks';
-import authFetch from '../utils/authFetch';
+import { useTasksQuery } from '../services/tasks';
+import { useApiQuery } from '../hooks/useApiQuery';
 import { type Task, type User } from 'shared';
 import { useAuth } from '../context/useAuth';
 
@@ -25,7 +25,6 @@ interface RequestRow extends Task {
 export default function RequestsPage() {
   const [page, setPage] = React.useState(0);
   const [users, setUsers] = React.useState<User[]>([]);
-  const [loading, setLoading] = React.useState(true);
   const [params, setParams] = useSearchParams();
   const [mine, setMine] = React.useState(params.get('mine') === '1');
   const { version, refresh, controller } = useTasks();
@@ -43,7 +42,40 @@ export default function RequestsPage() {
   const tasks = useTaskIndex(scopeKey) as RequestRow[];
   const meta = useTaskIndexMeta(scopeKey);
 
-  const load = React.useCallback(() => {
+  const queryParams = React.useMemo(
+    () => ({
+      page: page + 1,
+      limit: 25,
+      mine: mine ? 1 : undefined,
+      kind: 'request',
+    }),
+    [mine, page],
+  );
+
+  const {
+    data: tasksResponse,
+    isFetching,
+    isLoading,
+    refetch: refetchTasks,
+  } = useTasksQuery(queryParams, user?.telegram_id, scopeKey, {
+    enabled: !!user?.telegram_id,
+  });
+
+  const usersQuery = useApiQuery<User[]>({
+    queryKey: ['users', 'requests'],
+    url: '/api/v1/users',
+    enabled: isPrivileged && !!user?.telegram_id,
+    parse: async (response) => {
+      if (!response.ok) return [];
+      const payload = (await response.json().catch(() => [])) as unknown;
+      return Array.isArray(payload)
+        ? (payload as User[])
+        : (Object.values(payload || {}) as User[]);
+    },
+  });
+
+  React.useEffect(() => {
+    if (authLoading) return;
     if (!user?.telegram_id) {
       controller.setIndex(scopeKey, [], {
         kind: 'request',
@@ -53,59 +85,52 @@ export default function RequestsPage() {
         total: 0,
         sort: 'desc',
       });
-      setLoading(false);
-      return;
+      setUsers([]);
     }
-    setLoading(true);
-    fetchTasks(
-      {
-        page: page + 1,
-        limit: 25,
-        mine: mine ? 1 : undefined,
-        kind: 'request',
-      },
-      user.telegram_id,
-      true,
-    )
-      .then((data) => {
-        const rawTasks = data.tasks as RequestRow[];
-        const filtered = isPrivileged
-          ? rawTasks
-          : rawTasks.filter((t) => {
-              const assigned =
-                t.assignees || (t.assigned_user_id ? [t.assigned_user_id] : []);
-              const uid = user.telegram_id;
-              return assigned.includes(uid) || t.created_by === uid;
-            });
-        controller.setIndex(scopeKey, filtered, {
-          kind: 'request',
-          mine,
-          userId: user.telegram_id,
-          pageSize: 25,
-          total: data.total || filtered.length,
-          sort: 'desc',
-        });
-        const list = Array.isArray(data.users)
-          ? (data.users as User[])
-          : (Object.values(data.users || {}) as User[]);
-        setUsers(list);
-      })
-      .finally(() => setLoading(false));
-    if (isPrivileged) {
-      authFetch('/api/v1/users')
-        .then((r) => (r.ok ? r.json() : []))
-        .then((list) =>
-          setUsers(Array.isArray(list) ? list : Object.values(list || {})),
-        )
-        .catch(() => undefined);
-    }
-  }, [controller, isPrivileged, mine, page, scopeKey, user]);
+  }, [authLoading, controller, mine, scopeKey, user?.telegram_id]);
 
   React.useEffect(() => {
-    if (authLoading) return;
+    if (!tasksResponse || !user?.telegram_id) return;
+    const rawTasks = tasksResponse.tasks as RequestRow[];
+    const filtered = isPrivileged
+      ? rawTasks
+      : rawTasks.filter((t) => {
+          const assigned =
+            t.assignees || (t.assigned_user_id ? [t.assigned_user_id] : []);
+          const uid = user.telegram_id;
+          return assigned.includes(uid) || t.created_by === uid;
+        });
+    controller.setIndex(scopeKey, filtered, {
+      kind: 'request',
+      mine,
+      userId: user.telegram_id,
+      pageSize: 25,
+      total: tasksResponse.total || filtered.length,
+      sort: 'desc',
+    });
+    const responseUsers = Array.isArray(tasksResponse.users)
+      ? (tasksResponse.users as User[])
+      : (Object.values(tasksResponse.users || {}) as User[]);
+    const normalizedUsers =
+      usersQuery.data && usersQuery.data.length
+        ? usersQuery.data
+        : responseUsers;
+    setUsers(normalizedUsers);
+  }, [
+    controller,
+    isPrivileged,
+    mine,
+    scopeKey,
+    tasksResponse,
+    user?.telegram_id,
+    usersQuery.data,
+  ]);
+
+  React.useEffect(() => {
+    if (version === 0) return;
     if (!user?.telegram_id) return;
-    load();
-  }, [authLoading, user, load, version, page, mine]);
+    void refetchTasks();
+  }, [refetchTasks, user?.telegram_id, version]);
 
   const map = React.useMemo(() => {
     const registry: Record<number, User> = {};
@@ -114,6 +139,8 @@ export default function RequestsPage() {
     });
     return registry;
   }, [users]);
+
+  const showSpinner = isLoading || (isFetching && tasks.length === 0);
 
   if (authLoading) {
     return <div>Загрузка...</div>;
@@ -145,7 +172,7 @@ export default function RequestsPage() {
       />
 
       <div className="rounded-3xl border border-[color:var(--color-gray-200)] bg-white p-3 shadow-[var(--shadow-theme-sm)] dark:border-[color:var(--color-gray-700)] dark:bg-[color:var(--color-gray-dark)] sm:p-4">
-        {loading ? (
+        {showSpinner ? (
           <div className="flex min-h-[12rem] items-center justify-center">
             <Spinner className="h-6 w-6 text-[color:var(--color-brand-500)]" />
           </div>

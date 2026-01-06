@@ -5,8 +5,12 @@
 import '@testing-library/jest-dom';
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import AnalyticsDashboard from './AnalyticsDashboard';
-import { fetchRoutePlanAnalytics } from '../services/analytics';
+import {
+  fetchRoutePlanAnalytics,
+  useRoutePlanAnalytics,
+} from '../services/analytics';
 
 jest.mock('react-apexcharts', () => () => <div data-testid="chart" />);
 
@@ -61,6 +65,7 @@ jest.mock('react-i18next', () => {
 
 jest.mock('../services/analytics', () => ({
   fetchRoutePlanAnalytics: jest.fn(),
+  useRoutePlanAnalytics: jest.fn(),
 }));
 
 const sampleSummary = {
@@ -88,23 +93,45 @@ const sampleSummary = {
   },
 };
 
+const mockedFetchRoutePlanAnalytics =
+  fetchRoutePlanAnalytics as jest.MockedFunction<
+    typeof fetchRoutePlanAnalytics
+  >;
+const mockedUseRoutePlanAnalytics =
+  useRoutePlanAnalytics as jest.MockedFunction<typeof useRoutePlanAnalytics>;
+
 describe('AnalyticsDashboard', () => {
   afterEach(() => {
     jest.clearAllMocks();
   });
 
   it('загружает данные и повторно обращается к API при смене статуса', async () => {
-    const mockedFetch = fetchRoutePlanAnalytics as unknown as jest.Mock;
-    mockedFetch.mockResolvedValue(sampleSummary);
+    mockedUseRoutePlanAnalytics.mockImplementation((params) => {
+      mockedFetchRoutePlanAnalytics(params);
+      return {
+        data: sampleSummary,
+        isFetching: false,
+        error: null,
+        refetch: jest.fn(),
+      } as unknown as ReturnType<typeof useRoutePlanAnalytics>;
+    });
 
-    render(<AnalyticsDashboard />);
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    });
+
+    render(
+      <QueryClientProvider client={client}>
+        <AnalyticsDashboard />
+      </QueryClientProvider>,
+    );
 
     await screen.findByRole('heading', { level: 2, name: 'Пробег' });
-    expect(mockedFetch).toHaveBeenCalled();
+    expect(mockedFetchRoutePlanAnalytics).toHaveBeenCalled();
     expect(screen.getByText(/123,4 км/)).toBeInTheDocument();
     expect(screen.getByText(/92/)).toBeInTheDocument();
 
-    const initialCalls = mockedFetch.mock.calls.length;
+    const initialCalls = mockedFetchRoutePlanAnalytics.mock.calls.length;
     const statusSelect = screen.getByLabelText('Статус');
     fireEvent.change(statusSelect, { target: { value: 'draft' } });
     expect(statusSelect).toHaveValue('draft');
@@ -115,9 +142,11 @@ describe('AnalyticsDashboard', () => {
     fireEvent.click(applyButton);
 
     await waitFor(() =>
-      expect(mockedFetch).toHaveBeenCalledTimes(initialCalls + 1),
+      expect(mockedFetchRoutePlanAnalytics).toHaveBeenCalledTimes(
+        initialCalls + 1,
+      ),
     );
-    expect(mockedFetch).toHaveBeenLastCalledWith(
+    expect(mockedFetchRoutePlanAnalytics).toHaveBeenLastCalledWith(
       expect.objectContaining({ status: 'draft' }),
     );
   });

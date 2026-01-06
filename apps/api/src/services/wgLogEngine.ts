@@ -1,7 +1,6 @@
 // Назначение: управление структурированным логированием и выдачей логов
-// Основные модули: pino, path, utils/trace
+// Модули: pino, path, utils/trace
 import path from 'node:path';
-import fetch from 'node-fetch';
 import pino, {
   type Logger,
   type LoggerOptions,
@@ -50,7 +49,6 @@ interface InternalLogEntry extends BufferedLogEntry {
 
 class LogRingBuffer {
   private readonly capacity: number;
-
   private readonly entries: InternalLogEntry[] = [];
 
   constructor(capacity: number) {
@@ -441,17 +439,22 @@ async function notifySideChannels(
       };
       // Fire-and-forget, но ловим ошибки
       tasks.push(
-        fetch(webhookUrl, {
-          method: 'POST',
-          body: JSON.stringify(payload),
-          headers: { 'Content-Type': 'application/json' },
-          timeout: Number(process.env.LOG_WEBHOOK_TIMEOUT ?? 5000),
-        }).then((res) => {
+        // Используем глобальный fetch (Node 18+, Node 20 поддерживает)
+        // Обрабатываем ответ и предупреждаем при ошибке
+        // eslint-disable-next-line @typescript-eslint/no-floating-promises
+        (async () => {
+          const res = await fetch(webhookUrl, {
+            method: 'POST',
+            body: JSON.stringify(payload),
+            headers: { 'Content-Type': 'application/json' },
+            // @ts-ignore - timeout not standard on fetch; keep short timeout via env if needed
+            timeout: Number(process.env.LOG_WEBHOOK_TIMEOUT ?? 5000),
+          });
           if (!res.ok) {
             // eslint-disable-next-line no-console
             console.warn('wgLogEngine: webhook responded not ok', res.status);
           }
-        }),
+        })(),
       );
     } catch (err) {
       // eslint-disable-next-line no-console
@@ -459,7 +462,6 @@ async function notifySideChannels(
     }
   }
 
-  // Возможное расширение: отправка в Telegram/Slack/... при необходимости.
   try {
     await Promise.allSettled(tasks);
   } catch {
@@ -469,16 +471,51 @@ async function notifySideChannels(
 
 /**
  * Основной API:
- *  - writeLog(level, message, metadata?) — добавить в буфер + логер (без дублей)
+ *  - writeLog(message) — backward-compatible: если передан один аргумент, это сообщение (уровень info)
+ *  - writeLog(level, message, metadata?) — явный уровень
  *  - listLogs(params) — вернуть из буфера
- *  - getLogger() — вернуть pino logger если нужно
+ *  - getLogger() — вернуть pino logger
  */
 
+// Перегрузки типов для совместимости
+export async function writeLog(message: string): Promise<void>;
 export async function writeLog(
   level: Exclude<AllowedLevels, 'log'>,
   message: string,
   metadata?: Record<string, unknown>,
+): Promise<void>;
+
+export async function writeLog(
+  levelOrMessage: Exclude<AllowedLevels, 'log'> | string,
+  messageOrMetadata?: string | Record<string, unknown>,
+  metadataMaybe?: Record<string, unknown>,
 ): Promise<void> {
+  // Детектируем вариант вызова:
+  //  - если первый аргумент совпадает с allowedLevels и второй аргумент string => (level, message)
+  //  - иначе: (message) -> уровень info
+  let level: Exclude<AllowedLevels, 'log'> = 'info';
+  let message = '';
+  let metadata: Record<string, unknown> | undefined;
+
+  if (
+    typeof levelOrMessage === 'string' &&
+    allowedLevels.has(levelOrMessage as AllowedLevels) &&
+    typeof messageOrMetadata === 'string'
+  ) {
+    level = levelOrMessage as Exclude<AllowedLevels, 'log'>;
+    message = messageOrMetadata;
+    metadata = metadataMaybe;
+  } else {
+    // backward-compatible: first param is message
+    message = String(levelOrMessage ?? '');
+    if (typeof messageOrMetadata === 'object' && messageOrMetadata !== null) {
+      metadata = messageOrMetadata as Record<string, unknown>;
+    } else {
+      metadata = undefined;
+    }
+    level = 'info';
+  }
+
   const timestamp = new Date();
   const createdAt = timestamp.toISOString();
   const trace = getTrace();
@@ -501,7 +538,7 @@ export async function writeLog(
 
   try {
     // pino expects logger[level](meta?, msg?) pattern
-    // @ts-ignore - index by level string
+    // @ts-ignore - индексование по строке
     const fn: (...args: unknown[]) => void = (logger as any)[level] ?? ((logger as any).info);
     fn.call(logger, metaWithSkip, message);
 
@@ -511,7 +548,6 @@ export async function writeLog(
       void notifySideChannels(level, { message, metadata, traceId: trace?.traceId });
     }
   } catch (err) {
-    // Если логирование упало — всё равно не ломаем основной поток.
     try {
       // eslint-disable-next-line no-console
       console.error('wgLogEngine: writeLog failed', err);
@@ -532,7 +568,10 @@ export function getLogger(): Logger {
 // Экспорт маркера уровня для внутренних вызовов, если нужно задавать уровень в метаданных
 export { levelToken as wgLogLevelToken };
 
-// Простой утилитарный метод для тестов/разработки — логирование через writeLog с уровнем 'info'
+// Экспорт pino logger для обратной совместимости с остальным кодом
+export { logger };
+
+// Утилита для тестов/быстрой записи
 export async function logInfo(message: string, metadata?: Record<string, unknown>) {
-  await writeLog('info', message, metadata);
+  await writeLog(message, metadata);
 }

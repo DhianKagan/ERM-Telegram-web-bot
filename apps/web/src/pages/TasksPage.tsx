@@ -2,7 +2,7 @@
 // Модули: React, контексты, сервисы задач, shared
 import React from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { UiButton } from '@/components/ui/UiButton';
+import { Button } from '@/components/ui/button';
 import TaskTable from '../components/TaskTable';
 import Spinner from '../components/Spinner';
 import ActionBar from '../components/ActionBar';
@@ -213,10 +213,10 @@ export default function TasksPage() {
         description="Единое представление по задачам и назначенным исполнителям."
         toolbar={
           <div className="flex flex-wrap items-center gap-2">
-            <UiButton size="sm" variant="outline" onClick={refresh}>
+            <Button size="sm" variant="outline" onClick={refresh}>
               Обновить
-            </UiButton>
-            <UiButton
+            </Button>
+            <Button
               size="sm"
               variant="accent"
               onClick={() => {
@@ -225,7 +225,7 @@ export default function TasksPage() {
               }}
             >
               Новая задача
-            </UiButton>
+            </Button>
           </div>
         }
       />

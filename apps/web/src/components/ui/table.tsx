@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 
 type Alignment = 'left' | 'center' | 'right';
 
-type TableProps = React.ComponentProps<'table'> & {
+export type TableProps = React.ComponentProps<'table'> & {
   zebra?: boolean;
   rowHeight?: number;
   stickyHeader?: boolean;

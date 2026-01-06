@@ -78,6 +78,10 @@ jest.mock('../../components/DataTable', () => ({
     data,
     columns = [],
     onRowClick,
+    pageIndex = 0,
+    pageSize = 10,
+    pageCount = 1,
+    onPageChange,
   }: {
     data: Array<Record<string, unknown>>;
     columns?: Array<{
@@ -89,6 +93,10 @@ jest.mock('../../components/DataTable', () => ({
       }) => React.ReactNode;
     }>;
     onRowClick?: (row: Record<string, unknown>) => void;
+    pageIndex?: number;
+    pageSize?: number;
+    pageCount?: number;
+    onPageChange?: (page: number) => void;
   }) => (
     <div data-testid="data-table">
       <div data-testid="data-table-headers">
@@ -144,6 +152,18 @@ jest.mock('../../components/DataTable', () => ({
             })}
           </div>
         ))}
+      </div>
+      <div data-testid="data-table-pagination">
+        <span data-testid="page-index">{pageIndex}</span>
+        <span data-testid="page-size">{pageSize}</span>
+        <span data-testid="page-count">{pageCount}</span>
+        <button
+          type="button"
+          data-testid="next-page"
+          onClick={() => onPageChange?.(pageIndex + 1)}
+        >
+          next
+        </button>
       </div>
     </div>
   ),

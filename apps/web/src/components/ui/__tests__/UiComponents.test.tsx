@@ -3,7 +3,7 @@
  * Основные модули: React, @testing-library/react.
  */
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 
 import { Button } from '../button';
 import { Card } from '../card';
@@ -11,7 +11,14 @@ import { FormGroup } from '../form-group';
 import { Input } from '../input';
 import { Radio } from '../radio';
 import { Select } from '../select';
-import { SimpleTable } from '../simple-table';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../table';
 
 describe('UI components', () => {
   it('renders Button with variant and size classes', () => {
@@ -77,46 +84,28 @@ describe('UI components', () => {
     expect(screen.getByText('Ошибка')).toBeInTheDocument();
   });
 
-  it('renders SimpleTable with rows and handles clicks', () => {
-    const onRowClick = jest.fn();
-    const columns = [
-      { key: 'name', header: 'Имя', headerClassName: 'header-class' },
-      {
-        key: 'role',
-        header: 'Роль',
-        className: 'cell-class',
-        render: (row: { role: string }) => row.role.toUpperCase(),
-      },
-    ];
-    const rows = [{ id: 1, name: 'Аня', role: 'менеджер' }];
-
+  it('renders Table with header and body rows', () => {
     render(
-      <SimpleTable
-        columns={columns}
-        rows={rows}
-        rowKey={(row) => row.id}
-        onRowClick={onRowClick}
-      />,
+      <Table data-testid="table" zebra>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Имя</TableHead>
+            <TableHead align="right">Роль</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow>
+            <TableCell>Аня</TableCell>
+            <TableCell align="right">Менеджер</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>,
     );
 
-    expect(screen.getByText('Имя').closest('th')).toHaveClass('header-class');
-    const cell = screen.getByText('МЕНЕДЖЕР');
-    expect(cell.closest('td')).toHaveClass('cell-class');
-
-    fireEvent.click(cell.closest('tr') as HTMLTableRowElement);
-    expect(onRowClick).toHaveBeenCalledWith(rows[0]);
-  });
-
-  it('renders SimpleTable empty state', () => {
-    render(
-      <SimpleTable
-        columns={[{ key: 'name', header: 'Имя' }]}
-        rows={[]}
-        rowKey={(row) => (row as { name: string }).name}
-        empty="Пусто"
-      />,
+    expect(screen.getByTestId('table')).toHaveClass('ui-table');
+    expect(screen.getByText('Имя').closest('th')).toHaveClass('ui-table__head');
+    expect(screen.getByText('Менеджер').closest('td')).toHaveClass(
+      'ui-table__cell',
     );
-
-    expect(screen.getByText('Пусто')).toBeInTheDocument();
   });
 });

@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import type { RoutePlanAnalyticsSummary, RoutePlanStatus } from 'shared';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { fetchRoutePlanAnalytics } from '../services/analytics';
+import { useRoutePlanAnalytics } from '../services/analytics';
 
 const ReactApexChart = React.lazy(() => import('react-apexcharts'));
 
@@ -88,31 +88,13 @@ export default function AnalyticsDashboard(): React.ReactElement {
     to: defaultTo,
     status: 'completed',
   });
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-  const [summary, setSummary] =
-    React.useState<RoutePlanAnalyticsSummary | null>(null);
-
-  const loadData = React.useCallback(
-    async (params: DashboardFilters) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const response = await fetchRoutePlanAnalytics(ensureParams(params));
-        setSummary(response);
-      } catch (err) {
-        console.error('Не удалось загрузить аналитику маршрутных планов', err);
-        setError(t('analytics.loadError'));
-      } finally {
-        setLoading(false);
-      }
-    },
-    [t],
-  );
-
-  React.useEffect(() => {
-    void loadData(filters);
-  }, [filters, loadData]);
+  const params = React.useMemo(() => ensureParams(filters), [filters]);
+  const {
+    data: summary,
+    isFetching,
+    error,
+    refetch,
+  } = useRoutePlanAnalytics(params, { keepPreviousData: true });
 
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -122,7 +104,14 @@ export default function AnalyticsDashboard(): React.ReactElement {
       to: String(form.get('to') || ''),
       status: (form.get('status') as DashboardFilters['status']) || 'all',
     };
+    const isSameFilters =
+      filters.from === nextFilters.from &&
+      filters.to === nextFilters.to &&
+      filters.status === nextFilters.status;
     setFilters(nextFilters);
+    if (isSameFilters) {
+      void refetch();
+    }
   };
 
   const handleReset = () => {
@@ -132,6 +121,7 @@ export default function AnalyticsDashboard(): React.ReactElement {
       status: 'completed',
     };
     setFilters(initial);
+    void refetch();
   };
 
   const mileageSeries = React.useMemo(
@@ -140,6 +130,14 @@ export default function AnalyticsDashboard(): React.ReactElement {
   );
   const loadSeries = React.useMemo(() => mapLoadSeries(summary), [summary]);
   const slaSeries = React.useMemo(() => mapSlaSeries(summary), [summary]);
+  const isLoading = isFetching && !summary;
+  const loadError =
+    error instanceof Error
+      ? error.message || t('analytics.loadError')
+      : error
+        ? t('analytics.loadError')
+        : null;
+  const formKey = React.useMemo(() => JSON.stringify(filters), [filters]);
 
   return (
     <div className="space-y-6">
@@ -150,6 +148,7 @@ export default function AnalyticsDashboard(): React.ReactElement {
         </p>
       </div>
       <form
+        key={formKey}
         onSubmit={handleSubmit}
         className="flex flex-wrap items-end gap-3 rounded-lg bg-white p-4 shadow-sm dark:bg-slate-900"
       >
@@ -176,17 +175,17 @@ export default function AnalyticsDashboard(): React.ReactElement {
           </select>
         </label>
         <div className="flex flex-wrap gap-2">
-          <Button type="submit" disabled={loading}>
-            {loading ? t('analytics.loading') : t('analytics.apply')}
+          <Button type="submit" disabled={isFetching}>
+            {isFetching ? t('analytics.loading') : t('analytics.apply')}
           </Button>
           <Button type="button" variant="outline" onClick={handleReset}>
             {t('analytics.reset')}
           </Button>
         </div>
       </form>
-      {error ? (
+      {loadError ? (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
-          {error}
+          {loadError}
         </div>
       ) : null}
       <section className="grid gap-4 md:grid-cols-3">

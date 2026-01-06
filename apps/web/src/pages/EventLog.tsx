@@ -5,6 +5,8 @@ import React from 'react';
 import { Input } from '@/components/ui/input';
 import { UiButton } from '@/components/ui/UiButton';
 import { UiInput } from '@/components/ui/UiInput';
+// Подключаем компонент кнопки из библиотеки UI
+import { Button } from '@/components/ui/button';
 import ActionBar from '../components/ActionBar';
 import Breadcrumbs from '../components/Breadcrumbs';
 import ConfirmDialog from '../components/ConfirmDialog';

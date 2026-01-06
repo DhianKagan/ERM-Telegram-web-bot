@@ -132,6 +132,27 @@ const formatCoords = (
   return `${lat}, ${lng}`;
 };
 
+const resolveCoordsFromValue = (
+  value?: unknown,
+): { lat: number; lng: number } | null => {
+  if (!value || typeof value !== 'object') return null;
+  const candidate = value as Record<string, unknown>;
+  const lat =
+    typeof candidate.lat === 'number'
+      ? candidate.lat
+      : typeof candidate.latitude === 'number'
+        ? candidate.latitude
+        : undefined;
+  const lng =
+    typeof candidate.lng === 'number'
+      ? candidate.lng
+      : typeof candidate.longitude === 'number'
+        ? candidate.longitude
+        : undefined;
+  if (lat === undefined || lng === undefined) return null;
+  return { lat, lng };
+};
+
 const resolveObjectCoords = (
   object?: CollectionObject,
 ): { lat: number; lng: number } | null => {
@@ -236,7 +257,10 @@ const buildLocationDetails = ({
     };
   }
 
-  const trimmedLink = link?.trim();
+  const trimmedLink =
+    typeof link === 'string'
+      ? link.trim()
+      : formatCoords(resolveCoordsFromValue(link));
   if (trimmedLink) {
     const coords = formatCoords(extractCoords(trimmedLink));
     const { name, address } = parseGoogleLabel(trimmedLink);
@@ -248,9 +272,11 @@ const buildLocationDetails = ({
     };
   }
 
-  const trimmedText = text?.trim();
-  if (trimmedText) {
-    const coords = formatCoords(extractCoords(trimmedText));
+  const coordsFromObject = formatCoords(resolveCoordsFromValue(text));
+  const trimmedText = typeof text === 'string' ? text.trim() : '';
+  if (trimmedText || coordsFromObject) {
+    const coords =
+      coordsFromObject || formatCoords(extractCoords(trimmedText)) || undefined;
     return {
       title: undefined,
       address: trimmedText,
@@ -298,12 +324,15 @@ const buildMapLink = (
   link?: string,
   text?: string,
 ): string | undefined => {
-  const trimmedLink = link?.trim();
+  const trimmedLink = typeof link === 'string' ? link.trim() : '';
   if (trimmedLink) {
     return trimmedLink;
   }
   const coordsFromDetails = parseCoordsFromString(details?.coords);
-  const coordsFromText = extractCoords(text ?? '') ?? coordsFromDetails;
+  const coordsFromText =
+    (typeof text === 'string'
+      ? extractCoords(text)
+      : resolveCoordsFromValue(text)) ?? coordsFromDetails;
   const coords = coordsFromDetails ?? coordsFromText;
   if (coords) {
     const latValue = Number.isFinite(coords.lat)

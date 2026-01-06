@@ -1,6 +1,8 @@
 // Назначение: управление структурированным логированием и выдачей логов
-// Модули: pino, path, utils/trace
+// Основные модули: pino, path, utils/trace
+
 import path from 'node:path';
+import fetch from 'node-fetch';
 import pino, {
   type Logger,
   type LoggerOptions,
@@ -49,6 +51,7 @@ interface InternalLogEntry extends BufferedLogEntry {
 
 class LogRingBuffer {
   private readonly capacity: number;
+
   private readonly entries: InternalLogEntry[] = [];
 
   constructor(capacity: number) {
@@ -262,7 +265,6 @@ function extractPayload(args: unknown[]): Pick<
       levelOverride = override as AllowedLevels;
       delete (first as Record<PropertyKey, unknown>)[levelToken];
     }
-    // leave other meta keys intact (we will check for skip marker later)
     metadata = sanitizeValue(first, 0, seen) as
       | Record<string, unknown>
       | undefined;
@@ -335,53 +337,30 @@ function buildLogger(): Logger {
       return trace ? { traceId: trace.traceId } : {};
     },
     hooks: {
-      // Основная поправка: в hook-е мы только добавляем в буфер,
-      // но прекращаем дублировать запись если в метаданных стоит маркер skip.
       logMethod(args, method) {
-        try {
-          const timestamp = new Date();
-          const methodLevel = (method as unknown as { level?: number }).level;
-          const label =
-            typeof methodLevel === 'number'
-              ? (pino.levels.labels[methodLevel] ?? 'info')
-              : 'info';
-          const normalized = allowedLevels.has(label as AllowedLevels)
-            ? (label as AllowedLevels)
+        const timestamp = new Date();
+        const methodLevel = (method as unknown as { level?: number }).level;
+        const label =
+          typeof methodLevel === 'number'
+            ? (pino.levels.labels[methodLevel] ?? 'info')
             : 'info';
-          const payload = extractPayload(args);
-          const trace = getTrace();
-          const finalLevel = payload.levelOverride ?? normalized;
-          const createdAt = timestamp.toISOString();
-
-          // Если в метаданных поставлен маркер __wgSkipBuffer, то пропускаем запись
-          // (это позволяет writeLog сначала положить запись в буфер, а затем вызвать logger
-          // без дублирования)
-          const skipMarker = payload.metadata && (payload.metadata as any).__wgSkipBuffer;
-
-          if (!skipMarker) {
-            buffer.add({
-              id: `${timestamp.getTime()}-${Math.random().toString(16).slice(2, 8)}`,
-              time: createdAt,
-              createdAt,
-              level: finalLevel,
-              message: payload.message,
-              metadata: payload.metadata,
-              traceId: trace?.traceId,
-            });
-          }
-
-          // Логируем обычным способом — pino затем выведет в поток/файл
-          method.apply(this, args);
-        } catch (err) {
-          // Если что-то пошло не так внутри hook-а, не ломаем основной поток.
-          try {
-            // eslint-disable-next-line no-console
-            console.error('wgLogEngine: error in logMethod hook', err);
-          } catch {
-            // ignore
-          }
-          method.apply(this, args);
-        }
+        const normalized = allowedLevels.has(label as AllowedLevels)
+          ? (label as AllowedLevels)
+          : 'info';
+        const payload = extractPayload(args);
+        const trace = getTrace();
+        const finalLevel = payload.levelOverride ?? normalized;
+        const createdAt = timestamp.toISOString();
+        buffer.add({
+          id: `${timestamp.getTime()}-${Math.random().toString(16).slice(2, 8)}`,
+          time: createdAt,
+          createdAt,
+          level: finalLevel,
+          message: payload.message,
+          metadata: payload.metadata,
+          traceId: trace?.traceId,
+        });
+        return method.apply(this, args);
       },
     },
   };
@@ -429,149 +408,116 @@ async function notifySideChannels(
 
   const webhookUrl = process.env.LOG_WEBHOOK_URL;
   if (webhookUrl) {
-    try {
-      const payload = {
-        level,
-        message: entry.message,
-        metadata: entry.metadata,
-        traceId: entry.traceId,
-        ts: new Date().toISOString(),
-      };
-      // Fire-and-forget, но ловим ошибки
-      tasks.push(
-        // Используем глобальный fetch (Node 18+, Node 20 поддерживает)
-        // Обрабатываем ответ и предупреждаем при ошибке
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        (async () => {
-          const res = await fetch(webhookUrl, {
-            method: 'POST',
-            body: JSON.stringify(payload),
-            headers: { 'Content-Type': 'application/json' },
-            // @ts-ignore - timeout not standard on fetch; keep short timeout via env if needed
-            timeout: Number(process.env.LOG_WEBHOOK_TIMEOUT ?? 5000),
-          });
-          if (!res.ok) {
-            // eslint-disable-next-line no-console
-            console.warn('wgLogEngine: webhook responded not ok', res.status);
-          }
-        })(),
-      );
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.warn('wgLogEngine: notify webhook failed', err);
-    }
+    const payload = {
+      level,
+      message: entry.message,
+      metadata: entry.metadata,
+      traceId: entry.traceId,
+      ts: new Date().toISOString(),
+    };
+    tasks.push(
+      fetch(webhookUrl, {
+        method: 'POST',
+        body: JSON.stringify(payload),
+        headers: { 'Content-Type': 'application/json' },
+        timeout: Number(process.env.LOG_WEBHOOK_TIMEOUT ?? 5000),
+      }).catch(() => undefined),
+    );
   }
 
-  try {
-    await Promise.allSettled(tasks);
-  } catch {
-    // ignore
+  const tgUrl = process.env.LOG_TELEGRAM_BOT_URL;
+  const tgChatId = process.env.LOG_TELEGRAM_CHAT_ID;
+  if (tgUrl && tgChatId) {
+    const prefix = level === 'warn' ? '❗️' : '🔥';
+    const chunks: string[] = [];
+    chunks.push(`${prefix} <b>${entry.message}</b>`);
+    if (entry.traceId) {
+      chunks.push(`<b>trace</b>: <code>${entry.traceId}</code>`);
+    }
+    if (entry.metadata) {
+      const plain = entry.metadata
+        ? JSON.stringify(entry.metadata, null, 2)
+        : '';
+      chunks.push(`<pre>${plain}</pre>`);
+    }
+    const text = chunks.join('\n');
+
+    const params = new URLSearchParams();
+    params.set('chat_id', String(tgChatId));
+    params.set('parse_mode', 'html');
+    params.set('text', text);
+
+    const url = `${tgUrl}?${params.toString()}`;
+    tasks.push(
+      fetch(url, {
+        method: 'GET',
+        timeout: Number(process.env.LOG_TELEGRAM_TIMEOUT ?? 5000),
+      }).catch(() => undefined),
+    );
   }
+
+  await Promise.all(tasks);
+}
+
+type WriteLogFn = (
+  level: Exclude<AllowedLevels, 'log'> | string,
+  message: string,
+  metadata?: Record<string, unknown>,
+) => Promise<void>;
+
+export interface ListLogFn {
+  (params: ListLogParams): BufferedLogEntry[];
 }
 
 /**
- * Основной API:
- *  - writeLog(message) — backward-compatible: если передан один аргумент, это сообщение (уровень info)
- *  - writeLog(level, message, metadata?) — явный уровень
- *  - listLogs(params) — вернуть из буфера
- *  - getLogger() — вернуть pino logger
+ * Логирование:
+ *
+ * - Уровни: 'error', 'debug', 'info', 'warn'
+ *   (level case-insensitive)
+ * - Сообщение: строка
+ * - Метаданные: объект, который будет сериализован и храниться в searchText (в JSON)
+ *
+ *   Пример: writeLog('error', 'DB connection failed', { port: 5432, db: 'postgres' })
  */
-
-// Перегрузки типов для совместимости
-export async function writeLog(message: string): Promise<void>;
-export async function writeLog(
-  level: Exclude<AllowedLevels, 'log'>,
-  message: string,
-  metadata?: Record<string, unknown>,
-): Promise<void>;
-
-export async function writeLog(
-  levelOrMessage: Exclude<AllowedLevels, 'log'> | string,
-  messageOrMetadata?: string | Record<string, unknown>,
-  metadataMaybe?: Record<string, unknown>,
-): Promise<void> {
-  // Детектируем вариант вызова:
-  //  - если первый аргумент совпадает с allowedLevels и второй аргумент string => (level, message)
-  //  - иначе: (message) -> уровень info
-  let level: Exclude<AllowedLevels, 'log'> = 'info';
-  let message = '';
-  let metadata: Record<string, unknown> | undefined;
-
-  if (
-    typeof levelOrMessage === 'string' &&
-    allowedLevels.has(levelOrMessage as AllowedLevels) &&
-    typeof messageOrMetadata === 'string'
-  ) {
-    level = levelOrMessage as Exclude<AllowedLevels, 'log'>;
-    message = messageOrMetadata;
-    metadata = metadataMaybe;
-  } else {
-    // backward-compatible: first param is message
-    message = String(levelOrMessage ?? '');
-    if (typeof messageOrMetadata === 'object' && messageOrMetadata !== null) {
-      metadata = messageOrMetadata as Record<string, unknown>;
-    } else {
-      metadata = undefined;
-    }
-    level = 'info';
-  }
-
-  const timestamp = new Date();
-  const createdAt = timestamp.toISOString();
+export const writeLogFn: WriteLogFn = async (level, message, metadata) => {
+  const normalizedLevel: Exclude<AllowedLevels, 'log'> =
+    normalizeLevel(level);
   const trace = getTrace();
-
-  // Собираем запись и кладём в буфер — этого достаточно для тестов, поиска и выдачи
+  // Пишем в буфер
+  const ts = new Date();
+  const id = `${ts.getTime()}-${Math.random().toString(16).slice(2, 8)}`;
   const entry: BufferedLogEntry = {
-    id: `${timestamp.getTime()}-${Math.random().toString(16).slice(2, 8)}`,
-    createdAt,
-    time: createdAt,
-    level,
+    id,
+    createdAt: ts.toISOString(),
+    time: ts.toISOString(),
+    level: normalizedLevel,
     message,
     metadata,
     traceId: trace?.traceId,
   };
-
   buffer.add(entry);
-
-  // Теперь логируем через pino, но отмечаем метаданные маркером, чтобы hook не дублировал запись.
-  const metaWithSkip = metadata ? { ...metadata, __wgSkipBuffer: true } : { __wgSkipBuffer: true };
-
-  try {
-    // pino expects logger[level](meta?, msg?) pattern
-    // @ts-ignore - индексование по строке
-    const fn: (...args: unknown[]) => void = (logger as any)[level] ?? ((logger as any).info);
-    fn.call(logger, metaWithSkip, message);
-
-    // Для warn/error — отправляем side channels (возможно async)
-    if (level === 'warn' || level === 'error') {
-      // notifySideChannels не должен бросать ошибки наружу
-      void notifySideChannels(level, { message, metadata, traceId: trace?.traceId });
-    }
-  } catch (err) {
-    try {
-      // eslint-disable-next-line no-console
-      console.error('wgLogEngine: writeLog failed', err);
-    } catch {
-      // ignore
-    }
+  // Логируем через Pino (он снова добавит в буфер в hook, второй раз не страшно)
+  if (normalizedLevel === 'error') {
+    logger.error({ [levelToken]: 'error', ...metadata }, message);
+  } else if (normalizedLevel === 'warn') {
+    logger.warn({ [levelToken]: 'warn', ...metadata }, message);
+  } else if (normalizedLevel === 'debug') {
+    logger.debug({ [levelToken]: 'debug', ...metadata }, message);
+  } else {
+    logger.info({ [levelToken]: 'info', ...metadata }, message);
   }
-}
+  // Отправляем side channels
+  await notifySideChannels(normalizedLevel, {
+    message,
+    metadata,
+    traceId: trace?.traceId,
+  });
+};
 
-export function listLogs(params: ListLogParams = {}): BufferedLogEntry[] {
+export const listLogsFn: ListLogFn = (params = {}) => {
   return buffer.list(params);
-}
+};
 
-export function getLogger(): Logger {
-  return logger;
-}
+export { logger, writeLogFn as writeLog, listLogsFn as listLogs };
 
-// Экспорт маркера уровня для внутренних вызовов, если нужно задавать уровень в метаданных
-export { levelToken as wgLogLevelToken };
 
-// Экспорт pino logger для обратной совместимости с остальным кодом
-export { logger };
-
-// Утилита для тестов/быстрой записи
-export async function logInfo(message: string, metadata?: Record<string, unknown>) {
-  await writeLog(message, metadata);
-}

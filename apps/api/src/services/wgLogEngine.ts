@@ -1,8 +1,6 @@
 // Назначение: управление структурированным логированием и выдачей логов
 // Основные модули: pino, path, utils/trace
-
 import path from 'node:path';
-import fetch from 'node-fetch';
 import pino, {
   type Logger,
   type LoggerOptions,
@@ -360,7 +358,7 @@ function buildLogger(): Logger {
           metadata: payload.metadata,
           traceId: trace?.traceId,
         });
-        return method.apply(this, args);
+        method.apply(this, args);
       },
     },
   };
@@ -399,125 +397,104 @@ async function notifySideChannels(
   level: Exclude<AllowedLevels, 'log'>,
   entry: Pick<BufferedLogEntry, 'message' | 'metadata' | 'traceId'>,
 ): Promise<void> {
-  // Отправляем только warn/error
   if (level !== 'warn' && level !== 'error') {
     return;
   }
 
   const tasks: Promise<unknown>[] = [];
-
-  const webhookUrl = process.env.LOG_WEBHOOK_URL;
+  const webhookUrl = process.env.LOG_ERROR_WEBHOOK_URL;
   if (webhookUrl) {
-    const payload = {
-      level,
-      message: entry.message,
-      metadata: entry.metadata,
-      traceId: entry.traceId,
-      ts: new Date().toISOString(),
-    };
     tasks.push(
       fetch(webhookUrl, {
         method: 'POST',
-        body: JSON.stringify(payload),
         headers: { 'Content-Type': 'application/json' },
-        timeout: Number(process.env.LOG_WEBHOOK_TIMEOUT ?? 5000),
-      }).catch(() => undefined),
+        body: JSON.stringify({
+          level,
+          message: entry.message,
+          traceId: entry.traceId,
+          metadata: entry.metadata,
+          emittedAt: new Date().toISOString(),
+        }),
+      }).catch((error) => {
+        console.error('Не удалось отправить вебхук логов', error);
+      }),
     );
   }
 
-  const tgUrl = process.env.LOG_TELEGRAM_BOT_URL;
-  const tgChatId = process.env.LOG_TELEGRAM_CHAT_ID;
-  if (tgUrl && tgChatId) {
-    const prefix = level === 'warn' ? '❗️' : '🔥';
-    const chunks: string[] = [];
-    chunks.push(`${prefix} <b>${entry.message}</b>`);
-    if (entry.traceId) {
-      chunks.push(`<b>trace</b>: <code>${entry.traceId}</code>`);
-    }
-    if (entry.metadata) {
-      const plain = entry.metadata
-        ? JSON.stringify(entry.metadata, null, 2)
-        : '';
-      chunks.push(`<pre>${plain}</pre>`);
-    }
-    const text = chunks.join('\n');
-
-    const params = new URLSearchParams();
-    params.set('chat_id', String(tgChatId));
-    params.set('parse_mode', 'html');
-    params.set('text', text);
-
-    const url = `${tgUrl}?${params.toString()}`;
+  const telegramToken = process.env.LOG_TELEGRAM_TOKEN;
+  const telegramChat = process.env.LOG_TELEGRAM_CHAT;
+  if (telegramToken && telegramChat) {
+    const textParts = [
+      `⚠️ [${level.toUpperCase()}] ${entry.message}`,
+      entry.traceId ? `traceId: ${entry.traceId}` : undefined,
+      entry.metadata ? formatMetadataForTelegram(entry.metadata) : undefined,
+    ].filter(Boolean);
     tasks.push(
-      fetch(url, {
-        method: 'GET',
-        timeout: Number(process.env.LOG_TELEGRAM_TIMEOUT ?? 5000),
-      }).catch(() => undefined),
+      fetch(`https://api.telegram.org/bot${telegramToken}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: telegramChat,
+          text: textParts.join('\n'),
+        }),
+      }).catch((error) => {
+        console.error('Не удалось отправить лог в Telegram', error);
+      }),
     );
   }
 
-  await Promise.all(tasks);
+  if (tasks.length) {
+    await Promise.allSettled(tasks);
+  }
 }
 
-type WriteLogFn = (
-  level: Exclude<AllowedLevels, 'log'> | string,
+function formatMetadataForTelegram(metadata: Record<string, unknown>): string {
+  const entries = Object.entries(metadata)
+    .slice(0, 10)
+    .map(([key, value]) => {
+      const printable = typeof value === 'string' ? value : safeToString(value);
+      return `${key}: ${printable}`;
+    });
+  return entries.length ? entries.join('\n') : '';
+}
+
+let writeLogFn: (
   message: string,
+  level?: string,
   metadata?: Record<string, unknown>,
 ) => Promise<void>;
+let listLogsFn: (params?: ListLogParams) => Promise<BufferedLogEntry[]>;
 
-export interface ListLogFn {
-  (params: ListLogParams): BufferedLogEntry[];
+if (loggingDisabled) {
+  writeLogFn = async () => {};
+  listLogsFn = async () => [];
+} else {
+  writeLogFn = async (
+    message: string,
+    level: string = 'info',
+    metadata: Record<string, unknown> = {},
+  ) => {
+    const normalizedLevel = normalizeLevel(level);
+    const sanitizedMetadata =
+      (sanitizeValue(metadata) as Record<string, unknown> | undefined) ??
+      undefined;
+    if (sanitizedMetadata) {
+      (sanitizedMetadata as Record<PropertyKey, unknown>)[levelToken] =
+        normalizedLevel;
+      logger[normalizedLevel](sanitizedMetadata, message);
+    } else {
+      logger[normalizedLevel](
+        { [levelToken]: normalizedLevel } as Record<PropertyKey, unknown>,
+        message,
+      );
+    }
+    await notifySideChannels(normalizedLevel, {
+      message,
+      metadata: sanitizedMetadata,
+      traceId: getTrace()?.traceId,
+    });
+  };
+  listLogsFn = async (params: ListLogParams = {}) => buffer.list(params);
 }
 
-/**
- * Логирование:
- *
- * - Уровни: 'error', 'debug', 'info', 'warn'
- *   (level case-insensitive)
- * - Сообщение: строка
- * - Метаданные: объект, который будет сериализован и храниться в searchText (в JSON)
- *
- *   Пример: writeLog('error', 'DB connection failed', { port: 5432, db: 'postgres' })
- */
-export const writeLogFn: WriteLogFn = async (level, message, metadata) => {
-  const normalizedLevel: Exclude<AllowedLevels, 'log'> =
-    normalizeLevel(level);
-  const trace = getTrace();
-  // Пишем в буфер
-  const ts = new Date();
-  const id = `${ts.getTime()}-${Math.random().toString(16).slice(2, 8)}`;
-  const entry: BufferedLogEntry = {
-    id,
-    createdAt: ts.toISOString(),
-    time: ts.toISOString(),
-    level: normalizedLevel,
-    message,
-    metadata,
-    traceId: trace?.traceId,
-  };
-  buffer.add(entry);
-  // Логируем через Pino (он снова добавит в буфер в hook, второй раз не страшно)
-  if (normalizedLevel === 'error') {
-    logger.error({ [levelToken]: 'error', ...metadata }, message);
-  } else if (normalizedLevel === 'warn') {
-    logger.warn({ [levelToken]: 'warn', ...metadata }, message);
-  } else if (normalizedLevel === 'debug') {
-    logger.debug({ [levelToken]: 'debug', ...metadata }, message);
-  } else {
-    logger.info({ [levelToken]: 'info', ...metadata }, message);
-  }
-  // Отправляем side channels
-  await notifySideChannels(normalizedLevel, {
-    message,
-    metadata,
-    traceId: trace?.traceId,
-  });
-};
-
-export const listLogsFn: ListLogFn = (params = {}) => {
-  return buffer.list(params);
-};
-
 export { logger, writeLogFn as writeLog, listLogsFn as listLogs };
-
-

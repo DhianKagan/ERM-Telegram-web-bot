@@ -41,14 +41,19 @@ const normalizeAttachmentRecord = (
   input: Record<string, unknown>,
 ): Attachment | null => {
   const urlRaw = typeof input.url === 'string' ? input.url.trim() : '';
-  if (!urlRaw) {
+  const fileIdRaw =
+    typeof input.fileId === 'string' ? input.fileId.trim() : '';
+  const fileId =
+    fileIdRaw && Types.ObjectId.isValid(fileIdRaw) ? fileIdRaw : '';
+  const resolvedUrl = urlRaw || (fileId ? `/api/v1/files/${fileId}` : '');
+  if (!resolvedUrl) {
     return null;
   }
   const nameRaw = input.name;
   const name =
     typeof nameRaw === 'string' && nameRaw.trim()
       ? nameRaw.trim()
-      : urlRaw.split('/').pop() || urlRaw;
+      : resolvedUrl.split('/').pop() || resolvedUrl;
   const thumbnailUrl =
     typeof input.thumbnailUrl === 'string' && input.thumbnailUrl.trim()
       ? input.thumbnailUrl
@@ -63,7 +68,7 @@ const normalizeAttachmentRecord = (
 
   const normalized: Attachment = {
     name,
-    url: urlRaw,
+    url: resolvedUrl,
     thumbnailUrl,
     uploadedBy,
     uploadedAt,

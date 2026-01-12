@@ -77,6 +77,12 @@ interface UploadItem {
   attachment?: Attachment;
 }
 
+type UploadResponse = {
+  fileId?: string;
+  name?: string;
+  type?: string;
+};
+
 interface Props {
   disabled?: boolean;
   onUploaded: (a: Attachment) => void;
@@ -236,7 +242,23 @@ export default function FileUploader({
         }
         throw new Error(message);
       }
-      if (i === total - 1) attachment = (await res.json()) as Attachment;
+      if (i === total - 1) {
+        const payload = (await res.json()) as UploadResponse;
+        const fileId =
+          typeof payload?.fileId === 'string' && payload.fileId.trim()
+            ? payload.fileId.trim()
+            : '';
+        if (!fileId) {
+          throw new Error(t('uploadFailed'));
+        }
+        attachment = {
+          fileId,
+          name: payload.name || file.name || 'Файл',
+          url: `/api/v1/files/${fileId}`,
+          type: payload.type || file.type || 'application/octet-stream',
+          size: file.size,
+        };
+      }
       onProgress(Math.round(((i + 1) / total) * 100));
     }
     return attachment!;

@@ -81,5 +81,39 @@
   "logisticsCoordinatesHint": "Координати обов'язкові: вставте посилання Google Maps або виберіть точку з колекції",
   "logisticsStartCoordinatesRequired": "Вкажіть координати точки відправлення",
   "logisticsFinishCoordinatesRequired": "Вкажіть координати точки прибуття",
-  "logisticsViaCoordinatesRequired": "Вкажіть координати проміжної точки {{index}}"
+  "logisticsViaCoordinatesRequired": "Вкажіть координати проміжної точки {{index}}",
+  "storage": {
+    "title": "Файли",
+    "openedInNewTab": "Файл відкрито у новій вкладці.",
+    "actions": "Дії",
+    "download": "Завантажити",
+    "delete": "Видалити",
+    "deleteConfirm": "Видалити файл «{{name}}»? Цю дію неможливо скасувати.",
+    "deleteSuccess": "Файл видалено.",
+    "deleteError": "Не вдалося видалити файл.",
+    "loadError": "Не вдалося завантажити список файлів.",
+    "taskLabel": "Задача #{{id}}",
+    "taskNumberLabel": "Задача {{number}}",
+    "taskMissing": "Без задачі",
+    "columns": {
+      "name": "Ім'я",
+      "type": "Тип",
+      "size": "Розмір",
+      "task": "Задача",
+      "uploaded": "Завантажено"
+    },
+    "refresh": "Оновити",
+    "attach": {
+      "button": "Прив'язати",
+      "success": "Файл прив'язано до задачі.",
+      "error": "Не вдалося прив'язати файл.",
+      "forbidden": "Недостатньо прав для прив'язки файлу.",
+      "selectExisting": "Вибрати файл",
+      "modalTitle": "Вибір файлу",
+      "modalDescription": "Виберіть файл для прив'язки до задачі.",
+      "actions": "Дії",
+      "addToTask": "Додати",
+      "attached": "Прив'язано"
+    }
+  }
 }

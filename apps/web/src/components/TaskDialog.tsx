@@ -53,6 +53,7 @@ import {
 } from 'react-hook-form';
 import FileUploader from './FileUploader';
 import Spinner from './Spinner';
+import TaskFilesSection from './TaskFilesSection';
 import type { Attachment, HistoryItem, UserBrief } from '../types/task';
 import type { Task, TaskPoint } from 'shared';
 import EmployeeLink from './EmployeeLink';
@@ -127,12 +128,16 @@ const normalizeAttachment = (attachment: Attachment): Attachment => {
       ? attachment.size
       : 0;
   const url = ensureInlineMode(attachment.url) ?? attachment.url;
+  const fileIdRaw =
+    typeof attachment.fileId === 'string' ? attachment.fileId.trim() : '';
+  const fileId = fileIdRaw || extractFileId(url);
   const normalized: Attachment = {
     ...attachment,
     name,
     url,
     type,
     size,
+    ...(fileId ? { fileId } : {}),
   };
   const inlineThumb =
     ensureInlineMode(attachment.thumbnailUrl) ?? attachment.thumbnailUrl;
@@ -247,6 +252,7 @@ const buildCommentAttachments = (commentHtml: string): Attachment[] => {
     const baseUrl = `/api/v1/files/${id}`;
     const inlineUrl = ensureInlineMode(baseUrl) ?? baseUrl;
     return {
+      fileId: id,
       name: 'Изображение',
       url: inlineUrl,
       thumbnailUrl: inlineUrl,
@@ -272,13 +278,16 @@ const collectTaskAttachments = (
       .map((item) => (typeof item === 'string' ? item.trim() : ''))
       .filter((path) => path.startsWith('/api/v1/files/'))
       .map(
-        (path) =>
-          ({
+        (path) => {
+          const fileId = extractFileId(path);
+          return {
+            ...(fileId ? { fileId } : {}),
             name: 'Файл',
             url: path,
             type: 'application/octet-stream',
             size: 0,
-          }) as Attachment,
+          } as Attachment;
+        },
       );
     result = mergeAttachmentLists(result, fileAttachments);
   }
@@ -1685,6 +1694,29 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     setAttachments((prev) => prev.filter((p) => p.url !== a.url));
     setPreviewAttachment((prev) => (prev && prev.url === a.url ? null : prev));
   };
+  const addAttachmentFromFile = React.useCallback((a: Attachment) => {
+    setAttachments((prev) => mergeAttachmentLists(prev, [a]));
+  }, []);
+  const removeAttachmentByFileId = React.useCallback((fileId: string) => {
+    if (!fileId) return;
+    setAttachments((prev) =>
+      prev.filter((item) => {
+        const normalized =
+          typeof item.fileId === 'string' && item.fileId.trim()
+            ? item.fileId.trim()
+            : extractFileId(item.url);
+        return normalized !== fileId;
+      }),
+    );
+    setPreviewAttachment((prev) => {
+      if (!prev) return prev;
+      const normalized =
+        typeof prev.fileId === 'string' && prev.fileId.trim()
+          ? prev.fileId.trim()
+          : extractFileId(prev.url);
+      return normalized === fileId ? null : prev;
+    });
+  }, []);
 
   const applyTaskDetails = React.useCallback(
     (
@@ -4650,6 +4682,17 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                       {t('fillTitleToUpload')}
                     </p>
                   ) : null}
+                  <div className="space-y-3 pt-2">
+                    <h3 className="text-sm font-medium">
+                      {t('storage.title')}
+                    </h3>
+                    <TaskFilesSection
+                      taskId={effectiveTaskId}
+                      canEdit={editing && canEditTask}
+                      onAddAttachment={addAttachmentFromFile}
+                      onRemoveAttachment={removeAttachmentByFileId}
+                    />
+                  </div>
                   <div className="flex flex-wrap items-center gap-2 pt-2">
                     {isEdit && (
                       <Button

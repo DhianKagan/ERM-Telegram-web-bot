@@ -36,7 +36,7 @@ import {
   staleUserFilesGraceMinutes,
 } from '../config/limits';
 import { checkFile } from '../utils/fileCheck';
-import { coerceAttachments } from '../utils/attachments';
+import { coerceAttachments, extractFileIdFromUrl } from '../utils/attachments';
 import { appendPendingUpload } from '../utils/requestUploads';
 import { ensureUploadContext } from '../tasks/uploadContext';
 import {
@@ -753,7 +753,19 @@ export const handleChunks: RequestHandler = async (req, res) => {
         return;
       }
       await syncAttachmentsForRequest(req as RequestWithUser, [attachment]);
-      res.json(attachment);
+      const fileId =
+        finalizeResult.fileIds?.[0] ??
+        extractFileIdFromUrl(attachment.url) ??
+        '';
+      if (!fileId) {
+        res.sendStatus(500);
+        return;
+      }
+      res.json({
+        fileId,
+        name: attachment.name ?? 'Файл',
+        type: attachment.type ?? 'application/octet-stream',
+      });
       return;
     }
     res.json({ received: idx });

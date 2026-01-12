@@ -109,6 +109,20 @@ export const getFileRecord = async (id: string): Promise<FileRecord | null> => {
   return record ?? null;
 };
 
+export const setTelegramFileId = async (
+  id: string,
+  telegramFileId: string,
+): Promise<void> => {
+  const trimmed = telegramFileId.trim();
+  if (!trimmed || !MongooseTypes.ObjectId.isValid(id)) {
+    return;
+  }
+  await File.updateOne(
+    { _id: id },
+    { $set: { telegramFileId: trimmed } },
+  ).exec();
+};
+
 export type StaleFileEntry = {
   _id: Types.ObjectId;
   path: string;
@@ -191,7 +205,7 @@ export const findFilesByIds = async (
       .lean()
       .exec();
 
-    return (raw ?? []).map((d: any) => {
+    return (raw ?? []).map((d: { _id?: unknown; taskId?: unknown }) => {
       // Ensure _id and taskId are Types.ObjectId
       const _id =
         d && d._id

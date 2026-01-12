@@ -13,7 +13,8 @@ import { type Attachment, type TaskDocument } from '../db/model';
 import { uploadsDir } from '../config/storage';
 import type { FormatTaskSection, InlineImage } from '../utils/formatTask';
 import { SECTION_SEPARATOR } from '../utils/formatTask';
-import { getFileRecord } from '../services/fileService';
+import { getFileRecord, setTelegramFileId } from '../services/fileService';
+import { extractFileIdFromUrl } from '../utils/attachments';
 
 type LocalPhotoInfo = {
   absolutePath: string;
@@ -522,6 +523,14 @@ export class TaskTelegramMedia {
         if (!Array.isArray(response) || response.length === 0) {
           throw new Error('Telegram не вернул сообщения для альбома задачи');
         }
+        await Promise.all(
+          response.map((entry, index) => {
+            const fileId = this.extractTelegramPhotoId(entry);
+            const source = selected[index]?.url;
+            if (!fileId || !source) return Promise.resolve();
+            return this.persistTelegramFileId(source, fileId);
+          }),
+        );
         const previewMessageIds = response
           .map((message) =>
             typeof message?.message_id === 'number'
@@ -588,6 +597,10 @@ export class TaskTelegramMedia {
           chat,
           photo,
           photoOptions,
+        );
+        await this.persistTelegramFileId(
+          previewUrl,
+          this.extractTelegramPhotoId(response),
         );
         await dispatchChunks(
           leftoverChunks,
@@ -744,6 +757,10 @@ export class TaskTelegramMedia {
         if (response?.message_id) {
           sentMessageIds.push(response.message_id);
         }
+        await this.persistTelegramFileId(
+          current.url,
+          this.extractTelegramPhotoId(response),
+        );
       };
       try {
         await sendPhotoAttempt();
@@ -772,6 +789,10 @@ export class TaskTelegramMedia {
         if (response?.message_id) {
           sentMessageIds.push(response.message_id);
         }
+        await this.persistTelegramFileId(
+          current.url,
+          this.extractTelegramDocumentId(response),
+        );
       }
     };
 
@@ -811,6 +832,14 @@ export class TaskTelegramMedia {
               sentMessageIds.push(message.message_id);
             }
           });
+          await Promise.all(
+            response.map((message, index) => {
+              const fileId = this.extractTelegramPhotoId(message);
+              const source = batch[index]?.url;
+              if (!fileId || !source) return Promise.resolve();
+              return this.persistTelegramFileId(source, fileId);
+            }),
+          );
         } catch (error) {
           console.warn(
             'Не удалось отправить изображения медиа-группой, отправляем по одному',
@@ -847,6 +876,10 @@ export class TaskTelegramMedia {
           if (response?.message_id) {
             sentMessageIds.push(response.message_id);
           }
+          await this.persistTelegramFileId(
+            attachment.url,
+            this.extractTelegramDocumentId(response),
+          );
         } catch (error) {
           console.error(
             'Не удалось отправить неподдерживаемое изображение как документ',
@@ -946,11 +979,54 @@ export class TaskTelegramMedia {
     }
   }
 
+  private async resolveTelegramFileId(url: string): Promise<string | null> {
+    if (!url) return null;
+    const fileId = extractFileIdFromUrl(url);
+    if (!fileId) return null;
+    const record = await getFileRecord(fileId);
+    const telegramFileId =
+      typeof record?.telegramFileId === 'string'
+        ? record.telegramFileId.trim()
+        : '';
+    return telegramFileId || null;
+  }
+
+  private async persistTelegramFileId(
+    url: string,
+    telegramFileId?: string | null,
+  ): Promise<void> {
+    const fileId = extractFileIdFromUrl(url);
+    if (!fileId) return;
+    const normalized =
+      typeof telegramFileId === 'string' ? telegramFileId.trim() : '';
+    if (!normalized) return;
+    await setTelegramFileId(fileId, normalized).catch(() => undefined);
+  }
+
+  private extractTelegramPhotoId(response: unknown): string | null {
+    const photos = (response as { photo?: Array<{ file_id?: string }> }).photo;
+    if (!Array.isArray(photos) || photos.length === 0) {
+      return null;
+    }
+    const last = photos[photos.length - 1];
+    return typeof last?.file_id === 'string' ? last.file_id : null;
+  }
+
+  private extractTelegramDocumentId(response: unknown): string | null {
+    const document = (response as { document?: { file_id?: string } })
+      .document;
+    return typeof document?.file_id === 'string' ? document.file_id : null;
+  }
+
   private async resolvePhotoInputWithCache(
     url: string,
     cache: Map<string, LocalPhotoInfo | null>,
   ): Promise<InputFile | string> {
     if (!url) return url;
+    const telegramFileId = await this.resolveTelegramFileId(url);
+    if (telegramFileId) {
+      return telegramFileId;
+    }
     if (!cache.has(url)) {
       const info = await this.resolveLocalPhotoInfo(url);
       const prepared = info ? await this.ensurePhotoWithinLimit(info) : info;

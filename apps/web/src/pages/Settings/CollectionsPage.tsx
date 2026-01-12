@@ -2861,11 +2861,11 @@ export default function CollectionsPage() {
         ? () => openEmployeeModal()
         : () => openUserModal();
       return (
-        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-          <label className="flex w-full flex-col gap-2">
-            <span className="text-sm font-medium text-foreground">
-              {collectionSearchCta}
-            </span>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <FormGroup
+            label={collectionSearchCta}
+            htmlFor="settings-users-search"
+          >
             <Input
               id="settings-users-search"
               value={userSearchDraft}
@@ -2878,9 +2878,13 @@ export default function CollectionsPage() {
                 {collectionSearchHint}
               </span>
             ) : null}
-          </label>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button size="sm" onClick={() => submitUserSearch()}>
+          </FormGroup>
+          <div className="flex flex-wrap justify-end gap-2 sm:col-span-2 lg:col-span-3">
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={() => submitUserSearch()}
+            >
               {collectionSearchCta}
             </Button>
             <Button
@@ -2893,7 +2897,7 @@ export default function CollectionsPage() {
             >
               {collectionResetCta}
             </Button>
-            <Button size="sm" variant="accent" onClick={handleAdd}>
+            <Button size="sm" variant="success" onClick={handleAdd}>
               {addLabel}
             </Button>
           </div>
@@ -2902,11 +2906,12 @@ export default function CollectionsPage() {
     }
     if (isCollectionSearchSupported) {
       return (
-        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-          <label className="flex w-full flex-col gap-2">
-            <span className="text-sm font-medium text-foreground">
-              {collectionSearchCta}
-            </span>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <FormGroup
+            label={collectionSearchCta}
+            htmlFor="settings-collections-search"
+            help={collectionSearchHint}
+          >
             <Input
               id="settings-collections-search"
               value={currentSearchDraft}
@@ -2916,14 +2921,13 @@ export default function CollectionsPage() {
               onKeyDown={handleCollectionSearchKeyDown}
               placeholder={collectionSearchPlaceholder}
             />
-            {collectionSearchHint ? (
-              <span className="text-xs text-muted-foreground">
-                {collectionSearchHint}
-              </span>
-            ) : null}
-          </label>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button size="sm" onClick={() => submitCollectionSearch()}>
+          </FormGroup>
+          <div className="flex flex-wrap justify-end gap-2 sm:col-span-2 lg:col-span-3">
+            <Button
+              size="sm"
+              variant="primary"
+              onClick={() => submitCollectionSearch()}
+            >
               {collectionSearchCta}
             </Button>
             <Button size="sm" variant="outline" onClick={resetCollectionSearch}>
@@ -2931,7 +2935,7 @@ export default function CollectionsPage() {
             </Button>
             <Button
               size="sm"
-              variant="accent"
+              variant="success"
               onClick={() => openCollectionModal()}
             >
               {collectionAddCta}
@@ -2944,7 +2948,7 @@ export default function CollectionsPage() {
       <div className="flex flex-wrap items-center justify-end gap-2">
         <Button
           size="sm"
-          variant="accent"
+          variant="success"
           onClick={() => openCollectionModal()}
         >
           {collectionAddCta}

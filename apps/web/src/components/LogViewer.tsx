@@ -77,7 +77,7 @@ export default function LogViewer() {
               toolbarChildren={
                 <div className="flex w-full flex-wrap items-center gap-2">
                   <FiltersPanel filters={filters} onChange={setFilters} />
-                  <Button size="sm" variant="secondary" onClick={resetFilters}>
+                  <Button size="sm" variant="outline" onClick={resetFilters}>
                     Сбросить фильтры
                   </Button>
                 </div>

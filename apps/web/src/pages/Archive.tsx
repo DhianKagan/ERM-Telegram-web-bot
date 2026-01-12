@@ -5,6 +5,7 @@ import { ArchiveBoxIcon } from '@heroicons/react/24/outline';
 import { SimpleTable } from '@/components/ui/simple-table';
 import archiveColumns from '../columns/archiveColumns';
 import { Button } from '@/components/ui/button';
+import { FormGroup } from '@/components/ui/form-group';
 import { Input } from '@/components/ui/input';
 import { useToast } from '../context/useToast';
 import { useAuth } from '../context/useAuth';
@@ -252,25 +253,25 @@ export default function ArchivePage() {
           <div className="grid gap-2">
             <form
               onSubmit={handleSearchSubmit}
-              className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end"
+              className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
             >
-              <label className="flex flex-col gap-1 text-sm text-slate-700 dark:text-slate-200">
-                Поиск
+              <FormGroup label="Поиск" htmlFor="archive-search">
                 <Input
+                  id="archive-search"
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   onKeyDown={handleSearchKeyDown}
                   placeholder="Поиск по номеру или названию"
                   aria-label="Поиск по архиву"
                 />
-              </label>
-              <div className="flex flex-wrap gap-2">
-                <Button type="submit" variant="secondary" disabled={loading}>
+              </FormGroup>
+              <div className="flex flex-wrap justify-end gap-2 sm:col-span-2 lg:col-span-3">
+                <Button type="submit" variant="primary" disabled={loading}>
                   Искать
                 </Button>
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
                   disabled={loading || (!appliedSearch && !search)}
                   onClick={handleSearchReset}
                 >

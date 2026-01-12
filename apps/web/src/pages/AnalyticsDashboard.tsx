@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import type { RoutePlanAnalyticsSummary, RoutePlanStatus } from 'shared';
 import { ChartPieIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/button';
+import { FormGroup } from '@/components/ui/form-group';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { useRoutePlanAnalytics } from '../services/analytics';
@@ -160,28 +161,45 @@ export default function AnalyticsDashboard(): React.ReactElement {
             key={formKey}
             onSubmit={handleSubmit}
             onKeyDown={handleFormKeyDown}
-            className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto] lg:items-end"
+            className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
           >
-            <label className="flex flex-col gap-1 text-sm text-slate-700 dark:text-slate-200">
-              {t('analytics.filters.from')}
-              <Input type="date" name="from" defaultValue={filters.from} />
-            </label>
-            <label className="flex flex-col gap-1 text-sm text-slate-700 dark:text-slate-200">
-              {t('analytics.filters.to')}
-              <Input type="date" name="to" defaultValue={filters.to} />
-            </label>
-            <label className="flex flex-col gap-1 text-sm text-slate-700 dark:text-slate-200">
-              {t('analytics.filters.status')}
-              <Select name="status" defaultValue={filters.status}>
+            <FormGroup
+              label={t('analytics.filters.from')}
+              htmlFor="report-from"
+            >
+              <Input
+                id="report-from"
+                type="date"
+                name="from"
+                defaultValue={filters.from}
+              />
+            </FormGroup>
+            <FormGroup label={t('analytics.filters.to')} htmlFor="report-to">
+              <Input
+                id="report-to"
+                type="date"
+                name="to"
+                defaultValue={filters.to}
+              />
+            </FormGroup>
+            <FormGroup
+              label={t('analytics.filters.status')}
+              htmlFor="report-status"
+            >
+              <Select
+                id="report-status"
+                name="status"
+                defaultValue={filters.status}
+              >
                 {statusOptions.map((option) => (
                   <option key={option.value} value={option.value}>
                     {t(`analytics.status.${option.value}`)}
                   </option>
                 ))}
               </Select>
-            </label>
-            <div className="flex flex-wrap gap-2">
-              <Button type="submit" disabled={isFetching}>
+            </FormGroup>
+            <div className="flex flex-wrap justify-end gap-2 sm:col-span-2 lg:col-span-3">
+              <Button type="submit" variant="primary" disabled={isFetching}>
                 {isFetching ? t('analytics.loading') : t('analytics.apply')}
               </Button>
               <Button type="button" variant="outline" onClick={handleReset}>

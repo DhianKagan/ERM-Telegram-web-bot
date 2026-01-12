@@ -1,9 +1,10 @@
 // Назначение: вкладка автопарка с ручным управлением транспортом
-// Основные модули: React, services/fleets, FleetVehicleDialog, Modal, DataTable
+// Основные модули: React, services/fleets, FleetVehicleDialog, Modal, SimpleTable
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
-import DataTable from '../../components/DataTable';
+import { Input } from '@/components/ui/input';
+import { SimpleTable } from '@/components/ui/simple-table';
 import Modal from '../../components/Modal';
 import { showToast } from '../../utils/toast';
 import {
@@ -24,6 +25,8 @@ import {
   SETTINGS_BADGE_EMPTY,
   SETTINGS_BADGE_WRAPPER_CLASS,
 } from './badgeStyles';
+import SettingsSectionHeader from './SettingsSectionHeader';
+import { TruckIcon } from '@heroicons/react/24/outline';
 
 const PAGE_LIMIT = 10;
 
@@ -302,11 +305,32 @@ export default function FleetVehiclesTab() {
     }
   };
 
-  const handleSearchSubmit = (event: React.FormEvent) => {
-    event.preventDefault();
+  const handleSearchSubmit = (event?: React.SyntheticEvent) => {
+    event?.preventDefault();
     setPage(1);
     setAppliedSearch(search.trim());
   };
+
+  const handleSearchReset = useCallback(() => {
+    setSearch('');
+    setAppliedSearch('');
+    setPage(1);
+  }, []);
+
+  const handleSearchKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        setPage(1);
+        setAppliedSearch(event.currentTarget.value.trim());
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        handleSearchReset();
+      }
+    },
+    [handleSearchReset],
+  );
 
   const handlePageChange = (next: number) => {
     if (next < 1 || next > totalPages) return;
@@ -315,38 +339,46 @@ export default function FleetVehiclesTab() {
 
   return (
     <section className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-start sm:gap-3 lg:items-center lg:gap-3">
-        <form
-          onSubmit={handleSearchSubmit}
-          className="mt-2 flex w-full flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-2 lg:grid lg:flex-1 lg:grid-cols-[minmax(0,18rem)_auto] lg:items-center lg:gap-3"
-        >
-          <label className="flex w-full flex-col gap-1 sm:w-64 lg:w-full lg:min-w-0">
-            <span className="text-sm font-medium">Поиск</span>
-            <input
-              id="fleet-vehicles-search"
-              name="fleetVehicleSearch"
-              className="h-10 w-full rounded border px-3 text-sm lg:h-9 lg:text-xs"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Название или номер"
-            />
-          </label>
-          <Button
-            type="submit"
-            className="h-10 w-full max-w-[11rem] px-3 text-sm font-semibold sm:h-10 sm:w-auto sm:px-3 lg:h-8 lg:text-xs"
-          >
-            Искать
-          </Button>
-        </form>
-        <Button
-          type="button"
-          variant="success"
-          className="h-10 w-full max-w-[11rem] px-3 text-sm font-semibold sm:w-auto lg:h-8 lg:text-xs"
-          onClick={openCreate}
-        >
-          Добавить
-        </Button>
-      </div>
+      <SettingsSectionHeader
+        title="Автопарк"
+        description="Управляйте транспортом и назначениями"
+        icon={TruckIcon}
+        controls={
+          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+            <div className="grid gap-2" role="search">
+              <label
+                htmlFor="fleet-vehicles-search"
+                className="text-sm font-medium text-foreground"
+              >
+                Поиск
+              </label>
+              <Input
+                id="fleet-vehicles-search"
+                name="fleetVehicleSearch"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                onKeyDown={handleSearchKeyDown}
+                placeholder="Название или номер"
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Button type="button" onClick={handleSearchSubmit}>
+                Искать
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleSearchReset}
+              >
+                Сбросить
+              </Button>
+              <Button type="button" variant="success" onClick={openCreate}>
+                Добавить
+              </Button>
+            </div>
+          </div>
+        }
+      />
       {loading ? (
         <p className="text-sm text-gray-500">Загрузка транспорта…</p>
       ) : null}
@@ -358,7 +390,7 @@ export default function FleetVehiclesTab() {
       {!loading && !error && !items.length ? (
         <p className="text-sm text-gray-500">Транспорт не найден.</p>
       ) : null}
-      <DataTable
+      <SimpleTable
         columns={fleetVehicleColumns}
         data={rows}
         pageIndex={page - 1}
@@ -372,6 +404,9 @@ export default function FleetVehiclesTab() {
         badgeClassName={badgeClassName}
         badgeWrapperClassName={badgeWrapperClassName}
         badgeEmptyPlaceholder={SETTINGS_BADGE_EMPTY}
+        getRowActions={(row) => [
+          { label: 'Открыть', onClick: () => openEdit(row) },
+        ]}
       />
       <Modal open={modalOpen} onClose={closeModal}>
         <div className="space-y-4">

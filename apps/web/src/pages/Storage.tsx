@@ -1,5 +1,5 @@
 // Страница управления файлами: таблица, фильтры и карточка файла
-// Основные модули: React, DataTable, heroicons, storageService, react-router
+// Основные модули: React, SimpleTable, heroicons, storageService, react-router
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
@@ -8,15 +8,17 @@ import {
   DocumentIcon,
   DocumentTextIcon,
   PhotoIcon,
+  RectangleStackIcon,
   VideoCameraIcon,
   TrashIcon,
 } from '@heroicons/react/24/outline';
 
 import Breadcrumbs from '../components/Breadcrumbs';
-import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
+import { Select } from '../components/ui/select';
+import { SimpleTable } from '@/components/ui/simple-table';
 import createStorageColumns, {
   type StorageRow,
 } from '../columns/storageColumns';
@@ -33,6 +35,7 @@ import type { User } from '../types/user';
 import authFetch from '../utils/authFetch';
 import { showToast } from '../utils/toast';
 import { PROJECT_TIMEZONE, PROJECT_TIMEZONE_LABEL } from 'shared';
+import SettingsSectionHeader from './Settings/SettingsSectionHeader';
 
 const PAGE_SIZE = 25;
 
@@ -196,6 +199,22 @@ export default function StoragePage() {
         setDiagnosticsLoading(false);
       });
   }, [loadFiles, t]);
+
+  const handleSearchKeyDown = React.useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        setSearch(event.currentTarget.value.trim());
+        setPageIndex(0);
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setSearch('');
+        setPageIndex(0);
+      }
+    },
+    [],
+  );
 
   React.useEffect(() => {
     void loadFiles();
@@ -782,59 +801,66 @@ export default function StoragePage() {
           </p>
         )}
       </section>
-      <section className="space-y-5 rounded border border-border bg-card p-5 shadow-sm">
-        <header className="flex flex-col gap-4 border-b border-border pb-4">
-          <div className="flex flex-col gap-1">
-            <h2 className="text-lg font-semibold text-foreground">
-              {t('storage.title')}
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              {t('storage.total', { count: filteredFiles.length })}
-            </p>
-          </div>
-          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-            <div className="flex flex-wrap items-center gap-2">
-              <Input
-                value={search}
-                onChange={(event) => {
-                  setSearch(event.target.value);
-                  setPageIndex(0);
-                }}
-                placeholder={t('storage.searchPlaceholder') ?? ''}
-                className="max-w-xs"
-              />
-              <select
-                value={sort}
-                onChange={(event) => {
-                  setSort(event.target.value as SortOption);
-                  setPageIndex(0);
-                }}
-                className="h-9 rounded-md border border-input bg-background px-2 text-sm"
-              >
-                <option value="uploaded_desc">
-                  {t('storage.sort.uploadedDesc')}
-                </option>
-                <option value="uploaded_asc">
-                  {t('storage.sort.uploadedAsc')}
-                </option>
-                <option value="size_desc">{t('storage.sort.sizeDesc')}</option>
-                <option value="size_asc">{t('storage.sort.sizeAsc')}</option>
-              </select>
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => void loadFiles()}
-                disabled={loading}
-              >
-                {t('storage.refresh')}
-              </Button>
+      <section className="space-y-4">
+        <SettingsSectionHeader
+          title={t('storage.title')}
+          description={t('storage.total', { count: filteredFiles.length })}
+          icon={RectangleStackIcon}
+          controls={
+            <div className="grid gap-2">
+              <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                <label className="flex flex-col gap-1 text-sm text-slate-700 dark:text-slate-200">
+                  Поиск
+                  <Input
+                    value={search}
+                    onChange={(event) => {
+                      setSearch(event.target.value);
+                      setPageIndex(0);
+                    }}
+                    onKeyDown={handleSearchKeyDown}
+                    placeholder={t('storage.searchPlaceholder') ?? ''}
+                    className="w-full max-w-sm"
+                  />
+                </label>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Select
+                    value={sort}
+                    onChange={(event) => {
+                      setSort(event.target.value as SortOption);
+                      setPageIndex(0);
+                    }}
+                    className="w-full max-w-[12rem]"
+                  >
+                    <option value="uploaded_desc">
+                      {t('storage.sort.uploadedDesc')}
+                    </option>
+                    <option value="uploaded_asc">
+                      {t('storage.sort.uploadedAsc')}
+                    </option>
+                    <option value="size_desc">
+                      {t('storage.sort.sizeDesc')}
+                    </option>
+                    <option value="size_asc">
+                      {t('storage.sort.sizeAsc')}
+                    </option>
+                  </Select>
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => void loadFiles()}
+                    disabled={loading}
+                  >
+                    {t('storage.refresh')}
+                  </Button>
+                </div>
+              </div>
+              <div className="text-xs text-muted-foreground md:text-sm">
+                {loading ? t('loading') : null}
+              </div>
             </div>
-            <div className="text-xs text-muted-foreground md:text-sm">
-              {loading ? t('loading') : null}
-            </div>
-          </div>
-        </header>
-        <DataTable<StorageRow>
+          }
+        />
+        <SimpleTable<StorageRow>
           columns={createStorageColumns(
             {
               name: t('storage.columns.name'),
@@ -955,13 +981,13 @@ export default function StoragePage() {
                 {t('storage.attach.title')}
               </h3>
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <select
+                <Select
                   value={selectedRow.selectedTaskId}
                   onChange={(event) =>
                     selectedRow.onTaskSelect(event.target.value)
                   }
                   disabled={selectedRow.attachLoading || tasksLoading}
-                  className="h-9 min-w-[12rem] rounded-md border border-input bg-background px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                  className="w-full sm:max-w-[16rem]"
                 >
                   <option value="">{t('storage.attach.placeholder')}</option>
                   {taskOptionsForSelect.map((option) => (
@@ -969,7 +995,7 @@ export default function StoragePage() {
                       {option.label}
                     </option>
                   ))}
-                </select>
+                </Select>
                 <Button
                   type="button"
                   onClick={() => selectedRow.onAttach()}

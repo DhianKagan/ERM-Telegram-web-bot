@@ -1,5 +1,5 @@
 // Назначение файла: единые стили бейджей для таблиц настроек
-// Основные модули: DataTable badge helpers
+// Основные модули: SimpleTable badge helpers
 
 export const SETTINGS_BADGE_EMPTY = 'Нет данных';
 

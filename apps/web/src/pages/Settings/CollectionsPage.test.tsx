@@ -72,9 +72,9 @@ jest.mock('./HealthCheckTab', () => () => (
   <div data-testid="health-check-tab" />
 ));
 
-jest.mock('../../components/DataTable', () => ({
+jest.mock('@/components/ui/simple-table', () => ({
   __esModule: true,
-  default: ({
+  SimpleTable: ({
     data,
     columns = [],
     onRowClick,
@@ -98,21 +98,21 @@ jest.mock('../../components/DataTable', () => ({
     pageCount?: number;
     onPageChange?: (page: number) => void;
   }) => (
-    <div data-testid="data-table">
-      <div data-testid="data-table-headers">
+    <div data-testid="simple-table">
+      <div data-testid="simple-table-headers">
         {columns.map((column, index) => (
           <span data-testid="column-header" key={`header-${index}`}>
             {extractHeaderText(column.header)}
           </span>
         ))}
       </div>
-      <div data-testid="data-table-rows">
+      <div data-testid="simple-table-rows">
         {data.map((row, rowIndex) => (
           <div
             key={rowIndex}
             role="button"
             tabIndex={0}
-            data-testid={`data-table-row-${rowIndex}`}
+            data-testid={`simple-table-row-${rowIndex}`}
             onClick={() => onRowClick?.(row)}
             onKeyDown={(event) => {
               if (event.key === 'Enter' || event.key === ' ') {
@@ -153,7 +153,7 @@ jest.mock('../../components/DataTable', () => ({
           </div>
         ))}
       </div>
-      <div data-testid="data-table-pagination">
+      <div data-testid="simple-table-pagination">
         <span data-testid="page-index">{pageIndex}</span>
         <span data-testid="page-size">{pageSize}</span>
         <span data-testid="page-count">{pageCount}</span>
@@ -654,7 +654,7 @@ describe('CollectionsPage', () => {
       'tab-content-departments',
     );
     const departmentRow =
-      within(departmentsPanel).getByTestId('data-table-row-0');
+      within(departmentsPanel).getByTestId('simple-table-row-0');
     expect(departmentRow).toHaveTextContent('Отдел Легаси');
     expect(departmentRow).toHaveTextContent('Отдел Новый');
 
@@ -668,7 +668,7 @@ describe('CollectionsPage', () => {
       'tab-content-departments',
     );
     const departmentRowAfter = within(departmentsPanelAfter).getByTestId(
-      'data-table-row-0',
+      'simple-table-row-0',
     );
     expect(
       within(departmentRowAfter).queryByText('div-legacy'),
@@ -747,7 +747,7 @@ describe('CollectionsPage', () => {
       'tab-content-departments',
     );
     const departmentRow =
-      within(departmentsPanel).getByTestId('data-table-row-0');
+      within(departmentsPanel).getByTestId('simple-table-row-0');
     expect(departmentRow).toHaveTextContent('Отдел JSON 1');
     expect(departmentRow).toHaveTextContent('Отдел JSON 2');
 
@@ -815,9 +815,10 @@ describe('CollectionsPage', () => {
       .getAllByTestId('column-header')
       .map((element) => element.textContent ?? '');
 
-    const expectedHeaders = settingsUserColumns.map((column) =>
-      extractHeaderText(column.header),
-    );
+    const expectedHeaders = [
+      ...settingsUserColumns.map((column) => extractHeaderText(column.header)),
+      'Действия',
+    ];
 
     expect(headerTexts).toEqual(expectedHeaders);
   });
@@ -850,9 +851,12 @@ describe('CollectionsPage', () => {
       .getAllByTestId('column-header')
       .map((element) => element.textContent ?? '');
 
-    const expectedHeaders = settingsEmployeeColumns.map((column) =>
-      extractHeaderText(column.header),
-    );
+    const expectedHeaders = [
+      ...settingsEmployeeColumns.map((column) =>
+        extractHeaderText(column.header),
+      ),
+      'Действия',
+    ];
 
     expect(headerTexts).toEqual(expectedHeaders);
   });
@@ -956,7 +960,7 @@ describe('CollectionsPage', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'Пользователь' }));
 
-    const row = await screen.findByTestId('data-table-row-0');
+    const row = await screen.findByTestId('simple-table-row-0');
     expect(within(row).getByText('operator')).toBeInTheDocument();
 
     fireEvent.click(row);
@@ -982,7 +986,7 @@ describe('CollectionsPage', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Пользователь' }));
 
     const usersPanel = await screen.findByTestId('tab-content-users');
-    const rowsContainer = within(usersPanel).getByTestId('data-table-rows');
+    const rowsContainer = within(usersPanel).getByTestId('simple-table-rows');
 
     await waitFor(() => expect(rowsContainer.children).toHaveLength(1));
 
@@ -1032,7 +1036,8 @@ describe('CollectionsPage', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Сотрудник' }));
 
     const employeesPanel = await screen.findByTestId('tab-content-employees');
-    const rowsContainer = within(employeesPanel).getByTestId('data-table-rows');
+    const rowsContainer =
+      within(employeesPanel).getByTestId('simple-table-rows');
 
     await waitFor(() => expect(rowsContainer.children).toHaveLength(1));
 
@@ -1058,7 +1063,7 @@ describe('CollectionsPage', () => {
       expect.arrayContaining(['Название', 'Адрес', 'Координаты', 'ID']),
     );
 
-    const firstRow = within(objectsPanel).getByTestId('data-table-row-0');
+    const firstRow = within(objectsPanel).getByTestId('simple-table-row-0');
     expect(within(firstRow).getByText('Склад Левый берег')).toBeInTheDocument();
     expect(within(firstRow).getByText('Киев, Береговая 1')).toBeInTheDocument();
     expect(within(firstRow).getByText('50.5, 30.6')).toBeInTheDocument();

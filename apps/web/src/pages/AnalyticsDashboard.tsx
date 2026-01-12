@@ -4,9 +4,12 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import type { RoutePlanAnalyticsSummary, RoutePlanStatus } from 'shared';
+import { ChartPieIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Select } from '@/components/ui/select';
 import { useRoutePlanAnalytics } from '../services/analytics';
+import SettingsSectionHeader from './Settings/SettingsSectionHeader';
 
 const ReactApexChart = React.lazy(() => import('react-apexcharts'));
 
@@ -124,6 +127,13 @@ export default function AnalyticsDashboard(): React.ReactElement {
     void refetch();
   };
 
+  const handleFormKeyDown = (event: React.KeyboardEvent<HTMLFormElement>) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      handleReset();
+    }
+  };
+
   const mileageSeries = React.useMemo(
     () => mapMileageSeries(summary),
     [summary],
@@ -141,48 +151,46 @@ export default function AnalyticsDashboard(): React.ReactElement {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-3">
-        <h1 className="text-2xl font-semibold">{t('analytics.title')}</h1>
-        <p className="text-sm text-slate-600 dark:text-slate-300">
-          {t('analytics.description')}
-        </p>
-      </div>
-      <form
-        key={formKey}
-        onSubmit={handleSubmit}
-        className="flex flex-wrap items-end gap-3 rounded-lg bg-white p-4 shadow-sm dark:bg-slate-900"
-      >
-        <label className="flex flex-col text-sm text-slate-700 dark:text-slate-200">
-          {t('analytics.filters.from')}
-          <Input type="date" name="from" defaultValue={filters.from} />
-        </label>
-        <label className="flex flex-col text-sm text-slate-700 dark:text-slate-200">
-          {t('analytics.filters.to')}
-          <Input type="date" name="to" defaultValue={filters.to} />
-        </label>
-        <label className="flex flex-col text-sm text-slate-700 dark:text-slate-200">
-          {t('analytics.filters.status')}
-          <select
-            name="status"
-            defaultValue={filters.status}
-            className="mt-1 w-48 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-primary/60 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+      <SettingsSectionHeader
+        title={t('analytics.title')}
+        description={t('analytics.description')}
+        icon={ChartPieIcon}
+        controls={
+          <form
+            key={formKey}
+            onSubmit={handleSubmit}
+            onKeyDown={handleFormKeyDown}
+            className="grid gap-3 sm:grid-cols-2 lg:grid-cols-[repeat(3,minmax(0,1fr))_auto] lg:items-end"
           >
-            {statusOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {t(`analytics.status.${option.value}`)}
-              </option>
-            ))}
-          </select>
-        </label>
-        <div className="flex flex-wrap gap-2">
-          <Button type="submit" disabled={isFetching}>
-            {isFetching ? t('analytics.loading') : t('analytics.apply')}
-          </Button>
-          <Button type="button" variant="outline" onClick={handleReset}>
-            {t('analytics.reset')}
-          </Button>
-        </div>
-      </form>
+            <label className="flex flex-col gap-1 text-sm text-slate-700 dark:text-slate-200">
+              {t('analytics.filters.from')}
+              <Input type="date" name="from" defaultValue={filters.from} />
+            </label>
+            <label className="flex flex-col gap-1 text-sm text-slate-700 dark:text-slate-200">
+              {t('analytics.filters.to')}
+              <Input type="date" name="to" defaultValue={filters.to} />
+            </label>
+            <label className="flex flex-col gap-1 text-sm text-slate-700 dark:text-slate-200">
+              {t('analytics.filters.status')}
+              <Select name="status" defaultValue={filters.status}>
+                {statusOptions.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {t(`analytics.status.${option.value}`)}
+                  </option>
+                ))}
+              </Select>
+            </label>
+            <div className="flex flex-wrap gap-2">
+              <Button type="submit" disabled={isFetching}>
+                {isFetching ? t('analytics.loading') : t('analytics.apply')}
+              </Button>
+              <Button type="button" variant="outline" onClick={handleReset}>
+                {t('analytics.reset')}
+              </Button>
+            </div>
+          </form>
+        }
+      />
       {loadError ? (
         <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-600 dark:border-red-800 dark:bg-red-900/30 dark:text-red-200">
           {loadError}

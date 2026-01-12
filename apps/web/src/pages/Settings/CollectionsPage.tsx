@@ -12,13 +12,14 @@ import { matchSorter, rankings } from 'match-sorter';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
 
+import Badge from '@/components/ui/Badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { FormGroup } from '@/components/ui/form-group';
 import { Input } from '@/components/ui/input';
 import { Radio } from '@/components/ui/radio';
 import { Select } from '@/components/ui/select';
-import DataTable from '@/components/DataTable';
+import { SimpleTable } from '@/components/ui/simple-table';
 import {
   Tabs,
   TabsList,
@@ -52,6 +53,7 @@ import ArchivePage from '../Archive';
 import LogsPage from '../Logs';
 import StoragePage from '../Storage';
 import HealthCheckTab from './HealthCheckTab';
+import SettingsSectionHeader from './SettingsSectionHeader';
 import {
   type CollectionTableRow,
   collectionColumns,
@@ -1108,9 +1110,6 @@ export default function CollectionsPage() {
   const [confirmUserDelete, setConfirmUserDelete] = useState(false);
   const [confirmEmployeeDelete, setConfirmEmployeeDelete] = useState(false);
   const canManageUsers = hasAccess(currentUser?.access, ACCESS_ADMIN);
-  const actionButtonClass =
-    'h-10 w-full max-w-[11rem] px-3 text-sm font-semibold sm:w-auto lg:h-8 lg:text-xs';
-
   useEffect(() => {
     return () => {
       if (collectionSearchTimer.current) {
@@ -2365,9 +2364,9 @@ export default function CollectionsPage() {
         handleChange({ ...currentForm, value: values.join(',') });
       };
       return (
-        <select
+        <Select
           multiple
-          className="min-h-[8rem] w-full rounded border px-3 py-2"
+          className="min-h-[8rem] w-full"
           value={selected}
           onChange={handleSelect}
           disabled={options?.readonly}
@@ -2386,7 +2385,7 @@ export default function CollectionsPage() {
                 {division.name}
               </option>
             ))}
-        </select>
+        </Select>
       );
     },
     [allDivisions, divisionOwners],
@@ -2398,8 +2397,7 @@ export default function CollectionsPage() {
       handleChange: (next: ItemForm) => void,
       options?: { readonly?: boolean },
     ) => (
-      <select
-        className="h-10 w-full rounded border px-3"
+      <Select
         value={currentForm.value}
         onChange={(event) =>
           handleChange({ ...currentForm, value: event.target.value })
@@ -2415,7 +2413,7 @@ export default function CollectionsPage() {
             {department.name}
           </option>
         ))}
-      </select>
+      </Select>
     ),
     [allDepartments],
   );
@@ -2426,8 +2424,7 @@ export default function CollectionsPage() {
       handleChange: (next: ItemForm) => void,
       options?: { readonly?: boolean },
     ) => (
-      <select
-        className="h-10 w-full rounded border px-3"
+      <Select
         value={currentForm.value}
         onChange={(event) =>
           handleChange({ ...currentForm, value: event.target.value })
@@ -2443,7 +2440,7 @@ export default function CollectionsPage() {
             {division.name}
           </option>
         ))}
-      </select>
+      </Select>
     ),
     [allDivisions],
   );
@@ -2850,7 +2847,7 @@ export default function CollectionsPage() {
       });
   }, [selectedCollection, enrichedUsers]);
 
-  const directoriesToolbar = (() => {
+  const directoriesControls = (() => {
     if (activeModule !== 'directories') {
       return null;
     }
@@ -2864,13 +2861,11 @@ export default function CollectionsPage() {
         ? () => openEmployeeModal()
         : () => openUserModal();
       return (
-        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <FormGroup
-            className="w-full sm:flex-1"
-            label={collectionSearchCta}
-            htmlFor="settings-users-search"
-            help={collectionSearchHint}
-          >
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+          <label className="flex w-full flex-col gap-2">
+            <span className="text-sm font-medium text-foreground">
+              {collectionSearchCta}
+            </span>
             <Input
               id="settings-users-search"
               value={userSearchDraft}
@@ -2878,8 +2873,13 @@ export default function CollectionsPage() {
               onKeyDown={handleUserSearchKeyDown}
               placeholder={placeholder}
             />
-          </FormGroup>
-          <div className="flex flex-wrap items-center gap-2 sm:flex-shrink-0">
+            {collectionSearchHint ? (
+              <span className="text-xs text-muted-foreground">
+                {collectionSearchHint}
+              </span>
+            ) : null}
+          </label>
+          <div className="flex flex-wrap items-center gap-2">
             <Button size="sm" onClick={() => submitUserSearch()}>
               {collectionSearchCta}
             </Button>
@@ -2902,13 +2902,11 @@ export default function CollectionsPage() {
     }
     if (isCollectionSearchSupported) {
       return (
-        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <FormGroup
-            className="w-full sm:flex-1"
-            label={collectionSearchCta}
-            htmlFor="settings-collections-search"
-            help={collectionSearchHint}
-          >
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+          <label className="flex w-full flex-col gap-2">
+            <span className="text-sm font-medium text-foreground">
+              {collectionSearchCta}
+            </span>
             <Input
               id="settings-collections-search"
               value={currentSearchDraft}
@@ -2918,8 +2916,13 @@ export default function CollectionsPage() {
               onKeyDown={handleCollectionSearchKeyDown}
               placeholder={collectionSearchPlaceholder}
             />
-          </FormGroup>
-          <div className="flex flex-wrap items-center gap-2 sm:flex-shrink-0">
+            {collectionSearchHint ? (
+              <span className="text-xs text-muted-foreground">
+                {collectionSearchHint}
+              </span>
+            ) : null}
+          </label>
+          <div className="flex flex-wrap items-center gap-2">
             <Button size="sm" onClick={() => submitCollectionSearch()}>
               {collectionSearchCta}
             </Button>
@@ -2938,7 +2941,7 @@ export default function CollectionsPage() {
       );
     }
     return (
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2">
         <Button
           size="sm"
           variant="accent"
@@ -2949,6 +2952,9 @@ export default function CollectionsPage() {
       </div>
     );
   })();
+
+  const activeModuleMeta =
+    moduleTabs.find((module) => module.key === activeModule) ?? moduleTabs[0];
 
   return (
     <div className="mx-auto flex w-full max-w-screen-2xl flex-col gap-6 px-3 pb-12 pt-4 sm:px-4 lg:px-8">
@@ -2963,16 +2969,14 @@ export default function CollectionsPage() {
           breadcrumbs={<Breadcrumbs items={breadcrumbs} />}
           title={t('collections.page.title')}
           description={t('collections.page.description')}
-          toolbar={directoriesToolbar}
         >
           <div className="flex flex-col gap-3">
             <div className="sm:hidden">
               <label htmlFor="settings-module-select" className="sr-only">
                 {t('collections.moduleSelectLabel')}
               </label>
-              <select
+              <Select
                 id="settings-module-select"
-                className="h-11 w-full rounded-2xl border border-[color:var(--color-gray-200)] bg-white px-3 text-sm font-semibold text-[color:var(--color-gray-800)] shadow-sm outline-none transition focus:border-[color:var(--color-brand-400)] focus:ring-2 focus:ring-[color:var(--color-brand-200)] dark:border-[color:var(--color-gray-700)] dark:bg-[color:var(--color-gray-dark)] dark:text-white"
                 value={activeModule}
                 onChange={(event) =>
                   handleModuleChange(event.target.value as SettingsModuleKey)
@@ -2983,7 +2987,7 @@ export default function CollectionsPage() {
                     {tab.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <TabsList className="hidden h-auto gap-2 bg-transparent p-0 sm:grid sm:gap-2 sm:p-1 sm:[grid-template-columns:repeat(auto-fit,minmax(9.5rem,1fr))] lg:[grid-template-columns:repeat(auto-fit,minmax(11rem,1fr))]">
               {moduleTabs.map((tab) => {
@@ -3015,6 +3019,12 @@ export default function CollectionsPage() {
           </div>
         </ActionBar>
         <TabsContent value="directories" className="mt-0 space-y-6">
+          <SettingsSectionHeader
+            title={activeModuleMeta.label}
+            description={activeModuleMeta.description}
+            icon={activeModuleMeta.icon}
+            controls={directoriesControls}
+          />
           {hint ? (
             <div className="rounded-2xl border border-[color:var(--color-error-200)] bg-[color:var(--color-error-25)] p-4 text-sm text-[color:var(--color-error-600)] dark:border-[color:var(--color-error-700)] dark:bg-[color:var(--color-error-900)]/40 dark:text-[color:var(--color-error-200)]">
               {hint}
@@ -3032,9 +3042,8 @@ export default function CollectionsPage() {
               <label htmlFor="settings-section-select" className="sr-only">
                 {t('collections.directorySelectLabel')}
               </label>
-              <select
+              <Select
                 id="settings-section-select"
-                className="h-11 w-full rounded-2xl border border-[color:var(--color-gray-200)] bg-white px-3 text-sm font-semibold text-[color:var(--color-gray-800)] shadow-sm outline-none transition focus:border-[color:var(--color-brand-400)] focus:ring-2 focus:ring-[color:var(--color-brand-200)] dark:border-[color:var(--color-gray-700)] dark:bg-[color:var(--color-gray-dark)] dark:text-white"
                 value={active}
                 onChange={(event) => {
                   setActive(event.target.value as CollectionKey);
@@ -3046,7 +3055,7 @@ export default function CollectionsPage() {
                     {type.label}
                   </option>
                 ))}
-              </select>
+              </Select>
             </div>
             <TabsList className="hidden gap-2 sm:grid sm:gap-2 sm:overflow-visible sm:p-1 sm:[grid-template-columns:repeat(auto-fit,minmax(8.5rem,1fr))] lg:[grid-template-columns:repeat(auto-fit,minmax(9.5rem,1fr))]">
               {types.map((type) => {
@@ -3206,15 +3215,19 @@ export default function CollectionsPage() {
                       </div>
                     ) : (
                       <Card bodyClassName="space-y-3">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between gap-3">
                           <h3 className="text-base font-semibold text-[color:var(--color-gray-800)] dark:text-white">
                             Пользователи
                           </h3>
-                          <span className="badge badge-neutral badge-sm">
+                          <Badge
+                            variant="pill"
+                            size="sm"
+                            className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                          >
                             {paginatedUsers.length} записей
-                          </span>
+                          </Badge>
                         </div>
-                        <DataTable<User>
+                        <SimpleTable<User>
                           columns={settingsUserColumns}
                           data={paginatedUsers}
                           pageIndex={userPage - 1}
@@ -3228,6 +3241,12 @@ export default function CollectionsPage() {
                           badgeWrapperClassName={SETTINGS_BADGE_WRAPPER_CLASS}
                           badgeEmptyPlaceholder={SETTINGS_BADGE_EMPTY}
                           onRowClick={(row) => openUserModal(row)}
+                          getRowActions={(row) => [
+                            {
+                              label: 'Открыть',
+                              onClick: () => openUserModal(row),
+                            },
+                          ]}
                         />
                       </Card>
                     )}
@@ -3260,15 +3279,19 @@ export default function CollectionsPage() {
                       </div>
                     ) : (
                       <Card bodyClassName="space-y-3">
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between gap-3">
                           <h3 className="text-base font-semibold text-[color:var(--color-gray-800)] dark:text-white">
                             Сотрудники
                           </h3>
-                          <span className="badge badge-neutral badge-sm">
+                          <Badge
+                            variant="pill"
+                            size="sm"
+                            className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                          >
                             {employeeRows.length} записей
-                          </span>
+                          </Badge>
                         </div>
-                        <DataTable<EmployeeRow>
+                        <SimpleTable<EmployeeRow>
                           columns={settingsEmployeeColumns}
                           data={employeeRows}
                           pageIndex={userPage - 1}
@@ -3284,6 +3307,12 @@ export default function CollectionsPage() {
                           onRowClick={(row) => openEmployeeModal(row)}
                           enableVirtualization
                           virtualizationThreshold={limit}
+                          getRowActions={(row) => [
+                            {
+                              label: 'Открыть',
+                              onClick: () => openEmployeeModal(row),
+                            },
+                          ]}
                         />
                       </Card>
                     )}
@@ -3346,15 +3375,19 @@ export default function CollectionsPage() {
                     </div>
                   ) : type.key === 'fixed_assets' ? (
                     <Card bodyClassName="space-y-3">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-3">
                         <h3 className="text-base font-semibold text-[color:var(--color-gray-800)] dark:text-white">
                           Основные средства
                         </h3>
-                        <span className="badge badge-neutral badge-sm">
+                        <Badge
+                          variant="pill"
+                          size="sm"
+                          className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                        >
                           {fixedAssetRows.length} записей
-                        </span>
+                        </Badge>
                       </div>
-                      <DataTable<FixedAssetRow>
+                      <SimpleTable<FixedAssetRow>
                         columns={fixedAssetColumns}
                         data={fixedAssetRows}
                         pageIndex={page - 1}
@@ -3372,19 +3405,32 @@ export default function CollectionsPage() {
                             items.find((item) => item._id === row._id),
                           )
                         }
+                        getRowActions={(row) => [
+                          {
+                            label: 'Открыть',
+                            onClick: () =>
+                              openCollectionModal(
+                                items.find((item) => item._id === row._id),
+                              ),
+                          },
+                        ]}
                       />
                     </Card>
                   ) : (
                     <Card bodyClassName="space-y-3">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between gap-3">
                         <h3 className="text-base font-semibold text-[color:var(--color-gray-800)] dark:text-white">
                           {type.label}
                         </h3>
-                        <span className="badge badge-neutral badge-sm">
+                        <Badge
+                          variant="pill"
+                          size="sm"
+                          className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                        >
                           {rows.length} записей
-                        </span>
+                        </Badge>
                       </div>
-                      <DataTable<CollectionTableRow>
+                      <SimpleTable<CollectionTableRow>
                         columns={
                           type.key === 'objects'
                             ? localizedObjectColumns
@@ -3404,6 +3450,12 @@ export default function CollectionsPage() {
                         onRowClick={(row) => openCollectionModal(row)}
                         enableVirtualization
                         virtualizationThreshold={limit}
+                        getRowActions={(row) => [
+                          {
+                            label: 'Открыть',
+                            onClick: () => openCollectionModal(row),
+                          },
+                        ]}
                       />
                     </Card>
                   )}
@@ -3603,9 +3655,13 @@ export default function CollectionsPage() {
                                 ? 'Скрыть историю'
                                 : 'Показать историю'}
                             </Button>
-                            <span className="badge badge-neutral badge-sm">
+                            <Badge
+                              variant="pill"
+                              size="sm"
+                              className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                            >
                               {assetEvents.length}
-                            </span>
+                            </Badge>
                             <Button
                               variant="ghost"
                               size="sm"

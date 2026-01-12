@@ -2,6 +2,7 @@
 // Основные модули: React, ConfirmDialog
 import React from 'react';
 
+import Badge from '@/components/ui/Badge';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { FormGroup } from '@/components/ui/form-group';
@@ -55,13 +56,19 @@ export default function CollectionForm({
   };
 
   return (
-    <Card className="bg-base-100" bodyClassName="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-base-content">
+    <Card className="bg-background" bodyClassName="space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-lg font-semibold text-foreground">
           Основные параметры
         </h3>
         {form._id ? (
-          <span className="badge badge-neutral badge-sm">ID {form._id}</span>
+          <Badge
+            variant="pill"
+            size="sm"
+            className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          >
+            ID {form._id}
+          </Badge>
         ) : null}
       </div>
       <form
@@ -104,12 +111,9 @@ export default function CollectionForm({
         </FormGroup>
         {readonly ? (
           <div className="sm:col-span-2 lg:col-span-3">
-            <div className="collapse collapse-arrow bg-amber-50 text-amber-900">
-              <input type="checkbox" defaultChecked />
-              <div className="collapse-title text-sm font-medium">
-                Режим только для чтения
-              </div>
-              <div className="collapse-content text-sm">
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-900/30 dark:text-amber-100">
+              <div className="font-semibold">Режим только для чтения</div>
+              <div className="mt-1">
                 {readonlyNotice ?? 'Элемент доступен только для чтения.'}
               </div>
             </div>

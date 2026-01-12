@@ -8,7 +8,6 @@ import sharp from 'sharp';
 import ffmpeg from 'fluent-ffmpeg';
 import ffmpegPath from 'ffmpeg-static';
 import { Router, RequestHandler } from 'express';
-import { Types } from 'mongoose';
 import createRateLimiter from '../utils/rateLimiter';
 import { param, query } from 'express-validator';
 import container from '../di';
@@ -25,7 +24,6 @@ import checkTaskAccess from '../middleware/taskAccess';
 import { taskFormValidators } from '../form';
 import { uploadsDir } from '../config/storage';
 import type RequestWithUser from '../types/request';
-import { File } from '../db/model';
 import {
   findTaskIdByPublicIdentifier,
   syncTaskAttachments,
@@ -50,6 +48,11 @@ import rolesGuard from '../auth/roles.guard';
 import { ACCESS_MANAGER, ACCESS_TASK_DELETE } from '../utils/accessMask';
 import { buildInlineFileUrl } from '../utils/fileUrls';
 import { handleValidation } from '../utils/validate';
+import {
+  deleteFilesByIds,
+  findStaleUserFiles,
+  getUserFileStats,
+} from '../services/fileService';
 
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath);
@@ -261,29 +264,10 @@ export const processUploads: RequestHandler = async (req, res, next) => {
         : null;
       if (shouldApplyGrace && cutoff) {
         try {
-          type StaleEntry = {
-            _id: Types.ObjectId;
-            path: string;
-            thumbnailPath?: string | null;
-          };
-          const staleQuery = File.find(
-            {
-              userId,
-              taskId: null,
-              draftId: null,
-              uploadedAt: { $lte: cutoff },
-            },
-            { path: 1, thumbnailPath: 1 },
-          ).lean<StaleEntry[]>();
-          const staleEntries = await (typeof (staleQuery as { exec?: unknown })
-            .exec === 'function'
-            ? (staleQuery as { exec: () => Promise<StaleEntry[]> }).exec()
-            : Promise.resolve(
-                staleQuery as StaleEntry[] | Promise<StaleEntry[]>,
-              ));
+          const staleEntries = await findStaleUserFiles(userId, cutoff);
           if (staleEntries.length > 0) {
             const staleIds = staleEntries.map((entry) => entry._id);
-            await File.deleteMany({ _id: { $in: staleIds } });
+            await deleteFilesByIds(staleIds);
             for (const entry of staleEntries) {
               const targets = [entry.path, entry.thumbnailPath].filter(
                 (v): v is string => Boolean(v && v.length > 0),
@@ -310,27 +294,7 @@ export const processUploads: RequestHandler = async (req, res, next) => {
           });
         }
       }
-      const aggregation = await File.aggregate([
-        { $match: { userId } },
-        {
-          $group: {
-            _id: null,
-            count: { $sum: 1 },
-            size: { $sum: '$size' },
-          },
-        },
-      ]);
-      const rawStats =
-        (aggregation[0] as
-          | {
-              count?: number;
-              size?: number;
-            }
-          | undefined) || {};
-      const stats: { count: number; size: number } = {
-        count: rawStats.count ?? 0,
-        size: rawStats.size ?? 0,
-      };
+      const stats = await getUserFileStats(userId);
       const incoming = files.reduce((s, f) => s + f.size, 0);
       if (
         stats.count + files.length > maxUserFiles ||
@@ -868,16 +832,17 @@ export const normalizeArrays: RequestHandler = (req, _res, next) => {
     body.assigned_user_id ?? (body as Record<string, unknown>).assignedUserId;
   const rawAssignees =
     body.assignees !== undefined ? body.assignees : undefined;
-  const normalizedAssignees = rawAssignees !== undefined
-    ? (Array.isArray(rawAssignees) ? rawAssignees : [rawAssignees])
-        .map((item) => (typeof item === 'string' ? item.trim() : item))
-        .filter(
-          (item) =>
-            item !== null &&
-            item !== undefined &&
-            !(typeof item === 'string' && item.length === 0),
-        )
-    : [];
+  const normalizedAssignees =
+    rawAssignees !== undefined
+      ? (Array.isArray(rawAssignees) ? rawAssignees : [rawAssignees])
+          .map((item) => (typeof item === 'string' ? item.trim() : item))
+          .filter(
+            (item) =>
+              item !== null &&
+              item !== undefined &&
+              !(typeof item === 'string' && item.length === 0),
+          )
+      : [];
 
   if (assignedRaw !== undefined) {
     const pickValue = Array.isArray(assignedRaw)

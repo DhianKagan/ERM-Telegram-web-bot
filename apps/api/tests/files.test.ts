@@ -1,12 +1,12 @@
 // Назначение: тесты роута скачивания файлов. Модули: jest, supertest.
+import express from 'express';
+import fs from 'fs';
+import path from 'path';
+import request from 'supertest';
+
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 's';
 process.env.APP_URL = 'https://localhost';
-
-const express = require('express');
-const request = require('supertest');
-const fs = require('fs');
-const path = require('path');
 
 const testUploadsDir = path.resolve(__dirname, '../tmp/uploads-files-test');
 process.env.STORAGE_DIR = testUploadsDir;
@@ -21,14 +21,15 @@ jest.mock('../src/middleware/auth', () => () => (req, _res, next) => {
   req.user = { id: 1, access: 1 };
   next();
 });
-jest.mock('../src/services/dataStorage', () => ({
+import router from '../src/routes/files';
+import { uploadsDir } from '../src/config/storage';
+import { File } from '../src/db/model';
+import { deleteFile } from '../src/services/fileService';
+
+jest.mock('../src/services/fileService', () => ({
+  ...jest.requireActual('../src/services/fileService'),
   deleteFile: jest.fn(),
 }));
-
-const router = require('../src/routes/files').default;
-const { uploadsDir } = require('../src/config/storage');
-const { File } = require('../src/db/model');
-const { deleteFile } = require('../src/services/dataStorage');
 
 describe('files route', () => {
   const app = express();

@@ -6,9 +6,9 @@ import StackOrchestratorService, {
 } from '../apps/api/src/system/stackOrchestrator.service';
 import type LogAnalysisService from '../apps/api/src/system/logAnalysis.service';
 import type { RailwayLogAnalysisSummary } from '../apps/api/src/system/logAnalysis.service';
-import { getFileSyncSnapshot } from '../apps/api/src/services/dataStorage';
+import { getFileSyncSnapshot } from '../apps/api/src/services/fileService';
 
-jest.mock('../apps/api/src/services/dataStorage', () => ({
+jest.mock('../apps/api/src/services/fileService', () => ({
   getFileSyncSnapshot: jest.fn(),
 }));
 

@@ -1,8 +1,8 @@
 // Утилиты для отслеживания временных загрузок в запросе
-// Основные модули: express, services/dataStorage, wgLogEngine
+// Основные модули: express, services/fileService, wgLogEngine
 import type { Request } from 'express';
 import fs from 'node:fs/promises';
-import { deleteFile } from '../services/dataStorage';
+import { deleteFile } from '../services/fileService';
 import { writeLog } from '../services/wgLogEngine';
 
 const UPLOADED_FILE_IDS_FIELD = Symbol('uploadedFileIds');

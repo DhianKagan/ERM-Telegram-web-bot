@@ -624,6 +624,10 @@ const userSchema = new Schema<UserDocument>({
 
 export interface FileAttrs {
   taskId?: Types.ObjectId;
+  relatedTaskIds?: Types.ObjectId[];
+  telegramFileId?: string;
+  scope?: string;
+  detached?: boolean;
   userId: number;
   name: string;
   path: string;
@@ -637,7 +641,11 @@ export interface FileDocument extends FileAttrs, Document {}
 
 const fileSchema = new Schema<FileDocument>({
   taskId: { type: Schema.Types.ObjectId, ref: 'Task' },
+  relatedTaskIds: [{ type: Schema.Types.ObjectId, ref: 'Task' }],
   draftId: { type: Schema.Types.ObjectId, ref: 'TaskDraft', default: null },
+  telegramFileId: String,
+  scope: String,
+  detached: { type: Boolean, default: false },
   userId: { type: Number, required: true },
   name: { type: String, required: true },
   path: { type: String, required: true },
@@ -667,7 +675,10 @@ const taskDraftSchema = new Schema<TaskDraftDocument>(
   },
   { timestamps: true },
 );
-taskDraftSchema.index({ userId: 1, kind: 1 }, { unique: true, name: 'task_drafts_user_kind_unique' });
+taskDraftSchema.index(
+  { userId: 1, kind: 1 },
+  { unique: true, name: 'task_drafts_user_kind_unique' },
+);
 
 /* ---------- TaskTemplate ---------- */
 
@@ -692,20 +703,44 @@ export const TaskHistoryArchive = mongoose.model<TaskHistoryArchiveDocument>(
   'TaskHistoryArchive',
   taskHistoryArchiveSchema,
 );
-export const Archive = mongoose.model<TaskDocument>('Archive', taskSchema, 'archives');
+export const Archive = mongoose.model<TaskDocument>(
+  'Archive',
+  taskSchema,
+  'archives',
+);
 
 export const Role = mongoose.model<RoleDocument>('Role', roleSchema);
-export const User = mongoose.model<UserDocument>('User', userSchema, 'telegram_users');
+export const User = mongoose.model<UserDocument>(
+  'User',
+  userSchema,
+  'telegram_users',
+);
 
 export const File = mongoose.model<FileDocument>('File', fileSchema);
 
-export const TaskDraft = mongoose.model<TaskDraftDocument>('TaskDraft', taskDraftSchema);
-export const TaskTemplate = mongoose.model<TaskTemplateDocument>('TaskTemplate', taskTemplateSchema);
+export const TaskDraft = mongoose.model<TaskDraftDocument>(
+  'TaskDraft',
+  taskDraftSchema,
+);
+export const TaskTemplate = mongoose.model<TaskTemplateDocument>(
+  'TaskTemplate',
+  taskTemplateSchema,
+);
 
-export const Log = mongoose.model('Log', new Schema({
-  message: String,
-  level: { type: String, enum: ['debug','info','warn','error','log'], default: 'info' },
-}, { timestamps: true }));
+export const Log = mongoose.model(
+  'Log',
+  new Schema(
+    {
+      message: String,
+      level: {
+        type: String,
+        enum: ['debug', 'info', 'warn', 'error', 'log'],
+        default: 'info',
+      },
+    },
+    { timestamps: true },
+  ),
+);
 
 /* ---------- ShortLink (оставлено) ---------- */
 
@@ -731,7 +766,16 @@ const shortLinkSchema = new Schema<ShortLinkDocument>(
   },
 );
 
-shortLinkSchema.index({ slug: 1 }, { unique: true, name: 'short_link_slug_unique' });
-shortLinkSchema.index({ url: 1 }, { unique: true, name: 'short_link_url_unique' });
+shortLinkSchema.index(
+  { slug: 1 },
+  { unique: true, name: 'short_link_slug_unique' },
+);
+shortLinkSchema.index(
+  { url: 1 },
+  { unique: true, name: 'short_link_url_unique' },
+);
 
-export const ShortLink = mongoose.model<ShortLinkDocument>('ShortLink', shortLinkSchema);
+export const ShortLink = mongoose.model<ShortLinkDocument>(
+  'ShortLink',
+  shortLinkSchema,
+);

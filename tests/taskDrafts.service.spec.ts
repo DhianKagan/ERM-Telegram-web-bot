@@ -56,19 +56,24 @@ jest.mock('../apps/api/src/db/model', () => {
   };
 });
 
-jest.mock('../apps/api/src/services/dataStorage', () => ({
+jest.mock('../apps/api/src/services/fileService', () => ({
   deleteFile: jest.fn(),
+  clearDraftForFile: jest.fn(),
+  findFilesByIds: jest.fn(),
+  setDraftForFiles: jest.fn(),
 }));
 
 jest.mock('../apps/api/src/services/wgLogEngine', () => ({
   writeLog: jest.fn(),
 }));
 
-const { deleteFile } = jest.requireMock(
-  '../apps/api/src/services/dataStorage',
-) as {
-  deleteFile: jest.Mock;
-};
+const { deleteFile, clearDraftForFile, findFilesByIds, setDraftForFiles } =
+  jest.requireMock('../apps/api/src/services/fileService') as {
+    deleteFile: jest.Mock;
+    clearDraftForFile: jest.Mock;
+    findFilesByIds: jest.Mock;
+    setDraftForFiles: jest.Mock;
+  };
 const models = jest.requireMock('../apps/api/src/db/model') as {
   File: { updateMany: jest.Mock; find: jest.Mock; updateOne: jest.Mock };
   TaskDraft: { findOneAndDelete: jest.Mock };
@@ -113,13 +118,11 @@ describe('TaskDraftsService — вложения черновиков', () => {
 
     await service.saveDraft(42, 'task', payload);
 
-    expect(updateManyMock).toHaveBeenCalledTimes(1);
-    const callArgs = updateManyMock.mock.calls[0] ?? [];
-    const update = (callArgs as unknown[])[1] as
-      | Record<string, unknown>
-      | undefined;
-    expect(update?.$set).toMatchObject({ draftId: expect.any(Types.ObjectId) });
-    expect(update?.$unset).toBeUndefined();
+    expect(setDraftForFiles).toHaveBeenCalledTimes(1);
+    const callArgs = setDraftForFiles.mock.calls[0] ?? [];
+    expect(callArgs[0]).toHaveLength(1);
+    expect(callArgs[1]).toBe(42);
+    expect(callArgs[2]).toBeInstanceOf(Types.ObjectId);
   });
 
   it('не удаляет файл, связанный с задачей, при очистке черновика', async () => {
@@ -137,20 +140,13 @@ describe('TaskDraftsService — вложения черновиков', () => {
         ],
       }),
     }));
-    findMock.mockImplementation(() => ({
-      select: jest.fn(() => ({
-        lean: jest
-          .fn()
-          .mockResolvedValue([{ _id: linkedId, taskId: new Types.ObjectId() }]),
-      })),
-    }));
+    findFilesByIds.mockResolvedValue([
+      { _id: linkedId, taskId: new Types.ObjectId() },
+    ]);
 
     await service.deleteDraft(7, 'task');
 
     expect(deleteFile).not.toHaveBeenCalled();
-    expect(updateOneMock).toHaveBeenCalledWith(
-      { _id: linkedId },
-      { $unset: { draftId: '' } },
-    );
+    expect(clearDraftForFile).toHaveBeenCalledWith(linkedId);
   });
 });

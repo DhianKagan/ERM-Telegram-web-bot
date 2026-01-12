@@ -3,15 +3,16 @@
  * Основные модули: jest, StorageDiagnosticsService.
  */
 import 'reflect-metadata';
-import { Types } from 'mongoose';
+import { Types, type Model } from 'mongoose';
 
 import StorageDiagnosticsService from '../apps/api/src/services/storageDiagnostics.service';
+import type { FileDocument } from '../apps/api/src/db/model';
 
 type CollectAttachmentLinksMock = jest.MockedFunction<
-  typeof import('../apps/api/src/services/dataStorage').collectAttachmentLinks
+  typeof import('../apps/api/src/services/fileService').collectAttachmentLinks
 >;
 type GetFileSyncSnapshotMock = jest.MockedFunction<
-  typeof import('../apps/api/src/services/dataStorage').getFileSyncSnapshot
+  typeof import('../apps/api/src/services/fileService').getFileSyncSnapshot
 >;
 
 type FileDoc = {
@@ -29,7 +30,7 @@ type FileModelMock = {
   updateOne: jest.Mock;
 };
 
-jest.mock('../apps/api/src/services/dataStorage', () => ({
+jest.mock('../apps/api/src/services/fileService', () => ({
   collectAttachmentLinks: jest.fn(),
   getFileSyncSnapshot: jest.fn(),
   deleteFile: jest.fn(),
@@ -37,7 +38,7 @@ jest.mock('../apps/api/src/services/dataStorage', () => ({
 
 describe('StorageDiagnosticsService', () => {
   const dataStorageMocks = jest.requireMock(
-    '../apps/api/src/services/dataStorage',
+    '../apps/api/src/services/fileService',
   ) as {
     collectAttachmentLinks: CollectAttachmentLinksMock;
     getFileSyncSnapshot: GetFileSyncSnapshotMock;
@@ -168,7 +169,9 @@ describe('StorageDiagnosticsService', () => {
       };
     });
 
-    const service = new StorageDiagnosticsService(fileModel as unknown as any);
+    const service = new StorageDiagnosticsService(
+      fileModel as unknown as Model<FileDocument>,
+    );
     const report = await service.diagnose();
 
     expect(report.snapshot).toEqual(

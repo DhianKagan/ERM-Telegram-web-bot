@@ -11,10 +11,11 @@ import {
 } from '../utils/requestUploads';
 import { clearUploadContext } from './uploadContext';
 import { uploadsDir } from '../config/storage';
-import { File, Task } from '../db/model';
+import { Task } from '../db/model';
 import { buildFileUrl, buildThumbnailUrl } from '../utils/fileUrls';
 import { writeLog } from '../services/wgLogEngine';
 import { moveFile } from '../utils/moveFile';
+import { createFileRecord } from '../services/fileService';
 
 const uploadsDirAbs = path.resolve(uploadsDir);
 const TEMP_URL_PREFIX = 'temp://';
@@ -154,15 +155,15 @@ export const finalizePendingUploads = async (
       if (!relative) {
         throw new Error('INVALID_PATH');
       }
-      const doc = await File.create({
+      const doc = await createFileRecord({
         userId: entry.userId,
         name: entry.originalName,
         path: relative,
         thumbnailPath: thumbnailRelative,
         type: entry.mimeType,
         size: entry.size,
-        taskId: normalizedTaskId,
-        draftId: normalizedDraftId,
+        taskId: normalizedTaskId ?? undefined,
+        draftId: normalizedDraftId ?? undefined,
       });
       createdIds.push(String(doc._id));
       const attachment: AttachmentLike = {

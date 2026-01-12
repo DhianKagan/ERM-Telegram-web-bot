@@ -9,15 +9,11 @@ import sharp from 'sharp';
 import type { Context, Telegraf } from 'telegraf';
 import type { InputFile, InputMediaPhoto } from 'telegraf/types';
 import escapeMarkdownV2 from '../utils/mdEscape';
-import {
-  File,
-  type Attachment,
-  type FileDocument,
-  type TaskDocument,
-} from '../db/model';
+import { type Attachment, type TaskDocument } from '../db/model';
 import { uploadsDir } from '../config/storage';
 import type { FormatTaskSection, InlineImage } from '../utils/formatTask';
 import { SECTION_SEPARATOR } from '../utils/formatTask';
+import { getFileRecord } from '../services/fileService';
 
 type LocalPhotoInfo = {
   absolutePath: string;
@@ -1104,23 +1100,7 @@ export class TaskTelegramMedia {
     const fileId = this.extractLocalFileId(url);
     if (!fileId) return null;
     try {
-      const fileModel = File as
-        | (typeof File & {
-            findById?: typeof File.findById;
-          })
-        | undefined;
-      if (!fileModel || typeof fileModel.findById !== 'function') {
-        return null;
-      }
-      const query = fileModel.findById(fileId);
-      const record =
-        query &&
-        typeof (query as unknown as { lean?: () => unknown }).lean ===
-          'function'
-          ? await (
-              query as unknown as { lean: () => Promise<FileDocument | null> }
-            ).lean()
-          : ((await query) as unknown as FileDocument | null);
+      const record = await getFileRecord(fileId);
       if (!record || typeof record.path !== 'string' || !record.path.trim()) {
         return null;
       }

@@ -1,16 +1,11 @@
 // Роуты управления файлами в хранилище
-// Модули: express, express-validator, middleware/auth, auth/roles, services/dataStorage
-import {
-  Router,
-  RequestHandler,
-  NextFunction,
-  Response,
-} from 'express';
+// Модули: express, express-validator, middleware/auth, auth/roles, services/fileService
+import { Router, RequestHandler, NextFunction, Response } from 'express';
 import authMiddleware from '../middleware/auth';
 import { Roles } from '../auth/roles.decorator';
 import rolesGuard from '../auth/roles.guard';
 import { ACCESS_ADMIN } from '../utils/accessMask';
-import { listFiles, deleteFile, getFile } from '../services/dataStorage';
+import { listFiles, deleteFile, getFile } from '../services/fileService';
 import { param, query } from 'express-validator';
 import { asyncHandler } from '../api/middleware';
 import container from '../di';

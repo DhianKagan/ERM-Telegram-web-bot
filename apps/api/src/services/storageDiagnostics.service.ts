@@ -1,11 +1,11 @@
 // Сервис диагностики и обслуживания файлового хранилища
-// Основные модули: tsyringe, mongoose, services/dataStorage
+// Основные модули: tsyringe, mongoose, services/fileService
 import { inject, injectable } from 'tsyringe';
 import type { FilterQuery, Model } from 'mongoose';
 import { Types } from 'mongoose';
 import { TOKENS } from '../di/tokens';
 import type { FileDocument } from '../db/model';
-import { collectAttachmentLinks, getFileSyncSnapshot } from './dataStorage';
+import { collectAttachmentLinks, getFileSyncSnapshot } from './fileService';
 
 export interface StorageDiagnosticsReport {
   generatedAt: string;

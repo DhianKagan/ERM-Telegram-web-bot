@@ -8,7 +8,7 @@ import LogAnalysisService, {
 import {
   getFileSyncSnapshot,
   type FileSyncSnapshot,
-} from '../services/dataStorage';
+} from '../services/fileService';
 
 export interface StackOverview {
   generatedAt: string;

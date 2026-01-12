@@ -2,12 +2,16 @@
 import { Types } from 'mongoose';
 import {
   TaskDraft,
-  File,
   type TaskDraftDocument,
   type Attachment,
 } from '../db/model';
 import { coerceAttachments, extractAttachmentIds } from '../utils/attachments';
-import { deleteFile } from '../services/dataStorage';
+import {
+  clearDraftForFile,
+  deleteFile,
+  findFilesByIds,
+  setDraftForFiles,
+} from '../services/fileService';
 import { writeLog } from '../services/wgLogEngine';
 
 const PRECISION_DECIMALS = Number(process.env.ROUTE_PRECISION_DECIMALS || '6');
@@ -15,7 +19,10 @@ const PRECISION_DECIMALS = Number(process.env.ROUTE_PRECISION_DECIMALS || '6');
 /**
  * Безопасное округление координаты (локальная реализация).
  */
-function safeRoundCoord(value: unknown, decimals = PRECISION_DECIMALS): number | null {
+function safeRoundCoord(
+  value: unknown,
+  decimals = PRECISION_DECIMALS,
+): number | null {
   const num = typeof value === 'number' ? value : Number(value as unknown);
   if (!Number.isFinite(num)) return null;
   const factor = Math.pow(10, decimals);
@@ -97,7 +104,10 @@ function coercePoint(input: unknown): { lat: number; lng: number } | null {
     // try "lat,lng" or "lng,lat"
     const sep = s.includes(',') ? ',' : s.includes(';') ? ';' : null;
     if (sep) {
-      const parts = s.split(sep).map((p) => p.trim()).filter(Boolean);
+      const parts = s
+        .split(sep)
+        .map((p) => p.trim())
+        .filter(Boolean);
       if (parts.length >= 2) {
         const a = safeRoundCoord(parts[0]);
         const b = safeRoundCoord(parts[1]);
@@ -136,7 +146,9 @@ export default class TaskDraftsService {
     if (!isPlainObject(payload)) {
       return {};
     }
-    const copy: Record<string, unknown> = { ...(payload as Record<string, unknown>) };
+    const copy: Record<string, unknown> = {
+      ...(payload as Record<string, unknown>),
+    };
 
     // attachments
     const attachments = normalizeAttachments(copy.attachments);
@@ -202,10 +214,7 @@ export default class TaskDraftsService {
 
     const newIds = extractAttachmentIds(attachments);
     if (newIds.length > 0) {
-      await File.updateMany(
-        { _id: { $in: newIds }, userId },
-        { $set: { draftId: draft._id } },
-      ).exec();
+      await setDraftForFiles(newIds, userId, draft._id);
     }
 
     const previousSet = objectIdSet(previousIds);
@@ -240,13 +249,7 @@ export default class TaskDraftsService {
       return;
     }
 
-    const relatedFiles = await File.find({ _id: { $in: ids } })
-      .select(['_id', 'taskId'])
-      .lean()
-      .catch(
-        () =>
-          [] as Array<{ _id: Types.ObjectId; taskId?: Types.ObjectId | null }>,
-      );
+    const relatedFiles = await findFilesByIds(ids);
     const attachedIds = new Set(
       relatedFiles.filter((doc) => doc.taskId).map((doc) => String(doc._id)),
     );
@@ -255,9 +258,7 @@ export default class TaskDraftsService {
       ids.map(async (id) => {
         const idHex = id.toHexString();
         if (attachedIds.has(idHex)) {
-          await File.updateOne({ _id: id }, { $unset: { draftId: '' } })
-            .exec()
-            .catch(() => undefined);
+          await clearDraftForFile(id);
           return;
         }
         try {

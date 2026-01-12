@@ -5,7 +5,6 @@ import {
   Archive,
   User,
   Role,
-  File,
   type Attachment,
   TaskDocument,
   TaskAttrs,
@@ -35,7 +34,12 @@ import {
   coerceAttachments,
   extractAttachmentIds,
 } from '../utils/attachments';
-import { deleteFilesForTask } from '../services/dataStorage';
+import {
+  clearTaskLinksForTask,
+  deleteFilesForTask,
+  findFilesForAttachments,
+  updateFilesByFilter,
+} from '../services/fileService';
 import { buildFileUrl, buildThumbnailUrl } from '../utils/fileUrls';
 import { collectAssigneeIds, normalizeUserId } from '../utils/assigneeIds';
 
@@ -655,10 +659,9 @@ async function enrichAttachmentsFromContent(
     }
   });
   const filesMap = new Map<string, LeanFileDoc>();
-  const fileModel = File as typeof File | undefined;
-  if (fileIds.size > 0 && fileModel && typeof fileModel.find === 'function') {
+  if (fileIds.size > 0) {
     const objectIds = Array.from(fileIds).map((id) => new Types.ObjectId(id));
-    const docs = await fileModel.find({ _id: { $in: objectIds } }).lean();
+    const docs = await findFilesForAttachments(objectIds);
     docs.forEach((doc) => {
       filesMap.set(String(doc._id), doc);
     });
@@ -806,31 +809,6 @@ export async function syncTaskAttachments(
       .catch(() => undefined);
     return;
   }
-  const fileModel = File as typeof File | undefined;
-  if (!fileModel) {
-    await logEngine
-      .writeLog(
-        `Модель файлов недоступна, пропускаем обновление вложений задачи ${String(
-          normalizedTaskId,
-        )}`,
-        'warn',
-        { taskId: normalizedTaskId.toHexString(), userId },
-      )
-      .catch(() => undefined);
-    return;
-  }
-  if (typeof fileModel.updateMany !== 'function') {
-    await logEngine
-      .writeLog(
-        `Метод updateMany отсутствует у модели файлов, пропускаем обновление вложений задачи ${String(
-          normalizedTaskId,
-        )}`,
-        'warn',
-        { taskId: normalizedTaskId.toHexString(), userId },
-      )
-      .catch(() => undefined);
-    return;
-  }
   const fileIds = extractAttachmentIds(attachments);
   const idsForLog = fileIds.map((id) => id.toHexString());
   const normalizedUserId =
@@ -873,10 +851,7 @@ export async function syncTaskAttachments(
   }
   try {
     if (fileIds.length === 0) {
-      await fileModel.updateMany(
-        { taskId: normalizedTaskId },
-        { $unset: { taskId: '', draftId: '' } },
-      );
+      await clearTaskLinksForTask(normalizedTaskId);
       return;
     }
     const updateFilter: Record<string, unknown> = {
@@ -898,9 +873,14 @@ export async function syncTaskAttachments(
         ];
       }
     }
-    const updateResult = await fileModel.updateMany(updateFilter, {
-      $set: { taskId: normalizedTaskId },
+    const updateResult = await updateFilesByFilter(updateFilter, {
+      $set: {
+        taskId: normalizedTaskId,
+        detached: false,
+        scope: 'task',
+      },
       $unset: { draftId: '' },
+      $addToSet: { relatedTaskIds: normalizedTaskId },
     });
     if (!canManageForeignAttachments) {
       const matched =
@@ -948,9 +928,13 @@ export async function syncTaskAttachments(
         }
       }
     }
-    await fileModel.updateMany(
+    await updateFilesByFilter(
       { taskId: normalizedTaskId, _id: { $nin: fileIds } },
-      { $unset: { taskId: '', draftId: '' } },
+      {
+        $unset: { taskId: '', draftId: '' },
+        $set: { detached: true, scope: 'user' },
+        $pull: { relatedTaskIds: normalizedTaskId },
+      },
     );
   } catch (error) {
     await logEngine.writeLog(
@@ -1245,7 +1229,8 @@ export async function updateTaskStatus(
 
   const actorAccess = Number(options.actorAccess ?? 0);
   const hasDeleteAccess = hasAccess(actorAccess, ACCESS_TASK_DELETE);
-  const hasAdminAccess = hasAccess(actorAccess, ACCESS_ADMIN) || hasDeleteAccess;
+  const hasAdminAccess =
+    hasAccess(actorAccess, ACCESS_ADMIN) || hasDeleteAccess;
   const hasManagerAccess =
     hasAccess(actorAccess, ACCESS_MANAGER) || hasDeleteAccess;
   const isActorLinked = isCreator || isExecutor || isController;

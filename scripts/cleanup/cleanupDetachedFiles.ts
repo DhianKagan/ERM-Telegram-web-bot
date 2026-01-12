@@ -1,47 +1,29 @@
 // Очистка устаревших записей файлов без задач.
-// Основные модули: fs, dotenv, mongoose, scripts/db/mongoUrl, services/dataStorage, process.
+// Основные модули: fs, dotenv, mongoose, scripts/db/mongoUrl, services/fileService, process.
 import * as fs from 'fs';
 import * as path from 'path';
-import type { ConnectOptions } from 'mongoose';
+import { pathToFileURL } from 'url';
+import dotenv from 'dotenv';
+import mongoose, { type ConnectOptions } from 'mongoose';
+import { formatCredentialSources, getMongoUrlFromEnv } from '../db/mongoUrl';
 
-interface DotenvModule {
-  config: (options?: { path?: string }) => void;
-}
-
-const dotenv: DotenvModule = (() => {
-  try {
-    return require('dotenv');
-  } catch {
-    return require(path.resolve(process.cwd(), 'apps/api/node_modules/dotenv'));
-  }
-})();
-
-const mongoose: typeof import('mongoose') = (() => {
-  try {
-    return require('mongoose');
-  } catch {
-    return require(
-      path.resolve(process.cwd(), 'apps/api/node_modules/mongoose'),
-    );
-  }
-})();
-
-const {
-  getMongoUrlFromEnv,
-  formatCredentialSources,
-}: typeof import('../db/mongoUrl') = require('../db/mongoUrl');
-
-const compiledDataStoragePath = path.resolve(
+const compiledFileServicePath = path.resolve(
   process.cwd(),
-  'apps/api/dist/services/dataStorage.js',
+  'apps/api/dist/services/fileService.js',
 );
 
-const dataStorageModule: typeof import('../../apps/api/src/services/dataStorage') =
-  fs.existsSync(compiledDataStoragePath)
-    ? require(compiledDataStoragePath)
-    : require(path.resolve(process.cwd(), 'apps/api/src/services/dataStorage'));
-
-const { removeDetachedFilesOlderThan } = dataStorageModule;
+const resolveFileServiceModule = async (): Promise<
+  typeof import('../../apps/api/src/services/fileService')
+> => {
+  const sourcePath = path.resolve(
+    process.cwd(),
+    'apps/api/src/services/fileService.ts',
+  );
+  const targetPath = fs.existsSync(compiledFileServicePath)
+    ? compiledFileServicePath
+    : sourcePath;
+  return import(pathToFileURL(targetPath).href);
+};
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
@@ -80,6 +62,7 @@ async function cleanup(): Promise<void> {
   await connectMongo();
   const cutoff = new Date(Date.now() - ttlMinutes * 60 * 1000);
   try {
+    const { removeDetachedFilesOlderThan } = await resolveFileServiceModule();
     const removed = await removeDetachedFilesOlderThan(cutoff);
     console.log(
       `Удалено ${removed} устаревших файлов старше ${ttlMinutes} минут без привязки к задачам`,

@@ -13,14 +13,8 @@ import type TasksService from './tasks.service';
 import { writeLog } from '../services/service';
 import { getUsersMap } from '../db/queries';
 import type { RequestWithUser } from '../types/request';
-import {
-  Task,
-  File,
-  User,
-  type TaskDocument,
-  type Attachment,
-  type FileDocument,
-} from '../db/model';
+import { Task, User, type TaskDocument, type Attachment } from '../db/model';
+import { getFileRecord } from '../services/fileService';
 import { FleetVehicle } from '../db/models/fleet';
 import { CollectionItem } from '../db/models/CollectionItem';
 import { sendProblem } from '../utils/problem';
@@ -1215,23 +1209,7 @@ export default class TasksController {
     const fileId = this.extractLocalFileId(url);
     if (!fileId) return null;
     try {
-      const fileModel = File as
-        | (typeof File & {
-            findById?: typeof File.findById;
-          })
-        | undefined;
-      if (!fileModel || typeof fileModel.findById !== 'function') {
-        return null;
-      }
-      const query = fileModel.findById(fileId);
-      const record =
-        query &&
-        typeof (query as unknown as { lean?: () => unknown }).lean ===
-          'function'
-          ? await (
-              query as unknown as { lean: () => Promise<FileDocument | null> }
-            ).lean()
-          : ((await query) as unknown as FileDocument | null);
+      const record = await getFileRecord(fileId);
       if (!record || typeof record.path !== 'string' || !record.path.trim()) {
         return null;
       }

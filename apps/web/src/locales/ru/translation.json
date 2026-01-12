@@ -24,7 +24,7 @@
     "moduleSelectLabel": "Выбор раздела настроек",
     "directorySelectLabel": "Выбор справочника",
     "search": {
-      "placeholder": "Поиск по названию или значению",
+      "placeholder": "Название, ID, статус…",
       "hint": "Нажмите Enter для поиска, Esc — для сброса."
     },
     "actions": {

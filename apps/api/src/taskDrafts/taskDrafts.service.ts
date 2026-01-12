@@ -214,7 +214,12 @@ export default class TaskDraftsService {
 
     const newIds = extractAttachmentIds(attachments);
     if (newIds.length > 0) {
-      await setDraftForFiles(newIds, userId, draft._id);
+      // Ensure draft._id is a Types.ObjectId
+      const draftId =
+        draft._id instanceof Types.ObjectId
+          ? draft._id
+          : new Types.ObjectId(String(draft._id));
+      await setDraftForFiles(newIds, userId, draftId);
     }
 
     const previousSet = objectIdSet(previousIds);

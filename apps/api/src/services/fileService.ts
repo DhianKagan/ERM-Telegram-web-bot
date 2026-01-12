@@ -185,13 +185,31 @@ export const findFilesByIds = async (
   ids: Types.ObjectId[],
 ): Promise<Array<{ _id: Types.ObjectId; taskId?: Types.ObjectId | null }>> => {
   if (ids.length === 0) return [];
-  return File.find({ _id: { $in: ids } })
-    .select(['_id', 'taskId'])
-    .lean()
-    .catch(
-      () =>
-        [] as Array<{ _id: Types.ObjectId; taskId?: Types.ObjectId | null }>,
-    );
+  try {
+    const raw = await File.find({ _id: { $in: ids } })
+      .select(['_id', 'taskId'])
+      .lean()
+      .exec();
+
+    return (raw ?? []).map((d: any) => {
+      // Ensure _id and taskId are Types.ObjectId
+      const _id =
+        d && d._id
+          ? d._id instanceof MongooseTypes.ObjectId
+            ? d._id
+            : new MongooseTypes.ObjectId(String(d._id))
+          : new MongooseTypes.ObjectId();
+      const taskId =
+        d && d.taskId
+          ? d.taskId instanceof MongooseTypes.ObjectId
+            ? d.taskId
+            : new MongooseTypes.ObjectId(String(d.taskId))
+          : undefined;
+      return { _id, taskId };
+    });
+  } catch {
+    return [];
+  }
 };
 
 export const findFilesForAttachments = async (
@@ -297,8 +315,8 @@ export const unlinkFileFromTask = async (
   const nextScope: FileScope = hasDraft
     ? 'draft'
     : hasRelated
-      ? 'task'
-      : 'user';
+    ? 'task'
+    : 'user';
   const update: Record<string, unknown> = {
     $pull: { relatedTaskIds: normalizedTaskId },
     $set: { detached: shouldDetach, scope: nextScope },

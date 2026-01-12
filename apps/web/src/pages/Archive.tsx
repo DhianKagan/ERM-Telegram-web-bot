@@ -1,7 +1,8 @@
 // Страница архива задач
-// Основные модули: React, DataTable, сервисы архива
+// Основные модули: React, SimpleTable, сервисы архива
 import React from 'react';
-import DataTable from '../components/DataTable';
+import { ArchiveBoxIcon } from '@heroicons/react/24/outline';
+import { SimpleTable } from '@/components/ui/simple-table';
 import archiveColumns from '../columns/archiveColumns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +11,7 @@ import { useAuth } from '../context/useAuth';
 import { fetchArchive, purgeArchive } from '../services/archives';
 import type { ArchiveTask } from '../types/archive';
 import { ARCHIVE_ACCESS, ACCESS_TASK_DELETE, hasAccess } from '../utils/access';
+import SettingsSectionHeader from './Settings/SettingsSectionHeader';
 
 const PAGE_SIZE = 25;
 
@@ -141,6 +143,21 @@ export default function ArchivePage() {
     setPage(0);
   }, []);
 
+  const handleSearchKeyDown = React.useCallback(
+    (event: React.KeyboardEvent<HTMLInputElement>) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        setAppliedSearch(search.trim());
+        setPage(0);
+      }
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        handleSearchReset();
+      }
+    },
+    [handleSearchReset, search],
+  );
+
   const handleToggleRow = React.useCallback((id: string, checked: boolean) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
@@ -227,52 +244,59 @@ export default function ArchivePage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold">Архив задач</h1>
-          <p className="text-sm text-muted-foreground">
-            Здесь отображаются удалённые задачи только для чтения.
-          </p>
-        </div>
-        {canPurge ? (
-          <Button
-            type="button"
-            variant="destructive"
-            disabled={!selectedIds.size || purging || loading}
-            onClick={handlePurge}
-          >
-            Полное удаление
-          </Button>
-        ) : null}
-      </div>
-      <form
-        onSubmit={handleSearchSubmit}
-        className="flex flex-col gap-2 sm:flex-row sm:items-center"
-      >
-        <Input
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Поиск по номеру или названию"
-          aria-label="Поиск по архиву"
-        />
-        <div className="flex gap-2">
-          <Button type="submit" variant="secondary" disabled={loading}>
-            Искать
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={loading || (!appliedSearch && !search)}
-            onClick={handleSearchReset}
-          >
-            Сбросить
-          </Button>
-        </div>
-      </form>
+      <SettingsSectionHeader
+        title="Архив задач"
+        description="Здесь отображаются удалённые задачи только для чтения."
+        icon={ArchiveBoxIcon}
+        controls={
+          <div className="grid gap-2">
+            <form
+              onSubmit={handleSearchSubmit}
+              className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end"
+            >
+              <label className="flex flex-col gap-1 text-sm text-slate-700 dark:text-slate-200">
+                Поиск
+                <Input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  onKeyDown={handleSearchKeyDown}
+                  placeholder="Поиск по номеру или названию"
+                  aria-label="Поиск по архиву"
+                />
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <Button type="submit" variant="secondary" disabled={loading}>
+                  Искать
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  disabled={loading || (!appliedSearch && !search)}
+                  onClick={handleSearchReset}
+                >
+                  Сбросить
+                </Button>
+              </div>
+            </form>
+            {canPurge ? (
+              <div className="flex justify-end">
+                <Button
+                  type="button"
+                  variant="destructive"
+                  disabled={!selectedIds.size || purging || loading}
+                  onClick={handlePurge}
+                >
+                  Полное удаление
+                </Button>
+              </div>
+            ) : null}
+          </div>
+        }
+      />
       {loading ? (
         <div className="text-sm text-muted-foreground">Загрузка архива...</div>
       ) : null}
-      <DataTable<ArchiveTask>
+      <SimpleTable<ArchiveTask>
         columns={columns}
         data={rows}
         pageIndex={page}

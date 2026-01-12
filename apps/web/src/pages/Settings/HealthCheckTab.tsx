@@ -11,8 +11,10 @@ import {
   ArrowPathIcon,
   PauseIcon,
   PlayIcon,
+  ShieldCheckIcon,
 } from '@heroicons/react/24/outline';
 import { Button } from '../../components/ui/button';
+import SettingsSectionHeader from './SettingsSectionHeader';
 import {
   runStackHealthCheck,
   type StackCheckResult,
@@ -92,42 +94,51 @@ export default function HealthCheckTab(): JSX.Element {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <Button
-          type="button"
-          variant="success"
-          size="sm"
-          className="gap-2"
-          disabled={loading}
-          onClick={() => void runCheck()}
-        >
-          {loading ? (
-            <ArrowPathIcon className="h-4 w-4 animate-spin" />
-          ) : (
-            <PlayIcon className="h-4 w-4" />
-          )}
-          Запустить проверку
-        </Button>
-        <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
-          <input
-            type="checkbox"
-            className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 dark:border-slate-600"
-            checked={auto}
-            onChange={(event) => setAuto(event.target.checked)}
-          />
-          <span className="flex items-center gap-1">
-            {auto ? (
-              <PauseIcon className="h-4 w-4" />
-            ) : (
-              <PlayIcon className="h-4 w-4" />
-            )}
-            Автоопрос раз в 60 секунд
-          </span>
-        </label>
-        <span className="text-sm text-slate-600 dark:text-slate-300">
-          Последний запуск: {formatDateTime(lastRun)}
-        </span>
-      </div>
+      <SettingsSectionHeader
+        title="Мониторинг"
+        description="Проверка прокси, Redis и MongoDB"
+        icon={ShieldCheckIcon}
+        controls={
+          <div className="grid gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                variant="success"
+                size="sm"
+                className="gap-2"
+                disabled={loading}
+                onClick={() => void runCheck()}
+              >
+                {loading ? (
+                  <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                ) : (
+                  <PlayIcon className="h-4 w-4" />
+                )}
+                Запустить проверку
+              </Button>
+              <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 dark:border-slate-600"
+                  checked={auto}
+                  onChange={(event) => setAuto(event.target.checked)}
+                />
+                <span className="flex items-center gap-1">
+                  {auto ? (
+                    <PauseIcon className="h-4 w-4" />
+                  ) : (
+                    <PlayIcon className="h-4 w-4" />
+                  )}
+                  Автоопрос раз в 60 секунд
+                </span>
+              </label>
+            </div>
+            <span className="text-sm text-slate-600 dark:text-slate-300">
+              Последний запуск: {formatDateTime(lastRun)}
+            </span>
+          </div>
+        }
+      />
 
       {error ? (
         <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700 dark:border-rose-700 dark:bg-rose-900/40 dark:text-rose-100">

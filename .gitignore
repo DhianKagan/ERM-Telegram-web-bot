@@ -40,3 +40,5 @@ repo_snapshot-*.txt
 .pnpm-store/
 pnpm-debug.log
 make-lpt.log
+apps/api/dist/
+apps/worker/dist/

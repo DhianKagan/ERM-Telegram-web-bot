@@ -434,9 +434,11 @@ async function uploadViaChunks(
   extraFields: Record<string, string> = {},
 ): Promise<{
   attachment: {
+    fileId: string;
     name: string;
     url: string;
     thumbnailUrl?: string;
+    type: string;
   };
   storedPath: string;
   content: Buffer;
@@ -471,10 +473,16 @@ async function uploadViaChunks(
     contentType: mimetype,
   });
   expect(finalResponse.status).toBe(200);
-  const attachment = finalResponse.body as {
+  const payload = finalResponse.body as {
+    fileId: string;
     name: string;
-    url: string;
-    thumbnailUrl?: string;
+    type: string;
+  };
+  const attachment = {
+    fileId: payload.fileId,
+    name: payload.name,
+    type: payload.type,
+    url: `/api/v1/files/${payload.fileId}`,
   };
   const stored = storedFiles[storedFiles.length - 1];
   return {
@@ -640,9 +648,8 @@ describe('Chunk upload', () => {
       'image/png',
       { taskId },
     );
-    const match = attachment.url.match(/\/api\/v1\/files\/([0-9a-f]{24})/i);
-    expect(match).not.toBeNull();
-    const fileId = match?.[1];
+    expect(attachment.fileId).toMatch(/^[0-9a-f]{24}$/i);
+    const fileId = attachment.fileId;
     const stored = storedFiles.find((f) => String(f._id) === String(fileId));
     expect(stored).toBeDefined();
     expect(String(stored?.taskId)).toBe(taskId);

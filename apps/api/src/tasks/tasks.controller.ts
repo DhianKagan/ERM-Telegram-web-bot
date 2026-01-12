@@ -14,7 +14,7 @@ import { writeLog } from '../services/service';
 import { getUsersMap } from '../db/queries';
 import type { RequestWithUser } from '../types/request';
 import { Task, User, type TaskDocument, type Attachment } from '../db/model';
-import { getFileRecord } from '../services/fileService';
+import { getFileRecord, setTelegramFileId } from '../services/fileService';
 import { FleetVehicle } from '../db/models/fleet';
 import { CollectionItem } from '../db/models/CollectionItem';
 import { sendProblem } from '../utils/problem';
@@ -27,6 +27,7 @@ import {
   type TaskUserProfile,
 } from '../bot/bot';
 import { buildTaskAppLink } from './taskLinks';
+import { extractFileIdFromUrl } from '../utils/attachments';
 import {
   getChatId,
   chatId as staticChatId,
@@ -579,11 +580,54 @@ export default class TasksController {
     return Array.from(new Set(allowed));
   }
 
+  private async resolveTelegramFileId(url: string): Promise<string | null> {
+    if (!url) return null;
+    const fileId = extractFileIdFromUrl(url);
+    if (!fileId) return null;
+    const record = await getFileRecord(fileId);
+    const telegramFileId =
+      typeof record?.telegramFileId === 'string'
+        ? record.telegramFileId.trim()
+        : '';
+    return telegramFileId || null;
+  }
+
+  private async persistTelegramFileId(
+    url: string,
+    telegramFileId?: string | null,
+  ): Promise<void> {
+    const fileId = extractFileIdFromUrl(url);
+    if (!fileId) return;
+    const normalized =
+      typeof telegramFileId === 'string' ? telegramFileId.trim() : '';
+    if (!normalized) return;
+    await setTelegramFileId(fileId, normalized).catch(() => undefined);
+  }
+
+  private extractTelegramPhotoId(response: unknown): string | null {
+    const photos = (response as { photo?: Array<{ file_id?: string }> }).photo;
+    if (!Array.isArray(photos) || photos.length === 0) {
+      return null;
+    }
+    const last = photos[photos.length - 1];
+    return typeof last?.file_id === 'string' ? last.file_id : null;
+  }
+
+  private extractTelegramDocumentId(response: unknown): string | null {
+    const document = (response as { document?: { file_id?: string } })
+      .document;
+    return typeof document?.file_id === 'string' ? document.file_id : null;
+  }
+
   private async resolvePhotoInputWithCache(
     url: string,
     cache: Map<string, LocalPhotoInfo | null>,
   ): Promise<PhotoInput> {
     if (!url) return url;
+    const telegramFileId = await this.resolveTelegramFileId(url);
+    if (telegramFileId) {
+      return telegramFileId;
+    }
     if (!cache.has(url)) {
       const info = await this.resolveLocalPhotoInfo(url);
       const prepared = info ? await this.ensurePhotoWithinLimit(info) : info;
@@ -892,6 +936,14 @@ export default class TasksController {
               albumMessageIds.push(entry.message_id);
             }
           });
+          await Promise.all(
+            mediaResponse.map((entry, index) => {
+              const fileId = this.extractTelegramPhotoId(entry);
+              const source = selected[index]?.url;
+              if (!fileId || !source) return Promise.resolve();
+              return this.persistTelegramFileId(source, fileId);
+            }),
+          );
         }
       } catch (error) {
         console.error('Не удалось отправить альбом задачи', error);
@@ -915,6 +967,10 @@ export default class TasksController {
         if (photoResponse?.message_id) {
           albumMessageIds.push(photoResponse.message_id);
         }
+        await this.persistTelegramFileId(
+          previewUrl,
+          this.extractTelegramPhotoId(photoResponse),
+        );
         consumedAlbumUrls.push(previewUrl);
       } catch (error) {
         console.error(
@@ -1700,6 +1756,10 @@ export default class TasksController {
         if (response?.message_id) {
           sentMessageIds.push(response.message_id);
         }
+        await this.persistTelegramFileId(
+          current.url,
+          this.extractTelegramPhotoId(response),
+        );
       };
       try {
         await sendPhotoAttempt();
@@ -1728,6 +1788,10 @@ export default class TasksController {
         if (response?.message_id) {
           sentMessageIds.push(response.message_id);
         }
+        await this.persistTelegramFileId(
+          current.url,
+          this.extractTelegramDocumentId(response),
+        );
       }
     };
     const flushImages = async () => {
@@ -1768,6 +1832,14 @@ export default class TasksController {
               sentMessageIds.push(message.message_id);
             }
           });
+          await Promise.all(
+            response.map((message, index) => {
+              const fileId = this.extractTelegramPhotoId(message);
+              const source = batch[index]?.url;
+              if (!fileId || !source) return Promise.resolve();
+              return this.persistTelegramFileId(source, fileId);
+            }),
+          );
         } catch (error) {
           console.warn(
             'Не удалось отправить изображения медиа-группой, отправляем по одному',
@@ -1791,24 +1863,28 @@ export default class TasksController {
       await flushImages();
       if (attachment.kind === 'unsupported-image') {
         try {
-          const response = await bot.telegram.sendDocument(
-            chat,
-            await resolvePhotoInput(attachment.url),
-            (() => {
-              const options = documentOptionsBase();
-              if (attachment.caption) {
-                options.caption = escapeMarkdownV2(attachment.caption);
-                options.parse_mode = 'MarkdownV2';
-              }
-              return options;
-            })(),
-          );
-          if (response?.message_id) {
-            sentMessageIds.push(response.message_id);
-          }
-        } catch (error) {
-          console.error(
-            'Не удалось отправить неподдерживаемое изображение как документ',
+        const response = await bot.telegram.sendDocument(
+          chat,
+          await resolvePhotoInput(attachment.url),
+          (() => {
+            const options = documentOptionsBase();
+            if (attachment.caption) {
+              options.caption = escapeMarkdownV2(attachment.caption);
+              options.parse_mode = 'MarkdownV2';
+            }
+            return options;
+          })(),
+        );
+        if (response?.message_id) {
+          sentMessageIds.push(response.message_id);
+        }
+        await this.persistTelegramFileId(
+          attachment.url,
+          this.extractTelegramDocumentId(response),
+        );
+      } catch (error) {
+        console.error(
+          'Не удалось отправить неподдерживаемое изображение как документ',
             attachment.mimeType ?? 'unknown',
             attachment.name ?? attachment.url,
             error,

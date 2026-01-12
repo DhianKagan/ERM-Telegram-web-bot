@@ -25,6 +25,8 @@ export interface UserBrief {
 }
 
 export interface Attachment {
+  /** ID файла */
+  fileId?: string;
   /** Название файла */
   name: string;
   /** URL файла */

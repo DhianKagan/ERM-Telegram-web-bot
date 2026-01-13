@@ -8,6 +8,7 @@ jest.mock('telegraf', () => {
   const launch = jest.fn();
   const telegram = {
     deleteWebhook: jest.fn().mockResolvedValue(undefined),
+    setWebhook: jest.fn().mockResolvedValue(undefined),
     callApi: jest.fn().mockResolvedValue(undefined),
   };
   class TelegrafMock {
@@ -32,13 +33,17 @@ test('startBot ограничивает число попыток и приме�
   jest.useFakeTimers();
   const exitSpy = jest
     .spyOn(process, 'exit')
-    .mockImplementation((() => undefined) as any);
+    .mockImplementation(
+      (() => undefined) as unknown as (code?: number) => never,
+    );
   const timeout = jest.spyOn(global, 'setTimeout');
   const { startBot, __resetCloseThrottleForTests } = await import(
     '../src/bot/bot'
   );
   __resetCloseThrottleForTests();
-  const { __launch } = require('telegraf');
+  const { __launch } = (await import('telegraf')) as unknown as {
+    __launch: jest.Mock;
+  };
   __launch.mockRejectedValue({ response: { error_code: 502 } });
 
   const promise = startBot();
@@ -61,7 +66,13 @@ test('startBot завершает предыдущую long polling сессию
     '../src/bot/bot'
   );
   __resetCloseThrottleForTests();
-  const { __launch, __telegram } = require('telegraf');
+  const { __launch, __telegram } = (await import('telegraf')) as unknown as {
+    __launch: jest.Mock;
+    __telegram: {
+      deleteWebhook: jest.Mock;
+      callApi: jest.Mock;
+    };
+  };
   __launch.mockRejectedValueOnce({ response: { error_code: 409 } });
   __launch.mockResolvedValue(undefined);
 
@@ -84,7 +95,13 @@ test('startBot ожидает retry_after после ошибки 429 метод
     '../src/bot/bot'
   );
   __resetCloseThrottleForTests();
-  const { __launch, __telegram } = require('telegraf');
+  const { __launch, __telegram } = (await import('telegraf')) as unknown as {
+    __launch: jest.Mock;
+    __telegram: {
+      callApi: jest.Mock;
+      deleteWebhook: jest.Mock;
+    };
+  };
   const retryAfterSeconds = 3;
 
   __launch.mockClear();
@@ -137,7 +154,13 @@ test('startBot не вызывает close повторно, пока дейст
     '../src/bot/bot'
   );
   __resetCloseThrottleForTests();
-  const { __launch, __telegram } = require('telegraf');
+  const { __launch, __telegram } = (await import('telegraf')) as unknown as {
+    __launch: jest.Mock;
+    __telegram: {
+      callApi: jest.Mock;
+      deleteWebhook: jest.Mock;
+    };
+  };
   const retryAfterSeconds = 5;
 
   __launch.mockClear();
@@ -167,4 +190,35 @@ test('startBot не вызывает close повторно, пока дейст
 
   expect(__telegram.callApi).toHaveBeenCalledTimes(1);
   jest.useRealTimers();
+});
+
+test('startBot настраивает webhook при TELEGRAM_WEBHOOK_URL', async () => {
+  jest.resetModules();
+  process.env.TELEGRAM_WEBHOOK_URL = 'https://example.com/telegram/webhook';
+  process.env.TELEGRAM_WEBHOOK_SECRET = 'secret-token';
+
+  const { startBot } = await import('../src/bot/bot');
+  const { __launch, __telegram } = (await import('telegraf')) as unknown as {
+    __launch: jest.Mock;
+    __telegram: {
+      setWebhook: jest.Mock;
+    };
+  };
+
+  __launch.mockClear();
+  __telegram.setWebhook.mockClear();
+
+  await startBot();
+
+  expect(__telegram.setWebhook).toHaveBeenCalledWith(
+    'https://example.com/telegram/webhook',
+    {
+      drop_pending_updates: true,
+      secret_token: 'secret-token',
+    },
+  );
+  expect(__launch).not.toHaveBeenCalled();
+
+  delete process.env.TELEGRAM_WEBHOOK_URL;
+  delete process.env.TELEGRAM_WEBHOOK_SECRET;
 });

@@ -62,6 +62,12 @@ import container from '../di';
 import { TOKENS } from '../di/tokens';
 import authService from '../auth/auth.service';
 import {
+  telegramWebhookPath,
+  telegramWebhookSecret,
+  telegramWebhookUrl,
+} from '../config';
+import { bot } from '../bot/bot';
+import {
   getShortLinkPathPrefix,
   resolveShortLinkBySlug,
 } from '../services/shortLinks';
@@ -113,6 +119,25 @@ export default async function registerRoutes(
   cookieFlags: CookieOptions,
   pub: string,
 ): Promise<void> {
+  if (telegramWebhookUrl && telegramWebhookPath) {
+    app.post(telegramWebhookPath, async (req, res) => {
+      if (telegramWebhookSecret) {
+        const secretHeader = req.header('x-telegram-bot-api-secret-token');
+        if (secretHeader !== telegramWebhookSecret) {
+          res.sendStatus(403);
+          return;
+        }
+      }
+      try {
+        await bot.handleUpdate(req.body);
+        res.sendStatus(200);
+      } catch (error) {
+        console.error('Ошибка обработки Telegram webhook', error);
+        res.sendStatus(500);
+      }
+    });
+  }
+
   const csrfCookieOptions: CookieOptions = {
     ...cookieFlags,
     httpOnly: false,

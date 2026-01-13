@@ -61,19 +61,21 @@ jest.mock('../apps/api/src/services/fileService', () => ({
   clearDraftForFile: jest.fn(),
   findFilesByIds: jest.fn(),
   setDraftForFiles: jest.fn(),
+  detachFilesForDraft: jest.fn(),
+  unlinkFileFromDraft: jest.fn(),
 }));
 
 jest.mock('../apps/api/src/services/wgLogEngine', () => ({
   writeLog: jest.fn(),
 }));
 
-const { deleteFile, clearDraftForFile, findFilesByIds, setDraftForFiles } =
-  jest.requireMock('../apps/api/src/services/fileService') as {
-    deleteFile: jest.Mock;
-    clearDraftForFile: jest.Mock;
-    findFilesByIds: jest.Mock;
-    setDraftForFiles: jest.Mock;
-  };
+const { deleteFile, setDraftForFiles, detachFilesForDraft } = jest.requireMock(
+  '../apps/api/src/services/fileService',
+) as {
+  deleteFile: jest.Mock;
+  setDraftForFiles: jest.Mock;
+  detachFilesForDraft: jest.Mock;
+};
 const models = jest.requireMock('../apps/api/src/db/model') as {
   File: { updateMany: jest.Mock; find: jest.Mock; updateOne: jest.Mock };
   TaskDraft: { findOneAndDelete: jest.Mock };
@@ -138,15 +140,13 @@ describe('TaskDraftsService — вложения черновиков', () => {
             size: 2048,
           },
         ],
+        _id: new Types.ObjectId(),
       }),
     }));
-    findFilesByIds.mockResolvedValue([
-      { _id: linkedId, taskId: new Types.ObjectId() },
-    ]);
 
     await service.deleteDraft(7, 'task');
 
     expect(deleteFile).not.toHaveBeenCalled();
-    expect(clearDraftForFile).toHaveBeenCalledWith(linkedId);
+    expect(detachFilesForDraft).toHaveBeenCalledTimes(1);
   });
 });

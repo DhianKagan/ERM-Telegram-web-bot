@@ -7,10 +7,9 @@ import {
 } from '../db/model';
 import { coerceAttachments, extractAttachmentIds } from '../utils/attachments';
 import {
-  clearDraftForFile,
-  deleteFile,
-  findFilesByIds,
+  detachFilesForDraft,
   setDraftForFiles,
+  unlinkFileFromDraft,
 } from '../services/fileService';
 import { writeLog } from '../services/wgLogEngine';
 
@@ -229,17 +228,15 @@ export default class TaskDraftsService {
     );
     await Promise.all(
       removedIds.map(async (id) => {
-        try {
-          await deleteFile(id);
-        } catch (error) {
+        const idHex = id;
+        await unlinkFileFromDraft(idHex).catch((error) => {
           const err = error as NodeJS.ErrnoException;
-          if (err.code !== 'ENOENT') {
-            await writeLog('Ошибка удаления файла черновика', 'warn', {
-              fileId: id,
-              error: err?.message || String(error),
-            }).catch(() => undefined);
-          }
-        }
+          if (err.code === 'ENOENT') return;
+          void writeLog('Ошибка отвязки файла от черновика', 'warn', {
+            fileId: idHex,
+            error: err?.message || String(error),
+          });
+        });
       }),
     );
 
@@ -249,35 +246,6 @@ export default class TaskDraftsService {
   async deleteDraft(userId: number, kind: 'task' | 'request'): Promise<void> {
     const draft = await TaskDraft.findOneAndDelete({ userId, kind }).exec();
     if (!draft) return;
-    const ids = extractAttachmentIds(draft.attachments || []);
-    if (ids.length === 0) {
-      return;
-    }
-
-    const relatedFiles = await findFilesByIds(ids);
-    const attachedIds = new Set(
-      relatedFiles.filter((doc) => doc.taskId).map((doc) => String(doc._id)),
-    );
-
-    await Promise.all(
-      ids.map(async (id) => {
-        const idHex = id.toHexString();
-        if (attachedIds.has(idHex)) {
-          await clearDraftForFile(id);
-          return;
-        }
-        try {
-          await deleteFile(idHex);
-        } catch (error) {
-          const err = error as NodeJS.ErrnoException;
-          if (err.code !== 'ENOENT') {
-            await writeLog('Ошибка удаления вложения черновика', 'warn', {
-              fileId: idHex,
-              error: err?.message || String(error),
-            }).catch(() => undefined);
-          }
-        }
-      }),
-    );
+    await detachFilesForDraft(draft._id as Types.ObjectId);
   }
 }

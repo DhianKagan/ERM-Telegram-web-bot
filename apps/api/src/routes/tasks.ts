@@ -753,16 +753,16 @@ export const handleChunks: RequestHandler = async (req, res) => {
         return;
       }
       await syncAttachmentsForRequest(req as RequestWithUser, [attachment]);
-      const fileId =
+      const resolvedFileId =
         finalizeResult.fileIds?.[0] ??
         extractFileIdFromUrl(attachment.url) ??
         '';
-      if (!fileId) {
+      if (!resolvedFileId) {
         res.sendStatus(500);
         return;
       }
       res.json({
-        fileId,
+        fileId: resolvedFileId,
         name: attachment.name ?? 'Файл',
         type: attachment.type ?? 'application/octet-stream',
       });
@@ -773,12 +773,16 @@ export const handleChunks: RequestHandler = async (req, res) => {
     if (cleanupUserId !== undefined && cleanupFileId) {
       releaseChunkUploadDir(cleanupUserId, cleanupFileId);
     }
-    await writeLog('Не удалось обработать chunk-upload', 'error', {
-      error: (error as Error).message,
-      fileId: cleanupFileId,
-      userId: cleanupUserId,
-    }).catch(() => undefined);
-    res.sendStatus(500);
+    await Promise.resolve(
+      writeLog('Не удалось обработать chunk-upload', 'error', {
+        error: (error as Error).message,
+        fileId: cleanupFileId,
+        userId: cleanupUserId,
+      }),
+    ).catch(() => undefined);
+    if (!res.headersSent) {
+      res.sendStatus(500);
+    }
   }
 };
 

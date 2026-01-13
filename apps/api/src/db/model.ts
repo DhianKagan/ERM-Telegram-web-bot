@@ -623,11 +623,11 @@ const userSchema = new Schema<UserDocument>({
 /* ---------- File (загрузка файлов) ---------- */
 
 export interface FileAttrs {
-  taskId?: Types.ObjectId;
-  relatedTaskIds?: Types.ObjectId[];
-  telegramFileId?: string;
-  scope?: string;
-  detached?: boolean;
+  taskId?: Types.ObjectId | null;
+  relatedTaskIds: Types.ObjectId[];
+  telegramFileId: string | null;
+  scope: FileScope;
+  detached: boolean;
   userId: number;
   name: string;
   path: string;
@@ -635,16 +635,25 @@ export interface FileAttrs {
   type: string;
   size: number;
   uploadedAt: Date;
-  draftId?: Types.ObjectId;
+  draftId?: Types.ObjectId | null;
 }
 export interface FileDocument extends FileAttrs, Document {}
 
+export type FileScope = 'task' | 'draft' | 'user' | 'telegram' | 'global';
+
 const fileSchema = new Schema<FileDocument>({
-  taskId: { type: Schema.Types.ObjectId, ref: 'Task' },
-  relatedTaskIds: [{ type: Schema.Types.ObjectId, ref: 'Task' }],
+  taskId: { type: Schema.Types.ObjectId, ref: 'Task', default: null },
+  relatedTaskIds: {
+    type: [{ type: Schema.Types.ObjectId, ref: 'Task' }],
+    default: [],
+  },
   draftId: { type: Schema.Types.ObjectId, ref: 'TaskDraft', default: null },
-  telegramFileId: String,
-  scope: String,
+  telegramFileId: { type: String, default: null },
+  scope: {
+    type: String,
+    enum: ['task', 'draft', 'user', 'telegram', 'global'],
+    default: 'user',
+  },
   detached: { type: Boolean, default: false },
   userId: { type: Number, required: true },
   name: { type: String, required: true },

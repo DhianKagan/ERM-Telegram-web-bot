@@ -605,6 +605,9 @@ export default class TasksController {
   }
 
   private extractTelegramPhotoId(response: unknown): string | null {
+    if (!response || typeof response !== 'object') {
+      return null;
+    }
     const photos = (response as { photo?: Array<{ file_id?: string }> }).photo;
     if (!Array.isArray(photos) || photos.length === 0) {
       return null;
@@ -614,8 +617,10 @@ export default class TasksController {
   }
 
   private extractTelegramDocumentId(response: unknown): string | null {
-    const document = (response as { document?: { file_id?: string } })
-      .document;
+    if (!response || typeof response !== 'object') {
+      return null;
+    }
+    const document = (response as { document?: { file_id?: string } }).document;
     return typeof document?.file_id === 'string' ? document.file_id : null;
   }
 
@@ -1863,28 +1868,28 @@ export default class TasksController {
       await flushImages();
       if (attachment.kind === 'unsupported-image') {
         try {
-        const response = await bot.telegram.sendDocument(
-          chat,
-          await resolvePhotoInput(attachment.url),
-          (() => {
-            const options = documentOptionsBase();
-            if (attachment.caption) {
-              options.caption = escapeMarkdownV2(attachment.caption);
-              options.parse_mode = 'MarkdownV2';
-            }
-            return options;
-          })(),
-        );
-        if (response?.message_id) {
-          sentMessageIds.push(response.message_id);
-        }
-        await this.persistTelegramFileId(
-          attachment.url,
-          this.extractTelegramDocumentId(response),
-        );
-      } catch (error) {
-        console.error(
-          'Не удалось отправить неподдерживаемое изображение как документ',
+          const response = await bot.telegram.sendDocument(
+            chat,
+            await resolvePhotoInput(attachment.url),
+            (() => {
+              const options = documentOptionsBase();
+              if (attachment.caption) {
+                options.caption = escapeMarkdownV2(attachment.caption);
+                options.parse_mode = 'MarkdownV2';
+              }
+              return options;
+            })(),
+          );
+          if (response?.message_id) {
+            sentMessageIds.push(response.message_id);
+          }
+          await this.persistTelegramFileId(
+            attachment.url,
+            this.extractTelegramDocumentId(response),
+          );
+        } catch (error) {
+          console.error(
+            'Не удалось отправить неподдерживаемое изображение как документ',
             attachment.mimeType ?? 'unknown',
             attachment.name ?? attachment.url,
             error,
@@ -2779,9 +2784,10 @@ export default class TasksController {
     } else {
       unsetPayload.telegram_attachments_message_ids = '';
     }
-    if (typeof photosMessageId === 'number' && photosChatId) {
+    const resolvedPhotosChatId = photosChatId ?? normalizedGroupChatId;
+    if (typeof photosMessageId === 'number' && resolvedPhotosChatId) {
       setPayload.telegram_photos_message_id = photosMessageId;
-      setPayload.telegram_photos_chat_id = photosChatId;
+      setPayload.telegram_photos_chat_id = resolvedPhotosChatId;
       if (typeof photosTopicId === 'number') {
         setPayload.telegram_photos_topic_id = photosTopicId;
       } else {

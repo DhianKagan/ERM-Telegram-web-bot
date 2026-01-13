@@ -478,6 +478,12 @@ const detachedCleanupFilter: FilterQuery<FileDocument> = {
   $and: [
     { $or: [{ taskId: null }, { taskId: { $exists: false } }] },
     { $or: [{ draftId: null }, { draftId: { $exists: false } }] },
+    {
+      $or: [
+        { relatedTaskIds: { $exists: false } },
+        { relatedTaskIds: { $size: 0 } },
+      ],
+    },
   ],
 };
 

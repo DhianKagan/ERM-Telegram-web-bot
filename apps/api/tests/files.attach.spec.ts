@@ -5,17 +5,22 @@ process.env.APP_URL = 'https://localhost';
 
 import express from 'express';
 import request from 'supertest';
+import { File, Task } from '../src/db/model';
+import { syncTaskAttachments } from '../src/db/queries';
+import filesRouter from '../src/routes/files';
+
+type MockRequest = { user?: { id: number; access: number } };
 
 jest.mock(
   '../src/middleware/auth',
-  () => () => (req: any, _res: any, next: () => void) => {
+  () => () => (req: MockRequest, _res: unknown, next: () => void) => {
     req.user = { id: 1, access: 1 };
     next();
   },
 );
 
 jest.mock('../src/db/model', () => ({
-  File: { findById: jest.fn() },
+  File: { findById: jest.fn(), findByIdAndUpdate: jest.fn() },
   Task: {
     findById: jest.fn(),
     updateOne: jest.fn(),
@@ -29,17 +34,16 @@ jest.mock('../src/db/queries', () => ({
   syncTaskAttachments: jest.fn(),
 }));
 
-const { File, Task } = require('../src/db/model');
-const { syncTaskAttachments } = require('../src/db/queries');
-const router = require('../src/routes/files').default;
-
 describe('POST /api/v1/files/:id/attach', () => {
   const app = express();
   app.use(express.json());
-  app.use(router);
+  app.use(filesRouter);
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (File.findByIdAndUpdate as jest.Mock).mockReturnValue({
+      lean: () => Promise.resolve(null),
+    });
   });
 
   it('привязывает собственный файл к задаче и синхронизирует вложения', async () => {

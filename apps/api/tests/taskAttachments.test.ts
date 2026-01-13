@@ -2,22 +2,77 @@
  * Назначение файла: тесты привязки вложений к задачам и проверки доступа.
  * Основные модули: jest, supertest, express.
  */
-import express = require('express');
-import request = require('supertest');
+import express from 'express';
+import request from 'supertest';
 import { Types } from 'mongoose';
-import type { NextFunction, Request, RequestHandler, Response } from 'express';
+import type { NextFunction, Response } from 'express';
 import type { RequestWithUser } from './helpers/express';
+import checkTaskAccess from '../src/middleware/taskAccess';
+import { createTask, updateTask } from '../src/db/queries';
+import { ACCESS_USER } from '../src/utils/accessMask';
+import * as tasksService from '../src/services/tasks';
 
 const createdTaskId = new Types.ObjectId();
 const mockExistingTaskId = new Types.ObjectId();
 const existingTaskId = mockExistingTaskId;
 const fileId = new Types.ObjectId();
 
-const mockTaskCreate = jest.fn(async (data: any) => ({
+type UpdateArgs = [
+  Record<string, unknown>,
+  { $set?: { attachments?: unknown[] }; [key: string]: unknown }?,
+];
+
+jest.mock('../src/db/model', () => ({
+  Task: {
+    create: jest.fn(),
+    findById: jest.fn(),
+    findOneAndUpdate: jest.fn(),
+  },
+  Archive: {},
+  User: {},
+  Role: {},
+  File: {
+    updateMany: jest.fn(),
+    find: jest.fn(),
+    bulkWrite: jest.fn(),
+  },
+  RoleAttrs: {},
+  TaskTemplate: {},
+  TaskTemplateDocument: {},
+  HistoryEntry: {},
+}));
+
+jest.mock('../src/services/wgLogEngine', () => ({
+  writeLog: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock('../src/services/tasks', () => ({
+  getById: jest.fn(),
+}));
+
+const models = jest.requireMock('../src/db/model') as {
+  Task: {
+    create: jest.Mock;
+    findById: jest.Mock;
+    findOneAndUpdate: jest.Mock;
+  };
+  File: { updateMany: jest.Mock; find: jest.Mock; bulkWrite: jest.Mock };
+};
+const mockTaskCreate = models.Task.create as jest.Mock;
+const mockTaskFindById = models.Task.findById as jest.Mock;
+const mockTaskFindOneAndUpdate = models.Task.findOneAndUpdate as jest.Mock<
+  Promise<{ _id: typeof existingTaskId; attachments: unknown[] }>,
+  UpdateArgs
+>;
+const mockFileUpdateMany = models.File.updateMany as jest.Mock;
+const mockFileFind = models.File.find as jest.Mock;
+const mockFileBulkWrite = models.File.bulkWrite as jest.Mock;
+
+mockTaskCreate.mockImplementation(async (data: Record<string, unknown>) => ({
   ...data,
   _id: createdTaskId,
 }));
-const mockTaskFindById = jest.fn(async () => ({
+mockTaskFindById.mockImplementation(async () => ({
   _id: existingTaskId,
   status: 'Новая',
   attachments: [
@@ -31,59 +86,16 @@ const mockTaskFindById = jest.fn(async () => ({
     },
   ],
 }));
-type UpdateArgs = [
-  Record<string, unknown>,
-  { $set?: { attachments?: unknown[] }; [key: string]: unknown }?,
-];
-
-const mockTaskFindOneAndUpdate = jest.fn<
-  Promise<{ _id: typeof existingTaskId; attachments: unknown[] }>,
-  UpdateArgs
->(async () => ({
+mockTaskFindOneAndUpdate.mockImplementation(async () => ({
   _id: existingTaskId,
   attachments: [],
 }));
-const mockFileUpdateMany = jest.fn(async () => ({}));
-
-jest.mock('../src/db/model', () => ({
-  Task: {
-    create: mockTaskCreate,
-    findById: mockTaskFindById,
-    findOneAndUpdate: mockTaskFindOneAndUpdate,
-  },
-  Archive: {},
-  User: {},
-  Role: {},
-  File: {
-    updateMany: mockFileUpdateMany,
-  },
-  RoleAttrs: {},
-  TaskTemplate: {},
-  TaskTemplateDocument: {},
-  HistoryEntry: {},
+mockFileUpdateMany.mockImplementation(async () => ({}));
+mockFileFind.mockImplementation(() => ({
+  lean: jest.fn().mockResolvedValue([]),
 }));
+mockFileBulkWrite.mockImplementation(async () => ({}));
 
-jest.mock('../src/services/wgLogEngine', () => ({
-  writeLog: jest.fn().mockResolvedValue(undefined),
-}));
-
-const mockGetById = jest.fn(async () => ({
-  _id: mockExistingTaskId,
-  created_by: 1,
-  status: 'Новая',
-  assignees: [],
-  controllers: [],
-}));
-
-jest.mock('../src/services/tasks', () => ({
-  getById: mockGetById,
-}));
-
-const { createTask, updateTask } = require('../src/db/queries');
-const checkTaskAccess = require('../src/middleware/taskAccess')
-  .default as RequestHandler;
-const { ACCESS_USER } = require('../src/utils/accessMask');
-const tasksService = require('../src/services/tasks');
 const mockedGetById = tasksService.getById as jest.Mock;
 
 const defaultTaskAccess = {
@@ -138,15 +150,11 @@ describe('Привязка вложений к задачам', () => {
         _id: { $in: [fileId] },
         $or: [{ userId: 7 }, { taskId: createdTaskId }],
       },
-      { $set: { taskId: createdTaskId }, $unset: { draftId: '' } },
-    );
-    expect(mockFileUpdateMany).toHaveBeenNthCalledWith(
-      2,
       {
-        taskId: createdTaskId,
-        _id: { $nin: [fileId] },
+        $set: { taskId: createdTaskId, detached: false, scope: 'task' },
+        $unset: { draftId: '' },
+        $addToSet: { relatedTaskIds: createdTaskId },
       },
-      { $unset: { taskId: '', draftId: '' } },
     );
   });
 
@@ -173,7 +181,11 @@ describe('Привязка вложений к задачам', () => {
           },
         ],
       },
-      { $set: { taskId: createdTaskId }, $unset: { draftId: '' } },
+      {
+        $set: { taskId: createdTaskId, detached: false, scope: 'task' },
+        $unset: { draftId: '' },
+        $addToSet: { relatedTaskIds: createdTaskId },
+      },
     );
   });
 
@@ -195,7 +207,11 @@ describe('Привязка вложений к задачам', () => {
         _id: { $in: [fileId] },
         $or: [{ userId: 7 }, { taskId: createdTaskId }],
       },
-      { $set: { taskId: createdTaskId }, $unset: { draftId: '' } },
+      {
+        $set: { taskId: createdTaskId, detached: false, scope: 'task' },
+        $unset: { draftId: '' },
+        $addToSet: { relatedTaskIds: createdTaskId },
+      },
     );
   });
 
@@ -206,10 +222,10 @@ describe('Привязка вложений к задачам', () => {
       1,
     );
     expect(result).not.toBeNull();
-    expect(mockFileUpdateMany).toHaveBeenCalledWith(
-      { taskId: existingTaskId },
-      { $unset: { taskId: '', draftId: '' } },
-    );
+    expect(mockFileUpdateMany).not.toHaveBeenCalled();
+    expect(mockFileFind).toHaveBeenCalledWith({
+      $or: [{ taskId: existingTaskId }, { relatedTaskIds: existingTaskId }],
+    });
   });
 
   test('парсит строковое представление вложений при обновлении', async () => {

@@ -175,6 +175,11 @@ const { resolveTaskTypePhotosTarget: resolvePhotosTargetMock } =
     resolveTaskTypePhotosTarget: jest.Mock;
   };
 
+const createController = () =>
+  new TasksController(
+    {} as unknown as ConstructorParameters<typeof TasksController>[0],
+  );
+
 describe('notifyTaskCreated вложения', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -262,7 +267,7 @@ describe('notifyTaskCreated вложения', () => {
     (plainTask as unknown as { toObject: () => unknown }).toObject = () =>
       plainTask;
 
-    const controller = new TasksController({} as any);
+    const controller = createController();
     await (
       controller as unknown as {
         notifyTaskCreated(task: TaskDocument, userId: number): Promise<void>;
@@ -284,7 +289,12 @@ describe('notifyTaskCreated вложения', () => {
     expect(commentCall?.[1]).toContain('Нет комментариев');
     expect(commentCall?.[2]?.reply_parameters?.message_id).toBe(groupMessageId);
 
-    const updateCall = updateTaskMock.mock.calls[0];
+    const updateCall =
+      updateTaskMock.mock.calls.find(
+        (call) =>
+          (call?.[1] as { $set?: Record<string, unknown> } | undefined)?.$set
+            ?.telegram_photos_chat_id !== undefined,
+      ) ?? updateTaskMock.mock.calls[updateTaskMock.mock.calls.length - 1];
     if (updateCall) {
       const updatePayload = (updateCall[1] ?? {}) as {
         $set?: Record<string, unknown>;
@@ -350,7 +360,7 @@ describe('notifyTaskCreated вложения', () => {
 
     taskFindByIdMock.mockResolvedValue(updatedTask);
 
-    const controller = new TasksController({} as any);
+    const controller = createController();
     await (
       controller as unknown as {
         broadcastTaskSnapshot(
@@ -377,7 +387,8 @@ describe('notifyTaskCreated вложения', () => {
         typeof call?.[1] === 'string' && call[1].includes('💬 *Комментарий*'),
     );
     expect(commentCall?.[2]?.reply_parameters?.message_id).toBe(groupMessageId);
-    const updateCall = updateTaskMock.mock.calls[0];
+    const updateCall =
+      updateTaskMock.mock.calls[updateTaskMock.mock.calls.length - 1];
     if (updateCall) {
       const updatePayload = (updateCall[1] ?? {}) as {
         $set?: Record<string, unknown>;
@@ -421,7 +432,7 @@ describe('notifyTaskCreated вложения', () => {
       },
     } as unknown as TaskDocument & { toObject(): unknown };
 
-    const controller = new TasksController({} as any);
+    const controller = createController();
     await (
       controller as unknown as {
         notifyTaskCreated(task: TaskDocument, userId: number): Promise<void>;
@@ -485,7 +496,7 @@ describe('notifyTaskCreated вложения', () => {
       },
     } as unknown as TaskDocument & { toObject(): unknown };
 
-    const controller = new TasksController({} as any);
+    const controller = createController();
     await (
       controller as unknown as {
         notifyTaskCreated(task: TaskDocument, userId: number): Promise<void>;
@@ -510,7 +521,8 @@ describe('notifyTaskCreated вложения', () => {
     expect(photoCall?.[2]?.message_thread_id).toBe(7777);
     expect(photoCall?.[2]?.reply_parameters?.message_id).toBe(albumIntroId);
 
-    const updateCall = updateTaskMock.mock.calls[0];
+    const updateCall =
+      updateTaskMock.mock.calls[updateTaskMock.mock.calls.length - 1];
     expect(updateCall).toBeDefined();
     if (updateCall) {
       const updatePayload = (updateCall[1] ?? {}) as {
@@ -554,7 +566,7 @@ describe('notifyTaskCreated вложения', () => {
       },
     } as unknown as TaskDocument & { toObject(): unknown };
 
-    const controller = new TasksController({} as any);
+    const controller = createController();
     try {
       await (
         controller as unknown as {
@@ -598,7 +610,7 @@ describe('notifyTaskCreated вложения', () => {
       },
     } as unknown as TaskDocument & { toObject(): unknown };
 
-    const controller = new TasksController({} as any);
+    const controller = createController();
     try {
       await (
         controller as unknown as {

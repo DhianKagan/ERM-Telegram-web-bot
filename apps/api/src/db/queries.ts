@@ -36,7 +36,7 @@ import {
 } from '../utils/attachments';
 import {
   clearTaskLinksForTask,
-  deleteFilesForTask,
+  detachFilesForTask,
   findFilesForAttachments,
   updateFilesByFilter,
 } from '../services/fileService';
@@ -928,14 +928,10 @@ export async function syncTaskAttachments(
         }
       }
     }
-    await updateFilesByFilter(
-      { taskId: normalizedTaskId, _id: { $nin: fileIds } },
-      {
-        $unset: { taskId: '', draftId: '' },
-        $set: { detached: true, scope: 'user' },
-        $pull: { relatedTaskIds: normalizedTaskId },
-      },
-    );
+    await detachFilesForTask(normalizedTaskId, {
+      taskId: normalizedTaskId,
+      _id: { $nin: fileIds },
+    });
   } catch (error) {
     await logEngine.writeLog(
       `Ошибка обновления вложений задачи ${normalizedTaskId.toHexString()}`,
@@ -1554,7 +1550,13 @@ export async function deleteTask(
     ? (data.attachments as Attachment[])
     : [];
   const fileIds = extractAttachmentIds(attachments);
-  await deleteFilesForTask(doc._id as Types.ObjectId, fileIds);
+  await detachFilesForTask(doc._id as Types.ObjectId, {
+    $or: [
+      { taskId: doc._id as Types.ObjectId },
+      { relatedTaskIds: doc._id as Types.ObjectId },
+      { _id: { $in: fileIds } },
+    ],
+  });
   const fallbackUserId =
     typeof data.created_by === 'number' && Number.isFinite(data.created_by)
       ? data.created_by

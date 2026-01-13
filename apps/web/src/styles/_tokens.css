@@ -112,6 +112,9 @@
     font-weight: 700;
     line-height: 1.2;
     letter-spacing: 0.02em;
+    max-width: 14rem;
+    white-space: normal;
+    word-break: break-word;
   }
 
   .ui-status-badge[data-tone='new'],

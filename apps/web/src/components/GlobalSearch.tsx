@@ -3,6 +3,7 @@
 import React from 'react';
 import { MagnifyingGlassIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { useTranslation } from 'react-i18next';
+import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import useTasks from '../context/useTasks';
 
@@ -35,33 +36,34 @@ export default function GlobalSearch() {
   };
 
   return (
-    <div className="flex items-center gap-1.5">
-      <div className="flex flex-1 items-center gap-1.5">
-        <div className="relative w-full max-w-xs sm:max-w-sm">
-          <MagnifyingGlassIcon className="pointer-events-none absolute top-1/2 left-2 size-4 -translate-y-1/2 text-gray-400" />
-          <Input
-            ref={ref}
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onKeyDown={onKey}
-            placeholder={t('search')}
-            aria-label={t('search')}
-            className="w-full pr-8 pl-8"
-          />
-          {value && (
-            <button
-              onClick={clear}
-              aria-label="Очистить"
-              className="absolute top-1/2 right-2 -translate-y-1/2 text-gray-400 hover:text-black"
-            >
-              <XMarkIcon className="size-4" />
-            </button>
-          )}
-        </div>
-        <button onClick={search} className="rounded border px-1.5 py-1">
-          {t('find')}
-        </button>
+    <div className="flex w-full flex-wrap items-center gap-2">
+      <div className="relative w-full min-w-[12rem] flex-1">
+        <MagnifyingGlassIcon className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          ref={ref}
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          onKeyDown={onKey}
+          placeholder={t('search')}
+          aria-label={t('search')}
+          className="w-full pl-9 pr-9"
+        />
+        {value ? (
+          <button
+            onClick={clear}
+            aria-label="Очистить"
+            className="absolute top-1/2 right-2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+          >
+            <XMarkIcon className="size-4" />
+          </button>
+        ) : null}
       </div>
+      <Button type="button" size="sm" variant="primary" onClick={search}>
+        {t('find')}
+      </Button>
+      <Button type="button" size="sm" variant="outline" onClick={clear}>
+        Сбросить
+      </Button>
     </div>
   );
 }

@@ -1,8 +1,13 @@
 // Назначение: страница профиля пользователя
 // Основные модули: React, React Router
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
+import { UserCircleIcon } from '@heroicons/react/24/outline';
 
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { FormGroup } from '@/components/ui/form-group';
+import { Input } from '@/components/ui/input';
+import ActionBar from '../components/ActionBar';
 import { useAuth } from '../context/useAuth';
 import { updateProfile } from '../services/auth';
 import {
@@ -177,127 +182,129 @@ export default function Profile() {
 
   return (
     <div className="space-y-6">
+      <ActionBar
+        icon={UserCircleIcon}
+        title="Личный кабинет"
+        description="Управляйте основными данными профиля и контактами."
+      />
       <div className="mx-auto max-w-4xl space-y-4">
         {error && (
-          <div className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          <Card className="border-destructive/30 bg-destructive/5 text-destructive">
             {error}
-          </div>
+          </Card>
         )}
-        <form
-          onSubmit={handleSubmit}
-          className="space-y-4 rounded bg-white p-8 shadow"
-        >
-          <h2 className="text-2xl">Личный кабинет</h2>
-          <div className="grid gap-4 md:grid-cols-2">
-            <label className="space-y-1 md:col-span-2">
-              <span className="block text-sm font-medium">ФИО</span>
-              <input
-                name="fullName"
-                className="h-10 w-full rounded border px-3"
-                value={form.name}
-                onChange={(e) => updateField('name', e.target.value)}
-                required
-              />
-            </label>
-            <label className="space-y-1">
-              <span className="block text-sm font-medium">Телефон</span>
-              <input
-                name="phone"
-                className="h-10 w-full rounded border px-3"
-                value={form.phone}
-                onChange={(e) => updateField('phone', e.target.value)}
-                type="tel"
-                placeholder=""
-              />
-            </label>
-            <label className="space-y-1">
-              <span className="block text-sm font-medium">Email</span>
-              <input
-                name="email"
-                className="h-10 w-full rounded border px-3"
-                value={form.email}
-                onChange={(e) => updateField('email', e.target.value)}
-                type="email"
-                required
-              />
-            </label>
-            <label className="space-y-1">
-              <span className="block text-sm font-medium">Доп. телефон</span>
-              <input
-                name="additionalPhone"
-                className="h-10 w-full rounded border bg-gray-100 px-3 text-gray-600"
-                value={additionalPhone}
-                readOnly
-                disabled
-              />
-            </label>
-            <label className="space-y-1">
-              <span className="block text-sm font-medium">Telegram ID</span>
-              <input
-                name="telegramId"
-                className="h-10 w-full rounded border bg-gray-100 px-3 text-gray-600"
-                value={telegramId}
-                readOnly
-                disabled
-              />
-            </label>
-            <label className="space-y-1">
-              <span className="block text-sm font-medium">Username</span>
-              <input
-                name="telegramUsername"
-                className="h-10 w-full rounded border bg-gray-100 px-3 text-gray-600"
-                value={telegramUsername}
-                readOnly
-                disabled
-              />
-            </label>
-            <label className="space-y-1">
-              <span className="block text-sm font-medium">Роль</span>
-              <input
-                name="role"
-                className="h-10 w-full rounded border bg-gray-100 px-3 text-gray-600"
-                value={roleLabel}
-                readOnly
-                disabled
-              />
-            </label>
-            <label className="space-y-1">
-              <span className="block text-sm font-medium">Департамент</span>
-              <input
-                name="department"
-                className="h-10 w-full rounded border bg-gray-100 px-3 text-gray-600"
-                value={departmentName || '—'}
-                readOnly
-                disabled
-              />
-            </label>
-            <label className="space-y-1">
-              <span className="block text-sm font-medium">Отдел</span>
-              <input
-                name="division"
-                className="h-10 w-full rounded border bg-gray-100 px-3 text-gray-600"
-                value={divisionName || '—'}
-                readOnly
-                disabled
-              />
-            </label>
-            <label className="space-y-1">
-              <span className="block text-sm font-medium">Должность</span>
-              <input
-                name="position"
-                className="h-10 w-full rounded border bg-gray-100 px-3 text-gray-600"
-                value={positionName || '—'}
-                readOnly
-                disabled
-              />
-            </label>
-          </div>
-          <div className="flex gap-3">
-            <Button type="submit" disabled={!isDirty || saving}>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Card>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <FormGroup label="ФИО" htmlFor="profile-full-name">
+                <Input
+                  id="profile-full-name"
+                  name="fullName"
+                  value={form.name}
+                  onChange={(e) => updateField('name', e.target.value)}
+                  required
+                />
+              </FormGroup>
+              <FormGroup label="Телефон" htmlFor="profile-phone">
+                <Input
+                  id="profile-phone"
+                  name="phone"
+                  value={form.phone}
+                  onChange={(e) => updateField('phone', e.target.value)}
+                  type="tel"
+                  placeholder=""
+                />
+              </FormGroup>
+              <FormGroup label="Email" htmlFor="profile-email">
+                <Input
+                  id="profile-email"
+                  name="email"
+                  value={form.email}
+                  onChange={(e) => updateField('email', e.target.value)}
+                  type="email"
+                  required
+                />
+              </FormGroup>
+              <FormGroup
+                label="Доп. телефон"
+                htmlFor="profile-additional-phone"
+              >
+                <Input
+                  id="profile-additional-phone"
+                  name="additionalPhone"
+                  value={additionalPhone}
+                  readOnly
+                  disabled
+                />
+              </FormGroup>
+              <FormGroup label="Telegram ID" htmlFor="profile-telegram-id">
+                <Input
+                  id="profile-telegram-id"
+                  name="telegramId"
+                  value={telegramId}
+                  readOnly
+                  disabled
+                />
+              </FormGroup>
+              <FormGroup label="Username" htmlFor="profile-telegram-username">
+                <Input
+                  id="profile-telegram-username"
+                  name="telegramUsername"
+                  value={telegramUsername}
+                  readOnly
+                  disabled
+                />
+              </FormGroup>
+              <FormGroup label="Роль" htmlFor="profile-role">
+                <Input
+                  id="profile-role"
+                  name="role"
+                  value={roleLabel}
+                  readOnly
+                  disabled
+                />
+              </FormGroup>
+              <FormGroup label="Департамент" htmlFor="profile-department">
+                <Input
+                  id="profile-department"
+                  name="department"
+                  value={departmentName || '—'}
+                  readOnly
+                  disabled
+                />
+              </FormGroup>
+              <FormGroup label="Отдел" htmlFor="profile-division">
+                <Input
+                  id="profile-division"
+                  name="division"
+                  value={divisionName || '—'}
+                  readOnly
+                  disabled
+                />
+              </FormGroup>
+              <FormGroup label="Должность" htmlFor="profile-position">
+                <Input
+                  id="profile-position"
+                  name="position"
+                  value={positionName || '—'}
+                  readOnly
+                  disabled
+                />
+              </FormGroup>
+            </div>
+          </Card>
+          <div className="flex flex-wrap gap-3">
+            <Button
+              type="submit"
+              size="sm"
+              variant="primary"
+              disabled={!isDirty || saving}
+            >
               {saving ? 'Сохранение...' : 'Сохранить'}
             </Button>
             <Button
               type="button"
+              size="sm"
               variant="outline"
               onClick={resetForm}
               disabled={!isDirty || saving}

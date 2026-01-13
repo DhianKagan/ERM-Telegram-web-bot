@@ -1,6 +1,7 @@
 // Страница отображения маршрутных планов в виде карточек
 // Основные модули: React, listRoutePlans, компоненты интерфейса
 import React from 'react';
+import { TruckIcon } from '@heroicons/react/24/outline';
 import type {
   RoutePlan,
   RoutePlanRoute,
@@ -13,6 +14,7 @@ import StatusBadge, { mapStatusTone } from '@/components/ui/StatusBadge';
 import { FormGroup } from '@/components/ui/form-group';
 import { Select } from '@/components/ui/select';
 import Breadcrumbs from '../components/Breadcrumbs';
+import ActionBar from '../components/ActionBar';
 import SkeletonCard from '../components/SkeletonCard';
 import { useAuth } from '../context/useAuth';
 import { useToast } from '../context/useToast';
@@ -139,53 +141,50 @@ export default function Logistics() {
 
   return (
     <div className="space-y-6">
-      <Breadcrumbs
-        items={[
-          { label: 'Логистика', href: '/logistics' },
-          { label: 'Маршрутные планы' },
-        ]}
-      />
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-1">
-          <h2 className="text-xl font-semibold">Маршрутные планы</h2>
-          <p className="max-w-2xl text-sm text-muted-foreground">
-            Просматривайте планы доставки без привязки к карте: задачи,
-            назначенные водители и транспорт, статус и детали плана.
-          </p>
-        </div>
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
-          <FormGroup
-            label="Статус"
-            htmlFor="logistics-status-filter"
-            className="sm:w-48"
-          >
-            <Select
-              id="logistics-status-filter"
-              value={statusFilter}
-              onChange={(event) =>
-                setStatusFilter(
-                  event.target.value as RoutePlanStatus | 'cancelled' | 'all',
-                )
-              }
-            >
-              {STATUS_OPTIONS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </Select>
-          </FormGroup>
+      <ActionBar
+        breadcrumbs={
+          <Breadcrumbs
+            items={[
+              { label: 'Логистика', href: '/logistics' },
+              { label: 'Маршрутные планы' },
+            ]}
+          />
+        }
+        icon={TruckIcon}
+        title="Маршрутные планы"
+        description="Просматривайте планы доставки без привязки к карте: задачи, назначенные водители и транспорт, статус и детали плана."
+        filters={
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <FormGroup label="Статус" htmlFor="logistics-status-filter">
+              <Select
+                id="logistics-status-filter"
+                value={statusFilter}
+                onChange={(event) =>
+                  setStatusFilter(
+                    event.target.value as RoutePlanStatus | 'cancelled' | 'all',
+                  )
+                }
+              >
+                {STATUS_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
+            </FormGroup>
+          </div>
+        }
+        toolbar={
           <Button
             onClick={() => void loadPlans()}
             disabled={loading}
-            variant="secondary"
+            variant="outline"
             size="sm"
-            className="sm:self-end"
           >
             {loading ? 'Обновляем…' : 'Обновить'}
           </Button>
-        </div>
-      </div>
+        }
+      />
       {!isAdmin && !isManager && (
         <p className="text-sm text-muted-foreground">
           Управление маршрутными планами доступно администраторам и менеджерам.

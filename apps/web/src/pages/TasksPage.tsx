@@ -2,7 +2,12 @@
 // Модули: React, контексты, сервисы задач, shared
 import React from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { ClipboardDocumentListIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { FormGroup } from '@/components/ui/form-group';
+import GlobalSearch from '../components/GlobalSearch';
+import SearchFilters from '../components/SearchFilters';
 import TaskTable from '../components/TaskTable';
 import Spinner from '../components/Spinner';
 import ActionBar from '../components/ActionBar';
@@ -224,6 +229,19 @@ export default function TasksPage() {
   }, [users]);
 
   const showSpinner = isTasksLoading || (isTasksFetching && tasks.length === 0);
+  const handleMineChange = React.useCallback(
+    (value: boolean) => {
+      setMine(value);
+      const next = new URLSearchParams(params);
+      if (value) {
+        next.set('mine', '1');
+      } else {
+        next.delete('mine');
+      }
+      setParams(next);
+    },
+    [params, setParams],
+  );
 
   if (authLoading) return <div>Загрузка...</div>;
   if (!canView)
@@ -232,8 +250,34 @@ export default function TasksPage() {
     <div className="space-y-4">
       <ActionBar
         breadcrumbs={<Breadcrumbs items={[{ label: 'Задачи' }]} />}
+        icon={ClipboardDocumentListIcon}
         title="Панель управления задачами"
         description="Единое представление по задачам и назначенным исполнителям."
+        filters={
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="sm:col-span-2 lg:col-span-1">
+              <GlobalSearch />
+            </div>
+            {isPrivileged ? (
+              <FormGroup label="Показывать">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    id="task-table-mine"
+                    name="mineTasks"
+                    type="checkbox"
+                    checked={mine}
+                    onChange={(e) => handleMineChange(e.target.checked)}
+                    className="size-4"
+                  />
+                  <span>Мои задачи</span>
+                </label>
+              </FormGroup>
+            ) : null}
+            <div className="sm:col-span-2 lg:col-span-3">
+              <SearchFilters inline />
+            </div>
+          </div>
+        }
         toolbar={
           <div className="flex flex-wrap items-center gap-2">
             <Button size="sm" variant="outline" onClick={refresh}>
@@ -241,7 +285,7 @@ export default function TasksPage() {
             </Button>
             <Button
               size="sm"
-              variant="accent"
+              variant="success"
               onClick={() => {
                 params.set('newTask', '1');
                 setParams(params);
@@ -253,7 +297,7 @@ export default function TasksPage() {
         }
       />
 
-      <div className="rounded-3xl border border-[color:var(--color-gray-200)] bg-white p-3 shadow-[var(--shadow-theme-sm)] dark:border-[color:var(--color-gray-700)] dark:bg-[color:var(--color-gray-dark)] sm:p-4">
+      <Card>
         {showSpinner ? (
           <div className="flex min-h-[12rem] items-center justify-center">
             <Spinner className="h-6 w-6 text-[color:var(--color-brand-500)]" />
@@ -266,23 +310,14 @@ export default function TasksPage() {
             pageCount={Math.ceil((meta.total ?? tasks.length) / 25)}
             mine={isPrivileged ? mine : true}
             onPageChange={setPage}
-            onMineChange={
-              isPrivileged
-                ? (v) => {
-                    setMine(v);
-                    if (v) params.set('mine', '1');
-                    else params.delete('mine');
-                    setParams(params);
-                  }
-                : undefined
-            }
+            onMineChange={isPrivileged ? handleMineChange : undefined}
             onRowClick={(id) => {
               params.set('task', id);
               setParams(params);
             }}
           />
         )}
-      </div>
+      </Card>
     </div>
   );
 }

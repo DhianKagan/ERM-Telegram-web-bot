@@ -2,7 +2,12 @@
 // Модули: React, контексты, сервисы задач, shared
 import React from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { InboxArrowDownIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { FormGroup } from '@/components/ui/form-group';
+import GlobalSearch from '../components/GlobalSearch';
+import SearchFilters from '../components/SearchFilters';
 import TaskTable from '../components/TaskTable';
 import ActionBar from '../components/ActionBar';
 import Breadcrumbs from '../components/Breadcrumbs';
@@ -141,6 +146,19 @@ export default function RequestsPage() {
   }, [users]);
 
   const showSpinner = isLoading || (isFetching && tasks.length === 0);
+  const handleMineChange = React.useCallback(
+    (value: boolean) => {
+      setMine(value);
+      const next = new URLSearchParams(params);
+      if (value) {
+        next.set('mine', '1');
+      } else {
+        next.delete('mine');
+      }
+      setParams(next);
+    },
+    [params, setParams],
+  );
 
   if (authLoading) {
     return <div>Загрузка...</div>;
@@ -150,8 +168,32 @@ export default function RequestsPage() {
     <div className="space-y-4">
       <ActionBar
         breadcrumbs={<Breadcrumbs items={[{ label: 'Заявки' }]} />}
+        icon={InboxArrowDownIcon}
         title="Панель заявок"
         description="Единый список заявок с фильтрами и экспортом."
+        filters={
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="sm:col-span-2 lg:col-span-1">
+              <GlobalSearch />
+            </div>
+            <FormGroup label="Показывать">
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  id="request-table-mine"
+                  name="mineRequests"
+                  type="checkbox"
+                  checked={mine}
+                  onChange={(event) => handleMineChange(event.target.checked)}
+                  className="size-4"
+                />
+                <span>Мои заявки</span>
+              </label>
+            </FormGroup>
+            <div className="sm:col-span-2 lg:col-span-3">
+              <SearchFilters inline />
+            </div>
+          </div>
+        }
         toolbar={
           <div className="flex flex-wrap items-center gap-2">
             <Button size="sm" variant="outline" onClick={refresh}>
@@ -159,7 +201,7 @@ export default function RequestsPage() {
             </Button>
             <Button
               size="sm"
-              variant="accent"
+              variant="success"
               onClick={() => {
                 params.set('newRequest', '1');
                 setParams(params);
@@ -171,7 +213,7 @@ export default function RequestsPage() {
         }
       />
 
-      <div className="rounded-3xl border border-[color:var(--color-gray-200)] bg-white p-3 shadow-[var(--shadow-theme-sm)] dark:border-[color:var(--color-gray-700)] dark:bg-[color:var(--color-gray-dark)] sm:p-4">
+      <Card>
         {showSpinner ? (
           <div className="flex min-h-[12rem] items-center justify-center">
             <Spinner className="h-6 w-6 text-[color:var(--color-brand-500)]" />
@@ -185,19 +227,14 @@ export default function RequestsPage() {
             mine={mine}
             entityKind="request"
             onPageChange={setPage}
-            onMineChange={(value) => {
-              setMine(value);
-              if (value) params.set('mine', '1');
-              else params.delete('mine');
-              setParams(params);
-            }}
+            onMineChange={handleMineChange}
             onRowClick={(id) => {
               params.set('task', id);
               setParams(params);
             }}
           />
         )}
-      </div>
+      </Card>
     </div>
   );
 }

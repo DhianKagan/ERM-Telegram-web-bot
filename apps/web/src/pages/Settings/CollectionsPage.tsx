@@ -1306,7 +1306,7 @@ export default function CollectionsPage() {
 
   const breadcrumbs = useMemo(
     () => [
-      { label: t('nav.settings'), href: '/settings' },
+      { label: t('nav.settings'), href: '/cp/settings' },
       { label: t('collections.page.title') },
     ],
     [t],

@@ -29,12 +29,21 @@ export interface Attachment {
   fileId?: string;
   /** Название файла */
   name: string;
-  /** URL файла */
-  url: string;
   /** Миниатюра */
   thumbnailUrl?: string;
   /** MIME-тип */
   type: string;
+  /** URL файла */
+  url?: string;
   /** Размер в байтах */
-  size: number;
+  size?: number;
+}
+
+export interface AttachmentPayload {
+  /** ID файла */
+  fileId: string;
+  /** Название файла */
+  name: string;
+  /** MIME-тип */
+  type: string;
 }

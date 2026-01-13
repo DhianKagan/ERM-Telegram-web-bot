@@ -118,6 +118,10 @@ export default function StoragePage() {
   const [usersById, setUsersById] = React.useState<Record<number, User>>({});
   const [search, setSearch] = React.useState('');
   const [sort, setSort] = React.useState<SortOption>('uploaded_desc');
+  const [typeFilter, setTypeFilter] = React.useState('');
+  const [linkFilter, setLinkFilter] = React.useState<
+    'all' | 'linked' | 'unlinked'
+  >('all');
   const [pageIndex, setPageIndex] = React.useState(0);
   const [selectedId, setSelectedId] = React.useState<string | null>(
     searchParams.get('file'),
@@ -433,10 +437,33 @@ export default function StoragePage() {
 
   const filteredFiles = React.useMemo(() => {
     const query = search.trim().toLowerCase();
-    return files.filter((file) =>
-      query ? file.name.toLowerCase().includes(query) : true,
-    );
-  }, [files, search]);
+    const normalizedTypeFilter = typeFilter.trim();
+    return files
+      .filter((file) =>
+        query ? file.name.toLowerCase().includes(query) : true,
+      )
+      .filter((file) => {
+        if (!normalizedTypeFilter) return true;
+        if (normalizedTypeFilter === '__empty__') {
+          return !file.type?.trim();
+        }
+        return file.type?.trim() === normalizedTypeFilter;
+      })
+      .filter((file) => {
+        if (linkFilter === 'linked') return Boolean(file.taskId);
+        if (linkFilter === 'unlinked') return !file.taskId;
+        return true;
+      });
+  }, [files, linkFilter, search, typeFilter]);
+
+  const typeOptions = React.useMemo(() => {
+    const values = new Set<string>();
+    files.forEach((file) => {
+      const type = file.type?.trim();
+      if (type) values.add(type);
+    });
+    return Array.from(values).sort((a, b) => a.localeCompare(b));
+  }, [files]);
 
   const sortedFiles = React.useMemo(() => {
     const list = [...filteredFiles];
@@ -809,7 +836,7 @@ export default function StoragePage() {
           icon={RectangleStackIcon}
           controls={
             <div className="grid gap-2">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <FormGroup label="Поиск" htmlFor="storage-search">
                   <Input
                     id="storage-search"
@@ -845,7 +872,53 @@ export default function StoragePage() {
                     </option>
                   </Select>
                 </FormGroup>
-                <div className="flex flex-wrap justify-end gap-2 sm:col-span-2 lg:col-span-3">
+                <FormGroup
+                  label={t('storage.filters.type')}
+                  htmlFor="storage-type-filter"
+                >
+                  <Select
+                    id="storage-type-filter"
+                    value={typeFilter}
+                    onChange={(event) => {
+                      setTypeFilter(event.target.value);
+                      setPageIndex(0);
+                    }}
+                  >
+                    <option value="">{t('storage.filters.typeAll')}</option>
+                    <option value="__empty__">
+                      {t('storage.filters.typeUnknown')}
+                    </option>
+                    {typeOptions.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </Select>
+                </FormGroup>
+                <FormGroup
+                  label={t('storage.filters.linked')}
+                  htmlFor="storage-link-filter"
+                >
+                  <Select
+                    id="storage-link-filter"
+                    value={linkFilter}
+                    onChange={(event) => {
+                      setLinkFilter(event.target.value as typeof linkFilter);
+                      setPageIndex(0);
+                    }}
+                  >
+                    <option value="all">
+                      {t('storage.filters.linkedAll')}
+                    </option>
+                    <option value="linked">
+                      {t('storage.filters.linkedOnly')}
+                    </option>
+                    <option value="unlinked">
+                      {t('storage.filters.linkedNone')}
+                    </option>
+                  </Select>
+                </FormGroup>
+                <div className="flex flex-wrap justify-end gap-2 sm:col-span-2 lg:col-span-4">
                   <Button
                     type="button"
                     variant="secondary"

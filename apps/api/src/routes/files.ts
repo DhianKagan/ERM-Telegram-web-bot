@@ -1,20 +1,24 @@
 // Роут скачивания файлов с проверкой прав
 // Модули: express, middleware/auth, utils/accessMask, db/model, config/storage, wgLogEngine
 import { Router, RequestHandler, NextFunction } from 'express';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
+import multer from 'multer';
 import { body, param, query } from 'express-validator';
 import authMiddleware from '../middleware/auth';
 import { hasAccess, ACCESS_ADMIN } from '../utils/accessMask';
-import { Task, type Attachment } from '../db/model';
+import { Task, type Attachment, type FileScope } from '../db/model';
 import type { RequestWithUser } from '../types/request';
 import { uploadsDir } from '../config/storage';
 import { sendProblem } from '../utils/problem';
 import { writeLog } from '../services/wgLogEngine';
 import {
+  createFileRecord,
   deleteFile,
   getFileRecord,
   getLocalFileUrlVariants,
   linkFileToTask,
+  listFiles,
   listFilesByTaskId,
   unlinkFileFromTask,
 } from '../services/fileService';
@@ -24,12 +28,84 @@ import validate from '../utils/validate';
 import container from '../di';
 import { TOKENS } from '../di/tokens';
 import TaskSyncController from '../controllers/taskSync.controller';
+import { checkFile } from '../utils/fileCheck';
 
 const router: Router = Router();
 
 const taskSyncController = container.resolve<TaskSyncController>(
   TOKENS.TaskSyncController,
 );
+
+const maxUploadSize = 10 * 1024 * 1024;
+
+const resolveUserId = (req: RequestWithUser): number | null => {
+  const uid = Number(req.user?.id);
+  return Number.isFinite(uid) ? uid : null;
+};
+
+const ensureRelativePath = (absolute: string, baseDir: string): string => {
+  const relative = path.relative(baseDir, absolute);
+  if (
+    relative.startsWith('..') ||
+    path.isAbsolute(relative) ||
+    relative.length === 0
+  ) {
+    throw new Error('INVALID_PATH');
+  }
+  return relative.split(path.sep).join('/');
+};
+
+const storage = multer.diskStorage({
+  destination: (req, _file, cb) => {
+    const userId = resolveUserId(req as RequestWithUser);
+    if (!userId) {
+      cb(new Error('UPLOAD_USER_RESOLVE_FAILED'), '');
+      return;
+    }
+    const userDir = path.resolve(uploadsDir, String(userId));
+    fs.mkdirSync(userDir, { recursive: true });
+    cb(null, userDir);
+  },
+  filename: (_req, file, cb) => {
+    const original = path.basename(file.originalname);
+    cb(null, `${Date.now()}_${original}`);
+  },
+});
+
+const upload = multer({
+  storage,
+  fileFilter: (_req, file, cb) => {
+    if (checkFile(file)) {
+      cb(null, true);
+      return;
+    }
+    cb(new Error('Недопустимый тип файла'));
+  },
+  limits: { fileSize: maxUploadSize },
+});
+
+const handleUpload: RequestHandler = (req, res, next) => {
+  upload.single('file')(req, res, (err) => {
+    if (err) {
+      const message =
+        err instanceof multer.MulterError && err.code === 'LIMIT_FILE_SIZE'
+          ? 'Файл превышает допустимый размер'
+          : (err as Error).message;
+      res.status(400).json({ error: message });
+      return;
+    }
+    next();
+  });
+};
+
+const hasTaskLinks = (file: {
+  taskId?: unknown;
+  relatedTaskIds?: unknown;
+}): boolean => {
+  if (file.taskId) return true;
+  if (!Array.isArray(file.relatedTaskIds)) return false;
+  return file.relatedTaskIds.length > 0;
+};
 
 const buildAttachmentPayload = (
   file: NonNullable<Awaited<ReturnType<typeof getFileRecord>>>,
@@ -167,50 +243,110 @@ router.get(
       .trim()
       .isMongoId()
       .withMessage('taskId должен быть ObjectId'),
+    query('scope')
+      .optional()
+      .isIn(['task', 'draft', 'user', 'global', 'telegram'])
+      .withMessage('Некорректный scope'),
   ]),
   async (req: RequestWithUser, res, next) => {
     try {
       const taskId =
         typeof req.query.taskId === 'string' ? req.query.taskId.trim() : '';
-      if (!taskId) {
-        res.status(400).json({ error: 'taskId обязателен' });
+      const scopeRaw =
+        typeof req.query.scope === 'string' ? req.query.scope.trim() : '';
+      if (!taskId && !scopeRaw) {
+        res.status(400).json({ error: 'taskId или scope обязателен' });
         return;
       }
-      const task = await Task.findById(taskId).lean();
-      if (!task) {
-        sendProblem(req, res, {
-          type: 'about:blank',
-          title: 'Задача не найдена',
-          status: 404,
-          detail: 'Not Found',
-        });
+      if (taskId) {
+        const task = await Task.findById(taskId).lean();
+        if (!task) {
+          sendProblem(req, res, {
+            type: 'about:blank',
+            title: 'Задача не найдена',
+            status: 404,
+            detail: 'Not Found',
+          });
+          return;
+        }
+        const mask = req.user?.access ?? 0;
+        const uid = Number(req.user?.id);
+        const allowedIds = [
+          task?.created_by,
+          task?.assigned_user_id,
+          task?.controller_user_id,
+          ...(task?.assignees || []),
+          ...(task?.controllers || []),
+        ]
+          .map((value) => Number(value))
+          .filter((value) => Number.isFinite(value));
+        const isAdmin = hasAccess(mask, ACCESS_ADMIN);
+        if (!isAdmin && (!Number.isFinite(uid) || !allowedIds.includes(uid))) {
+          sendProblem(req, res, {
+            type: 'about:blank',
+            title: 'Доступ запрещён',
+            status: 403,
+            detail: 'Forbidden',
+          });
+          return;
+        }
+        const files = await listFilesByTaskId(taskId);
+        res.json(files);
         return;
       }
+      const scope = scopeRaw as FileScope;
       const mask = req.user?.access ?? 0;
-      const uid = Number(req.user?.id);
-      const allowedIds = [
-        task?.created_by,
-        task?.assigned_user_id,
-        task?.controller_user_id,
-        ...(task?.assignees || []),
-        ...(task?.controllers || []),
-      ]
-        .map((value) => Number(value))
-        .filter((value) => Number.isFinite(value));
       const isAdmin = hasAccess(mask, ACCESS_ADMIN);
-      if (!isAdmin && (!Number.isFinite(uid) || !allowedIds.includes(uid))) {
-        sendProblem(req, res, {
-          type: 'about:blank',
-          title: 'Доступ запрещён',
-          status: 403,
-          detail: 'Forbidden',
-        });
+      const uid = resolveUserId(req);
+      if (!isAdmin && !uid) {
+        res.status(401).json({ error: 'Недостаточно прав' });
         return;
       }
-      const files = await listFilesByTaskId(taskId);
+      const userIdFilter =
+        scope === 'global' || isAdmin ? undefined : (uid ?? undefined);
+      const files = await listFiles({ userId: userIdFilter, scope });
       res.json(files);
     } catch (err) {
       next(err);
+    }
+  },
+);
+
+router.post(
+  '/',
+  authMiddleware(),
+  handleUpload,
+  async (req: RequestWithUser, res, next) => {
+    try {
+      const userId = resolveUserId(req);
+      if (!userId) {
+        res.status(401).json({ error: 'Недостаточно прав' });
+        return;
+      }
+      const file = req.file as Express.Multer.File | undefined;
+      if (!file) {
+        res.status(400).json({ error: 'Файл не получен' });
+        return;
+      }
+      const uploadsAbs = path.resolve(uploadsDir);
+      const storedPath = path.resolve(file.destination, file.filename);
+      const relative = ensureRelativePath(storedPath, uploadsAbs);
+      const record = await createFileRecord({
+        userId,
+        name: file.originalname,
+        path: relative,
+        type: file.mimetype,
+        size: file.size,
+        scope: 'user',
+        detached: true,
+      });
+      res.status(201).json({
+        fileId: String(record._id),
+        name: record.name,
+        type: record.type,
+      });
+    } catch (error) {
+      next(error);
     }
   },
 );
@@ -372,6 +508,10 @@ router.delete(
           });
           return;
         }
+      }
+      if (hasTaskLinks(file)) {
+        res.status(409).json({ error: 'Файл привязан к задаче' });
+        return;
       }
       const deletionResult = await deleteFile(req.params.id);
       void writeLog('Удалён файл', 'info', { userId: uid, name: file.name });

@@ -6,7 +6,13 @@ import type { FilterQuery } from 'mongoose';
 import { Types } from 'mongoose';
 
 import { uploadsDir } from '../config/storage';
-import { File, Task, type Attachment, type FileDocument } from '../db/model';
+import {
+  File,
+  Task,
+  type Attachment,
+  type FileDocument,
+  type FileScope,
+} from '../db/model';
 import {
   extractAttachmentIds,
   extractFileIdFromUrl,
@@ -253,12 +259,13 @@ export const collectAttachmentLinks = async (
 };
 
 export async function listFiles(
-  filters: { userId?: number; type?: string } = {},
+  filters: { userId?: number; type?: string; scope?: FileScope } = {},
 ): Promise<StoredFile[]> {
   try {
     const query: FilterQuery<FileDocument> = {};
     if (filters.userId !== undefined) query.userId = filters.userId;
     if (typeof filters.type === 'string') query.type = { $eq: filters.type };
+    if (typeof filters.scope === 'string') query.scope = { $eq: filters.scope };
     const files = await File.find(query).lean();
     const taskIds = files
       .map((file) => file.taskId)

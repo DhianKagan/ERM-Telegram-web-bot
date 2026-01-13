@@ -5,7 +5,12 @@ import authMiddleware from '../middleware/auth';
 import { Roles } from '../auth/roles.decorator';
 import rolesGuard from '../auth/roles.guard';
 import { ACCESS_ADMIN } from '../utils/accessMask';
-import { listFiles, deleteFile, getFile } from '../services/fileService';
+import {
+  deleteFile,
+  getFile,
+  getFileRecord,
+  listFiles,
+} from '../services/fileService';
 import { param, query } from 'express-validator';
 import { asyncHandler } from '../api/middleware';
 import container from '../di';
@@ -68,6 +73,19 @@ router.delete(
   param('id').isMongoId() as unknown as RequestHandler,
   async (req: RequestWithUser, res: Response, next: NextFunction) => {
     try {
+      const record = await getFileRecord(req.params.id);
+      if (!record) {
+        res.status(404).json({ error: 'Файл не найден' });
+        return;
+      }
+      const hasTaskLink =
+        Boolean(record.taskId) ||
+        (Array.isArray(record.relatedTaskIds) &&
+          record.relatedTaskIds.length > 0);
+      if (hasTaskLink) {
+        res.status(409).json({ error: 'Файл привязан к задаче' });
+        return;
+      }
       const deletionResult = await deleteFile(req.params.id);
       if (deletionResult?.taskId) {
         const normalizedUserId =

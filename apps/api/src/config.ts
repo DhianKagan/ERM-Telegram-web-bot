@@ -377,8 +377,33 @@ if (botApiUrlRaw) {
   }
 }
 
+const telegramWebhookUrlRaw = (process.env.TELEGRAM_WEBHOOK_URL || '').trim();
+let telegramWebhookUrl: string | undefined;
+let telegramWebhookPath: string | undefined;
+if (telegramWebhookUrlRaw) {
+  try {
+    const parsed = new URL(telegramWebhookUrlRaw);
+    if (parsed.protocol !== 'https:') {
+      throw new Error('TELEGRAM_WEBHOOK_URL должен начинаться с https://');
+    }
+    telegramWebhookUrl = parsed.toString();
+    telegramWebhookPath = parsed.pathname || '/';
+  } catch (error) {
+    console.warn(
+      'TELEGRAM_WEBHOOK_URL имеет неверный формат, webhook отключён',
+      error,
+    );
+  }
+}
+
+const telegramWebhookSecretValue = (
+  process.env.TELEGRAM_WEBHOOK_SECRET || ''
+).trim();
+
 export const botToken = process.env.BOT_TOKEN;
 export const botApiUrl = botApiUrlValue;
+export { telegramWebhookUrl, telegramWebhookPath };
+export const telegramWebhookSecret = telegramWebhookSecretValue || undefined;
 export const getChatId = (): string | undefined => {
   const raw = process.env.CHAT_ID;
   if (!raw) {
@@ -464,6 +489,9 @@ const config = {
   osrmBaseUrl,
   routingUrl,
   cookieDomain,
+  telegramWebhookUrl,
+  telegramWebhookPath,
+  telegramWebhookSecret,
   vrpOrToolsEnabled,
   graphhopperConfig,
   graphhopper: graphhopperConfig,

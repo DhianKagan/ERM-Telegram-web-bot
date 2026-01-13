@@ -1,7 +1,13 @@
 // Назначение: основной файл Telegram-бота
 // Основные модули: dotenv, telegraf, service, scheduler, config, taskHistory.service
 import 'dotenv/config';
-import { botToken, getChatId, chatId as staticChatId } from '../config';
+import {
+  botToken,
+  getChatId,
+  chatId as staticChatId,
+  telegramWebhookUrl,
+  telegramWebhookSecret,
+} from '../config';
 import { Telegraf, Markup, Context } from 'telegraf';
 import type {
   InlineKeyboardMarkup,
@@ -1952,9 +1958,19 @@ const retryableCodes = new Set([409, 429, 502, 504]);
 
 export async function startBot(retry = 0): Promise<void> {
   try {
-    await safeDeleteWebhook({ drop_pending_updates: true });
-    await bot.launch({ dropPendingUpdates: true });
-    console.log('Бот запущен');
+    if (telegramWebhookUrl) {
+      await bot.telegram.setWebhook(telegramWebhookUrl, {
+        drop_pending_updates: true,
+        ...(telegramWebhookSecret
+          ? { secret_token: telegramWebhookSecret }
+          : {}),
+      });
+      console.log('Webhook Telegram настроен');
+    } else {
+      await safeDeleteWebhook({ drop_pending_updates: true });
+      await bot.launch({ dropPendingUpdates: true });
+      console.log('Бот запущен');
+    }
   } catch (err: unknown) {
     const e = err as { response?: { error_code?: number } };
     const code = e.response?.error_code;
@@ -1962,7 +1978,7 @@ export async function startBot(retry = 0): Promise<void> {
     const isRateLimited = code === 429;
     const canRetry = retry < MAX_RETRIES || isConflict || isRateLimited;
     if (retryableCodes.has(code ?? 0) && canRetry) {
-      if (isConflict) {
+      if (isConflict && !telegramWebhookUrl) {
         console.warn(
           'Обнаружен активный запрос getUpdates, сбрасываем предыдущую сессию',
         );

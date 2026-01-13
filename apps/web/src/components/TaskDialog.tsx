@@ -54,7 +54,12 @@ import {
 import FileUploader from './FileUploader';
 import Spinner from './Spinner';
 import TaskFilesSection from './TaskFilesSection';
-import type { Attachment, HistoryItem, UserBrief } from '../types/task';
+import type {
+  Attachment,
+  AttachmentPayload,
+  HistoryItem,
+  UserBrief,
+} from '../types/task';
 import type { Task, TaskPoint } from 'shared';
 import EmployeeLink from './EmployeeLink';
 import {
@@ -104,14 +109,32 @@ const extractFileId = (url: string): string | null => {
   return match ? match[1].toLowerCase() : null;
 };
 
-const buildAttachmentKey = (url: string): string => {
+const buildAttachmentKey = (attachment: Attachment): string => {
+  const rawId =
+    typeof attachment.fileId === 'string' ? attachment.fileId.trim() : '';
+  if (rawId) return rawId.toLowerCase();
+  const url = typeof attachment.url === 'string' ? attachment.url : '';
   const id = extractFileId(url);
   if (id) return id;
   const trimmed = url.trim();
-  if (!trimmed) return '';
-  const [withoutHash] = trimmed.split('#');
-  const [pathPart] = withoutHash.split('?');
-  return pathPart.toLowerCase();
+  if (trimmed) {
+    const [withoutHash] = trimmed.split('#');
+    const [pathPart] = withoutHash.split('?');
+    return pathPart.toLowerCase();
+  }
+  const name =
+    typeof attachment.name === 'string' ? attachment.name.trim() : '';
+  return name.toLowerCase();
+};
+
+const resolveAttachmentUrl = (attachment: Attachment): string | null => {
+  const explicitUrl =
+    typeof attachment.url === 'string' ? attachment.url.trim() : '';
+  if (explicitUrl) return explicitUrl;
+  const fileId =
+    typeof attachment.fileId === 'string' ? attachment.fileId.trim() : '';
+  if (fileId) return `/api/v1/files/${fileId}`;
+  return null;
 };
 
 const normalizeAttachment = (attachment: Attachment): Attachment => {
@@ -126,18 +149,17 @@ const normalizeAttachment = (attachment: Attachment): Attachment => {
   const size =
     typeof attachment.size === 'number' && Number.isFinite(attachment.size)
       ? attachment.size
-      : 0;
+      : undefined;
   const url = ensureInlineMode(attachment.url) ?? attachment.url;
   const fileIdRaw =
     typeof attachment.fileId === 'string' ? attachment.fileId.trim() : '';
-  const fileId = fileIdRaw || extractFileId(url);
+  const fileId = fileIdRaw || (url ? extractFileId(url) : null);
   const normalized: Attachment = {
-    ...attachment,
     name,
-    url,
     type,
-    size,
     ...(fileId ? { fileId } : {}),
+    ...(url ? { url } : {}),
+    ...(size !== undefined ? { size } : {}),
   };
   const inlineThumb =
     ensureInlineMode(attachment.thumbnailUrl) ?? attachment.thumbnailUrl;
@@ -158,17 +180,64 @@ const mergeAttachmentLists = (
   const register = (list: Attachment[]) => {
     list.forEach((attachment) => {
       const normalized = normalizeAttachment(attachment);
-      const key = buildAttachmentKey(normalized.url);
-      if (!map.has(key)) {
-        order.push(key);
+      const key = buildAttachmentKey(normalized);
+      if (key) {
+        if (!map.has(key)) {
+          order.push(key);
+        }
+        map.set(key, normalized);
+        return;
       }
-      map.set(key, normalized);
+      const fallbackKey = `${normalized.name}-${order.length}`;
+      order.push(fallbackKey);
+      map.set(fallbackKey, normalized);
     });
   };
   register(base);
   register(extras);
   return order.map((key) => map.get(key)!).filter(Boolean);
 };
+
+const toFormAttachment = (attachment: Attachment): Attachment => {
+  const normalized = normalizeAttachment(attachment);
+  const fileId =
+    normalized.fileId ||
+    (normalized.url ? extractFileId(normalized.url) : null);
+  return {
+    name: normalized.name,
+    type: normalized.type,
+    ...(fileId ? { fileId } : {}),
+    ...(!fileId && normalized.url ? { url: normalized.url } : {}),
+    ...(!fileId && normalized.thumbnailUrl
+      ? { thumbnailUrl: normalized.thumbnailUrl }
+      : {}),
+    ...(!fileId && typeof normalized.size === 'number'
+      ? { size: normalized.size }
+      : {}),
+  };
+};
+
+const toAttachmentPayload = (
+  attachment: Attachment,
+): AttachmentPayload | null => {
+  const normalized = normalizeAttachment(attachment);
+  const fileId =
+    normalized.fileId ||
+    (normalized.url ? extractFileId(normalized.url) : null);
+  if (!fileId) return null;
+  return {
+    fileId,
+    name: normalized.name,
+    type: normalized.type,
+  };
+};
+
+const buildAttachmentPayloadList = (
+  attachments: Attachment[],
+): AttachmentPayload[] =>
+  attachments
+    .map((attachment) => toAttachmentPayload(attachment))
+    .filter((item): item is AttachmentPayload => Boolean(item));
 
 const areSetsEqual = (a: Set<string>, b: Set<string>): boolean => {
   if (a.size !== b.size) {
@@ -249,15 +318,10 @@ const collectCommentAttachmentIds = (html: string): string[] => {
 const buildCommentAttachments = (commentHtml: string): Attachment[] => {
   const ids = collectCommentAttachmentIds(commentHtml);
   return ids.map((id) => {
-    const baseUrl = `/api/v1/files/${id}`;
-    const inlineUrl = ensureInlineMode(baseUrl) ?? baseUrl;
     return {
       fileId: id,
       name: 'Изображение',
-      url: inlineUrl,
-      thumbnailUrl: inlineUrl,
       type: 'image/*',
-      size: 0,
     } as Attachment;
   });
 };
@@ -268,27 +332,44 @@ const collectTaskAttachments = (
   commentHtml: string,
 ): Attachment[] => {
   const existing = Array.isArray(attachmentsInput)
-    ? (attachmentsInput as Attachment[]).filter((item): item is Attachment =>
-        Boolean(item && typeof item.url === 'string'),
-      )
+    ? (attachmentsInput as Attachment[])
+        .map((item) => {
+          if (!item || typeof item !== 'object') return null;
+          const normalized = normalizeAttachment(item as Attachment);
+          const fileId =
+            normalized.fileId ||
+            (normalized.url ? extractFileId(normalized.url) : null);
+          const minimal: Attachment = {
+            name: normalized.name,
+            type: normalized.type,
+            ...(fileId ? { fileId } : {}),
+            ...(!fileId && normalized.url ? { url: normalized.url } : {}),
+            ...(!fileId && normalized.thumbnailUrl
+              ? { thumbnailUrl: normalized.thumbnailUrl }
+              : {}),
+            ...(!fileId && typeof normalized.size === 'number'
+              ? { size: normalized.size }
+              : {}),
+          };
+          const key = buildAttachmentKey(minimal);
+          return key ? minimal : null;
+        })
+        .filter((item): item is Attachment => Boolean(item))
     : [];
   let result = mergeAttachmentLists([], existing);
   if (Array.isArray(filesInput)) {
     const fileAttachments = (filesInput as unknown[])
       .map((item) => (typeof item === 'string' ? item.trim() : ''))
       .filter((path) => path.startsWith('/api/v1/files/'))
-      .map(
-        (path) => {
-          const fileId = extractFileId(path);
-          return {
-            ...(fileId ? { fileId } : {}),
-            name: 'Файл',
-            url: path,
-            type: 'application/octet-stream',
-            size: 0,
-          } as Attachment;
-        },
-      );
+      .map((path) => {
+        const fileId = extractFileId(path);
+        const attachment: Attachment = {
+          name: 'Файл',
+          type: 'application/octet-stream',
+          ...(fileId ? { fileId } : { url: path }),
+        };
+        return attachment;
+      });
     result = mergeAttachmentLists(result, fileAttachments);
   }
   const commentAttachments = buildCommentAttachments(commentHtml);
@@ -1664,7 +1745,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   React.useEffect(() => {
     const derived = buildCommentAttachments(comment);
     const nextKeys = new Set(
-      derived.map((attachment) => buildAttachmentKey(attachment.url)),
+      derived.map((attachment) => buildAttachmentKey(attachment)),
     );
     const prevKeys = commentAttachmentKeysRef.current;
     if (areSetsEqual(prevKeys, nextKeys)) {
@@ -1672,7 +1753,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     }
     setAttachments((prev) => {
       const retained = prev.filter(
-        (attachment) => !prevKeys.has(buildAttachmentKey(attachment.url)),
+        (attachment) => !prevKeys.has(buildAttachmentKey(attachment)),
       );
       return mergeAttachmentLists(retained, derived);
     });
@@ -1691,11 +1772,15 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     [users],
   );
   const removeAttachment = (a: Attachment) => {
-    setAttachments((prev) => prev.filter((p) => p.url !== a.url));
-    setPreviewAttachment((prev) => (prev && prev.url === a.url ? null : prev));
+    const key = buildAttachmentKey(a);
+    setAttachments((prev) => prev.filter((p) => buildAttachmentKey(p) !== key));
+    const previewUrl = resolveAttachmentUrl(a);
+    setPreviewAttachment((prev) =>
+      prev && previewUrl && prev.url === previewUrl ? null : prev,
+    );
   };
   const addAttachmentFromFile = React.useCallback((a: Attachment) => {
-    setAttachments((prev) => mergeAttachmentLists(prev, [a]));
+    setAttachments((prev) => mergeAttachmentLists(prev, [toFormAttachment(a)]));
   }, []);
   const removeAttachmentByFileId = React.useCallback((fileId: string) => {
     if (!fileId) return;
@@ -1704,16 +1789,13 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         const normalized =
           typeof item.fileId === 'string' && item.fileId.trim()
             ? item.fileId.trim()
-            : extractFileId(item.url);
+            : extractFileId(resolveAttachmentUrl(item) ?? '');
         return normalized !== fileId;
       }),
     );
     setPreviewAttachment((prev) => {
       if (!prev) return prev;
-      const normalized =
-        typeof prev.fileId === 'string' && prev.fileId.trim()
-          ? prev.fileId.trim()
-          : extractFileId(prev.url);
+      const normalized = extractFileId(prev.url);
       return normalized === fileId ? null : prev;
     });
   }, []);
@@ -2194,7 +2276,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       payment_method: paymentMethod,
       status,
       logistics_enabled: showLogistics,
-      attachments,
+      attachments: buildAttachmentPayloadList(attachments),
     };
 
     if (selectedAssignees.length > 0) {
@@ -3149,7 +3231,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         if (points.length >= 2) payload.points = points;
         if (distanceKm !== null) payload.route_distance_km = distanceKm;
         if (routeLink) payload.google_route_url = routeLink;
-        const sendPayload = { ...payload, attachments };
+        const sendPayload = {
+          ...payload,
+          attachments: buildAttachmentPayloadList(attachments),
+        };
         let savedTask: (Partial<Task> & Record<string, unknown>) | null = null;
         const currentTaskId = effectiveTaskId ?? '';
         let savedId = currentTaskId;
@@ -4587,18 +4672,23 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                         {t('attachments')}
                       </label>
                       <ul className="flex flex-wrap gap-3">
-                        {attachments.map((a) => {
+                        {attachments.map((a, index) => {
+                          const resolvedUrl = resolveAttachmentUrl(a);
+                          if (!resolvedUrl) return null;
                           const thumbnail = ensureInlineMode(a.thumbnailUrl);
-                          const inlineUrl = ensureInlineMode(a.url) ?? a.url;
+                          const inlineUrl =
+                            ensureInlineMode(resolvedUrl) ?? resolvedUrl;
                           const basePath =
                             inlineUrl.split(/[?#]/, 1)[0] || inlineUrl;
                           const isImage =
                             Boolean(thumbnail) ||
                             /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(basePath);
                           const previewSrc = thumbnail ?? inlineUrl;
+                          const key =
+                            buildAttachmentKey(a) || `${a.name}-${index}`;
                           return (
                             <li
-                              key={a.url}
+                              key={key}
                               className="flex flex-col items-start gap-1"
                             >
                               <div className="flex items-center gap-2">
@@ -4624,7 +4714,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                   </button>
                                 ) : (
                                   <a
-                                    href={a.url}
+                                    href={resolvedUrl}
                                     target="_blank"
                                     rel="noopener"
                                     className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1 text-sm text-accentPrimary transition hover:bg-slate-100"
@@ -4672,7 +4762,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                   <FileUploader
                     disabled={!canUploadAttachments}
                     onUploaded={(a) =>
-                      setAttachments((p) => mergeAttachmentLists(p, [a]))
+                      setAttachments((p) =>
+                        mergeAttachmentLists(p, [toFormAttachment(a)]),
+                      )
                     }
                     onRemove={(a) => removeAttachment(a)}
                     taskId={effectiveTaskId}

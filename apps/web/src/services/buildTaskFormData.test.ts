@@ -6,13 +6,9 @@ describe('buildTaskFormData', () => {
   it('корректно сериализует массив вложений в JSON', () => {
     const attachments = [
       {
+        fileId: 'abc123',
         name: 'Отчёт',
-        url: '/api/v1/files/abc123',
-        thumbnailUrl: '/api/v1/files/abc123?mode=inline&variant=thumbnail',
-        uploadedBy: 10,
-        uploadedAt: '2024-01-01T00:00:00.000Z',
         type: 'application/pdf',
-        size: 1024,
       },
     ];
     const formData = buildTaskFormData({

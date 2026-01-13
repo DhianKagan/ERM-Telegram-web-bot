@@ -8,7 +8,10 @@ import {
   TrashIcon,
 } from '@heroicons/react/24/outline';
 import { useTranslation } from 'react-i18next';
-import { SimpleTable, type SimpleTableAction } from '@/components/ui/simple-table';
+import {
+  SimpleTable,
+  type SimpleTableAction,
+} from '@/components/ui/simple-table';
 import { Button } from '@/components/ui/button';
 import Modal from './Modal';
 import { fetchFiles, removeFile, type StoredFile } from '../services/storage';
@@ -54,10 +57,7 @@ function formatDate(value?: string): string {
 const buildAttachmentFromFile = (file: StoredFile): Attachment => ({
   fileId: file.id,
   name: file.name || 'Файл',
-  url: file.url || `/api/v1/files/${file.id}`,
-  thumbnailUrl: file.thumbnailUrl,
   type: file.type || 'application/octet-stream',
-  size: file.size ?? 0,
 });
 
 type Props = {

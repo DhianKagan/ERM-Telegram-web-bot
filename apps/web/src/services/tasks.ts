@@ -11,7 +11,7 @@ import { queryClient } from '../lib/queryClient';
 import authFetch from '../utils/authFetch';
 import { buildTaskFormData } from './buildTaskFormData';
 import type { Task, User } from 'shared';
-import type { Attachment } from '../types/task';
+import type { AttachmentPayload } from '../types/task';
 import { useApiMutation, useApiQuery } from '../hooks/useApiQuery';
 
 const STATUS_HINTS: Record<number, string> = {
@@ -391,7 +391,7 @@ export interface TaskDraft {
   id: string;
   kind: 'task' | 'request';
   payload: Record<string, unknown>;
-  attachments: Attachment[];
+  attachments: AttachmentPayload[];
   updatedAt: string | null;
 }
 
@@ -403,7 +403,7 @@ const mapTaskDraft = (data: Record<string, unknown>): TaskDraft => ({
       : ((data.kind as 'task' | 'request') ?? 'task'),
   payload: (data.payload as Record<string, unknown>) ?? {},
   attachments: Array.isArray(data.attachments)
-    ? (data.attachments as Attachment[])
+    ? (data.attachments as AttachmentPayload[])
     : [],
   updatedAt: typeof data.updatedAt === 'string' ? data.updatedAt : null,
 });

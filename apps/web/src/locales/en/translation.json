@@ -460,13 +460,19 @@
       "user": "User",
       "type": "Type",
       "size": "Size",
-      "task": "Task",
+      "task": "Linked tasks",
       "uploaded": "Uploaded"
     },
     "filters": {
       "title": "Filters",
       "user": "User",
       "type": "File type",
+      "typeAll": "All types",
+      "typeUnknown": "Not specified",
+      "linked": "Task link",
+      "linkedAll": "All files",
+      "linkedOnly": "Linked only",
+      "linkedNone": "Unlinked only",
       "empty": "No available values",
       "apply": "Apply",
       "reset": "Reset"

@@ -1,0 +1,648 @@
+diff --git a/apps/web/src/components/TaskDialog.tsx b/apps/web/src/components/TaskDialog.tsx
+index f095899..f571fd0 100644
+--- a/apps/web/src/components/TaskDialog.tsx
++++ b/apps/web/src/components/TaskDialog.tsx
+@@ -54,7 +54,12 @@ import {
+ import FileUploader from './FileUploader';
+ import Spinner from './Spinner';
+ import TaskFilesSection from './TaskFilesSection';
+-import type { Attachment, HistoryItem, UserBrief } from '../types/task';
++import type {
++  Attachment,
++  AttachmentPayload,
++  HistoryItem,
++  UserBrief,
++} from '../types/task';
+ import type { Task, TaskPoint } from 'shared';
+ import EmployeeLink from './EmployeeLink';
+ import {
+@@ -104,14 +109,31 @@ const extractFileId = (url: string): string | null => {
+   return match ? match[1].toLowerCase() : null;
+ };
+ 
+-const buildAttachmentKey = (url: string): string => {
++const buildAttachmentKey = (attachment: Attachment): string => {
++  const rawId =
++    typeof attachment.fileId === 'string' ? attachment.fileId.trim() : '';
++  if (rawId) return rawId.toLowerCase();
++  const url = typeof attachment.url === 'string' ? attachment.url : '';
+   const id = extractFileId(url);
+   if (id) return id;
+   const trimmed = url.trim();
+-  if (!trimmed) return '';
+-  const [withoutHash] = trimmed.split('#');
+-  const [pathPart] = withoutHash.split('?');
+-  return pathPart.toLowerCase();
++  if (trimmed) {
++    const [withoutHash] = trimmed.split('#');
++    const [pathPart] = withoutHash.split('?');
++    return pathPart.toLowerCase();
++  }
++  const name = typeof attachment.name === 'string' ? attachment.name.trim() : '';
++  return name.toLowerCase();
++};
++
++const resolveAttachmentUrl = (attachment: Attachment): string | null => {
++  const explicitUrl =
++    typeof attachment.url === 'string' ? attachment.url.trim() : '';
++  if (explicitUrl) return explicitUrl;
++  const fileId =
++    typeof attachment.fileId === 'string' ? attachment.fileId.trim() : '';
++  if (fileId) return `/api/v1/files/${fileId}`;
++  return null;
+ };
+ 
+ const normalizeAttachment = (attachment: Attachment): Attachment => {
+@@ -126,18 +148,17 @@ const normalizeAttachment = (attachment: Attachment): Attachment => {
+   const size =
+     typeof attachment.size === 'number' && Number.isFinite(attachment.size)
+       ? attachment.size
+-      : 0;
++      : undefined;
+   const url = ensureInlineMode(attachment.url) ?? attachment.url;
+   const fileIdRaw =
+     typeof attachment.fileId === 'string' ? attachment.fileId.trim() : '';
+-  const fileId = fileIdRaw || extractFileId(url);
++  const fileId = fileIdRaw || (url ? extractFileId(url) : null);
+   const normalized: Attachment = {
+-    ...attachment,
+     name,
+-    url,
+     type,
+-    size,
+     ...(fileId ? { fileId } : {}),
++    ...(url ? { url } : {}),
++    ...(size !== undefined ? { size } : {}),
+   };
+   const inlineThumb =
+     ensureInlineMode(attachment.thumbnailUrl) ?? attachment.thumbnailUrl;
+@@ -158,11 +179,17 @@ const mergeAttachmentLists = (
+   const register = (list: Attachment[]) => {
+     list.forEach((attachment) => {
+       const normalized = normalizeAttachment(attachment);
+-      const key = buildAttachmentKey(normalized.url);
+-      if (!map.has(key)) {
+-        order.push(key);
++      const key = buildAttachmentKey(normalized);
++      if (key) {
++        if (!map.has(key)) {
++          order.push(key);
++        }
++        map.set(key, normalized);
++        return;
+       }
+-      map.set(key, normalized);
++      const fallbackKey = `${normalized.name}-${order.length}`;
++      order.push(fallbackKey);
++      map.set(fallbackKey, normalized);
+     });
+   };
+   register(base);
+@@ -170,6 +197,43 @@ const mergeAttachmentLists = (
+   return order.map((key) => map.get(key)!).filter(Boolean);
+ };
+ 
++const toFormAttachment = (attachment: Attachment): Attachment => {
++  const normalized = normalizeAttachment(attachment);
++  const fileId =
++    normalized.fileId || (normalized.url ? extractFileId(normalized.url) : null);
++  return {
++    name: normalized.name,
++    type: normalized.type,
++    ...(fileId ? { fileId } : {}),
++    ...(!fileId && normalized.url ? { url: normalized.url } : {}),
++    ...(!fileId && normalized.thumbnailUrl
++      ? { thumbnailUrl: normalized.thumbnailUrl }
++      : {}),
++    ...(!fileId && typeof normalized.size === 'number'
++      ? { size: normalized.size }
++      : {}),
++  };
++};
++
++const toAttachmentPayload = (attachment: Attachment): AttachmentPayload | null => {
++  const normalized = normalizeAttachment(attachment);
++  const fileId =
++    normalized.fileId || (normalized.url ? extractFileId(normalized.url) : null);
++  if (!fileId) return null;
++  return {
++    fileId,
++    name: normalized.name,
++    type: normalized.type,
++  };
++};
++
++const buildAttachmentPayloadList = (
++  attachments: Attachment[],
++): AttachmentPayload[] =>
++  attachments
++    .map((attachment) => toAttachmentPayload(attachment))
++    .filter((item): item is AttachmentPayload => Boolean(item));
++
+ const areSetsEqual = (a: Set<string>, b: Set<string>): boolean => {
+   if (a.size !== b.size) {
+     return false;
+@@ -249,15 +313,10 @@ const collectCommentAttachmentIds = (html: string): string[] => {
+ const buildCommentAttachments = (commentHtml: string): Attachment[] => {
+   const ids = collectCommentAttachmentIds(commentHtml);
+   return ids.map((id) => {
+-    const baseUrl = `/api/v1/files/${id}`;
+-    const inlineUrl = ensureInlineMode(baseUrl) ?? baseUrl;
+     return {
+       fileId: id,
+       name: 'Изображение',
+-      url: inlineUrl,
+-      thumbnailUrl: inlineUrl,
+       type: 'image/*',
+-      size: 0,
+     } as Attachment;
+   });
+ };
+@@ -268,27 +327,44 @@ const collectTaskAttachments = (
+   commentHtml: string,
+ ): Attachment[] => {
+   const existing = Array.isArray(attachmentsInput)
+-    ? (attachmentsInput as Attachment[]).filter((item): item is Attachment =>
+-        Boolean(item && typeof item.url === 'string'),
+-      )
++    ? (attachmentsInput as Attachment[])
++        .map((item) => {
++          if (!item || typeof item !== 'object') return null;
++          const normalized = normalizeAttachment(item as Attachment);
++          const fileId =
++            normalized.fileId ||
++            (normalized.url ? extractFileId(normalized.url) : null);
++          const minimal: Attachment = {
++            name: normalized.name,
++            type: normalized.type,
++            ...(fileId ? { fileId } : {}),
++            ...(!fileId && normalized.url ? { url: normalized.url } : {}),
++            ...(!fileId && normalized.thumbnailUrl
++              ? { thumbnailUrl: normalized.thumbnailUrl }
++              : {}),
++            ...(!fileId && typeof normalized.size === 'number'
++              ? { size: normalized.size }
++              : {}),
++          };
++          const key = buildAttachmentKey(minimal);
++          return key ? minimal : null;
++        })
++        .filter((item): item is Attachment => Boolean(item))
+     : [];
+   let result = mergeAttachmentLists([], existing);
+   if (Array.isArray(filesInput)) {
+     const fileAttachments = (filesInput as unknown[])
+       .map((item) => (typeof item === 'string' ? item.trim() : ''))
+       .filter((path) => path.startsWith('/api/v1/files/'))
+-      .map(
+-        (path) => {
+-          const fileId = extractFileId(path);
+-          return {
+-            ...(fileId ? { fileId } : {}),
+-            name: 'Файл',
+-            url: path,
+-            type: 'application/octet-stream',
+-            size: 0,
+-          } as Attachment;
+-        },
+-      );
++      .map((path) => {
++        const fileId = extractFileId(path);
++        const attachment: Attachment = {
++          name: 'Файл',
++          type: 'application/octet-stream',
++          ...(fileId ? { fileId } : { url: path }),
++        };
++        return attachment;
++      });
+     result = mergeAttachmentLists(result, fileAttachments);
+   }
+   const commentAttachments = buildCommentAttachments(commentHtml);
+@@ -1664,7 +1740,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+   React.useEffect(() => {
+     const derived = buildCommentAttachments(comment);
+     const nextKeys = new Set(
+-      derived.map((attachment) => buildAttachmentKey(attachment.url)),
++      derived.map((attachment) => buildAttachmentKey(attachment)),
+     );
+     const prevKeys = commentAttachmentKeysRef.current;
+     if (areSetsEqual(prevKeys, nextKeys)) {
+@@ -1672,7 +1748,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+     }
+     setAttachments((prev) => {
+       const retained = prev.filter(
+-        (attachment) => !prevKeys.has(buildAttachmentKey(attachment.url)),
++        (attachment) => !prevKeys.has(buildAttachmentKey(attachment)),
+       );
+       return mergeAttachmentLists(retained, derived);
+     });
+@@ -1691,11 +1767,19 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+     [users],
+   );
+   const removeAttachment = (a: Attachment) => {
+-    setAttachments((prev) => prev.filter((p) => p.url !== a.url));
+-    setPreviewAttachment((prev) => (prev && prev.url === a.url ? null : prev));
++    const key = buildAttachmentKey(a);
++    setAttachments((prev) =>
++      prev.filter((p) => buildAttachmentKey(p) !== key),
++    );
++    const previewUrl = resolveAttachmentUrl(a);
++    setPreviewAttachment((prev) =>
++      prev && previewUrl && prev.url === previewUrl ? null : prev,
++    );
+   };
+   const addAttachmentFromFile = React.useCallback((a: Attachment) => {
+-    setAttachments((prev) => mergeAttachmentLists(prev, [a]));
++    setAttachments((prev) =>
++      mergeAttachmentLists(prev, [toFormAttachment(a)]),
++    );
+   }, []);
+   const removeAttachmentByFileId = React.useCallback((fileId: string) => {
+     if (!fileId) return;
+@@ -1704,16 +1788,13 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+         const normalized =
+           typeof item.fileId === 'string' && item.fileId.trim()
+             ? item.fileId.trim()
+-            : extractFileId(item.url);
++            : extractFileId(resolveAttachmentUrl(item) ?? '');
+         return normalized !== fileId;
+       }),
+     );
+     setPreviewAttachment((prev) => {
+       if (!prev) return prev;
+-      const normalized =
+-        typeof prev.fileId === 'string' && prev.fileId.trim()
+-          ? prev.fileId.trim()
+-          : extractFileId(prev.url);
++      const normalized = extractFileId(prev.url);
+       return normalized === fileId ? null : prev;
+     });
+   }, []);
+@@ -2194,7 +2275,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+       payment_method: paymentMethod,
+       status,
+       logistics_enabled: showLogistics,
+-      attachments,
++      attachments: buildAttachmentPayloadList(attachments),
+     };
+ 
+     if (selectedAssignees.length > 0) {
+@@ -3149,7 +3230,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+         if (points.length >= 2) payload.points = points;
+         if (distanceKm !== null) payload.route_distance_km = distanceKm;
+         if (routeLink) payload.google_route_url = routeLink;
+-        const sendPayload = { ...payload, attachments };
++        const sendPayload = {
++          ...payload,
++          attachments: buildAttachmentPayloadList(attachments),
++        };
+         let savedTask: (Partial<Task> & Record<string, unknown>) | null = null;
+         const currentTaskId = effectiveTaskId ?? '';
+         let savedId = currentTaskId;
+@@ -4587,18 +4671,23 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+                         {t('attachments')}
+                       </label>
+                       <ul className="flex flex-wrap gap-3">
+-                        {attachments.map((a) => {
++                        {attachments.map((a, index) => {
++                          const resolvedUrl = resolveAttachmentUrl(a);
++                          if (!resolvedUrl) return null;
+                           const thumbnail = ensureInlineMode(a.thumbnailUrl);
+-                          const inlineUrl = ensureInlineMode(a.url) ?? a.url;
++                          const inlineUrl =
++                            ensureInlineMode(resolvedUrl) ?? resolvedUrl;
+                           const basePath =
+                             inlineUrl.split(/[?#]/, 1)[0] || inlineUrl;
+                           const isImage =
+                             Boolean(thumbnail) ||
+                             /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(basePath);
+                           const previewSrc = thumbnail ?? inlineUrl;
++                          const key =
++                            buildAttachmentKey(a) || `${a.name}-${index}`;
+                           return (
+                             <li
+-                              key={a.url}
++                              key={key}
+                               className="flex flex-col items-start gap-1"
+                             >
+                               <div className="flex items-center gap-2">
+@@ -4624,7 +4713,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+                                   </button>
+                                 ) : (
+                                   <a
+-                                    href={a.url}
++                                    href={resolvedUrl}
+                                     target="_blank"
+                                     rel="noopener"
+                                     className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1 text-sm text-accentPrimary transition hover:bg-slate-100"
+@@ -4672,7 +4761,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
+                   <FileUploader
+                     disabled={!canUploadAttachments}
+                     onUploaded={(a) =>
+-                      setAttachments((p) => mergeAttachmentLists(p, [a]))
++                      setAttachments((p) =>
++                        mergeAttachmentLists(p, [toFormAttachment(a)]),
++                      )
+                     }
+                     onRemove={(a) => removeAttachment(a)}
+                     taskId={effectiveTaskId}
+diff --git a/apps/web/src/components/TaskFilesSection.tsx b/apps/web/src/components/TaskFilesSection.tsx
+index 296b386..fab2fcd 100644
+--- a/apps/web/src/components/TaskFilesSection.tsx
++++ b/apps/web/src/components/TaskFilesSection.tsx
+@@ -54,10 +54,7 @@ function formatDate(value?: string): string {
+ const buildAttachmentFromFile = (file: StoredFile): Attachment => ({
+   fileId: file.id,
+   name: file.name || 'Файл',
+-  url: file.url || `/api/v1/files/${file.id}`,
+-  thumbnailUrl: file.thumbnailUrl,
+   type: file.type || 'application/octet-stream',
+-  size: file.size ?? 0,
+ });
+ 
+ type Props = {
+diff --git a/apps/web/src/locales/en/translation.json b/apps/web/src/locales/en/translation.json
+index bf98390..44417cd 100644
+--- a/apps/web/src/locales/en/translation.json
++++ b/apps/web/src/locales/en/translation.json
+@@ -460,13 +460,19 @@
+       "user": "User",
+       "type": "Type",
+       "size": "Size",
+-      "task": "Task",
++      "task": "Linked tasks",
+       "uploaded": "Uploaded"
+     },
+     "filters": {
+       "title": "Filters",
+       "user": "User",
+       "type": "File type",
++      "typeAll": "All types",
++      "typeUnknown": "Not specified",
++      "linked": "Task link",
++      "linkedAll": "All files",
++      "linkedOnly": "Linked only",
++      "linkedNone": "Unlinked only",
+       "empty": "No available values",
+       "apply": "Apply",
+       "reset": "Reset"
+diff --git a/apps/web/src/locales/ru/translation.json b/apps/web/src/locales/ru/translation.json
+index 2413ee0..99f0820 100644
+--- a/apps/web/src/locales/ru/translation.json
++++ b/apps/web/src/locales/ru/translation.json
+@@ -493,13 +493,19 @@
+       "user": "Пользователь",
+       "type": "Тип",
+       "size": "Размер",
+-      "task": "Задача",
++      "task": "Связанные задачи",
+       "uploaded": "Загружено"
+     },
+     "filters": {
+       "title": "Фильтры",
+       "user": "Пользователь",
+       "type": "Тип файла",
++      "typeAll": "Все типы",
++      "typeUnknown": "Не указан",
++      "linked": "Привязка",
++      "linkedAll": "Все файлы",
++      "linkedOnly": "Только привязанные",
++      "linkedNone": "Только без задачи",
+       "empty": "Нет доступных значений",
+       "apply": "Применить",
+       "reset": "Сбросить"
+diff --git a/apps/web/src/locales/uk/translation.json b/apps/web/src/locales/uk/translation.json
+index 36a2ba8..db64c9b 100644
+--- a/apps/web/src/locales/uk/translation.json
++++ b/apps/web/src/locales/uk/translation.json
+@@ -99,9 +99,23 @@
+       "name": "Ім'я",
+       "type": "Тип",
+       "size": "Розмір",
+-      "task": "Задача",
++      "task": "Пов'язані задачі",
+       "uploaded": "Завантажено"
+     },
++    "filters": {
++      "title": "Фільтри",
++      "user": "Користувач",
++      "type": "Тип файла",
++      "typeAll": "Усі типи",
++      "typeUnknown": "Не вказано",
++      "linked": "Прив'язка",
++      "linkedAll": "Усі файли",
++      "linkedOnly": "Лише прив'язані",
++      "linkedNone": "Лише без задачі",
++      "empty": "Немає доступних значень",
++      "apply": "Застосувати",
++      "reset": "Скинути"
++    },
+     "refresh": "Оновити",
+     "attach": {
+       "button": "Прив'язати",
+diff --git a/apps/web/src/pages/Storage.tsx b/apps/web/src/pages/Storage.tsx
+index fe5202d..b74a719 100644
+--- a/apps/web/src/pages/Storage.tsx
++++ b/apps/web/src/pages/Storage.tsx
+@@ -118,6 +118,10 @@ export default function StoragePage() {
+   const [usersById, setUsersById] = React.useState<Record<number, User>>({});
+   const [search, setSearch] = React.useState('');
+   const [sort, setSort] = React.useState<SortOption>('uploaded_desc');
++  const [typeFilter, setTypeFilter] = React.useState('');
++  const [linkFilter, setLinkFilter] = React.useState<
++    'all' | 'linked' | 'unlinked'
++  >('all');
+   const [pageIndex, setPageIndex] = React.useState(0);
+   const [selectedId, setSelectedId] = React.useState<string | null>(
+     searchParams.get('file'),
+@@ -433,10 +437,32 @@ export default function StoragePage() {
+ 
+   const filteredFiles = React.useMemo(() => {
+     const query = search.trim().toLowerCase();
++    const normalizedTypeFilter = typeFilter.trim();
+     return files.filter((file) =>
+       query ? file.name.toLowerCase().includes(query) : true,
+-    );
+-  }, [files, search]);
++    )
++    .filter((file) => {
++      if (!normalizedTypeFilter) return true;
++      if (normalizedTypeFilter === '__empty__') {
++        return !file.type?.trim();
++      }
++      return file.type?.trim() === normalizedTypeFilter;
++    })
++    .filter((file) => {
++      if (linkFilter === 'linked') return Boolean(file.taskId);
++      if (linkFilter === 'unlinked') return !file.taskId;
++      return true;
++    });
++  }, [files, linkFilter, search, typeFilter]);
++
++  const typeOptions = React.useMemo(() => {
++    const values = new Set<string>();
++    files.forEach((file) => {
++      const type = file.type?.trim();
++      if (type) values.add(type);
++    });
++    return Array.from(values).sort((a, b) => a.localeCompare(b));
++  }, [files]);
+ 
+   const sortedFiles = React.useMemo(() => {
+     const list = [...filteredFiles];
+@@ -809,7 +835,7 @@ export default function StoragePage() {
+           icon={RectangleStackIcon}
+           controls={
+             <div className="grid gap-2">
+-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
++              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                 <FormGroup label="Поиск" htmlFor="storage-search">
+                   <Input
+                     id="storage-search"
+@@ -845,7 +871,53 @@ export default function StoragePage() {
+                     </option>
+                   </Select>
+                 </FormGroup>
+-                <div className="flex flex-wrap justify-end gap-2 sm:col-span-2 lg:col-span-3">
++                <FormGroup
++                  label={t('storage.filters.type')}
++                  htmlFor="storage-type-filter"
++                >
++                  <Select
++                    id="storage-type-filter"
++                    value={typeFilter}
++                    onChange={(event) => {
++                      setTypeFilter(event.target.value);
++                      setPageIndex(0);
++                    }}
++                  >
++                    <option value="">{t('storage.filters.typeAll')}</option>
++                    <option value="__empty__">
++                      {t('storage.filters.typeUnknown')}
++                    </option>
++                    {typeOptions.map((type) => (
++                      <option key={type} value={type}>
++                        {type}
++                      </option>
++                    ))}
++                  </Select>
++                </FormGroup>
++                <FormGroup
++                  label={t('storage.filters.linked')}
++                  htmlFor="storage-link-filter"
++                >
++                  <Select
++                    id="storage-link-filter"
++                    value={linkFilter}
++                    onChange={(event) => {
++                      setLinkFilter(event.target.value as typeof linkFilter);
++                      setPageIndex(0);
++                    }}
++                  >
++                    <option value="all">
++                      {t('storage.filters.linkedAll')}
++                    </option>
++                    <option value="linked">
++                      {t('storage.filters.linkedOnly')}
++                    </option>
++                    <option value="unlinked">
++                      {t('storage.filters.linkedNone')}
++                    </option>
++                  </Select>
++                </FormGroup>
++                <div className="flex flex-wrap justify-end gap-2 sm:col-span-2 lg:col-span-4">
+                   <Button
+                     type="button"
+                     variant="secondary"
+diff --git a/apps/web/src/services/buildTaskFormData.test.ts b/apps/web/src/services/buildTaskFormData.test.ts
+index e9bc17b..94ebbfd 100644
+--- a/apps/web/src/services/buildTaskFormData.test.ts
++++ b/apps/web/src/services/buildTaskFormData.test.ts
+@@ -6,13 +6,9 @@ describe('buildTaskFormData', () => {
+   it('корректно сериализует массив вложений в JSON', () => {
+     const attachments = [
+       {
++        fileId: 'abc123',
+         name: 'Отчёт',
+-        url: '/api/v1/files/abc123',
+-        thumbnailUrl: '/api/v1/files/abc123?mode=inline&variant=thumbnail',
+-        uploadedBy: 10,
+-        uploadedAt: '2024-01-01T00:00:00.000Z',
+         type: 'application/pdf',
+-        size: 1024,
+       },
+     ];
+     const formData = buildTaskFormData({
+diff --git a/apps/web/src/services/tasks.ts b/apps/web/src/services/tasks.ts
+index c8ed176..638dbc6 100644
+--- a/apps/web/src/services/tasks.ts
++++ b/apps/web/src/services/tasks.ts
+@@ -11,7 +11,7 @@ import { queryClient } from '../lib/queryClient';
+ import authFetch from '../utils/authFetch';
+ import { buildTaskFormData } from './buildTaskFormData';
+ import type { Task, User } from 'shared';
+-import type { Attachment } from '../types/task';
++import type { AttachmentPayload } from '../types/task';
+ import { useApiMutation, useApiQuery } from '../hooks/useApiQuery';
+ 
+ const STATUS_HINTS: Record<number, string> = {
+@@ -391,7 +391,7 @@ export interface TaskDraft {
+   id: string;
+   kind: 'task' | 'request';
+   payload: Record<string, unknown>;
+-  attachments: Attachment[];
++  attachments: AttachmentPayload[];
+   updatedAt: string | null;
+ }
+ 
+@@ -403,7 +403,7 @@ const mapTaskDraft = (data: Record<string, unknown>): TaskDraft => ({
+       : ((data.kind as 'task' | 'request') ?? 'task'),
+   payload: (data.payload as Record<string, unknown>) ?? {},
+   attachments: Array.isArray(data.attachments)
+-    ? (data.attachments as Attachment[])
++    ? (data.attachments as AttachmentPayload[])
+     : [],
+   updatedAt: typeof data.updatedAt === 'string' ? data.updatedAt : null,
+ });
+diff --git a/apps/web/src/types/task.test.ts b/apps/web/src/types/task.test.ts
+index 9be45b7..99bdaf2 100644
+--- a/apps/web/src/types/task.test.ts
++++ b/apps/web/src/types/task.test.ts
+@@ -16,7 +16,7 @@ const history: HistoryItem[] = [
+ const users: UserBrief[] = [{ telegram_id: 1, name: 'Иван' }];
+ 
+ const attachments: Attachment[] = [
+-  { name: 'f.txt', url: '/f.txt', type: 'text/plain', size: 1 },
++  { fileId: 'abc123', name: 'f.txt', type: 'text/plain' },
+ ];
+ 
+ // предотвращаем удаление при компиляции
+diff --git a/apps/web/src/types/task.ts b/apps/web/src/types/task.ts
+index 6ba69a4..360710d 100644
+--- a/apps/web/src/types/task.ts
++++ b/apps/web/src/types/task.ts
+@@ -29,12 +29,21 @@ export interface Attachment {
+   fileId?: string;
+   /** Название файла */
+   name: string;
+-  /** URL файла */
+-  url: string;
+   /** Миниатюра */
+   thumbnailUrl?: string;
+   /** MIME-тип */
+   type: string;
++  /** URL файла */
++  url?: string;
+   /** Размер в байтах */
+-  size: number;
++  size?: number;
++}
++
++export interface AttachmentPayload {
++  /** ID файла */
++  fileId: string;
++  /** Название файла */
++  name: string;
++  /** MIME-тип */
++  type: string;
+ }

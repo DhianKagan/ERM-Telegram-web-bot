@@ -16,7 +16,7 @@ const history: HistoryItem[] = [
 const users: UserBrief[] = [{ telegram_id: 1, name: 'Иван' }];
 
 const attachments: Attachment[] = [
-  { name: 'f.txt', url: '/f.txt', type: 'text/plain', size: 1 },
+  { fileId: 'abc123', name: 'f.txt', type: 'text/plain' },
 ];
 
 // предотвращаем удаление при компиляции

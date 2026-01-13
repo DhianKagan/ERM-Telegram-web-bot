@@ -3,11 +3,13 @@
 import React from 'react';
 
 import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { SimpleTable } from '@/components/ui/simple-table';
+import { CalendarDaysIcon } from '@heroicons/react/24/outline';
 import ActionBar from '../components/ActionBar';
 import Breadcrumbs from '../components/Breadcrumbs';
 import ConfirmDialog from '../components/ConfirmDialog';
-import DataTable from '../components/DataTable';
 import Modal from '../components/Modal';
 import Spinner from '../components/Spinner';
 import { showToast } from '../utils/toast';
@@ -857,12 +859,47 @@ export default function EventLog() {
     <div className="space-y-4">
       <ActionBar
         breadcrumbs={<Breadcrumbs items={[{ label: 'Журнал событий' }]} />}
+        icon={CalendarDaysIcon}
         title="Журнал событий"
         description="Фиксация событий по основным средствам и автопарку."
+        filters={
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="flex w-full flex-1 flex-col gap-1">
+              <label
+                htmlFor="events-search"
+                className="text-xs font-semibold text-[color:var(--color-gray-700)]"
+              >
+                Поиск
+              </label>
+              <Input
+                id="events-search"
+                value={searchDraft}
+                onChange={(event) => setSearchDraft(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.preventDefault();
+                    applySearch();
+                  }
+                  if (event.key === 'Escape') {
+                    event.preventDefault();
+                    setSearchDraft('');
+                    setSearch('');
+                    setPage(1);
+                  }
+                }}
+                placeholder="Номер, описание или место"
+                className="shadow-xs"
+              />
+              <span className="text-[11px] text-[color:var(--color-gray-500)] dark:text-[color:var(--color-gray-300)]">
+                Поиск по журналу событий
+              </span>
+            </div>
+          </div>
+        }
         toolbar={
           <div className="flex flex-wrap items-center gap-2 sm:justify-end sm:gap-3">
             <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
-              <Button size="sm" variant="outline" onClick={applySearch}>
+              <Button size="sm" variant="primary" onClick={applySearch}>
                 Поиск
               </Button>
               <Button
@@ -878,7 +915,7 @@ export default function EventLog() {
               </Button>
               <Button
                 size="sm"
-                variant="accent"
+                variant="success"
                 onClick={() => void openCreate()}
               >
                 Новое событие
@@ -886,36 +923,15 @@ export default function EventLog() {
             </div>
           </div>
         }
-      >
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-          <div className="flex w-full flex-1 flex-col gap-1">
-            <label
-              htmlFor="events-search"
-              className="text-xs font-semibold text-[color:var(--color-gray-700)]"
-            >
-              Поиск
-            </label>
-            <Input
-              id="events-search"
-              value={searchDraft}
-              onChange={(event) => setSearchDraft(event.target.value)}
-              placeholder="Номер, описание или место"
-              className="shadow-xs"
-            />
-            <span className="text-[11px] text-[color:var(--color-gray-500)] dark:text-[color:var(--color-gray-300)]">
-              Поиск по журналу событий
-            </span>
-          </div>
-        </div>
-      </ActionBar>
+      />
 
-      <div className="rounded-3xl border border-[color:var(--color-gray-200)] bg-white p-3 shadow-[var(--shadow-theme-sm)] dark:border-[color:var(--color-gray-700)] dark:bg-[color:var(--color-gray-dark)] sm:p-4">
+      <Card>
         {loading ? (
           <div className="flex min-h-[12rem] items-center justify-center">
             <Spinner className="h-6 w-6 text-[color:var(--color-brand-500)]" />
           </div>
         ) : (
-          <DataTable
+          <SimpleTable
             columns={eventLogColumns}
             data={rows}
             pageIndex={page - 1}
@@ -933,7 +949,7 @@ export default function EventLog() {
             }}
           />
         )}
-      </div>
+      </Card>
 
       <Modal open={modalOpen} onClose={closeModal}>
         <div className="space-y-5">

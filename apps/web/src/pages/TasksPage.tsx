@@ -6,12 +6,13 @@ import { ClipboardDocumentListIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { FormGroup } from '@/components/ui/form-group';
+import FilterGrid from '@/components/FilterGrid';
+import HeaderCard from '@/components/HeaderCard';
 import GlobalSearch from '../components/GlobalSearch';
 import SearchFilters from '../components/SearchFilters';
+import TaskCard from '../components/TaskCard';
 import TaskTable from '../components/TaskTable';
 import Spinner from '../components/Spinner';
-import ActionBar from '../components/ActionBar';
-import Breadcrumbs from '../components/Breadcrumbs';
 import useTasks from '../context/useTasks';
 import {
   useTaskIndex,
@@ -21,6 +22,9 @@ import { useTasksQuery } from '../services/tasks';
 import { useApiQuery } from '../hooks/useApiQuery';
 import { type Task, type User } from 'shared';
 import { useAuth } from '../context/useAuth';
+import type { TaskRow } from '../columns/taskColumns';
+import type { GlobalSearchHandle } from '../components/GlobalSearch';
+import type { SearchFiltersHandle } from '../components/SearchFilters';
 
 type TaskExtra = Task & {
   assigned_user_id?: number;
@@ -30,10 +34,13 @@ type TaskExtra = Task & {
 export default function TasksPage() {
   const [page, setPage] = React.useState(0);
   const [users, setUsers] = React.useState<User[]>([]);
+  const [visibleTasks, setVisibleTasks] = React.useState<TaskRow[]>([]);
   const [params, setParams] = useSearchParams();
   const [mine, setMine] = React.useState(params.get('mine') === '1');
   const { version, refresh, controller, filters, setFilterUsers } = useTasks();
   const { user, loading: authLoading } = useAuth();
+  const searchRef = React.useRef<GlobalSearchHandle>(null);
+  const filtersRef = React.useRef<SearchFiltersHandle>(null);
   const isAdmin = user?.role === 'admin';
   const isManager = user?.role === 'manager';
   const hasPermission = user?.permissions?.includes('tasks');
@@ -229,6 +236,16 @@ export default function TasksPage() {
   }, [users]);
 
   const showSpinner = isTasksLoading || (isTasksFetching && tasks.length === 0);
+  const handleSearch = React.useCallback(() => {
+    searchRef.current?.search();
+    filtersRef.current?.apply();
+  }, []);
+
+  const handleReset = React.useCallback(() => {
+    searchRef.current?.reset();
+    filtersRef.current?.reset();
+  }, []);
+
   const handleMineChange = React.useCallback(
     (value: boolean) => {
       setMine(value);
@@ -247,39 +264,13 @@ export default function TasksPage() {
   if (!canView)
     return <div className="p-4">У вас нет прав для просмотра задач</div>;
   return (
-    <div className="space-y-4">
-      <ActionBar
-        breadcrumbs={<Breadcrumbs items={[{ label: 'Задачи' }]} />}
+    <div className="space-y-6">
+      <HeaderCard
         icon={ClipboardDocumentListIcon}
         title="Панель управления задачами"
-        description="Единое представление по задачам и назначенным исполнителям."
-        filters={
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="sm:col-span-2 lg:col-span-1">
-              <GlobalSearch />
-            </div>
-            {isPrivileged ? (
-              <FormGroup label="Показывать">
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    id="task-table-mine"
-                    name="mineTasks"
-                    type="checkbox"
-                    checked={mine}
-                    onChange={(e) => handleMineChange(e.target.checked)}
-                    className="size-4"
-                  />
-                  <span>Мои задачи</span>
-                </label>
-              </FormGroup>
-            ) : null}
-            <div className="sm:col-span-2 lg:col-span-3">
-              <SearchFilters inline />
-            </div>
-          </div>
-        }
-        toolbar={
-          <div className="flex flex-wrap items-center gap-2">
+        subtitle="Единое представление по задачам и назначенным исполнителям."
+        actions={
+          <>
             <Button size="sm" variant="outline" onClick={refresh}>
               Обновить
             </Button>
@@ -293,9 +284,33 @@ export default function TasksPage() {
             >
               Новая задача
             </Button>
-          </div>
+          </>
         }
       />
+
+      <FilterGrid onSearch={handleSearch} onReset={handleReset}>
+        <div className="sm:col-span-2 lg:col-span-1">
+          <GlobalSearch ref={searchRef} showActions={false} />
+        </div>
+        {isPrivileged ? (
+          <FormGroup label="Показывать">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                id="task-table-mine"
+                name="mineTasks"
+                type="checkbox"
+                checked={mine}
+                onChange={(e) => handleMineChange(e.target.checked)}
+                className="size-4"
+              />
+              <span>Мои задачи</span>
+            </label>
+          </FormGroup>
+        ) : null}
+        <div className="sm:col-span-2 lg:col-span-3">
+          <SearchFilters ref={filtersRef} inline showActions={false} />
+        </div>
+      </FilterGrid>
 
       <Card>
         {showSpinner ? (
@@ -303,19 +318,43 @@ export default function TasksPage() {
             <Spinner className="h-6 w-6 text-[color:var(--color-brand-500)]" />
           </div>
         ) : (
-          <TaskTable
-            tasks={tasks}
-            users={userMap}
-            page={page}
-            pageCount={Math.ceil((meta.total ?? tasks.length) / 25)}
-            mine={isPrivileged ? mine : true}
-            onPageChange={setPage}
-            onMineChange={isPrivileged ? handleMineChange : undefined}
-            onRowClick={(id) => {
-              params.set('task', id);
-              setParams(params);
-            }}
-          />
+          <>
+            <div className="hidden lg:block">
+              <TaskTable
+                tasks={tasks}
+                users={userMap}
+                page={page}
+                pageCount={Math.ceil((meta.total ?? tasks.length) / 25)}
+                mine={isPrivileged ? mine : true}
+                onPageChange={setPage}
+                onMineChange={isPrivileged ? handleMineChange : undefined}
+                onDataChange={setVisibleTasks}
+                onRowClick={(id) => {
+                  params.set('task', id);
+                  setParams(params);
+                }}
+              />
+            </div>
+            <div className="grid gap-4 lg:hidden">
+              {visibleTasks.length ? (
+                visibleTasks.map((task) => (
+                  <TaskCard
+                    key={task._id ?? task.id}
+                    task={task}
+                    variant="list"
+                    onOpen={(id) => {
+                      params.set('task', id);
+                      setParams(params);
+                    }}
+                  />
+                ))
+              ) : (
+                <div className="rounded-lg border border-border/70 bg-card p-4 text-sm text-muted-foreground">
+                  Нет данных для отображения
+                </div>
+              )}
+            </div>
+          </>
         )}
       </Card>
     </div>

@@ -5,6 +5,7 @@ import { CarIcon, TruckIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { type Task } from 'shared';
+import { Button } from '@/components/ui/button';
 import {
   DeadlineCountdownBadge,
   fallbackBadgeClass,
@@ -20,6 +21,7 @@ interface TaskCardProps {
     request_id?: string;
     task_number?: string;
   };
+  variant?: 'kanban' | 'list';
   onOpen?: (id: string) => void;
 }
 
@@ -140,7 +142,11 @@ const pickTransportIcon = (transportType: string): LucideIcon | null => {
   return CarIcon;
 };
 
-export default function TaskCard({ task, onOpen }: TaskCardProps) {
+export default function TaskCard({
+  task,
+  variant = 'kanban',
+  onOpen,
+}: TaskCardProps) {
   const { t } = useTranslation();
   const dueDate = resolveDueDate(task);
   const startDate = resolveStartDate(task);
@@ -158,6 +164,43 @@ export default function TaskCard({ task, onOpen }: TaskCardProps) {
   const titleHint = transportType
     ? `${titleText} • ${transportType}`
     : titleText;
+
+  if (variant === 'list') {
+    const description =
+      typeof (task as Record<string, unknown>).description === 'string'
+        ? ((task as Record<string, unknown>).description as string).trim()
+        : '';
+    return (
+      <article className="w-full max-w-[22rem] rounded-lg bg-card p-4 shadow-sm transition-all hover:-translate-y-[3px] hover:shadow-md">
+        <h3 className="text-lg font-medium">{titleText}</h3>
+        <p className="mt-2 truncate text-sm text-muted-foreground">
+          {description || 'Без описания'}
+        </p>
+        <div className="mt-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <StatusBadge status={task.status ?? ''} tone={statusTone} />
+            {taskNumber ? (
+              <span className="text-xs text-muted-foreground">
+                {taskNumber}
+              </span>
+            ) : null}
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              if (taskId) {
+                onOpen?.(taskId);
+              }
+            }}
+          >
+            Открыть
+          </Button>
+        </div>
+      </article>
+    );
+  }
 
   return (
     <div className="flex min-h-[4.5rem] w-full flex-col gap-2 rounded-lg border border-border/70 bg-card/90 p-2 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-within:ring-2 focus-within:ring-ring/60 focus-within:ring-offset-2 focus-within:ring-offset-background">

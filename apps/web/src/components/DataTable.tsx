@@ -58,7 +58,7 @@ interface ColumnMeta {
 
 export const defaultBadgeClassName = 'ui-status-badge ui-status-badge--muted';
 export const defaultBadgeWrapperClassName =
-  'flex flex-wrap items-center gap-1.5';
+  'flex flex-wrap items-start gap-1.5';
 
 const sanitizeHtml = (html: string): string =>
   html

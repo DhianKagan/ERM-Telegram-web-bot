@@ -8,6 +8,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import DataTable from '@/components/DataTable';
 import { Button, type ButtonProps } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 
 export type SimpleTableAction<T> = {
   id?: string;
@@ -41,6 +42,14 @@ type SimpleTableProps<T> = {
   maxBodyHeight?: number;
   getRowActions?: (row: T) => SimpleTableAction<T>[];
   actionsLabel?: string;
+};
+
+type ColumnMeta = {
+  minWidth?: string;
+  cellClassName?: string;
+  headerClassName?: string;
+  width?: string;
+  align?: 'left' | 'center' | 'right';
 };
 
 type RowActionsProps<T> = {
@@ -121,11 +130,29 @@ export function SimpleTable<T>({
   columns,
   getRowActions,
   actionsLabel = 'Действия',
+  rowHeight = 56,
   ...props
 }: SimpleTableProps<T>) {
+  const columnsWithDefaults = React.useMemo(() => {
+    const defaultCellClassName = 'py-3 px-4';
+    const defaultHeaderClassName = 'py-3 px-4';
+    return columns.map((column) => {
+      const meta = (column.meta ?? {}) as ColumnMeta;
+      return {
+        ...column,
+        meta: {
+          ...meta,
+          minWidth: meta.minWidth ?? '10rem',
+          cellClassName: cn(defaultCellClassName, meta.cellClassName),
+          headerClassName: cn(defaultHeaderClassName, meta.headerClassName),
+        },
+      };
+    });
+  }, [columns]);
+
   const columnsWithActions = React.useMemo(() => {
     if (!getRowActions) {
-      return columns;
+      return columnsWithDefaults;
     }
     const actionColumn: ColumnDef<T, unknown> = {
       id: 'actions',
@@ -138,14 +165,17 @@ export function SimpleTable<T>({
         />
       ),
       meta: {
-        minWidth: '8rem',
+        minWidth: '6rem',
+        width: '6rem',
         align: 'right',
-        cellClassName: 'py-2',
-        headerClassName: 'text-right',
+        cellClassName: 'py-3 px-4',
+        headerClassName: 'py-3 px-4 text-right',
       },
     };
-    return [...columns, actionColumn];
-  }, [actionsLabel, columns, getRowActions]);
+    return [...columnsWithDefaults, actionColumn];
+  }, [actionsLabel, columnsWithDefaults, getRowActions]);
 
-  return <DataTable {...props} columns={columnsWithActions} />;
+  return (
+    <DataTable {...props} columns={columnsWithActions} rowHeight={rowHeight} />
+  );
 }

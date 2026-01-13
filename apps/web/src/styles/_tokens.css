@@ -1,15 +1,15 @@
 :root {
-  --color-primary: var(--color-brand-500, #465fff);
-  --color-primary-600: var(--color-brand-600, #3641f5);
-  --color-primary-400: var(--color-brand-400, #7592ff);
+  --color-primary: var(--color-brand-500, #4f46e5);
+  --color-primary-600: var(--color-brand-600, #4338ca);
+  --color-primary-400: var(--color-brand-400, #6366f1);
   --color-accent: var(--color-theme-purple-500, #7a5af8);
-  --color-success: #22c55e;
+  --color-success: #10b981;
   --color-danger: #ef4444;
   --color-muted: var(--color-gray-600, #475467);
   --bg-surface: var(--color-white, #ffffff);
-  --bg-muted: var(--color-gray-50, #f9fafb);
+  --bg-muted: var(--color-gray-50, #f3f4f6);
   --border: var(--color-gray-200, #e4e7ec);
-  --radius: 8px;
+  --radius: 12px;
   --touch-target: 44px;
   --btn-padding-y: 10px;
   --btn-padding-x: 16px;
@@ -99,19 +99,16 @@
 
   .ui-status-badge {
     display: inline-flex;
-    align-items: center;
-    gap: var(--badge-gap-sm);
-    height: var(--badge-size-sm);
-    min-height: var(--badge-size-sm);
-    padding: 0 var(--badge-padding-inline-sm);
-    border-radius: calc(var(--radius) - 4px);
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.25rem 0.75rem;
+    border-radius: 999px;
     border: 1px solid var(--border);
     background: var(--bg-muted);
-    color: var(--color-muted);
-    font-size: var(--badge-font-size-sm);
-    font-weight: 700;
+    color: #0f172a;
+    font-size: 0.75rem;
+    font-weight: 600;
     line-height: 1.2;
-    letter-spacing: 0.02em;
     max-width: 14rem;
     white-space: normal;
     word-break: break-word;

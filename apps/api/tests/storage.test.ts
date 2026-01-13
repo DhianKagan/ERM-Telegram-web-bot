@@ -1,16 +1,15 @@
 // Назначение: тесты роутов управления файлами. Модули: jest, supertest.
-import type { NextFunction, Request, Response } from 'express';
+import type { NextFunction, Request, Response, Router } from 'express';
+import express from 'express';
+import fs from 'fs';
+import path from 'path';
+import request from 'supertest';
 
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 's';
 process.env.APP_URL = 'https://localhost';
 process.env.MONGO_DATABASE_URL =
   'mongodb://admin:admin@localhost:27017/ermdb?authSource=admin';
-
-const express = require('express');
-const request = require('supertest');
-const fs = require('fs');
-const path = require('path');
 
 const mockDiagnosticsController = {
   diagnose: jest.fn((_req: Request, res: Response) => res.json({ ok: true })),
@@ -68,12 +67,11 @@ jest.mock('../src/db/model', () => ({
   },
 }));
 
-process.env.STORAGE_DIR = path.resolve(__dirname, '../uploads');
-const router = require('../src/routes/storage').default;
-const { uploadsDir } = require('../src/config/storage');
-const { File } = require('../src/db/model');
-const { stopQueue } = require('../src/services/messageQueue');
-const { stopScheduler } = require('../src/services/scheduler');
+let router: Router;
+let uploadsDir = '';
+let stopQueue: () => void = () => undefined;
+let stopScheduler: () => void = () => undefined;
+let app: ReturnType<typeof express>;
 
 jest.mock(
   '../src/middleware/auth',
@@ -88,9 +86,18 @@ jest.mock('../src/auth/roles.decorator', () => ({
 }));
 
 describe('storage routes', () => {
-  const app = express();
-  app.use(express.json());
-  app.use(router);
+  beforeAll(async () => {
+    process.env.STORAGE_DIR = path.resolve(__dirname, '../uploads');
+    const storageRouter = await import('../src/routes/storage');
+    router = storageRouter.default;
+    const storageConfig = await import('../src/config/storage');
+    uploadsDir = storageConfig.uploadsDir;
+    ({ stopQueue } = await import('../src/services/messageQueue'));
+    ({ stopScheduler } = await import('../src/services/scheduler'));
+    app = express();
+    app.use(express.json());
+    app.use(router);
+  });
 
   beforeEach(() => {
     mockFileFind.mockReset();
@@ -198,6 +205,19 @@ describe('storage routes', () => {
     const f = path.join(uploadsDir, 'del.txt');
     fs.mkdirSync(uploadsDir, { recursive: true });
     fs.writeFileSync(f, 'd');
+    mockFileFindById.mockReturnValue({
+      lean: jest.fn().mockResolvedValue({
+        _id: '64d000000000000000000004',
+        userId: 1,
+        name: 'del.txt',
+        path: 'del.txt',
+        type: 'text/plain',
+        size: 1,
+        uploadedAt: new Date(),
+        taskId: null,
+        relatedTaskIds: [],
+      }),
+    });
     mockFileFindOneAndDelete.mockReturnValue({
       lean: jest.fn().mockResolvedValue({
         path: 'del.txt',
@@ -206,6 +226,24 @@ describe('storage routes', () => {
     });
     await request(app).delete('/64d000000000000000000004').expect(200);
     expect(fs.existsSync(f)).toBe(false);
+  });
+
+  test('delete file запрещён при наличии связей с задачами', async () => {
+    mockFileFindById.mockReturnValue({
+      lean: jest.fn().mockResolvedValue({
+        _id: '64d000000000000000000010',
+        userId: 1,
+        name: 'linked.txt',
+        path: 'linked.txt',
+        type: 'text/plain',
+        size: 1,
+        uploadedAt: new Date(),
+        taskId: '64d000000000000000000011',
+        relatedTaskIds: ['64d000000000000000000011'],
+      }),
+    });
+    await request(app).delete('/64d000000000000000000010').expect(409);
+    expect(mockFileFindOneAndDelete).not.toHaveBeenCalled();
   });
 
   test('diagnostics endpoint delegates to controller', async () => {

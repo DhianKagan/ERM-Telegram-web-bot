@@ -20,14 +20,14 @@ import { Input } from '@/components/ui/input';
 import { Radio } from '@/components/ui/radio';
 import { Select } from '@/components/ui/select';
 import { SimpleTable } from '@/components/ui/simple-table';
+import FilterGrid from '@/components/FilterGrid';
+import HeaderCard from '@/components/HeaderCard';
 import {
   Tabs,
   TabsList,
   TabsTrigger,
   TabsContent,
 } from '../../components/Tabs';
-import ActionBar from '../../components/ActionBar';
-import Breadcrumbs from '../../components/Breadcrumbs';
 import CopyableId from '../../components/CopyableId';
 import Spinner from '../../components/Spinner';
 import {
@@ -121,6 +121,9 @@ type AssetEventLogEntry = {
   transferLocation: string;
   description: string;
 };
+
+const mobileCardClass =
+  'rounded-lg bg-card p-4 shadow-sm transition-all hover:-translate-y-[3px] hover:shadow-md';
 
 const EVENT_LOG_TYPE_LABELS: Record<string, string> = {
   refuel: 'Заправка',
@@ -1303,14 +1306,6 @@ export default function CollectionsPage() {
     if (!assetLocationNormalized) return true;
     return assetLocationNormalized !== transferLocationNormalized;
   }, [latestTransferEvent, selectedAssetLocation.raw]);
-
-  const breadcrumbs = useMemo(
-    () => [
-      { label: t('nav.settings'), href: '/cp/settings' },
-      { label: t('collections.page.title') },
-    ],
-    [t],
-  );
 
   const currentQuery = queries[active] ?? '';
   const currentSearchDraft = searchDrafts[active] ?? '';
@@ -2847,7 +2842,7 @@ export default function CollectionsPage() {
       });
   }, [selectedCollection, enrichedUsers]);
 
-  const directoriesControls = (() => {
+  const directoriesFilters = (() => {
     if (activeModule !== 'directories') {
       return null;
     }
@@ -2861,10 +2856,27 @@ export default function CollectionsPage() {
         ? () => openEmployeeModal()
         : () => openUserModal();
       return (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <FilterGrid
+          onSearch={submitUserSearch}
+          onReset={() => {
+            setUserSearchDraft('');
+            submitUserSearch();
+          }}
+          actions={
+            <Button
+              type="button"
+              size="sm"
+              variant="success"
+              onClick={handleAdd}
+            >
+              {addLabel}
+            </Button>
+          }
+        >
           <FormGroup
             label={collectionSearchCta}
             htmlFor="settings-users-search"
+            help={collectionSearchHint}
           >
             <Input
               id="settings-users-search"
@@ -2873,40 +2885,26 @@ export default function CollectionsPage() {
               onKeyDown={handleUserSearchKeyDown}
               placeholder={placeholder}
             />
-            {collectionSearchHint ? (
-              <span className="text-xs text-muted-foreground">
-                {collectionSearchHint}
-              </span>
-            ) : null}
           </FormGroup>
-          <div className="flex flex-wrap justify-end gap-2 sm:col-span-2 lg:col-span-3">
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={() => submitUserSearch()}
-            >
-              {collectionSearchCta}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                setUserSearchDraft('');
-                submitUserSearch();
-              }}
-            >
-              {collectionResetCta}
-            </Button>
-            <Button size="sm" variant="success" onClick={handleAdd}>
-              {addLabel}
-            </Button>
-          </div>
-        </div>
+        </FilterGrid>
       );
     }
     if (isCollectionSearchSupported) {
       return (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <FilterGrid
+          onSearch={submitCollectionSearch}
+          onReset={resetCollectionSearch}
+          actions={
+            <Button
+              type="button"
+              size="sm"
+              variant="success"
+              onClick={() => openCollectionModal()}
+            >
+              {collectionAddCta}
+            </Button>
+          }
+        >
           <FormGroup
             label={collectionSearchCta}
             htmlFor="settings-collections-search"
@@ -2922,38 +2920,25 @@ export default function CollectionsPage() {
               placeholder={collectionSearchPlaceholder}
             />
           </FormGroup>
-          <div className="flex flex-wrap justify-end gap-2 sm:col-span-2 lg:col-span-3">
-            <Button
-              size="sm"
-              variant="primary"
-              onClick={() => submitCollectionSearch()}
-            >
-              {collectionSearchCta}
-            </Button>
-            <Button size="sm" variant="outline" onClick={resetCollectionSearch}>
-              {collectionResetCta}
-            </Button>
-            <Button
-              size="sm"
-              variant="success"
-              onClick={() => openCollectionModal()}
-            >
-              {collectionAddCta}
-            </Button>
-          </div>
-        </div>
+        </FilterGrid>
       );
     }
     return (
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        <Button
-          size="sm"
-          variant="success"
-          onClick={() => openCollectionModal()}
-        >
-          {collectionAddCta}
-        </Button>
-      </div>
+      <FilterGrid
+        showDefaultActions={false}
+        actions={
+          <Button
+            type="button"
+            size="sm"
+            variant="success"
+            onClick={() => openCollectionModal()}
+          >
+            {collectionAddCta}
+          </Button>
+        }
+      >
+        {null}
+      </FilterGrid>
     );
   })();
 
@@ -2969,65 +2954,59 @@ export default function CollectionsPage() {
         }
         className="space-y-6"
       >
-        <ActionBar
-          breadcrumbs={<Breadcrumbs items={breadcrumbs} />}
+        <HeaderCard
+          icon={ClipboardDocumentListIcon}
           title={t('collections.page.title')}
-          description={t('collections.page.description')}
-        >
-          <div className="flex flex-col gap-3">
-            <div className="sm:hidden">
-              <label htmlFor="settings-module-select" className="sr-only">
-                {t('collections.moduleSelectLabel')}
-              </label>
-              <Select
-                id="settings-module-select"
-                value={activeModule}
-                onChange={(event) =>
-                  handleModuleChange(event.target.value as SettingsModuleKey)
-                }
-              >
-                {moduleTabs.map((tab) => (
-                  <option key={tab.key} value={tab.key}>
-                    {tab.label}
-                  </option>
-                ))}
-              </Select>
-            </div>
-            <TabsList className="hidden h-auto gap-2 bg-transparent p-0 sm:grid sm:gap-2 sm:p-1 sm:[grid-template-columns:repeat(auto-fit,minmax(9.5rem,1fr))] lg:[grid-template-columns:repeat(auto-fit,minmax(11rem,1fr))]">
-              {moduleTabs.map((tab) => {
-                const Icon = tab.icon;
-                const labelId = `${tab.key}-module-tab-label`;
-                return (
-                  <TabsTrigger
-                    key={tab.key}
-                    value={tab.key}
-                    aria-labelledby={labelId}
-                    className="group flex h-full min-h-[3.1rem] w-full flex-col items-center justify-center gap-1 rounded-xl border border-transparent px-3 py-2 text-sm font-semibold text-[color:var(--color-gray-700)] transition-colors duration-200 ease-out hover:bg-[color:var(--color-gray-50)] focus-visible:ring-2 focus-visible:ring-[color:var(--color-brand-400)] focus-visible:ring-offset-2 dark:text-[color:var(--color-gray-200)] dark:hover:bg-[color:var(--color-gray-800)] data-[state=active]:border-[color:var(--color-gray-200)] data-[state=active]:bg-white data-[state=active]:text-[color:var(--color-brand-600)] data-[state=active]:shadow-sm dark:data-[state=active]:border-[color:var(--color-gray-700)] dark:data-[state=active]:bg-[color:var(--color-gray-dark)] dark:data-[state=active]:text-[color:var(--color-brand-300)]"
-                  >
-                    <Icon className="size-5 flex-shrink-0 text-[color:var(--color-gray-500)] transition-colors group-data-[state=active]:text-[color:var(--color-brand-600)] dark:text-[color:var(--color-gray-300)] dark:group-data-[state=active]:text-[color:var(--color-brand-300)] sm:size-6" />
-                    <span
-                      id={labelId}
-                      className="truncate text-sm font-semibold leading-5 text-[color:var(--color-gray-800)] transition-colors group-data-[state=active]:text-[color:var(--color-brand-600)] dark:text-[color:var(--color-gray-100)] dark:group-data-[state=active]:text-[color:var(--color-brand-300)]"
-                    >
-                      {tab.label}
-                    </span>
-                    {tab.description ? (
-                      <span className="hidden text-xs font-medium text-[color:var(--color-gray-500)] dark:text-[color:var(--color-gray-400)] md:block">
-                        {tab.description}
-                      </span>
-                    ) : null}
-                  </TabsTrigger>
-                );
-              })}
-            </TabsList>
+          subtitle={t('collections.page.description')}
+        />
+        <div className="flex flex-col gap-3">
+          <div className="sm:hidden">
+            <label htmlFor="settings-module-select" className="sr-only">
+              {t('collections.moduleSelectLabel')}
+            </label>
+            <Select
+              id="settings-module-select"
+              value={activeModule}
+              onChange={(event) =>
+                handleModuleChange(event.target.value as SettingsModuleKey)
+              }
+            >
+              {moduleTabs.map((tab) => (
+                <option key={tab.key} value={tab.key}>
+                  {tab.label}
+                </option>
+              ))}
+            </Select>
           </div>
-        </ActionBar>
+          <TabsList className="hidden flex-nowrap items-center gap-4 overflow-x-auto rounded-lg bg-muted/60 p-2 sm:flex">
+            {moduleTabs.map((tab) => {
+              const Icon = tab.icon;
+              const labelId = `${tab.key}-module-tab-label`;
+              return (
+                <TabsTrigger
+                  key={tab.key}
+                  value={tab.key}
+                  aria-labelledby={labelId}
+                  className="group flex min-h-[2.5rem] items-center gap-2 rounded-lg border border-transparent px-3 py-2 text-sm font-semibold text-[color:var(--color-gray-700)] transition-colors duration-200 ease-out hover:bg-white focus-visible:ring-2 focus-visible:ring-[color:var(--color-brand-400)] focus-visible:ring-offset-2 dark:text-[color:var(--color-gray-200)] dark:hover:bg-[color:var(--color-gray-800)] data-[state=active]:border-[color:var(--color-gray-200)] data-[state=active]:bg-white data-[state=active]:text-[color:var(--color-brand-600)] data-[state=active]:shadow-sm dark:data-[state=active]:border-[color:var(--color-gray-700)] dark:data-[state=active]:bg-[color:var(--color-gray-dark)] dark:data-[state=active]:text-[color:var(--color-brand-300)]"
+                >
+                  <Icon className="size-5 flex-shrink-0 text-[color:var(--color-gray-500)] transition-colors group-data-[state=active]:text-[color:var(--color-brand-600)] dark:text-[color:var(--color-gray-300)] dark:group-data-[state=active]:text-[color:var(--color-brand-300)]" />
+                  <span
+                    id={labelId}
+                    className="whitespace-nowrap text-sm font-semibold leading-5 text-[color:var(--color-gray-800)] transition-colors group-data-[state=active]:text-[color:var(--color-brand-600)] dark:text-[color:var(--color-gray-100)] dark:group-data-[state=active]:text-[color:var(--color-brand-300)]"
+                  >
+                    {tab.label}
+                  </span>
+                </TabsTrigger>
+              );
+            })}
+          </TabsList>
+        </div>
+        {directoriesFilters}
         <TabsContent value="directories" className="mt-0 space-y-6">
           <SettingsSectionHeader
             title={activeModuleMeta.label}
             description={activeModuleMeta.description}
             icon={activeModuleMeta.icon}
-            controls={directoriesControls}
           />
           {hint ? (
             <div className="rounded-2xl border border-[color:var(--color-error-200)] bg-[color:var(--color-error-25)] p-4 text-sm text-[color:var(--color-error-600)] dark:border-[color:var(--color-error-700)] dark:bg-[color:var(--color-error-900)]/40 dark:text-[color:var(--color-error-200)]">
@@ -3061,7 +3040,7 @@ export default function CollectionsPage() {
                 ))}
               </Select>
             </div>
-            <TabsList className="hidden gap-2 sm:grid sm:gap-2 sm:overflow-visible sm:p-1 sm:[grid-template-columns:repeat(auto-fit,minmax(8.5rem,1fr))] lg:[grid-template-columns:repeat(auto-fit,minmax(9.5rem,1fr))]">
+            <TabsList className="hidden flex-nowrap items-center gap-4 overflow-x-auto rounded-lg bg-muted/60 p-2 sm:flex">
               {types.map((type) => {
                 const Icon = tabIcons[type.key as CollectionKey];
                 const labelId = `${type.key}-tab-label`;
@@ -3070,25 +3049,17 @@ export default function CollectionsPage() {
                     key={type.key}
                     value={type.key}
                     aria-labelledby={labelId}
-                    className="group flex h-full min-h-[3rem] w-full flex-col items-center justify-center gap-1 rounded-xl border border-transparent px-3 py-2 text-sm font-semibold text-[color:var(--color-gray-700)] transition-colors duration-200 ease-out hover:bg-[color:var(--color-gray-50)] focus-visible:ring-2 focus-visible:ring-[color:var(--color-brand-400)] focus-visible:ring-offset-2 dark:text-[color:var(--color-gray-200)] dark:hover:bg-[color:var(--color-gray-800)] data-[state=active]:border-[color:var(--color-gray-200)] data-[state=active]:bg-white data-[state=active]:text-[color:var(--color-brand-600)] data-[state=active]:shadow-sm dark:data-[state=active]:border-[color:var(--color-gray-700)] dark:data-[state=active]:bg-[color:var(--color-gray-dark)] dark:data-[state=active]:text-[color:var(--color-brand-300)]"
+                    className="group flex min-h-[2.5rem] items-center gap-2 rounded-lg border border-transparent px-3 py-2 text-sm font-semibold text-[color:var(--color-gray-700)] transition-colors duration-200 ease-out hover:bg-white focus-visible:ring-2 focus-visible:ring-[color:var(--color-brand-400)] focus-visible:ring-offset-2 dark:text-[color:var(--color-gray-200)] dark:hover:bg-[color:var(--color-gray-800)] data-[state=active]:border-[color:var(--color-gray-200)] data-[state=active]:bg-white data-[state=active]:text-[color:var(--color-brand-600)] data-[state=active]:shadow-sm dark:data-[state=active]:border-[color:var(--color-gray-700)] dark:data-[state=active]:bg-[color:var(--color-gray-dark)] dark:data-[state=active]:text-[color:var(--color-brand-300)]"
                   >
                     {Icon ? (
-                      <Icon className="size-5 flex-shrink-0 text-[color:var(--color-gray-500)] transition-colors group-data-[state=active]:text-[color:var(--color-brand-600)] dark:text-[color:var(--color-gray-300)] dark:group-data-[state=active]:text-[color:var(--color-brand-300)] sm:size-6" />
+                      <Icon className="size-5 flex-shrink-0 text-[color:var(--color-gray-500)] transition-colors group-data-[state=active]:text-[color:var(--color-brand-600)] dark:text-[color:var(--color-gray-300)] dark:group-data-[state=active]:text-[color:var(--color-brand-300)]" />
                     ) : null}
                     <span
                       id={labelId}
-                      className="truncate text-sm font-semibold leading-5 text-[color:var(--color-gray-800)] transition-colors group-data-[state=active]:text-[color:var(--color-brand-600)] dark:text-[color:var(--color-gray-100)] dark:group-data-[state=active]:text-[color:var(--color-brand-300)]"
+                      className="whitespace-nowrap text-sm font-semibold leading-5 text-[color:var(--color-gray-800)] transition-colors group-data-[state=active]:text-[color:var(--color-brand-600)] dark:text-[color:var(--color-gray-100)] dark:group-data-[state=active]:text-[color:var(--color-brand-300)]"
                     >
                       {type.label}
                     </span>
-                    {type.description ? (
-                      <span
-                        aria-hidden="true"
-                        className="hidden text-xs font-medium text-[color:var(--color-gray-500)] dark:text-[color:var(--color-gray-400)] md:block"
-                      >
-                        {type.description}
-                      </span>
-                    ) : null}
                   </TabsTrigger>
                 );
               })}
@@ -3231,27 +3202,71 @@ export default function CollectionsPage() {
                             {paginatedUsers.length} записей
                           </Badge>
                         </div>
-                        <SimpleTable<User>
-                          columns={settingsUserColumns}
-                          data={paginatedUsers}
-                          pageIndex={userPage - 1}
-                          pageSize={limit}
-                          pageCount={userTotalPages}
-                          onPageChange={(next) => setUserPage(next + 1)}
-                          showGlobalSearch={false}
-                          showFilters={false}
-                          wrapCellsAsBadges
-                          badgeClassName={SETTINGS_BADGE_CLASS}
-                          badgeWrapperClassName={SETTINGS_BADGE_WRAPPER_CLASS}
-                          badgeEmptyPlaceholder={SETTINGS_BADGE_EMPTY}
-                          onRowClick={(row) => openUserModal(row)}
-                          getRowActions={(row) => [
-                            {
-                              label: 'Открыть',
-                              onClick: () => openUserModal(row),
-                            },
-                          ]}
-                        />
+                        <div className="hidden lg:block">
+                          <SimpleTable<User>
+                            columns={settingsUserColumns}
+                            data={paginatedUsers}
+                            pageIndex={userPage - 1}
+                            pageSize={limit}
+                            pageCount={userTotalPages}
+                            onPageChange={(next) => setUserPage(next + 1)}
+                            showGlobalSearch={false}
+                            showFilters={false}
+                            wrapCellsAsBadges
+                            badgeClassName={SETTINGS_BADGE_CLASS}
+                            badgeWrapperClassName={SETTINGS_BADGE_WRAPPER_CLASS}
+                            badgeEmptyPlaceholder={SETTINGS_BADGE_EMPTY}
+                            onRowClick={(row) => openUserModal(row)}
+                            getRowActions={(row) => [
+                              {
+                                label: 'Открыть',
+                                onClick: () => openUserModal(row),
+                              },
+                            ]}
+                          />
+                        </div>
+                        <div className="grid gap-4 lg:hidden">
+                          {paginatedUsers.map((user, index) => {
+                            const displayName =
+                              (user.name && user.name.trim()) ||
+                              (user.username && user.username.trim()) ||
+                              `ID ${user.telegram_id ?? '—'}`;
+                            const username =
+                              user.telegram_username || user.username || '';
+                            return (
+                              <article
+                                key={
+                                  user.telegram_id ??
+                                  user.username ??
+                                  user.name ??
+                                  index
+                                }
+                                className={mobileCardClass}
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <h4 className="truncate text-sm font-semibold">
+                                      {displayName}
+                                    </h4>
+                                    <p className="truncate text-xs text-muted-foreground">
+                                      {username || 'Без логина'}
+                                    </p>
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => openUserModal(user)}
+                                  >
+                                    Открыть
+                                  </Button>
+                                </div>
+                                <div className="mt-3 text-xs text-muted-foreground">
+                                  Telegram ID: {user.telegram_id ?? '—'}
+                                </div>
+                              </article>
+                            );
+                          })}
+                        </div>
                       </Card>
                     )}
                   </TabsContent>
@@ -3295,29 +3310,81 @@ export default function CollectionsPage() {
                             {employeeRows.length} записей
                           </Badge>
                         </div>
-                        <SimpleTable<EmployeeRow>
-                          columns={settingsEmployeeColumns}
-                          data={employeeRows}
-                          pageIndex={userPage - 1}
-                          pageSize={limit}
-                          pageCount={userTotalPages}
-                          onPageChange={(next) => setUserPage(next + 1)}
-                          showGlobalSearch={false}
-                          showFilters={false}
-                          wrapCellsAsBadges
-                          badgeClassName={SETTINGS_BADGE_CLASS}
-                          badgeWrapperClassName={SETTINGS_BADGE_WRAPPER_CLASS}
-                          badgeEmptyPlaceholder={SETTINGS_BADGE_EMPTY}
-                          onRowClick={(row) => openEmployeeModal(row)}
-                          enableVirtualization
-                          virtualizationThreshold={limit}
-                          getRowActions={(row) => [
-                            {
-                              label: 'Открыть',
-                              onClick: () => openEmployeeModal(row),
-                            },
-                          ]}
-                        />
+                        <div className="hidden lg:block">
+                          <SimpleTable<EmployeeRow>
+                            columns={settingsEmployeeColumns}
+                            data={employeeRows}
+                            pageIndex={userPage - 1}
+                            pageSize={limit}
+                            pageCount={userTotalPages}
+                            onPageChange={(next) => setUserPage(next + 1)}
+                            showGlobalSearch={false}
+                            showFilters={false}
+                            wrapCellsAsBadges
+                            badgeClassName={SETTINGS_BADGE_CLASS}
+                            badgeWrapperClassName={SETTINGS_BADGE_WRAPPER_CLASS}
+                            badgeEmptyPlaceholder={SETTINGS_BADGE_EMPTY}
+                            onRowClick={(row) => openEmployeeModal(row)}
+                            enableVirtualization
+                            virtualizationThreshold={limit}
+                            getRowActions={(row) => [
+                              {
+                                label: 'Открыть',
+                                onClick: () => openEmployeeModal(row),
+                              },
+                            ]}
+                          />
+                        </div>
+                        <div className="grid gap-4 lg:hidden">
+                          {employeeRows.map((employee, index) => {
+                            const displayName =
+                              (employee.name && employee.name.trim()) ||
+                              employee.username ||
+                              `ID ${employee.telegram_id ?? index + 1}`;
+                            return (
+                              <article
+                                key={
+                                  employee.telegram_id ??
+                                  employee.username ??
+                                  index
+                                }
+                                className={mobileCardClass}
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <h4 className="truncate text-sm font-semibold">
+                                      {displayName}
+                                    </h4>
+                                    <p className="truncate text-xs text-muted-foreground">
+                                      {employee.roleName ||
+                                        employee.role ||
+                                        '—'}
+                                    </p>
+                                  </div>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => openEmployeeModal(employee)}
+                                  >
+                                    Открыть
+                                  </Button>
+                                </div>
+                                <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+                                  <div>
+                                    Департамент:{' '}
+                                    {employee.departmentName || '—'}
+                                  </div>
+                                  <div>
+                                    Отдел: {employee.divisionName || '—'}
+                                  </div>
+                                  <div>
+                                    Должность: {employee.positionName || '—'}
+                                  </div>
+                                </div>
+                              </article>
+                            );
+                          })}
+                        </div>
                       </Card>
                     )}
                   </TabsContent>
@@ -3391,34 +3458,72 @@ export default function CollectionsPage() {
                           {fixedAssetRows.length} записей
                         </Badge>
                       </div>
-                      <SimpleTable<FixedAssetRow>
-                        columns={fixedAssetColumns}
-                        data={fixedAssetRows}
-                        pageIndex={page - 1}
-                        pageSize={limit}
-                        pageCount={totalPages}
-                        onPageChange={(next) => setPage(next + 1)}
-                        showGlobalSearch={false}
-                        showFilters={false}
-                        wrapCellsAsBadges
-                        badgeClassName={SETTINGS_BADGE_CLASS}
-                        badgeWrapperClassName={SETTINGS_BADGE_WRAPPER_CLASS}
-                        badgeEmptyPlaceholder={SETTINGS_BADGE_EMPTY}
-                        onRowClick={(row) =>
-                          openCollectionModal(
-                            items.find((item) => item._id === row._id),
-                          )
-                        }
-                        getRowActions={(row) => [
-                          {
-                            label: 'Открыть',
-                            onClick: () =>
-                              openCollectionModal(
-                                items.find((item) => item._id === row._id),
-                              ),
-                          },
-                        ]}
-                      />
+                      <div className="hidden lg:block">
+                        <SimpleTable<FixedAssetRow>
+                          columns={fixedAssetColumns}
+                          data={fixedAssetRows}
+                          pageIndex={page - 1}
+                          pageSize={limit}
+                          pageCount={totalPages}
+                          onPageChange={(next) => setPage(next + 1)}
+                          showGlobalSearch={false}
+                          showFilters={false}
+                          wrapCellsAsBadges
+                          badgeClassName={SETTINGS_BADGE_CLASS}
+                          badgeWrapperClassName={SETTINGS_BADGE_WRAPPER_CLASS}
+                          badgeEmptyPlaceholder={SETTINGS_BADGE_EMPTY}
+                          onRowClick={(row) =>
+                            openCollectionModal(
+                              items.find((item) => item._id === row._id),
+                            )
+                          }
+                          getRowActions={(row) => [
+                            {
+                              label: 'Открыть',
+                              onClick: () =>
+                                openCollectionModal(
+                                  items.find((item) => item._id === row._id),
+                                ),
+                            },
+                          ]}
+                        />
+                      </div>
+                      <div className="grid gap-4 lg:hidden">
+                        {fixedAssetRows.map((asset, index) => (
+                          <article
+                            key={asset._id ?? index}
+                            className={mobileCardClass}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <h4 className="truncate text-sm font-semibold">
+                                  {asset.name || 'Без названия'}
+                                </h4>
+                                <p className="truncate text-xs text-muted-foreground">
+                                  {asset.inventoryNumber || '—'}
+                                </p>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() =>
+                                  openCollectionModal(
+                                    items.find(
+                                      (item) => item._id === asset._id,
+                                    ),
+                                  )
+                                }
+                              >
+                                Открыть
+                              </Button>
+                            </div>
+                            <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+                              <div>Расположение: {asset.location || '—'}</div>
+                              <div>Описание: {asset.description || '—'}</div>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
                     </Card>
                   ) : (
                     <Card bodyClassName="space-y-3">
@@ -3434,33 +3539,73 @@ export default function CollectionsPage() {
                           {rows.length} записей
                         </Badge>
                       </div>
-                      <SimpleTable<CollectionTableRow>
-                        columns={
-                          type.key === 'objects'
-                            ? localizedObjectColumns
-                            : columnsForType
-                        }
-                        data={rows}
-                        pageIndex={page - 1}
-                        pageSize={limit}
-                        pageCount={totalPages}
-                        onPageChange={(next) => setPage(next + 1)}
-                        showGlobalSearch={false}
-                        showFilters={false}
-                        wrapCellsAsBadges
-                        badgeClassName={SETTINGS_BADGE_CLASS}
-                        badgeWrapperClassName={SETTINGS_BADGE_WRAPPER_CLASS}
-                        badgeEmptyPlaceholder={SETTINGS_BADGE_EMPTY}
-                        onRowClick={(row) => openCollectionModal(row)}
-                        enableVirtualization
-                        virtualizationThreshold={limit}
-                        getRowActions={(row) => [
-                          {
-                            label: 'Открыть',
-                            onClick: () => openCollectionModal(row),
-                          },
-                        ]}
-                      />
+                      <div className="hidden lg:block">
+                        <SimpleTable<CollectionTableRow>
+                          columns={
+                            type.key === 'objects'
+                              ? localizedObjectColumns
+                              : columnsForType
+                          }
+                          data={rows}
+                          pageIndex={page - 1}
+                          pageSize={limit}
+                          pageCount={totalPages}
+                          onPageChange={(next) => setPage(next + 1)}
+                          showGlobalSearch={false}
+                          showFilters={false}
+                          wrapCellsAsBadges
+                          badgeClassName={SETTINGS_BADGE_CLASS}
+                          badgeWrapperClassName={SETTINGS_BADGE_WRAPPER_CLASS}
+                          badgeEmptyPlaceholder={SETTINGS_BADGE_EMPTY}
+                          onRowClick={(row) => openCollectionModal(row)}
+                          enableVirtualization
+                          virtualizationThreshold={limit}
+                          getRowActions={(row) => [
+                            {
+                              label: 'Открыть',
+                              onClick: () => openCollectionModal(row),
+                            },
+                          ]}
+                        />
+                      </div>
+                      <div className="grid gap-4 lg:hidden">
+                        {rows.map((row, index) => (
+                          <article
+                            key={row._id ?? index}
+                            className={mobileCardClass}
+                          >
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="min-w-0">
+                                <h4 className="truncate text-sm font-semibold">
+                                  {row.name || 'Без названия'}
+                                </h4>
+                                <p className="truncate text-xs text-muted-foreground">
+                                  {row.value || row.displayValue || '—'}
+                                </p>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => openCollectionModal(row)}
+                              >
+                                Открыть
+                              </Button>
+                            </div>
+                            <div className="mt-3 space-y-1 text-xs text-muted-foreground">
+                              {row.address ? (
+                                <div>Адрес: {row.address}</div>
+                              ) : null}
+                              {row.coordinates ? (
+                                <div>Координаты: {row.coordinates}</div>
+                              ) : null}
+                              <div>
+                                Доп. сведения:{' '}
+                                {row.metaSummary || SETTINGS_BADGE_EMPTY}
+                              </div>
+                            </div>
+                          </article>
+                        ))}
+                      </div>
                     </Card>
                   )}
                 </TabsContent>

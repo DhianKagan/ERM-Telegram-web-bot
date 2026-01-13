@@ -5,16 +5,16 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
 
 export const badgeVariants = cva(
-  'inline-flex min-w-0 items-center gap-1 whitespace-nowrap rounded-full text-center font-semibold leading-tight shadow-xs',
+  'inline-flex items-start gap-2 rounded-full max-w-[14rem] break-words whitespace-normal bg-slate-100 text-slate-900 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-700',
   {
     variants: {
       variant: {
-        solid: 'uppercase tracking-wide',
+        solid: 'tracking-normal',
         pill: 'text-left tracking-normal',
       },
       size: {
-        sm: 'min-h-[var(--badge-size-sm)] px-[calc(var(--badge-size-sm)*0.4)] text-[length:calc(var(--badge-size-sm)*0.6)]',
-        md: 'min-h-7 px-3 text-sm',
+        sm: 'px-3 py-1 text-xs',
+        md: 'px-3 py-1.5 text-sm',
       },
     },
     defaultVariants: {

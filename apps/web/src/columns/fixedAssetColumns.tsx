@@ -19,7 +19,7 @@ export const fixedAssetColumns: ColumnDef<FixedAssetRow>[] = [
   {
     accessorKey: 'inventoryNumber',
     header: 'Инвентарный номер',
-    meta: { minWidth: '8rem', truncate: true },
+    meta: { minWidth: '10rem', truncate: true },
   },
   {
     accessorKey: 'location',
@@ -34,6 +34,6 @@ export const fixedAssetColumns: ColumnDef<FixedAssetRow>[] = [
   {
     accessorKey: '_id',
     header: 'ID',
-    meta: { minWidth: '8rem', truncate: true },
+    meta: { minWidth: '10rem', truncate: true },
   },
 ];

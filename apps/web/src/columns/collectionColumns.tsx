@@ -14,12 +14,12 @@ export const collectionColumns: ColumnDef<CollectionTableRow>[] = [
   {
     accessorKey: 'name',
     header: 'Название',
-    meta: { minWidth: '8rem', truncate: true },
+    meta: { minWidth: '10rem', truncate: true },
   },
   {
     accessorKey: 'value',
     header: 'Значение',
-    meta: { minWidth: '8rem', truncate: true },
+    meta: { minWidth: '10rem', truncate: true },
   },
   {
     accessorKey: 'displayValue',
@@ -29,7 +29,7 @@ export const collectionColumns: ColumnDef<CollectionTableRow>[] = [
   {
     accessorKey: 'type',
     header: 'Тип',
-    meta: { minWidth: '6rem', truncate: true },
+    meta: { minWidth: '10rem', truncate: true },
   },
   {
     accessorKey: '_id',
@@ -47,7 +47,7 @@ export const collectionObjectColumns: ColumnDef<CollectionTableRow>[] = [
   {
     accessorKey: 'name',
     header: 'Название',
-    meta: { minWidth: '8rem', truncate: true },
+    meta: { minWidth: '10rem', truncate: true },
   },
   {
     accessorKey: 'address',
@@ -57,7 +57,7 @@ export const collectionObjectColumns: ColumnDef<CollectionTableRow>[] = [
   {
     accessorKey: 'coordinates',
     header: 'Координаты',
-    meta: { minWidth: '8rem', truncate: true },
+    meta: { minWidth: '10rem', truncate: true },
   },
   {
     accessorKey: '_id',

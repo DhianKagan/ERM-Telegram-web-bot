@@ -141,9 +141,11 @@
     font-size: 0.75rem;
     font-weight: 600;
     line-height: 1.2;
+    min-height: 1.75rem;
     max-width: 14rem;
-    white-space: normal;
-    word-break: break-word;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .ui-status-badge[data-tone='primary'],

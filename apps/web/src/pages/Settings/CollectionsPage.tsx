@@ -326,6 +326,8 @@ const types = [
 
 type CollectionKey = (typeof types)[number]['key'];
 
+const directoryTypes = types.filter((type) => type.key !== 'employees');
+
 const createInitialQueries = (): Record<CollectionKey, string> =>
   types.reduce(
     (acc, type) => {
@@ -3073,7 +3075,7 @@ export default function CollectionsPage() {
                   setPage(1);
                 }}
               >
-                {types.map((type) => (
+                {directoryTypes.map((type) => (
                   <option key={type.key} value={type.key}>
                     {type.label}
                   </option>
@@ -3081,7 +3083,7 @@ export default function CollectionsPage() {
               </Select>
             </div>
             <TabsList className="hidden flex-nowrap items-center gap-4 overflow-x-auto rounded-lg bg-muted/60 p-2 sm:flex">
-              {types.map((type) => {
+              {directoryTypes.map((type) => {
                 const Icon = tabIcons[type.key as CollectionKey];
                 const labelId = `${type.key}-tab-label`;
                 return (
@@ -3104,7 +3106,7 @@ export default function CollectionsPage() {
                 );
               })}
             </TabsList>
-            {types.map((type) => {
+            {directoryTypes.map((type) => {
               const isActiveTab = type.key === active;
               const rows: CollectionTableRow[] = isActiveTab
                 ? items.map((item) => {

@@ -106,6 +106,8 @@ const storedFiles: Array<{
   uploadedAt: Date;
   taskId?: InstanceType<typeof Types.ObjectId> | null;
   draftId?: InstanceType<typeof Types.ObjectId> | null;
+  relatedTaskIds?: Array<InstanceType<typeof Types.ObjectId>>;
+  scope?: string | null;
 }> = [];
 
 const currentUserId = 7;
@@ -238,8 +240,12 @@ jest.mock('../apps/api/src/db/model', () => {
         ...data,
         _id: new Types.ObjectId(),
         uploadedAt: new Date(),
-        taskId: null,
+        taskId: data?.taskId ?? null,
         draftId: data?.draftId ?? null,
+        relatedTaskIds: Array.isArray(data?.relatedTaskIds)
+          ? data.relatedTaskIds
+          : [],
+        scope: data?.scope ?? null,
       };
       storedFiles.push(doc);
       return doc;
@@ -389,6 +395,19 @@ jest.mock('../apps/api/src/db/model', () => {
         if (update?.$unset && typeof update.$unset === 'object') {
           Object.keys(update.$unset).forEach((key) => {
             delete (file as Record<string, unknown>)[key];
+          });
+        }
+        if (update?.$addToSet && typeof update.$addToSet === 'object') {
+          Object.entries(update.$addToSet).forEach(([key, value]) => {
+            const current = (file as Record<string, unknown>)[key];
+            const list = Array.isArray(current) ? current : [];
+            const exists = list.some(
+              (entry) => String(entry) === String(value),
+            );
+            if (!exists) {
+              list.push(value);
+              (file as Record<string, unknown>)[key] = list;
+            }
           });
         }
       });
@@ -653,6 +672,10 @@ describe('Chunk upload', () => {
     const stored = storedFiles.find((f) => String(f._id) === String(fileId));
     expect(stored).toBeDefined();
     expect(String(stored?.taskId)).toBe(taskId);
+    expect(stored?.scope).toBe('task');
+    expect(
+      stored?.relatedTaskIds?.some((id) => String(id) === taskId),
+    ).toBe(true);
   });
 
   test('игнорирует ошибку создания миниатюры и возвращает вложение', async () => {

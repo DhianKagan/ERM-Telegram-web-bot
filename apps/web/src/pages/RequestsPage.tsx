@@ -6,11 +6,12 @@ import { InboxArrowDownIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { FormGroup } from '@/components/ui/form-group';
+import FilterGrid from '@/components/FilterGrid';
+import HeaderCard from '@/components/HeaderCard';
 import GlobalSearch from '../components/GlobalSearch';
 import SearchFilters from '../components/SearchFilters';
+import TaskCard from '../components/TaskCard';
 import TaskTable from '../components/TaskTable';
-import ActionBar from '../components/ActionBar';
-import Breadcrumbs from '../components/Breadcrumbs';
 import Spinner from '../components/Spinner';
 import useTasks from '../context/useTasks';
 import {
@@ -21,6 +22,8 @@ import { useTasksQuery } from '../services/tasks';
 import { useApiQuery } from '../hooks/useApiQuery';
 import { type Task, type User } from 'shared';
 import { useAuth } from '../context/useAuth';
+import type { GlobalSearchHandle } from '../components/GlobalSearch';
+import type { SearchFiltersHandle } from '../components/SearchFilters';
 
 interface RequestRow extends Task {
   assigned_user_id?: number;
@@ -30,10 +33,15 @@ interface RequestRow extends Task {
 export default function RequestsPage() {
   const [page, setPage] = React.useState(0);
   const [users, setUsers] = React.useState<User[]>([]);
+  const [visibleRequests, setVisibleRequests] = React.useState<RequestRow[]>(
+    [],
+  );
   const [params, setParams] = useSearchParams();
   const [mine, setMine] = React.useState(params.get('mine') === '1');
   const { version, refresh, controller } = useTasks();
   const { user, loading: authLoading } = useAuth();
+  const searchRef = React.useRef<GlobalSearchHandle>(null);
+  const filtersRef = React.useRef<SearchFiltersHandle>(null);
   const isAdmin = user?.role === 'admin';
   const isManager = user?.role === 'manager';
   const isPrivileged = isAdmin || isManager;
@@ -146,6 +154,16 @@ export default function RequestsPage() {
   }, [users]);
 
   const showSpinner = isLoading || (isFetching && tasks.length === 0);
+  const handleSearch = React.useCallback(() => {
+    searchRef.current?.search();
+    filtersRef.current?.apply();
+  }, []);
+
+  const handleReset = React.useCallback(() => {
+    searchRef.current?.reset();
+    filtersRef.current?.reset();
+  }, []);
+
   const handleMineChange = React.useCallback(
     (value: boolean) => {
       setMine(value);
@@ -166,15 +184,41 @@ export default function RequestsPage() {
 
   return (
     <div className="space-y-4">
-      <ActionBar
-        breadcrumbs={<Breadcrumbs items={[{ label: 'Заявки' }]} />}
+      <HeaderCard
         icon={InboxArrowDownIcon}
         title="Панель заявок"
-        description="Единый список заявок с фильтрами и экспортом."
+        subtitle="Единый список заявок с фильтрами и экспортом."
         filters={
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <FilterGrid
+            variant="plain"
+            onSearch={handleSearch}
+            onReset={handleReset}
+            actions={
+              <>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="success"
+                  onClick={() => {
+                    params.set('newRequest', '1');
+                    setParams(params);
+                  }}
+                >
+                  Создать
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={refresh}
+                >
+                  Обновить
+                </Button>
+              </>
+            }
+          >
             <div className="sm:col-span-2 lg:col-span-1">
-              <GlobalSearch />
+              <GlobalSearch ref={searchRef} showActions={false} />
             </div>
             <FormGroup label="Показывать">
               <label className="flex items-center gap-2 text-sm">
@@ -190,26 +234,9 @@ export default function RequestsPage() {
               </label>
             </FormGroup>
             <div className="sm:col-span-2 lg:col-span-3">
-              <SearchFilters inline />
+              <SearchFilters ref={filtersRef} inline showActions={false} />
             </div>
-          </div>
-        }
-        toolbar={
-          <div className="flex flex-wrap items-center gap-2">
-            <Button size="sm" variant="outline" onClick={refresh}>
-              Обновить
-            </Button>
-            <Button
-              size="sm"
-              variant="success"
-              onClick={() => {
-                params.set('newRequest', '1');
-                setParams(params);
-              }}
-            >
-              Новая заявка
-            </Button>
-          </div>
+          </FilterGrid>
         }
       />
 
@@ -219,20 +246,44 @@ export default function RequestsPage() {
             <Spinner className="h-6 w-6 text-[color:var(--color-brand-500)]" />
           </div>
         ) : (
-          <TaskTable
-            tasks={tasks}
-            users={map}
-            page={page}
-            pageCount={Math.ceil((meta.total ?? tasks.length) / 25)}
-            mine={mine}
-            entityKind="request"
-            onPageChange={setPage}
-            onMineChange={handleMineChange}
-            onRowClick={(id) => {
-              params.set('task', id);
-              setParams(params);
-            }}
-          />
+          <>
+            <div className="hidden lg:block">
+              <TaskTable
+                tasks={tasks}
+                users={map}
+                page={page}
+                pageCount={Math.ceil((meta.total ?? tasks.length) / 25)}
+                mine={mine}
+                entityKind="request"
+                onPageChange={setPage}
+                onMineChange={handleMineChange}
+                onRowClick={(id) => {
+                  params.set('task', id);
+                  setParams(params);
+                }}
+                onDataChange={setVisibleRequests}
+              />
+            </div>
+            <div className="grid gap-4 lg:hidden">
+              {visibleRequests.length ? (
+                visibleRequests.map((task) => (
+                  <TaskCard
+                    key={task._id ?? task.id}
+                    task={task}
+                    variant="list"
+                    onOpen={(id) => {
+                      params.set('task', id);
+                      setParams(params);
+                    }}
+                  />
+                ))
+              ) : (
+                <div className="rounded-lg border border-border/70 bg-card p-4 text-sm text-muted-foreground">
+                  Нет данных для отображения
+                </div>
+              )}
+            </div>
+          </>
         )}
       </Card>
     </div>

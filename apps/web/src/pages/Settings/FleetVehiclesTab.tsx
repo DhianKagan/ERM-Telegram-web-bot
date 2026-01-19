@@ -26,7 +26,7 @@ import {
   SETTINGS_BADGE_WRAPPER_CLASS,
 } from './badgeStyles';
 import SettingsSectionHeader from './SettingsSectionHeader';
-import { TruckIcon } from '@heroicons/react/24/outline';
+import { EyeIcon, TruckIcon } from '@heroicons/react/24/outline';
 
 const PAGE_LIMIT = 10;
 
@@ -362,17 +362,23 @@ export default function FleetVehiclesTab() {
               />
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <Button type="button" onClick={handleSearchSubmit}>
+              <Button type="button" size="sm" onClick={handleSearchSubmit}>
                 Искать
               </Button>
               <Button
                 type="button"
+                size="sm"
                 variant="outline"
                 onClick={handleSearchReset}
               >
                 Сбросить
               </Button>
-              <Button type="button" variant="success" onClick={openCreate}>
+              <Button
+                type="button"
+                size="sm"
+                variant="success"
+                onClick={openCreate}
+              >
                 Добавить
               </Button>
             </div>
@@ -405,7 +411,11 @@ export default function FleetVehiclesTab() {
         badgeWrapperClassName={badgeWrapperClassName}
         badgeEmptyPlaceholder={SETTINGS_BADGE_EMPTY}
         getRowActions={(row) => [
-          { label: 'Открыть', onClick: () => openEdit(row) },
+          {
+            label: 'Открыть',
+            icon: <EyeIcon className="size-4" />,
+            onClick: () => openEdit(row),
+          },
         ]}
       />
       <Modal open={modalOpen} onClose={closeModal}>

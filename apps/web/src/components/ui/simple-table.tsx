@@ -50,6 +50,7 @@ type ColumnMeta = {
   headerClassName?: string;
   width?: string;
   align?: 'left' | 'center' | 'right';
+  truncate?: boolean;
 };
 
 type RowActionsProps<T> = {
@@ -93,17 +94,18 @@ const RowActions = <T,>({ row, actions, label }: RowActionsProps<T>) => {
           <Button
             key={action.id ?? action.label}
             type="button"
-            size="sm"
-            variant={action.variant ?? 'secondary'}
+            size="icon"
+            variant={action.variant ?? 'outline'}
             disabled={action.disabled}
             onClick={(event) => {
               event.stopPropagation();
               action.onClick(row);
             }}
-            className="gap-1.5"
+            aria-label={action.label}
+            title={action.label}
           >
             {action.icon}
-            {action.label}
+            <span className="sr-only">{action.label}</span>
           </Button>
         ))}
       </div>
@@ -143,6 +145,7 @@ export function SimpleTable<T>({
         meta: {
           ...meta,
           minWidth: meta.minWidth ?? '10rem',
+          truncate: meta.truncate ?? true,
           cellClassName: cn(defaultCellClassName, meta.cellClassName),
           headerClassName: cn(defaultHeaderClassName, meta.headerClassName),
         },
@@ -165,8 +168,8 @@ export function SimpleTable<T>({
         />
       ),
       meta: {
-        minWidth: '6rem',
-        width: '6rem',
+        minWidth: '4rem',
+        width: '4rem',
         align: 'right',
         cellClassName: 'py-3 px-4',
         headerClassName: 'py-3 px-4 text-right',

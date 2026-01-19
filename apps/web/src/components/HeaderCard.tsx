@@ -12,6 +12,7 @@ type HeaderCardProps = {
   title: string;
   subtitle?: React.ReactNode;
   actions?: React.ReactNode;
+  filters?: React.ReactNode;
   className?: string;
 };
 
@@ -20,14 +21,22 @@ export default function HeaderCard({
   title,
   subtitle,
   actions,
+  filters,
   className,
 }: HeaderCardProps) {
+  const hasSideContent = Boolean(filters || actions);
   return (
     <Card
       className={cn('w-full rounded-lg p-6', className)}
       bodyClassName="gap-4"
     >
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div
+        className={cn(
+          'flex flex-col gap-4',
+          hasSideContent &&
+            'lg:grid lg:grid-cols-[minmax(0,1fr)_minmax(0,28rem)] lg:items-start',
+        )}
+      >
         <div className="flex items-center gap-4">
           <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted/50">
             <IconComp className="size-5 text-primary" />
@@ -39,8 +48,17 @@ export default function HeaderCard({
             ) : null}
           </div>
         </div>
-        {actions ? (
-          <div className="flex items-center gap-3">{actions}</div>
+        {hasSideContent ? (
+          <div className="flex flex-col gap-3 lg:items-end">
+            {filters ? (
+              <div className="w-full rounded-lg bg-muted/40 p-4">{filters}</div>
+            ) : null}
+            {actions ? (
+              <div className="flex w-full flex-wrap items-center justify-end gap-3">
+                {actions}
+              </div>
+            ) : null}
+          </div>
         ) : null}
       </div>
     </Card>

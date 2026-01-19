@@ -21,7 +21,7 @@ const Table = React.forwardRef<HTMLDivElement, TableProps>(
       className,
       children,
       zebra = false,
-      rowHeight = 48,
+      rowHeight = 56,
       stickyHeader = true,
       containerProps,
       style,

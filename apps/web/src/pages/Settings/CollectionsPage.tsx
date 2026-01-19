@@ -104,6 +104,9 @@ import {
   ShieldCheckIcon,
   MapPinIcon,
   WrenchScrewdriverIcon,
+  EyeIcon,
+  PencilSquareIcon,
+  TrashIcon,
 } from '@heroicons/react/24/outline';
 
 type AssetLocationInfo = { label: string; raw: string };
@@ -3197,7 +3200,7 @@ export default function CollectionsPage() {
                           <Badge
                             variant="pill"
                             size="sm"
-                            className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                            className="text-muted-foreground"
                           >
                             {paginatedUsers.length} записей
                           </Badge>
@@ -3220,6 +3223,7 @@ export default function CollectionsPage() {
                             getRowActions={(row) => [
                               {
                                 label: 'Открыть',
+                                icon: <EyeIcon className="size-4" />,
                                 onClick: () => openUserModal(row),
                               },
                             ]}
@@ -3305,7 +3309,7 @@ export default function CollectionsPage() {
                           <Badge
                             variant="pill"
                             size="sm"
-                            className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                            className="text-muted-foreground"
                           >
                             {employeeRows.length} записей
                           </Badge>
@@ -3330,6 +3334,7 @@ export default function CollectionsPage() {
                             getRowActions={(row) => [
                               {
                                 label: 'Открыть',
+                                icon: <EyeIcon className="size-4" />,
                                 onClick: () => openEmployeeModal(row),
                               },
                             ]}
@@ -3453,7 +3458,7 @@ export default function CollectionsPage() {
                         <Badge
                           variant="pill"
                           size="sm"
-                          className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                          className="text-muted-foreground"
                         >
                           {fixedAssetRows.length} записей
                         </Badge>
@@ -3480,6 +3485,7 @@ export default function CollectionsPage() {
                           getRowActions={(row) => [
                             {
                               label: 'Открыть',
+                              icon: <EyeIcon className="size-4" />,
                               onClick: () =>
                                 openCollectionModal(
                                   items.find((item) => item._id === row._id),
@@ -3534,7 +3540,7 @@ export default function CollectionsPage() {
                         <Badge
                           variant="pill"
                           size="sm"
-                          className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                          className="text-muted-foreground"
                         >
                           {rows.length} записей
                         </Badge>
@@ -3563,6 +3569,7 @@ export default function CollectionsPage() {
                           getRowActions={(row) => [
                             {
                               label: 'Открыть',
+                              icon: <EyeIcon className="size-4" />,
                               onClick: () => openCollectionModal(row),
                             },
                           ]}
@@ -3807,7 +3814,7 @@ export default function CollectionsPage() {
                             <Badge
                               variant="pill"
                               size="sm"
-                              className="bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-100"
+                              className="text-muted-foreground"
                             >
                               {assetEvents.length}
                             </Badge>

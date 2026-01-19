@@ -2,18 +2,35 @@
 import type { Task } from 'shared';
 
 const badgeBaseClass =
-  'inline-flex min-w-0 items-center gap-0.5 whitespace-nowrap rounded-full px-1.5 py-0.5 text-center text-[0.66rem] font-semibold uppercase tracking-wide shadow-xs';
-export const badgeTextClass = 'text-black dark:text-white';
+  'inline-flex min-w-0 items-center gap-0.5 whitespace-nowrap rounded-full px-3 py-1 text-center text-xs font-semibold tracking-wide shadow-xs';
+export const badgeTextClass = 'text-foreground';
 
 export const buildBadgeClass = (tones: string, extraClass = '') =>
   [badgeBaseClass, 'transition-colors', badgeTextClass, extraClass, tones]
     .filter(Boolean)
     .join(' ');
 
-export const pillBadgeBaseClass =
-  'inline-flex max-w-full min-w-0 items-center gap-0.5 whitespace-nowrap rounded-full px-1.5 py-0.5 text-left text-[0.7rem] font-semibold leading-tight tracking-normal shadow-xs sm:px-1.5 sm:text-[0.76rem]';
+const toneBadgeClass = (
+  tone: 'primary' | 'success' | 'danger' | 'neutral',
+  extraClass = '',
+) => {
+  const toneMap = {
+    primary:
+      'text-[var(--color-primary)] ring-1 ring-[color:var(--color-primary)]/30 bg-[color:var(--color-primary)]/10',
+    success:
+      'text-[var(--color-success)] ring-1 ring-[color:var(--color-success)]/30 bg-[color:var(--color-success)]/10',
+    danger:
+      'text-[var(--color-danger)] ring-1 ring-[color:var(--color-danger)]/30 bg-[color:var(--color-danger)]/10',
+    neutral:
+      'text-[var(--color-muted)] ring-1 ring-[var(--border)] bg-[var(--bg-muted)]',
+  } satisfies Record<string, string>;
+  return buildBadgeClass(toneMap[tone], extraClass);
+};
 
-export const creatorBadgeClass = `${pillBadgeBaseClass} w-full max-w-full justify-start normal-case ${badgeTextClass} ring-1 ring-blue-500/40 bg-blue-500/15 dark:bg-blue-400/20 dark:ring-blue-300/45`;
+export const pillBadgeBaseClass =
+  'inline-flex max-w-[14rem] min-w-0 items-center gap-0.5 whitespace-normal rounded-full px-3 py-1 text-left text-xs font-semibold leading-tight tracking-normal shadow-xs';
+
+export const creatorBadgeClass = `${pillBadgeBaseClass} w-full max-w-full justify-start normal-case ${badgeTextClass} ring-1 ring-[color:var(--color-primary)]/30 bg-[color:var(--color-primary)]/10`;
 
 export const fallbackBadgeClass = 'ui-status-badge ui-status-badge--muted';
 
@@ -24,51 +41,23 @@ const statusBadgeClassMap: Record<Task['status'], string> = {
   Отменена: 'ui-status-badge ui-status-badge--canceled',
 };
 
-const urgentPriorityBadgeClass = buildBadgeClass(
-  'bg-accent/80 ring-1 ring-destructive/40 dark:bg-accent/60 dark:ring-destructive/40',
-);
-
-const highPriorityBadgeClass = buildBadgeClass(
-  'bg-accent/75 ring-1 ring-primary/40 dark:bg-accent/55 dark:ring-primary/40',
-);
-
-const normalPriorityBadgeClass = buildBadgeClass(
-  'bg-accent/65 ring-1 ring-primary/30 dark:bg-accent/45 dark:ring-primary/30',
-);
-
-const lowPriorityBadgeClass = buildBadgeClass(
-  'bg-accent/50 ring-1 ring-primary/20 dark:bg-accent/35 dark:ring-primary/20',
-);
+const urgentPriorityBadgeClass = toneBadgeClass('danger');
+const highPriorityBadgeClass = toneBadgeClass('primary');
+const normalPriorityBadgeClass = toneBadgeClass('neutral');
+const lowPriorityBadgeClass = toneBadgeClass('neutral');
 
 const priorityBadgeClassMap: Record<string, string> = {
-  срочно: buildBadgeClass(
-    'bg-rose-500/20 ring-1 ring-rose-500/40 dark:bg-rose-400/25 dark:ring-rose-300/45',
-  ),
-  'в течение дня': buildBadgeClass(
-    'bg-sky-500/20 ring-1 ring-sky-500/40 dark:bg-sky-400/25 dark:ring-sky-300/45',
-  ),
-  'до выполнения': buildBadgeClass(
-    'bg-slate-500/25 ring-1 ring-slate-500/45 dark:bg-slate-400/25 dark:ring-slate-300/45',
-    'normal-case',
-  ),
+  срочно: toneBadgeClass('danger'),
+  'в течение дня': toneBadgeClass('primary'),
+  'до выполнения': toneBadgeClass('neutral', 'normal-case'),
 };
 
 const typeBadgeClassMap: Record<string, string> = {
-  доставить: buildBadgeClass(
-    'bg-sky-500/20 ring-1 ring-sky-500/40 dark:bg-sky-400/25 dark:ring-sky-300/45',
-  ),
-  купить: buildBadgeClass(
-    'bg-violet-500/20 ring-1 ring-violet-500/40 dark:bg-violet-400/25 dark:ring-violet-300/45',
-  ),
-  выполнить: buildBadgeClass(
-    'bg-emerald-500/20 ring-1 ring-emerald-500/40 dark:bg-emerald-400/25 dark:ring-emerald-300/45',
-  ),
-  построить: buildBadgeClass(
-    'bg-amber-500/25 ring-1 ring-amber-500/45 dark:bg-amber-400/25 dark:ring-amber-300/45',
-  ),
-  починить: buildBadgeClass(
-    'bg-orange-500/20 ring-1 ring-orange-500/40 dark:bg-orange-400/25 dark:ring-orange-300/45',
-  ),
+  доставить: toneBadgeClass('primary'),
+  купить: toneBadgeClass('primary'),
+  выполнить: toneBadgeClass('success'),
+  построить: toneBadgeClass('primary'),
+  починить: toneBadgeClass('primary'),
 };
 
 const hasOwn = <T extends Record<PropertyKey, unknown>>(

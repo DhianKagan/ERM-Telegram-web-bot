@@ -205,7 +205,7 @@ export default function DataTable<T>({
   enableVirtualization = true,
   virtualizationOverscan = 6,
   virtualizationThreshold = 40,
-  rowHeight = 48,
+  rowHeight = 56,
   maxBodyHeight = 520,
 }: DataTableProps<T>) {
   const [columnVisibility, setColumnVisibility] = React.useState({});

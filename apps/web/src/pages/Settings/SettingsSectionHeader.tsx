@@ -27,7 +27,7 @@ export default function SettingsSectionHeader({
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,24rem)] lg:items-center">
         <div className="flex items-start gap-3">
           {Icon ? (
-            <div className="flex size-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-600 shadow-xs dark:bg-slate-800 dark:text-slate-200">
+            <div className="flex size-11 items-center justify-center rounded-2xl bg-muted/50 text-primary shadow-xs">
               <Icon className="size-5" />
             </div>
           ) : null}

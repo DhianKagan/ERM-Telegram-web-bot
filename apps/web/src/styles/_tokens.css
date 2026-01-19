@@ -2,7 +2,7 @@
   --color-primary: var(--color-brand-500, #4f46e5);
   --color-primary-600: var(--color-brand-600, #4338ca);
   --color-primary-400: var(--color-brand-400, #6366f1);
-  --color-accent: var(--color-theme-purple-500, #7a5af8);
+  --color-accent: var(--color-primary);
   --color-success: #10b981;
   --color-danger: #ef4444;
   --color-muted: var(--color-gray-600, #475467);
@@ -18,7 +18,7 @@
   --badge-gap-sm: calc(var(--badge-size-sm) * 0.2);
   --badge-padding-inline-sm: calc(var(--badge-size-sm) * 0.4);
   --badge-font-size-sm: calc(var(--badge-size-sm) * 0.6);
-  --table-row-height: 48px;
+  --table-row-height: 56px;
   --table-padding-x: 16px;
   --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04);
 }
@@ -99,13 +99,13 @@
 
   .ui-status-badge {
     display: inline-flex;
-    align-items: flex-start;
-    gap: 0.5rem;
+    align-items: center;
+    gap: 0.35rem;
     padding: 0.25rem 0.75rem;
     border-radius: 999px;
     border: 1px solid var(--border);
     background: var(--bg-muted);
-    color: #0f172a;
+    color: var(--color-muted);
     font-size: 0.75rem;
     font-weight: 600;
     line-height: 1.2;
@@ -117,31 +117,29 @@
   .ui-status-badge[data-tone='new'],
   .ui-status-badge--new {
     color: var(--color-primary);
-    background: #f1ebff;
-    border-color: #dcd2ff;
     background: color-mix(in srgb, var(--color-primary) 12%, #ffffff 88%);
     border-color: color-mix(in srgb, var(--color-primary) 35%, #ffffff 65%);
   }
 
   .ui-status-badge[data-tone='in_progress'],
   .ui-status-badge--in_progress {
-    color: #b45309;
-    background: #fff7ed;
-    border-color: #fcd9bd;
+    color: var(--color-muted);
+    background: var(--bg-muted);
+    border-color: var(--border);
   }
 
   .ui-status-badge[data-tone='done'],
   .ui-status-badge--done {
-    color: #166534;
-    background: #ecfdf3;
-    border-color: #bbf7d0;
+    color: var(--color-success);
+    background: color-mix(in srgb, var(--color-success) 12%, #ffffff 88%);
+    border-color: color-mix(in srgb, var(--color-success) 35%, #ffffff 65%);
   }
 
   .ui-status-badge[data-tone='canceled'],
   .ui-status-badge--canceled {
-    color: #b91c1c;
-    background: #fef2f2;
-    border-color: #fecdd3;
+    color: var(--color-danger);
+    background: color-mix(in srgb, var(--color-danger) 12%, #ffffff 88%);
+    border-color: color-mix(in srgb, var(--color-danger) 35%, #ffffff 65%);
   }
 
   .ui-status-badge[data-tone='muted'],

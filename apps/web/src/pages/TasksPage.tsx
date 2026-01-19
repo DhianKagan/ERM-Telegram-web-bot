@@ -1,27 +1,29 @@
 // Назначение файла: список задач с таблицей DataTable
 // Модули: React, контексты, сервисы задач, shared
 import React from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { ClipboardDocumentListIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { FormGroup } from '@/components/ui/form-group';
 import FilterGrid from '@/components/FilterGrid';
-import HeaderCard from '@/components/HeaderCard';
+import PageHeader from '@/components/PageHeader';
 import GlobalSearch from '../components/GlobalSearch';
 import SearchFilters from '../components/SearchFilters';
 import TaskCard from '../components/TaskCard';
 import TaskTable from '../components/TaskTable';
 import Spinner from '../components/Spinner';
+import ConfirmDialog from '../components/ConfirmDialog';
 import useTasks from '../context/useTasks';
 import {
   useTaskIndex,
   useTaskIndexMeta,
 } from '../controllers/taskStateController';
-import { useTasksQuery } from '../services/tasks';
+import { deleteTask, useTasksQuery } from '../services/tasks';
 import { useApiQuery } from '../hooks/useApiQuery';
 import { type Task, type User } from 'shared';
 import { useAuth } from '../context/useAuth';
+import { showToast } from '../utils/toast';
 import type { TaskRow } from '../columns/taskColumns';
 import type { GlobalSearchHandle } from '../components/GlobalSearch';
 import type { SearchFiltersHandle } from '../components/SearchFilters';
@@ -35,7 +37,11 @@ export default function TasksPage() {
   const [page, setPage] = React.useState(0);
   const [users, setUsers] = React.useState<User[]>([]);
   const [visibleTasks, setVisibleTasks] = React.useState<TaskRow[]>([]);
+  const [deleteTargetId, setDeleteTargetId] = React.useState<string | null>(
+    null,
+  );
   const [params, setParams] = useSearchParams();
+  const location = useLocation();
   const [mine, setMine] = React.useState(params.get('mine') === '1');
   const { version, refresh, controller, filters, setFilterUsers } = useTasks();
   const { user, loading: authLoading } = useAuth();
@@ -260,15 +266,60 @@ export default function TasksPage() {
     [params, setParams],
   );
 
+  const openTask = React.useCallback(
+    (id: string) => {
+      params.set('task', id);
+      setParams(params);
+    },
+    [params, setParams],
+  );
+
+  const handleShare = React.useCallback(
+    async (id: string) => {
+      const nextParams = new URLSearchParams(params);
+      nextParams.set('task', id);
+      nextParams.delete('newTask');
+      nextParams.delete('newRequest');
+      const link = `${window.location.origin}${location.pathname}?${nextParams.toString()}`;
+      try {
+        if (navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(link);
+          showToast('Ссылка на задачу скопирована', 'success');
+          return;
+        }
+      } catch {
+        // игнорируем и используем запасной вариант
+      }
+      showToast('Не удалось скопировать ссылку', 'error');
+    },
+    [location.pathname, params],
+  );
+
+  const handleDelete = React.useCallback((id: string) => {
+    setDeleteTargetId(id);
+  }, []);
+
+  const confirmDelete = React.useCallback(async () => {
+    if (!deleteTargetId) return;
+    const response = await deleteTask(deleteTargetId);
+    if (response.ok) {
+      showToast('Задача удалена', 'success');
+      refresh();
+    } else {
+      showToast('Не удалось удалить задачу', 'error');
+    }
+    setDeleteTargetId(null);
+  }, [deleteTargetId, refresh]);
+
   if (authLoading) return <div>Загрузка...</div>;
   if (!canView)
     return <div className="p-4">У вас нет прав для просмотра задач</div>;
   return (
     <div className="space-y-6">
-      <HeaderCard
+      <PageHeader
         icon={ClipboardDocumentListIcon}
-        title="Панель управления задачами"
-        subtitle="Единое представление по задачам и назначенным исполнителям."
+        title="Панель задач"
+        description="Единое представление по задачам и назначенным исполнителям."
         filters={
           <FilterGrid
             variant="plain"
@@ -279,7 +330,7 @@ export default function TasksPage() {
                 <Button
                   type="button"
                   size="sm"
-                  variant="success"
+                  variant="primary"
                   onClick={() => {
                     params.set('newTask', '1');
                     setParams(params);
@@ -340,10 +391,10 @@ export default function TasksPage() {
                 onPageChange={setPage}
                 onMineChange={isPrivileged ? handleMineChange : undefined}
                 onDataChange={setVisibleTasks}
-                onRowClick={(id) => {
-                  params.set('task', id);
-                  setParams(params);
-                }}
+                onOpen={openTask}
+                onEdit={openTask}
+                onDelete={handleDelete}
+                onShare={handleShare}
               />
             </div>
             <div className="grid gap-4 lg:hidden">
@@ -353,10 +404,7 @@ export default function TasksPage() {
                     key={task._id ?? task.id}
                     task={task}
                     variant="list"
-                    onOpen={(id) => {
-                      params.set('task', id);
-                      setParams(params);
-                    }}
+                    onOpen={openTask}
                   />
                 ))
               ) : (
@@ -368,6 +416,12 @@ export default function TasksPage() {
           </>
         )}
       </Card>
+      <ConfirmDialog
+        open={Boolean(deleteTargetId)}
+        message="Удалить задачу? Это действие нельзя отменить."
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTargetId(null)}
+      />
     </div>
   );
 }

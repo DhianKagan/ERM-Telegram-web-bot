@@ -43,7 +43,7 @@ export default function FilterGrid({
       <Button type="submit" size="sm" variant="primary">
         Искать
       </Button>
-      <Button type="button" size="sm" variant="outline" onClick={onReset}>
+      <Button type="button" size="sm" variant="primary" onClick={onReset}>
         Сбросить
       </Button>
       {actions}

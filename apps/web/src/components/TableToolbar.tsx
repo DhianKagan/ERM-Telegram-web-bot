@@ -5,8 +5,22 @@ import type { Table } from '@tanstack/react-table';
 import type JsPDFClass from 'jspdf';
 import type { UserOptions as AutoTableOptions } from 'jspdf-autotable';
 import { useTranslation } from 'react-i18next';
+import { EllipsisVerticalIcon } from '@heroicons/react/24/outline';
+import { Button } from '@/components/ui/button';
 import GlobalSearch from './GlobalSearch';
 import SearchFilters from './SearchFilters';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from './ui/dropdown-menu';
 
 interface Props<T> {
   table: Table<T>;
@@ -86,69 +100,96 @@ export default function TableToolbar<T>({
         {children}
       </div>
       <div className="ui-filter-row__actions">
-        <details className="group relative flex-shrink-0">
-          <summary className="cursor-pointer select-none rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2 text-xs font-semibold leading-tight text-[var(--color-muted)] shadow-[var(--shadow-sm)] transition hover:bg-[var(--bg-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-400)]">
-            {t('export')}
-          </summary>
-          <div className="absolute right-0 top-full z-10 w-36 min-w-full space-y-1 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-surface)] p-2 shadow-[var(--shadow-sm)]">
-            <button
-              onClick={exportCsv}
-              className="block w-full rounded-[var(--radius)] px-2 py-1 text-left text-xs font-medium text-[var(--color-muted)] transition hover:bg-[var(--bg-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-400)]"
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              aria-label={t('settings')}
             >
-              CSV
-            </button>
-            <button
-              onClick={() => void exportPdf()}
-              className="block w-full rounded-[var(--radius)] px-2 py-1 text-left text-xs font-medium text-[var(--color-muted)] transition hover:bg-[var(--bg-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-400)]"
-            >
-              PDF
-            </button>
-          </div>
-        </details>
-        <details className="group relative flex-shrink-0">
-          <summary className="cursor-pointer select-none rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-surface)] px-3 py-2 text-xs font-semibold leading-tight text-[var(--color-muted)] shadow-[var(--shadow-sm)] transition hover:bg-[var(--bg-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-400)]">
-            {t('settings')}
-          </summary>
-          <div className="absolute right-0 top-full z-10 w-72 min-w-full space-y-2 rounded-[var(--radius)] border border-[var(--border)] bg-[var(--bg-surface)] p-3 shadow-[var(--shadow-sm)]">
-            {showFilters ? <SearchFilters inline /> : null}
-            <div className="border-t border-[var(--border)] pt-2">
-              {columns.map((col) => (
-                <div
-                  key={col.id}
-                  className="flex items-center justify-between gap-2 py-1"
+              <EllipsisVerticalIcon className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-56">
+            <DropdownMenuLabel>Управление</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>Экспорт</DropdownMenuSubTrigger>
+              <DropdownMenuSubContent>
+                <DropdownMenuItem
+                  onSelect={() => {
+                    exportCsv();
+                  }}
                 >
-                  <label
-                    className="flex items-center gap-2 text-xs font-medium sm:text-sm"
-                    htmlFor={`table-column-${col.id}`}
-                  >
-                    <input
-                      id={`table-column-${col.id}`}
-                      name={`column-${col.id}`}
-                      type="checkbox"
-                      checked={col.getIsVisible()}
-                      onChange={() => toggleColumn(col.id)}
-                    />
-                    {col.columnDef.header as string}
-                  </label>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => moveColumn(col.id, -1)}
-                      className="rounded-[6px] border border-[var(--border)] px-2 text-xs font-medium leading-none text-[var(--color-muted)] transition hover:bg-[var(--bg-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-400)]"
-                    >
-                      ←
-                    </button>
-                    <button
-                      onClick={() => moveColumn(col.id, 1)}
-                      className="rounded-[6px] border border-[var(--border)] px-2 text-xs font-medium leading-none text-[var(--color-muted)] transition hover:bg-[var(--bg-muted)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-400)]"
-                    >
-                      →
-                    </button>
+                  CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => {
+                    void exportPdf();
+                  }}
+                >
+                  PDF
+                </DropdownMenuItem>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>Настройки</DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="min-w-72">
+                {showFilters ? (
+                  <div className="px-2 py-1.5">
+                    <SearchFilters inline />
                   </div>
+                ) : null}
+                <div className="border-t border-border pt-2">
+                  {columns.map((col) => (
+                    <DropdownMenuCheckboxItem
+                      key={col.id}
+                      checked={col.getIsVisible()}
+                      onSelect={(event) => {
+                        event.preventDefault();
+                        toggleColumn(col.id);
+                      }}
+                    >
+                      {col.columnDef.header as string}
+                    </DropdownMenuCheckboxItem>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </div>
-        </details>
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+            <DropdownMenuSub>
+              <DropdownMenuSubTrigger>Сортировка</DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="min-w-64">
+                {columns.map((col) => (
+                  <div
+                    key={col.id}
+                    className="flex items-center justify-between gap-2 px-2 py-1"
+                  >
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {col.columnDef.header as string}
+                    </span>
+                    <div className="flex gap-1">
+                      <button
+                        type="button"
+                        onClick={() => moveColumn(col.id, -1)}
+                        className="rounded border border-border px-2 text-xs font-medium leading-none text-muted-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        ←
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => moveColumn(col.id, 1)}
+                        className="rounded border border-border px-2 text-xs font-medium leading-none text-muted-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      >
+                        →
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );

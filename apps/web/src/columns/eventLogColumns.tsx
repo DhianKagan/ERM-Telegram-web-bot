@@ -2,6 +2,9 @@
 // Основные модули: React, @tanstack/react-table
 import React from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
+import RowActionButtons, {
+  type RowActionItem,
+} from '../components/RowActionButtons';
 
 export interface EventLogRow {
   id: string;
@@ -18,11 +21,27 @@ export interface EventLogRow {
   description: string;
 }
 
-export const eventLogColumns: ColumnDef<EventLogRow>[] = [
+export const buildEventLogColumns = (
+  options: {
+    rowActions?: (row: EventLogRow) => RowActionItem[];
+  } = {},
+): ColumnDef<EventLogRow>[] => [
   {
     accessorKey: 'number',
     header: 'Номер',
     meta: { minWidth: '8rem', truncate: true },
+    cell: ({ row, getValue }) => {
+      const value = (getValue<string>() || '').trim();
+      const actions = options.rowActions?.(row.original) ?? [];
+      return (
+        <div className="flex items-center justify-between gap-2">
+          <span className="ui-status-badge" data-tone="muted" title={value}>
+            {value || '—'}
+          </span>
+          <RowActionButtons actions={actions} />
+        </div>
+      );
+    },
   },
   {
     accessorKey: 'dateTime',

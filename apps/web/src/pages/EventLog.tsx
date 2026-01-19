@@ -6,8 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { SimpleTable } from '@/components/ui/simple-table';
-import { CalendarDaysIcon } from '@heroicons/react/24/outline';
-import ActionBar from '../components/ActionBar';
+import {
+  CalendarDaysIcon,
+  EyeIcon,
+  PencilSquareIcon,
+  ShareIcon,
+  TrashIcon,
+} from '@heroicons/react/24/outline';
 import Breadcrumbs from '../components/Breadcrumbs';
 import ConfirmDialog from '../components/ConfirmDialog';
 import Modal from '../components/Modal';
@@ -26,7 +31,13 @@ import {
   type CollectionObject,
 } from '../services/collections';
 import { listFleetVehicles } from '../services/fleets';
-import { eventLogColumns, type EventLogRow } from '../columns/eventLogColumns';
+import FilterGrid from '@/components/FilterGrid';
+import PageHeader from '@/components/PageHeader';
+import {
+  buildEventLogColumns,
+  type EventLogRow,
+} from '../columns/eventLogColumns';
+import type { RowActionItem } from '../components/RowActionButtons';
 import type { FleetVehicleDto } from 'shared';
 import extractCoords from '../utils/extractCoords';
 
@@ -439,6 +450,7 @@ export default function EventLog() {
   const [form, setForm] = React.useState<EventLogForm>(emptyForm);
   const [saving, setSaving] = React.useState(false);
   const [confirmDelete, setConfirmDelete] = React.useState(false);
+  const [rowDeleteId, setRowDeleteId] = React.useState<string | null>(null);
 
   const [assets, setAssets] = React.useState<CollectionItem[]>([]);
   const [objects, setObjects] = React.useState<CollectionObject[]>([]);
@@ -855,19 +867,96 @@ export default function EventLog() {
     setSearch(searchDraft.trim());
   };
 
+  const resetSearch = () => {
+    setSearchDraft('');
+    setSearch('');
+    setPage(1);
+  };
+
+  const handleShare = React.useCallback(async (row: EventLogRow) => {
+    const link = `${window.location.origin}${window.location.pathname}?event=${row.id}`;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(link);
+        showToast('Ссылка на событие скопирована', 'success');
+        return;
+      }
+    } catch {
+      // fallback
+    }
+    showToast('Не удалось скопировать ссылку', 'error');
+  }, []);
+
+  const confirmRowDelete = React.useCallback(async () => {
+    if (!rowDeleteId) return;
+    try {
+      await removeCollectionItem(rowDeleteId);
+      showToast('Событие удалено', 'success');
+      await load();
+      await refreshEventTotal();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Не удалось удалить событие';
+      showToast(message, 'error');
+    } finally {
+      setRowDeleteId(null);
+    }
+  }, [load, refreshEventTotal, rowDeleteId]);
+
+  const rowActions = (row: EventLogRow): RowActionItem[] => {
+    const actions: RowActionItem[] = [];
+    const item = items.find((entry) => entry._id === row.id);
+    if (item) {
+      actions.push({
+        label: 'Открыть',
+        icon: <EyeIcon className="size-4" />,
+        onClick: () => openEdit(item),
+      });
+      actions.push({
+        label: 'Редактировать',
+        icon: <PencilSquareIcon className="size-4" />,
+        onClick: () => openEdit(item),
+      });
+    }
+    actions.push({
+      label: 'Удалить',
+      icon: <TrashIcon className="size-4" />,
+      onClick: () => setRowDeleteId(row.id),
+    });
+    actions.push({
+      label: 'Поделиться',
+      icon: <ShareIcon className="size-4" />,
+      onClick: () => void handleShare(row),
+    });
+    return actions;
+  };
+
   return (
     <div className="space-y-4">
-      <ActionBar
+      <PageHeader
         breadcrumbs={<Breadcrumbs items={[{ label: 'Журнал событий' }]} />}
         icon={CalendarDaysIcon}
         title="Журнал событий"
         description="Фиксация событий по основным средствам и автопарку."
         filters={
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <FilterGrid
+            variant="plain"
+            onSearch={applySearch}
+            onReset={resetSearch}
+            actions={
+              <Button
+                size="sm"
+                variant="primary"
+                onClick={() => void openCreate()}
+              >
+                Новое событие
+              </Button>
+            }
+          >
             <div className="flex w-full flex-1 flex-col gap-1">
               <label
                 htmlFor="events-search"
-                className="text-xs font-semibold text-[color:var(--color-gray-700)]"
+                className="text-xs font-semibold text-foreground"
               >
                 Поиск
               </label>
@@ -882,46 +971,17 @@ export default function EventLog() {
                   }
                   if (event.key === 'Escape') {
                     event.preventDefault();
-                    setSearchDraft('');
-                    setSearch('');
-                    setPage(1);
+                    resetSearch();
                   }
                 }}
                 placeholder="Номер, описание или место"
                 className="shadow-xs"
               />
-              <span className="text-[11px] text-[color:var(--color-gray-500)] dark:text-[color:var(--color-gray-300)]">
+              <span className="text-xs text-muted-foreground">
                 Поиск по журналу событий
               </span>
             </div>
-          </div>
-        }
-        toolbar={
-          <div className="flex flex-wrap items-center gap-2 sm:justify-end sm:gap-3">
-            <div className="flex flex-wrap items-center gap-2 flex-shrink-0">
-              <Button size="sm" variant="primary" onClick={applySearch}>
-                Поиск
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  setSearchDraft('');
-                  setSearch('');
-                  setPage(1);
-                }}
-              >
-                Сбросить
-              </Button>
-              <Button
-                size="sm"
-                variant="success"
-                onClick={() => void openCreate()}
-              >
-                Новое событие
-              </Button>
-            </div>
-          </div>
+          </FilterGrid>
         }
       />
 
@@ -932,7 +992,7 @@ export default function EventLog() {
           </div>
         ) : (
           <SimpleTable
-            columns={eventLogColumns}
+            columns={buildEventLogColumns({ rowActions })}
             data={rows}
             pageIndex={page - 1}
             pageSize={PAGE_LIMIT}
@@ -941,12 +1001,6 @@ export default function EventLog() {
             showGlobalSearch={false}
             showFilters={false}
             wrapCellsAsBadges
-            onRowClick={(row) => {
-              const item = items.find((entry) => entry._id === row.id);
-              if (item) {
-                openEdit(item);
-              }
-            }}
           />
         )}
       </Card>
@@ -954,7 +1008,7 @@ export default function EventLog() {
       <Modal open={modalOpen} onClose={closeModal}>
         <div className="space-y-5">
           <div className="space-y-3">
-            <h3 className="text-lg font-semibold">
+            <h3 className="text-xl font-semibold">
               {form.id ? 'Карточка события' : 'Новое событие'}
             </h3>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -964,15 +1018,25 @@ export default function EventLog() {
                 </label>
                 <Input
                   value={form.number}
-                  onChange={(event) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      number: event.target.value,
-                    }))
-                  }
                   placeholder="SRV_000001"
+                  readOnly
+                  aria-readonly
+                  className="bg-muted/40"
                 />
               </div>
+              {form.id ? (
+                <div className="space-y-1">
+                  <label className="text-sm font-semibold text-[color:var(--color-gray-700)]">
+                    ID
+                  </label>
+                  <Input
+                    value={form.id}
+                    readOnly
+                    aria-readonly
+                    className="bg-muted/40"
+                  />
+                </div>
+              ) : null}
               <div className="space-y-1">
                 <label className="text-sm font-semibold text-[color:var(--color-gray-700)]">
                   Дата и время
@@ -980,13 +1044,9 @@ export default function EventLog() {
                 <Input
                   type="datetime-local"
                   value={form.dateTime}
-                  onChange={(event) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      dateTime: event.target.value,
-                      date: event.target.value.slice(0, 10),
-                    }))
-                  }
+                  readOnly
+                  aria-readonly
+                  className="bg-muted/40"
                 />
               </div>
               <div className="space-y-1">
@@ -1379,6 +1439,15 @@ export default function EventLog() {
           void executeDelete();
         }}
         onCancel={() => setConfirmDelete(false)}
+      />
+      <ConfirmDialog
+        open={Boolean(rowDeleteId)}
+        message="Удалить событие? Это действие нельзя отменить."
+        confirmText="Удалить"
+        onConfirm={() => {
+          void confirmRowDelete();
+        }}
+        onCancel={() => setRowDeleteId(null)}
       />
     </div>
   );

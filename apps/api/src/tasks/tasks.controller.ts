@@ -14,7 +14,11 @@ import { writeLog } from '../services/service';
 import { getUsersMap } from '../db/queries';
 import type { RequestWithUser } from '../types/request';
 import { Task, User, type TaskDocument, type Attachment } from '../db/model';
-import { getFileRecord, setTelegramFileId } from '../services/fileService';
+import {
+  getFileRecord,
+  linkFilesToTask,
+  setTelegramFileId,
+} from '../services/fileService';
 import { FleetVehicle } from '../db/models/fleet';
 import { CollectionItem } from '../db/models/CollectionItem';
 import { sendProblem } from '../utils/problem';
@@ -27,7 +31,10 @@ import {
   type TaskUserProfile,
 } from '../bot/bot';
 import { buildTaskAppLink } from './taskLinks';
-import { extractFileIdFromUrl } from '../utils/attachments';
+import {
+  extractAttachmentIds,
+  extractFileIdFromUrl,
+} from '../utils/attachments';
 import {
   getChatId,
   chatId as staticChatId,
@@ -3061,6 +3068,10 @@ export default class TasksController {
           finalizeResult.attachments as Attachment[];
         (task as unknown as Record<string, unknown>).attachments =
           finalizeResult.attachments as Attachment[];
+        const attachmentIds = extractAttachmentIds(
+          finalizeResult.attachments as Attachment[],
+        );
+        await linkFilesToTask(String(task._id), attachmentIds);
       } catch (error) {
         await cleanupRequestUploads(req);
         throw error;
@@ -3133,6 +3144,10 @@ export default class TasksController {
           finalizeResult.attachments as Attachment[];
         (task as unknown as Record<string, unknown>).attachments =
           finalizeResult.attachments as Attachment[];
+        const attachmentIds = extractAttachmentIds(
+          finalizeResult.attachments as Attachment[],
+        );
+        await linkFilesToTask(String(task._id), attachmentIds);
       } catch (error) {
         await cleanupRequestUploads(req);
         throw error;
@@ -3405,6 +3420,10 @@ export default class TasksController {
         }
         (task as unknown as Record<string, unknown>).attachments =
           finalizeResult.attachments as Attachment[];
+        const attachmentIds = extractAttachmentIds(
+          finalizeResult.attachments as Attachment[],
+        );
+        await linkFilesToTask(String(task._id), attachmentIds);
       } catch (error) {
         await cleanupRequestUploads(req);
         throw error;

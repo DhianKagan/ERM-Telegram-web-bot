@@ -21,7 +21,7 @@ import { Radio } from '@/components/ui/radio';
 import { Select } from '@/components/ui/select';
 import { SimpleTable } from '@/components/ui/simple-table';
 import FilterGrid from '@/components/FilterGrid';
-import HeaderCard from '@/components/HeaderCard';
+import PageHeader from '@/components/PageHeader';
 import {
   Tabs,
   TabsList,
@@ -2869,7 +2869,7 @@ export default function CollectionsPage() {
             <Button
               type="button"
               size="sm"
-              variant="success"
+              variant="primary"
               onClick={handleAdd}
             >
               {addLabel}
@@ -2901,7 +2901,7 @@ export default function CollectionsPage() {
             <Button
               type="button"
               size="sm"
-              variant="success"
+              variant="primary"
               onClick={() => openCollectionModal()}
             >
               {collectionAddCta}
@@ -2933,7 +2933,7 @@ export default function CollectionsPage() {
           <Button
             type="button"
             size="sm"
-            variant="success"
+            variant="primary"
             onClick={() => openCollectionModal()}
           >
             {collectionAddCta}
@@ -2949,7 +2949,7 @@ export default function CollectionsPage() {
     moduleTabs.find((module) => module.key === activeModule) ?? moduleTabs[0];
 
   return (
-    <div className="mx-auto flex w-full max-w-screen-2xl flex-col gap-6 px-3 pb-12 pt-4 sm:px-4 lg:px-8">
+    <div className="flex w-full flex-col gap-6 px-3 pb-12 pt-4 sm:px-4 lg:px-6">
       <Tabs
         value={activeModule}
         onValueChange={(value) =>
@@ -2957,10 +2957,11 @@ export default function CollectionsPage() {
         }
         className="space-y-6"
       >
-        <HeaderCard
+        <PageHeader
           icon={ClipboardDocumentListIcon}
           title={t('collections.page.title')}
-          subtitle={t('collections.page.description')}
+          description={t('collections.page.description')}
+          filters={directoriesFilters}
         />
         <div className="flex flex-col gap-3">
           <div className="sm:hidden">
@@ -3004,7 +3005,6 @@ export default function CollectionsPage() {
             })}
           </TabsList>
         </div>
-        {directoriesFilters}
         <TabsContent value="directories" className="mt-0 space-y-6">
           <SettingsSectionHeader
             title={activeModuleMeta.label}

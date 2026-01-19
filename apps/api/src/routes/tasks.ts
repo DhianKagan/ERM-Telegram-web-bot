@@ -557,8 +557,10 @@ const handleInlineUpload: RequestHandler = async (req, res) => {
       return;
     }
     const bodyWithAttachments = req.body as BodyWithAttachments;
+    const taskId = readTaskIdFromRequest(req as RequestWithUser);
     const finalizeResult = await finalizePendingUploads({
       req: req as RequestWithUser,
+      taskId: taskId ?? undefined,
       attachments: bodyWithAttachments.attachments ?? [],
     });
     bodyWithAttachments.attachments =
@@ -727,6 +729,7 @@ export const handleChunks: RequestHandler = async (req, res) => {
       try {
         finalizeResult = await finalizePendingUploads({
           req: req as RequestWithUser,
+          taskId: readTaskIdFromRequest(req as RequestWithUser) ?? undefined,
           attachments: bodyWithAttachments.attachments ?? [],
         });
       } finally {

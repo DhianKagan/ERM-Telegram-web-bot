@@ -53,7 +53,6 @@ import {
 } from 'react-hook-form';
 import FileUploader from './FileUploader';
 import Spinner from './Spinner';
-import TaskFilesSection from './TaskFilesSection';
 import type {
   Attachment,
   AttachmentPayload,
@@ -1779,27 +1778,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       prev && previewUrl && prev.url === previewUrl ? null : prev,
     );
   };
-  const addAttachmentFromFile = React.useCallback((a: Attachment) => {
-    setAttachments((prev) => mergeAttachmentLists(prev, [toFormAttachment(a)]));
-  }, []);
-  const removeAttachmentByFileId = React.useCallback((fileId: string) => {
-    if (!fileId) return;
-    setAttachments((prev) =>
-      prev.filter((item) => {
-        const normalized =
-          typeof item.fileId === 'string' && item.fileId.trim()
-            ? item.fileId.trim()
-            : extractFileId(resolveAttachmentUrl(item) ?? '');
-        return normalized !== fileId;
-      }),
-    );
-    setPreviewAttachment((prev) => {
-      if (!prev) return prev;
-      const normalized = extractFileId(prev.url);
-      return normalized === fileId ? null : prev;
-    });
-  }, []);
-
   const applyTaskDetails = React.useCallback(
     (
       taskData: Partial<Task> & Record<string, unknown>,
@@ -3884,6 +3862,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                           value={field.value || ''}
                           onChange={field.onChange}
                           readOnly={!editing}
+                          taskId={effectiveTaskId}
                         />
                       )}
                     />
@@ -4462,6 +4441,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                       value={comment}
                       onChange={setComment}
                       readOnly={!editing}
+                      taskId={effectiveTaskId}
                     />
                   </div>
                   <aside className="space-y-4 rounded-xl border border-slate-200 bg-slate-50/80 p-5">
@@ -4774,17 +4754,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                       {t('fillTitleToUpload')}
                     </p>
                   ) : null}
-                  <div className="space-y-3 pt-2">
-                    <h3 className="text-sm font-medium">
-                      {t('storage.title')}
-                    </h3>
-                    <TaskFilesSection
-                      taskId={effectiveTaskId}
-                      canEdit={editing && canEditTask}
-                      onAddAttachment={addAttachmentFromFile}
-                      onRemoveAttachment={removeAttachmentByFileId}
-                    />
-                  </div>
                   <div className="flex flex-wrap items-center gap-2 pt-2">
                     {isEdit && (
                       <Button

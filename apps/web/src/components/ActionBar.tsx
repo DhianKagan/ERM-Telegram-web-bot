@@ -29,7 +29,7 @@ export default function ActionBar({
   return (
     <Card className={cn('w-full', className)} bodyClassName="gap-4">
       {breadcrumbs ? (
-        <div className="text-xs font-semibold uppercase tracking-wide text-[color:var(--color-gray-500)] dark:text-[color:var(--color-gray-300)]">
+        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {breadcrumbs}
         </div>
       ) : null}
@@ -37,20 +37,18 @@ export default function ActionBar({
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex min-w-0 gap-3">
             {Icon ? (
-              <div className="flex size-11 items-center justify-center rounded-2xl bg-slate-100 text-slate-600 shadow-xs dark:bg-slate-800 dark:text-slate-200">
+              <div className="flex size-11 items-center justify-center rounded-2xl bg-muted/50 text-primary shadow-xs">
                 <Icon className="size-5" />
               </div>
             ) : null}
             <div className="min-w-0 space-y-1">
               {title ? (
-                <h1 className="text-lg font-semibold text-[color:var(--color-gray-900)] dark:text-white sm:text-xl">
+                <h1 className="text-lg font-semibold text-foreground sm:text-xl">
                   {title}
                 </h1>
               ) : null}
               {description ? (
-                <p className="text-sm text-[color:var(--color-gray-600)] dark:text-[color:var(--color-gray-300)]">
-                  {description}
-                </p>
+                <p className="text-sm text-muted-foreground">{description}</p>
               ) : null}
             </div>
           </div>
@@ -62,7 +60,7 @@ export default function ActionBar({
         </div>
       ) : null}
       {filters ? (
-        <div className="rounded-2xl border border-[var(--border)] bg-[var(--bg-surface)] p-4">
+        <div className="rounded-lg border border-border bg-card p-4">
           {filters}
         </div>
       ) : null}

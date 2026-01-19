@@ -269,48 +269,59 @@ export default function TasksPage() {
         icon={ClipboardDocumentListIcon}
         title="Панель управления задачами"
         subtitle="Единое представление по задачам и назначенным исполнителям."
-        actions={
-          <>
-            <Button size="sm" variant="outline" onClick={refresh}>
-              Обновить
-            </Button>
-            <Button
-              size="sm"
-              variant="success"
-              onClick={() => {
-                params.set('newTask', '1');
-                setParams(params);
-              }}
-            >
-              Новая задача
-            </Button>
-          </>
+        filters={
+          <FilterGrid
+            variant="plain"
+            onSearch={handleSearch}
+            onReset={handleReset}
+            actions={
+              <>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="success"
+                  onClick={() => {
+                    params.set('newTask', '1');
+                    setParams(params);
+                  }}
+                >
+                  Создать
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={refresh}
+                >
+                  Обновить
+                </Button>
+              </>
+            }
+          >
+            <div className="sm:col-span-2 lg:col-span-1">
+              <GlobalSearch ref={searchRef} showActions={false} />
+            </div>
+            {isPrivileged ? (
+              <FormGroup label="Показывать">
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    id="task-table-mine"
+                    name="mineTasks"
+                    type="checkbox"
+                    checked={mine}
+                    onChange={(e) => handleMineChange(e.target.checked)}
+                    className="size-4"
+                  />
+                  <span>Мои задачи</span>
+                </label>
+              </FormGroup>
+            ) : null}
+            <div className="sm:col-span-2 lg:col-span-3">
+              <SearchFilters ref={filtersRef} inline showActions={false} />
+            </div>
+          </FilterGrid>
         }
       />
-
-      <FilterGrid onSearch={handleSearch} onReset={handleReset}>
-        <div className="sm:col-span-2 lg:col-span-1">
-          <GlobalSearch ref={searchRef} showActions={false} />
-        </div>
-        {isPrivileged ? (
-          <FormGroup label="Показывать">
-            <label className="flex items-center gap-2 text-sm">
-              <input
-                id="task-table-mine"
-                name="mineTasks"
-                type="checkbox"
-                checked={mine}
-                onChange={(e) => handleMineChange(e.target.checked)}
-                className="size-4"
-              />
-              <span>Мои задачи</span>
-            </label>
-          </FormGroup>
-        ) : null}
-        <div className="sm:col-span-2 lg:col-span-3">
-          <SearchFilters ref={filtersRef} inline showActions={false} />
-        </div>
-      </FilterGrid>
 
       <Card>
         {showSpinner ? (

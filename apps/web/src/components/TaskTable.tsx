@@ -133,7 +133,7 @@ export default function TaskTable({
             label: 'Редактировать',
             icon: <PencilSquareIcon className="size-4" />,
             onClick: () => onRowClick(normalizedId),
-            variant: 'secondary',
+            variant: 'outline',
           },
         ];
       }}

@@ -13,6 +13,7 @@ type FilterGridProps = {
   onReset?: () => void;
   actions?: React.ReactNode;
   showDefaultActions?: boolean;
+  variant?: 'card' | 'plain';
   className?: string;
 };
 
@@ -22,6 +23,7 @@ export default function FilterGrid({
   onReset,
   actions,
   showDefaultActions = true,
+  variant = 'card',
   className,
 }: FilterGridProps) {
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
@@ -51,7 +53,12 @@ export default function FilterGrid({
   );
 
   return (
-    <div className={cn('rounded-lg bg-card p-5 shadow-sm', className)}>
+    <div
+      className={cn(
+        variant === 'card' ? 'rounded-lg bg-card p-5 shadow-sm' : 'w-full',
+        className,
+      )}
+    >
       <form
         onSubmit={handleSubmit}
         onKeyDown={handleKeyDown}

@@ -17,6 +17,8 @@ import Breadcrumbs from '../components/Breadcrumbs';
 import Modal from '../components/Modal';
 import { Button } from '../components/ui/button';
 import { FormGroup } from '@/components/ui/form-group';
+import FilterGrid from '@/components/FilterGrid';
+import PageHeader from '@/components/PageHeader';
 import { Input } from '../components/ui/input';
 import { Select } from '../components/ui/select';
 import { SimpleTable } from '@/components/ui/simple-table';
@@ -36,7 +38,6 @@ import type { User } from '../types/user';
 import authFetch from '../utils/authFetch';
 import { showToast } from '../utils/toast';
 import { PROJECT_TIMEZONE, PROJECT_TIMEZONE_LABEL } from 'shared';
-import SettingsSectionHeader from './Settings/SettingsSectionHeader';
 
 const PAGE_SIZE = 25;
 
@@ -380,6 +381,15 @@ export default function StoragePage() {
     [searchParams, selectedId, setSearchParams, t],
   );
 
+  const openDetails = React.useCallback(
+    (fileId: string) => {
+      const next = new URLSearchParams(searchParams.toString());
+      next.set('file', fileId);
+      setSearchParams(next, { replace: false });
+    },
+    [searchParams, setSearchParams],
+  );
+
   const toRow = React.useCallback(
     (file: StoredFile): StorageRow => {
       const hasTaskId = file.taskId != null && file.taskId !== '';
@@ -423,9 +433,10 @@ export default function StoragePage() {
         taskLink,
         onDownload: () => handleDownload(file),
         onDelete: () => handleDelete(file),
+        onOpen: () => openDetails(file.id),
       };
     },
-    [handleDelete, handleDownload, searchParams, t, usersById],
+    [handleDelete, handleDownload, openDetails, searchParams, t, usersById],
   );
 
   const rows = React.useMemo<StorageRow[]>(
@@ -581,111 +592,110 @@ export default function StoragePage() {
         )}
       </section>
       <section className="space-y-4">
-        <SettingsSectionHeader
+        <PageHeader
+          icon={RectangleStackIcon}
           title={t('storage.title')}
           description={t('storage.total', { count: filteredFiles.length })}
-          icon={RectangleStackIcon}
-          controls={
-            <div className="grid gap-2">
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                <FormGroup label="Поиск" htmlFor="storage-search">
-                  <Input
-                    id="storage-search"
-                    value={search}
-                    onChange={(event) => {
-                      setSearch(event.target.value);
-                      setPageIndex(0);
-                    }}
-                    onKeyDown={handleSearchKeyDown}
-                    placeholder={t('storage.searchPlaceholder') ?? ''}
-                  />
-                </FormGroup>
-                <FormGroup label="Сортировка" htmlFor="storage-sort">
-                  <Select
-                    id="storage-sort"
-                    value={sort}
-                    onChange={(event) => {
-                      setSort(event.target.value as SortOption);
-                      setPageIndex(0);
-                    }}
-                  >
-                    <option value="uploaded_desc">
-                      {t('storage.sort.uploadedDesc')}
-                    </option>
-                    <option value="uploaded_asc">
-                      {t('storage.sort.uploadedAsc')}
-                    </option>
-                    <option value="size_desc">
-                      {t('storage.sort.sizeDesc')}
-                    </option>
-                    <option value="size_asc">
-                      {t('storage.sort.sizeAsc')}
-                    </option>
-                  </Select>
-                </FormGroup>
-                <FormGroup
-                  label={t('storage.filters.type')}
-                  htmlFor="storage-type-filter"
+          filters={
+            <FilterGrid
+              variant="plain"
+              showDefaultActions={false}
+              actions={
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => void loadFiles()}
+                  disabled={loading}
                 >
-                  <Select
-                    id="storage-type-filter"
-                    value={typeFilter}
-                    onChange={(event) => {
-                      setTypeFilter(event.target.value);
-                      setPageIndex(0);
-                    }}
-                  >
-                    <option value="">{t('storage.filters.typeAll')}</option>
-                    <option value="__empty__">
-                      {t('storage.filters.typeUnknown')}
-                    </option>
-                    {typeOptions.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </Select>
-                </FormGroup>
-                <FormGroup
-                  label={t('storage.filters.linked')}
-                  htmlFor="storage-link-filter"
+                  {t('storage.refresh')}
+                </Button>
+              }
+            >
+              <FormGroup label="Поиск" htmlFor="storage-search">
+                <Input
+                  id="storage-search"
+                  value={search}
+                  onChange={(event) => {
+                    setSearch(event.target.value);
+                    setPageIndex(0);
+                  }}
+                  onKeyDown={handleSearchKeyDown}
+                  placeholder={t('storage.searchPlaceholder') ?? ''}
+                />
+              </FormGroup>
+              <FormGroup label="Сортировка" htmlFor="storage-sort">
+                <Select
+                  id="storage-sort"
+                  value={sort}
+                  onChange={(event) => {
+                    setSort(event.target.value as SortOption);
+                    setPageIndex(0);
+                  }}
                 >
-                  <Select
-                    id="storage-link-filter"
-                    value={linkFilter}
-                    onChange={(event) => {
-                      setLinkFilter(event.target.value as typeof linkFilter);
-                      setPageIndex(0);
-                    }}
-                  >
-                    <option value="all">
-                      {t('storage.filters.linkedAll')}
+                  <option value="uploaded_desc">
+                    {t('storage.sort.uploadedDesc')}
+                  </option>
+                  <option value="uploaded_asc">
+                    {t('storage.sort.uploadedAsc')}
+                  </option>
+                  <option value="size_desc">
+                    {t('storage.sort.sizeDesc')}
+                  </option>
+                  <option value="size_asc">{t('storage.sort.sizeAsc')}</option>
+                </Select>
+              </FormGroup>
+              <FormGroup
+                label={t('storage.filters.type')}
+                htmlFor="storage-type-filter"
+              >
+                <Select
+                  id="storage-type-filter"
+                  value={typeFilter}
+                  onChange={(event) => {
+                    setTypeFilter(event.target.value);
+                    setPageIndex(0);
+                  }}
+                >
+                  <option value="">{t('storage.filters.typeAll')}</option>
+                  <option value="__empty__">
+                    {t('storage.filters.typeUnknown')}
+                  </option>
+                  {typeOptions.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
                     </option>
-                    <option value="linked">
-                      {t('storage.filters.linkedOnly')}
-                    </option>
-                    <option value="unlinked">
-                      {t('storage.filters.linkedNone')}
-                    </option>
-                  </Select>
-                </FormGroup>
-                <div className="flex flex-wrap justify-end gap-2 sm:col-span-2 lg:col-span-4">
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={() => void loadFiles()}
-                    disabled={loading}
-                  >
-                    {t('storage.refresh')}
-                  </Button>
-                </div>
-              </div>
-              <div className="text-xs text-muted-foreground md:text-sm">
-                {loading ? t('loading') : null}
-              </div>
-            </div>
+                  ))}
+                </Select>
+              </FormGroup>
+              <FormGroup
+                label={t('storage.filters.linked')}
+                htmlFor="storage-link-filter"
+              >
+                <Select
+                  id="storage-link-filter"
+                  value={linkFilter}
+                  onChange={(event) => {
+                    setLinkFilter(event.target.value as typeof linkFilter);
+                    setPageIndex(0);
+                  }}
+                >
+                  <option value="all">{t('storage.filters.linkedAll')}</option>
+                  <option value="linked">
+                    {t('storage.filters.linkedOnly')}
+                  </option>
+                  <option value="unlinked">
+                    {t('storage.filters.linkedNone')}
+                  </option>
+                </Select>
+              </FormGroup>
+            </FilterGrid>
           }
         />
+        {loading ? (
+          <div className="text-xs text-muted-foreground md:text-sm">
+            {t('loading')}
+          </div>
+        ) : null}
         <SimpleTable<StorageRow>
           columns={createStorageColumns(
             {
@@ -712,11 +722,7 @@ export default function StoragePage() {
           showGlobalSearch={false}
           showFilters={false}
           wrapCellsAsBadges
-          onRowClick={(row) => {
-            const next = new URLSearchParams(searchParams.toString());
-            next.set('file', row.id);
-            setSearchParams(next, { replace: false });
-          }}
+          rowHeight={56}
         />
       </section>
       <Modal open={Boolean(selectedId)} onClose={closeModal}>

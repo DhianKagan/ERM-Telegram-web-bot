@@ -3,9 +3,15 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
+import { FormGroup } from '@/components/ui/form-group';
 import { Input } from '@/components/ui/input';
 import { SimpleTable } from '@/components/ui/simple-table';
+import FilterGrid from '@/components/FilterGrid';
+import PageHeader from '@/components/PageHeader';
 import Modal from '../../components/Modal';
+import RowActionButtons, {
+  type RowActionItem,
+} from '../../components/RowActionButtons';
 import { showToast } from '../../utils/toast';
 import {
   listFleetVehicles,
@@ -25,7 +31,6 @@ import {
   SETTINGS_BADGE_EMPTY,
   SETTINGS_BADGE_WRAPPER_CLASS,
 } from './badgeStyles';
-import SettingsSectionHeader from './SettingsSectionHeader';
 import { EyeIcon, TruckIcon } from '@heroicons/react/24/outline';
 
 const PAGE_LIMIT = 10;
@@ -256,17 +261,17 @@ export default function FleetVehiclesTab() {
     void load();
   }, [load]);
 
-  const openCreate = () => {
+  const openCreate = React.useCallback(() => {
     setMode('create');
     setSelectedVehicle(null);
     setModalOpen(true);
-  };
+  }, []);
 
-  const openEdit = (item: FleetVehicleDto) => {
+  const openEdit = React.useCallback((item: FleetVehicleDto) => {
     setMode('update');
     setSelectedVehicle(item);
     setModalOpen(true);
-  };
+  }, []);
 
   const closeModal = () => {
     if (saving) return;
@@ -317,62 +322,58 @@ export default function FleetVehiclesTab() {
     setPage(1);
   }, []);
 
-  const handleSearchKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLInputElement>) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        setPage(1);
-        setAppliedSearch(event.currentTarget.value.trim());
-      }
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        handleSearchReset();
-      }
-    },
-    [handleSearchReset],
-  );
-
   const handlePageChange = (next: number) => {
     if (next < 1 || next > totalPages) return;
     setPage(next);
   };
 
+  const columns = useMemo(() => {
+    return fleetVehicleColumns.map((column) => {
+      const key = column.accessorKey ?? column.id;
+      if (key !== 'name') {
+        return column;
+      }
+      const originalCell = column.cell;
+      return {
+        ...column,
+        meta: {
+          ...(column.meta ?? {}),
+          renderAsBadges: false,
+        },
+        cell: (ctx) => {
+          const content = originalCell
+            ? originalCell(ctx)
+            : (ctx.getValue() as React.ReactNode);
+          const actions: RowActionItem[] = [
+            {
+              label: 'Открыть',
+              icon: <EyeIcon className="size-4" />,
+              onClick: () => openEdit(ctx.row.original),
+            },
+          ];
+          return (
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0 flex-1">{content}</div>
+              <RowActionButtons actions={actions} />
+            </div>
+          );
+        },
+      };
+    });
+  }, [openEdit]);
+
   return (
     <section className="space-y-4">
-      <SettingsSectionHeader
+      <PageHeader
+        icon={TruckIcon}
         title="Автопарк"
         description="Управляйте транспортом и назначениями"
-        icon={TruckIcon}
-        controls={
-          <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-            <div className="grid gap-2" role="search">
-              <label
-                htmlFor="fleet-vehicles-search"
-                className="text-sm font-medium text-foreground"
-              >
-                Поиск
-              </label>
-              <Input
-                id="fleet-vehicles-search"
-                name="fleetVehicleSearch"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                onKeyDown={handleSearchKeyDown}
-                placeholder="Название или номер"
-              />
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <Button type="button" size="sm" onClick={handleSearchSubmit}>
-                Искать
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={handleSearchReset}
-              >
-                Сбросить
-              </Button>
+        filters={
+          <FilterGrid
+            variant="plain"
+            onSearch={handleSearchSubmit}
+            onReset={handleSearchReset}
+            actions={
               <Button
                 type="button"
                 size="sm"
@@ -381,8 +382,18 @@ export default function FleetVehiclesTab() {
               >
                 Добавить
               </Button>
-            </div>
-          </div>
+            }
+          >
+            <FormGroup label="Поиск" htmlFor="fleet-vehicles-search">
+              <Input
+                id="fleet-vehicles-search"
+                name="fleetVehicleSearch"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Название или номер"
+              />
+            </FormGroup>
+          </FilterGrid>
         }
       />
       {loading ? (
@@ -397,7 +408,7 @@ export default function FleetVehiclesTab() {
         <p className="text-sm text-gray-500">Транспорт не найден.</p>
       ) : null}
       <SimpleTable
-        columns={fleetVehicleColumns}
+        columns={columns}
         data={rows}
         pageIndex={page - 1}
         pageSize={PAGE_LIMIT}
@@ -405,18 +416,11 @@ export default function FleetVehiclesTab() {
         onPageChange={(index) => handlePageChange(index + 1)}
         showGlobalSearch={false}
         showFilters={false}
-        onRowClick={(row) => openEdit(row)}
         wrapCellsAsBadges
+        rowHeight={56}
         badgeClassName={badgeClassName}
         badgeWrapperClassName={badgeWrapperClassName}
         badgeEmptyPlaceholder={SETTINGS_BADGE_EMPTY}
-        getRowActions={(row) => [
-          {
-            label: 'Открыть',
-            icon: <EyeIcon className="size-4" />,
-            onClick: () => openEdit(row),
-          },
-        ]}
       />
       <Modal open={modalOpen} onClose={closeModal}>
         <div className="space-y-4">

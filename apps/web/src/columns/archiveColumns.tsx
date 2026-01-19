@@ -64,7 +64,7 @@ export default function archiveColumns({
           />
         );
       },
-      meta: { width: '3rem', minWidth: '3rem' },
+      meta: { width: '3rem', minWidth: '3rem', renderAsBadges: false },
     });
   }
   columns.push(

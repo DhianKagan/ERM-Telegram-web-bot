@@ -7,12 +7,13 @@ import archiveColumns from '../columns/archiveColumns';
 import { Button } from '@/components/ui/button';
 import { FormGroup } from '@/components/ui/form-group';
 import { Input } from '@/components/ui/input';
+import FilterGrid from '@/components/FilterGrid';
+import PageHeader from '@/components/PageHeader';
 import { useToast } from '../context/useToast';
 import { useAuth } from '../context/useAuth';
 import { fetchArchive, purgeArchive } from '../services/archives';
 import type { ArchiveTask } from '../types/archive';
 import { ARCHIVE_ACCESS, ACCESS_TASK_DELETE, hasAccess } from '../utils/access';
-import SettingsSectionHeader from './Settings/SettingsSectionHeader';
 
 const PAGE_SIZE = 25;
 
@@ -129,35 +130,16 @@ export default function ArchivePage() {
     };
   }, [page, appliedSearch, refreshKey, canViewArchive, addToast]);
 
-  const handleSearchSubmit = React.useCallback(
-    (event: React.FormEvent<HTMLFormElement>) => {
-      event.preventDefault();
-      setAppliedSearch(search.trim());
-      setPage(0);
-    },
-    [search],
-  );
+  const handleSearchSubmit = React.useCallback(() => {
+    setAppliedSearch(search.trim());
+    setPage(0);
+  }, [search]);
 
   const handleSearchReset = React.useCallback(() => {
     setSearch('');
     setAppliedSearch('');
     setPage(0);
   }, []);
-
-  const handleSearchKeyDown = React.useCallback(
-    (event: React.KeyboardEvent<HTMLInputElement>) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        setAppliedSearch(search.trim());
-        setPage(0);
-      }
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        handleSearchReset();
-      }
-    },
-    [handleSearchReset, search],
-  );
 
   const handleToggleRow = React.useCallback((id: string, checked: boolean) => {
     setSelectedIds((prev) => {
@@ -245,42 +227,17 @@ export default function ArchivePage() {
 
   return (
     <div className="space-y-4">
-      <SettingsSectionHeader
+      <PageHeader
+        icon={ArchiveBoxIcon}
         title="Архив задач"
         description="Здесь отображаются удалённые задачи только для чтения."
-        icon={ArchiveBoxIcon}
-        controls={
-          <div className="grid gap-2">
-            <form
-              onSubmit={handleSearchSubmit}
-              className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
-            >
-              <FormGroup label="Поиск" htmlFor="archive-search">
-                <Input
-                  id="archive-search"
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  onKeyDown={handleSearchKeyDown}
-                  placeholder="Поиск по номеру или названию"
-                  aria-label="Поиск по архиву"
-                />
-              </FormGroup>
-              <div className="flex flex-wrap justify-end gap-2 sm:col-span-2 lg:col-span-3">
-                <Button type="submit" variant="primary" disabled={loading}>
-                  Искать
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={loading || (!appliedSearch && !search)}
-                  onClick={handleSearchReset}
-                >
-                  Сбросить
-                </Button>
-              </div>
-            </form>
-            {canPurge ? (
-              <div className="flex justify-end">
+        filters={
+          <FilterGrid
+            variant="plain"
+            onSearch={handleSearchSubmit}
+            onReset={handleSearchReset}
+            actions={
+              canPurge ? (
                 <Button
                   type="button"
                   variant="destructive"
@@ -289,9 +246,19 @@ export default function ArchivePage() {
                 >
                   Полное удаление
                 </Button>
-              </div>
-            ) : null}
-          </div>
+              ) : null
+            }
+          >
+            <FormGroup label="Поиск" htmlFor="archive-search">
+              <Input
+                id="archive-search"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Поиск по номеру или названию"
+                aria-label="Поиск по архиву"
+              />
+            </FormGroup>
+          </FilterGrid>
         }
       />
       {loading ? (
@@ -306,6 +273,8 @@ export default function ArchivePage() {
         onPageChange={setPage}
         showGlobalSearch={false}
         showFilters={false}
+        wrapCellsAsBadges
+        rowHeight={56}
       />
       <div className="text-sm text-muted-foreground">
         Найдено {total} {totalLabel}

@@ -415,7 +415,7 @@ export default function DataTable<T>({
             <div
               key={row.id}
               className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--bg-surface)] px-4 py-3 shadow-sm"
-              onClick={() => onRowClick?.(row.original)}
+              onClick={onRowClick ? () => onRowClick(row.original) : undefined}
               role={onRowClick ? 'button' : undefined}
             >
               {row.getVisibleCells().map((cell) => {
@@ -511,7 +511,7 @@ export default function DataTable<T>({
           {visibleRows.map((row) => (
             <TableRow
               key={row.id}
-              onClick={() => onRowClick?.(row.original)}
+              onClick={onRowClick ? () => onRowClick(row.original) : undefined}
               className={
                 onRowClick
                   ? `${bodyRowClasses} cursor-pointer hover:bg-[var(--bg-muted)]`

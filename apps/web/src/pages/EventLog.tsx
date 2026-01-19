@@ -1058,7 +1058,7 @@ export default function EventLog() {
                   <span
                     className="ui-status-badge"
                     data-badge-label={form.performer || '—'}
-                    data-tone="brand"
+                    data-tone="primary"
                   >
                     {form.performer || '—'}
                   </span>

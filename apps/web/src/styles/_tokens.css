@@ -6,6 +6,7 @@
   --color-success: #10b981;
   --color-danger: #ef4444;
   --color-muted: var(--color-gray-600, #475467);
+  --color-neutral: var(--color-muted);
   --bg-surface: var(--color-white, #ffffff);
   --bg-muted: var(--color-gray-50, #f3f4f6);
   --border: var(--color-gray-200, #e4e7ec);
@@ -43,19 +44,50 @@
       border-color 160ms ease;
   }
 
-  .btn-primary,
-  .btn-neutral,
-  .btn-secondary {
+  .btn-primary {
     background: var(--color-primary);
     color: #ffffff;
     border-color: var(--color-primary);
   }
 
-  .btn-primary:hover,
-  .btn-neutral:hover,
-  .btn-secondary:hover {
+  .btn-primary:hover {
     background: var(--color-primary-600);
     border-color: var(--color-primary-600);
+  }
+
+  .btn-neutral,
+  .btn-secondary {
+    background: var(--bg-muted);
+    color: var(--color-neutral);
+    border-color: var(--border);
+  }
+
+  .btn-neutral:hover,
+  .btn-secondary:hover {
+    background: color-mix(in srgb, var(--bg-muted) 85%, #000000 15%);
+    border-color: var(--border);
+  }
+
+  .btn-success {
+    background: var(--color-success);
+    color: #ffffff;
+    border-color: var(--color-success);
+  }
+
+  .btn-success:hover {
+    background: color-mix(in srgb, var(--color-success) 85%, #000000 15%);
+    border-color: color-mix(in srgb, var(--color-success) 85%, #000000 15%);
+  }
+
+  .btn-danger {
+    background: var(--color-danger);
+    color: #ffffff;
+    border-color: var(--color-danger);
+  }
+
+  .btn-danger:hover {
+    background: color-mix(in srgb, var(--color-danger) 85%, #000000 15%);
+    border-color: color-mix(in srgb, var(--color-danger) 85%, #000000 15%);
   }
 
   .btn-accent {
@@ -114,6 +146,8 @@
     word-break: break-word;
   }
 
+  .ui-status-badge[data-tone='primary'],
+  .ui-status-badge--primary,
   .ui-status-badge[data-tone='new'],
   .ui-status-badge--new {
     color: var(--color-primary);
@@ -121,13 +155,17 @@
     border-color: color-mix(in srgb, var(--color-primary) 35%, #ffffff 65%);
   }
 
+  .ui-status-badge[data-tone='neutral'],
+  .ui-status-badge--neutral,
   .ui-status-badge[data-tone='in_progress'],
   .ui-status-badge--in_progress {
-    color: var(--color-muted);
+    color: var(--color-neutral);
     background: var(--bg-muted);
     border-color: var(--border);
   }
 
+  .ui-status-badge[data-tone='success'],
+  .ui-status-badge--success,
   .ui-status-badge[data-tone='done'],
   .ui-status-badge--done {
     color: var(--color-success);
@@ -135,6 +173,8 @@
     border-color: color-mix(in srgb, var(--color-success) 35%, #ffffff 65%);
   }
 
+  .ui-status-badge[data-tone='danger'],
+  .ui-status-badge--danger,
   .ui-status-badge[data-tone='canceled'],
   .ui-status-badge--canceled {
     color: var(--color-danger);
@@ -144,7 +184,7 @@
 
   .ui-status-badge[data-tone='muted'],
   .ui-status-badge--muted {
-    color: var(--color-muted);
+    color: var(--color-neutral);
     background: var(--bg-muted);
     border-color: var(--border);
   }

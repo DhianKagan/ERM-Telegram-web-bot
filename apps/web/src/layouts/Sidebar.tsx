@@ -108,10 +108,15 @@ export default function Sidebar() {
     return baseItems;
   }, [role, adminItems, baseItems, managerItems]);
 
+  const navItemClass =
+    'flex h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800';
+  const navIconClass = 'h-5 w-5 shrink-0';
+  const navLabelClass = 'truncate';
+
   return (
     <aside
       className={cn(
-        'fixed inset-y-0 left-0 z-50 flex h-full w-64 max-w-[70vw] flex-col border-r border-stroke bg-white p-4 shadow-lg transition-transform duration-200 ease-in-out dark:bg-slate-900 lg:w-56',
+        'fixed inset-y-0 left-0 z-50 flex h-full w-64 flex-col border-r border-stroke bg-white p-4 shadow-lg transition-transform duration-200 ease-in-out dark:bg-slate-900',
         open ? 'translate-x-0' : '-translate-x-full',
       )}
       aria-hidden={isDesktop ? false : !open}
@@ -147,12 +152,12 @@ export default function Sidebar() {
               to={i.to}
               aria-label={i.label}
               className={cn(
-                'flex h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800',
+                navItemClass,
                 isActive && 'bg-slate-100 font-semibold dark:bg-slate-800',
               )}
             >
-              <i.icon className="h-5 w-5" />
-              <span className="truncate">{i.label}</span>
+              <i.icon className={navIconClass} />
+              <span className={navLabelClass}>{i.label}</span>
             </Link>
           );
         })}

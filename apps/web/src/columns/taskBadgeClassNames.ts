@@ -32,7 +32,7 @@ export const pillBadgeBaseClass =
 
 export const creatorBadgeClass = `${pillBadgeBaseClass} w-full max-w-full justify-start normal-case ${badgeTextClass} ring-1 ring-[color:var(--color-primary)]/30 bg-[color:var(--color-primary)]/10`;
 
-export const fallbackBadgeClass = 'ui-status-badge ui-status-badge--muted';
+export const fallbackBadgeClass = 'ui-status-badge ui-status-badge--neutral';
 
 const statusBadgeClassMap: Record<Task['status'], string> = {
   Новая: 'ui-status-badge ui-status-badge--new',

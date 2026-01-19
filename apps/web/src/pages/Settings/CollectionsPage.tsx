@@ -11,6 +11,7 @@ import { useSearchParams } from 'react-router-dom';
 import { matchSorter, rankings } from 'match-sorter';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
+import type { ColumnDef } from '@tanstack/react-table';
 
 import Badge from '@/components/ui/Badge';
 import { Button } from '@/components/ui/button';
@@ -46,6 +47,9 @@ import CollectionForm, { CollectionFormState } from './CollectionForm';
 import ConfirmDialog from '../../components/ConfirmDialog';
 import EmployeeCardForm from '../../components/EmployeeCardForm';
 import Modal from '../../components/Modal';
+import RowActionButtons, {
+  type RowActionItem,
+} from '../../components/RowActionButtons';
 import FleetVehiclesTab from './FleetVehiclesTab';
 import TaskSettingsTab from './TaskSettingsTab';
 import AnalyticsDashboard from '../AnalyticsDashboard';
@@ -127,6 +131,36 @@ type AssetEventLogEntry = {
 
 const mobileCardClass =
   'rounded-lg bg-card p-4 shadow-sm transition-all hover:-translate-y-[3px] hover:shadow-md';
+
+const withNameActions = <T,>(
+  columns: ColumnDef<T>[],
+  getActions: (row: T) => RowActionItem[],
+): ColumnDef<T>[] =>
+  columns.map((column) => {
+    const key = column.accessorKey ?? column.id;
+    if (key !== 'name') {
+      return column;
+    }
+    const originalCell = column.cell;
+    return {
+      ...column,
+      meta: {
+        ...(column.meta ?? {}),
+        renderAsBadges: false,
+      },
+      cell: (ctx) => {
+        const content = originalCell
+          ? originalCell(ctx)
+          : (ctx.getValue() as React.ReactNode);
+        return (
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0 flex-1">{content}</div>
+            <RowActionButtons actions={getActions(ctx.row.original)} />
+          </div>
+        );
+      },
+    };
+  });
 
 const EVENT_LOG_TYPE_LABELS: Record<string, string> = {
   refuel: 'Заправка',
@@ -1773,17 +1807,17 @@ export default function CollectionsPage() {
     positionId: user?.positionId ?? '',
   });
 
-  const openUserModal = (user?: User) => {
+  const openUserModal = useCallback((user?: User) => {
     setUserForm(user ? mapUserToForm(user) : emptyUser);
     setUserModalOpen(true);
-  };
+  }, []);
 
   const closeUserModal = useCallback(() => {
     setUserModalOpen(false);
     setUserForm(emptyUser);
   }, []);
 
-  const openEmployeeModal = (user?: User) => {
+  const openEmployeeModal = useCallback((user?: User) => {
     if (user) {
       setSelectedEmployeeId(String(user.telegram_id));
       setEmployeeFormMode('update');
@@ -1792,7 +1826,7 @@ export default function CollectionsPage() {
       setEmployeeFormMode('create');
     }
     setIsEmployeeModalOpen(true);
-  };
+  }, []);
 
   const updateCollectionSearchDraft = useCallback(
     (value: string) => {
@@ -2860,6 +2894,7 @@ export default function CollectionsPage() {
         : () => openUserModal();
       return (
         <FilterGrid
+          variant="plain"
           onSearch={submitUserSearch}
           onReset={() => {
             setUserSearchDraft('');
@@ -2895,6 +2930,7 @@ export default function CollectionsPage() {
     if (isCollectionSearchSupported) {
       return (
         <FilterGrid
+          variant="plain"
           onSearch={submitCollectionSearch}
           onReset={resetCollectionSearch}
           actions={
@@ -2928,6 +2964,7 @@ export default function CollectionsPage() {
     }
     return (
       <FilterGrid
+        variant="plain"
         showDefaultActions={false}
         actions={
           <Button
@@ -3207,7 +3244,16 @@ export default function CollectionsPage() {
                         </div>
                         <div className="hidden lg:block">
                           <SimpleTable<User>
-                            columns={settingsUserColumns}
+                            columns={withNameActions(
+                              settingsUserColumns,
+                              (row) => [
+                                {
+                                  label: 'Открыть',
+                                  icon: <EyeIcon className="size-4" />,
+                                  onClick: () => openUserModal(row),
+                                },
+                              ],
+                            )}
                             data={paginatedUsers}
                             pageIndex={userPage - 1}
                             pageSize={limit}
@@ -3216,17 +3262,10 @@ export default function CollectionsPage() {
                             showGlobalSearch={false}
                             showFilters={false}
                             wrapCellsAsBadges
+                            rowHeight={56}
                             badgeClassName={SETTINGS_BADGE_CLASS}
                             badgeWrapperClassName={SETTINGS_BADGE_WRAPPER_CLASS}
                             badgeEmptyPlaceholder={SETTINGS_BADGE_EMPTY}
-                            onRowClick={(row) => openUserModal(row)}
-                            getRowActions={(row) => [
-                              {
-                                label: 'Открыть',
-                                icon: <EyeIcon className="size-4" />,
-                                onClick: () => openUserModal(row),
-                              },
-                            ]}
                           />
                         </div>
                         <div className="grid gap-4 lg:hidden">
@@ -3316,7 +3355,16 @@ export default function CollectionsPage() {
                         </div>
                         <div className="hidden lg:block">
                           <SimpleTable<EmployeeRow>
-                            columns={settingsEmployeeColumns}
+                            columns={withNameActions(
+                              settingsEmployeeColumns,
+                              (row) => [
+                                {
+                                  label: 'Открыть',
+                                  icon: <EyeIcon className="size-4" />,
+                                  onClick: () => openEmployeeModal(row),
+                                },
+                              ],
+                            )}
                             data={employeeRows}
                             pageIndex={userPage - 1}
                             pageSize={limit}
@@ -3325,19 +3373,12 @@ export default function CollectionsPage() {
                             showGlobalSearch={false}
                             showFilters={false}
                             wrapCellsAsBadges
+                            rowHeight={56}
                             badgeClassName={SETTINGS_BADGE_CLASS}
                             badgeWrapperClassName={SETTINGS_BADGE_WRAPPER_CLASS}
                             badgeEmptyPlaceholder={SETTINGS_BADGE_EMPTY}
-                            onRowClick={(row) => openEmployeeModal(row)}
                             enableVirtualization
                             virtualizationThreshold={limit}
-                            getRowActions={(row) => [
-                              {
-                                label: 'Открыть',
-                                icon: <EyeIcon className="size-4" />,
-                                onClick: () => openEmployeeModal(row),
-                              },
-                            ]}
                           />
                         </div>
                         <div className="grid gap-4 lg:hidden">
@@ -3465,24 +3506,7 @@ export default function CollectionsPage() {
                       </div>
                       <div className="hidden lg:block">
                         <SimpleTable<FixedAssetRow>
-                          columns={fixedAssetColumns}
-                          data={fixedAssetRows}
-                          pageIndex={page - 1}
-                          pageSize={limit}
-                          pageCount={totalPages}
-                          onPageChange={(next) => setPage(next + 1)}
-                          showGlobalSearch={false}
-                          showFilters={false}
-                          wrapCellsAsBadges
-                          badgeClassName={SETTINGS_BADGE_CLASS}
-                          badgeWrapperClassName={SETTINGS_BADGE_WRAPPER_CLASS}
-                          badgeEmptyPlaceholder={SETTINGS_BADGE_EMPTY}
-                          onRowClick={(row) =>
-                            openCollectionModal(
-                              items.find((item) => item._id === row._id),
-                            )
-                          }
-                          getRowActions={(row) => [
+                          columns={withNameActions(fixedAssetColumns, (row) => [
                             {
                               label: 'Открыть',
                               icon: <EyeIcon className="size-4" />,
@@ -3491,7 +3515,19 @@ export default function CollectionsPage() {
                                   items.find((item) => item._id === row._id),
                                 ),
                             },
-                          ]}
+                          ])}
+                          data={fixedAssetRows}
+                          pageIndex={page - 1}
+                          pageSize={limit}
+                          pageCount={totalPages}
+                          onPageChange={(next) => setPage(next + 1)}
+                          showGlobalSearch={false}
+                          showFilters={false}
+                          wrapCellsAsBadges
+                          rowHeight={56}
+                          badgeClassName={SETTINGS_BADGE_CLASS}
+                          badgeWrapperClassName={SETTINGS_BADGE_WRAPPER_CLASS}
+                          badgeEmptyPlaceholder={SETTINGS_BADGE_EMPTY}
                         />
                       </div>
                       <div className="grid gap-4 lg:hidden">
@@ -3547,11 +3583,18 @@ export default function CollectionsPage() {
                       </div>
                       <div className="hidden lg:block">
                         <SimpleTable<CollectionTableRow>
-                          columns={
+                          columns={withNameActions(
                             type.key === 'objects'
                               ? localizedObjectColumns
-                              : columnsForType
-                          }
+                              : columnsForType,
+                            (row) => [
+                              {
+                                label: 'Открыть',
+                                icon: <EyeIcon className="size-4" />,
+                                onClick: () => openCollectionModal(row),
+                              },
+                            ],
+                          )}
                           data={rows}
                           pageIndex={page - 1}
                           pageSize={limit}
@@ -3560,19 +3603,12 @@ export default function CollectionsPage() {
                           showGlobalSearch={false}
                           showFilters={false}
                           wrapCellsAsBadges
+                          rowHeight={56}
                           badgeClassName={SETTINGS_BADGE_CLASS}
                           badgeWrapperClassName={SETTINGS_BADGE_WRAPPER_CLASS}
                           badgeEmptyPlaceholder={SETTINGS_BADGE_EMPTY}
-                          onRowClick={(row) => openCollectionModal(row)}
                           enableVirtualization
                           virtualizationThreshold={limit}
-                          getRowActions={(row) => [
-                            {
-                              label: 'Открыть',
-                              icon: <EyeIcon className="size-4" />,
-                              onClick: () => openCollectionModal(row),
-                            },
-                          ]}
                         />
                       </div>
                       <div className="grid gap-4 lg:hidden">

@@ -2,9 +2,15 @@
 // Основные модули: React, @tanstack/react-table, heroicons
 import React from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { ArrowDownTrayIcon, TrashIcon } from '@heroicons/react/24/outline';
-import { Button } from '@/components/ui/button';
+import {
+  ArrowDownTrayIcon,
+  EyeIcon,
+  TrashIcon,
+} from '@heroicons/react/24/outline';
 import { badgeVariants } from '@/components/ui/Badge';
+import RowActionButtons, {
+  type RowActionItem,
+} from '../components/RowActionButtons';
 import EmployeeLink from '../components/EmployeeLink';
 import type { StoredFile } from '../services/storage';
 
@@ -18,6 +24,7 @@ export interface StorageRow extends StoredFile {
   taskLink?: string;
   onDownload: () => void;
   onDelete: () => void;
+  onOpen: () => void;
 }
 
 interface Labels {
@@ -52,39 +59,29 @@ export default function createStorageColumns(
       meta: { minWidth: '10rem', renderAsBadges: false, truncate: true },
       cell: ({ row }) => {
         const file = row.original;
+        const actions: RowActionItem[] = [
+          {
+            label: 'Открыть',
+            icon: <EyeIcon className="size-4" aria-hidden />,
+            onClick: file.onOpen,
+          },
+          {
+            label: labels.download,
+            icon: <ArrowDownTrayIcon className="size-4" aria-hidden />,
+            onClick: file.onDownload,
+          },
+          {
+            label: labels.delete,
+            icon: <TrashIcon className="size-4" aria-hidden />,
+            onClick: file.onDelete,
+          },
+        ];
         return (
           <div className="flex items-center justify-between gap-3">
             <span className="truncate font-medium" title={file.name}>
               {file.name}
             </span>
-            <div className="flex flex-shrink-0 items-center gap-1">
-              <Button
-                type="button"
-                size="xs"
-                variant="outline"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  file.onDownload();
-                }}
-                aria-label={labels.download}
-              >
-                <ArrowDownTrayIcon className="size-4" aria-hidden />
-                {labels.download}
-              </Button>
-              <Button
-                type="button"
-                size="xs"
-                variant="destructive"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  file.onDelete();
-                }}
-                aria-label={labels.delete}
-              >
-                <TrashIcon className="size-4" aria-hidden />
-                {labels.delete}
-              </Button>
-            </div>
+            <RowActionButtons actions={actions} />
           </div>
         );
       },

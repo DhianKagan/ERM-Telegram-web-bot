@@ -1357,5 +1357,17 @@ export default function taskColumns(
       },
     },
   ];
-  return cols;
+  return cols.map((column) => {
+    const meta = (column.meta ?? {}) as Record<string, unknown>;
+    return {
+      ...column,
+      meta: {
+        ...meta,
+        renderAsBadges:
+          typeof meta.renderAsBadges === 'boolean'
+            ? meta.renderAsBadges
+            : false,
+      },
+    };
+  });
 }

@@ -159,6 +159,8 @@ export default function TaskTable({
       onPageChange={onPageChange}
       showGlobalSearch={false}
       showFilters={false}
+      wrapCellsAsBadges
+      rowHeight={56}
       toolbarChildren={toolbarChildren}
     />
   );

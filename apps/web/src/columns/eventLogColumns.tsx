@@ -29,7 +29,7 @@ export const buildEventLogColumns = (
   {
     accessorKey: 'number',
     header: 'Номер',
-    meta: { minWidth: '8rem', truncate: true },
+    meta: { minWidth: '8rem', truncate: true, renderAsBadges: false },
     cell: ({ row, getValue }) => {
       const value = (getValue<string>() || '').trim();
       const actions = options.rowActions?.(row.original) ?? [];

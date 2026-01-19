@@ -124,8 +124,6 @@ const normalizePriorityLabel = (value: string) => {
   return trimmed;
 };
 
-const completionNoteTextClass = 'text-xs font-medium text-muted-foreground';
-
 const typeBadgeClassMap: Record<string, string> = {
   доставить: toneBadgeClass('primary'),
   купить: toneBadgeClass('primary'),
@@ -461,61 +459,6 @@ const buildCountdownTitle = (
   return `Выполнить до ${formatted.full}`;
 };
 
-const COMPLETION_THRESHOLD_MS = 60_000;
-
-const formatCompletionOffset = (diffMs: number) => {
-  const absValue = Math.abs(diffMs);
-  if (absValue < COMPLETION_THRESHOLD_MS) {
-    return 'менее минуты';
-  }
-  const { days, hours, minutes } = formatCountdownParts(absValue);
-  const parts: string[] = [];
-  if (days) {
-    parts.push(`${days} ${getRussianPlural(days, ['день', 'дня', 'дней'])}`);
-  }
-  if (hours) {
-    parts.push(`${hours} ${getRussianPlural(hours, ['час', 'часа', 'часов'])}`);
-  }
-  if (minutes && parts.length < 2) {
-    parts.push(
-      `${minutes} ${getRussianPlural(minutes, ['минута', 'минуты', 'минут'])}`,
-    );
-  }
-  if (!parts.length) {
-    return 'менее минуты';
-  }
-  return parts.slice(0, 2).join(' ');
-};
-
-const buildCompletionNote = (
-  status: Task['status'] | undefined,
-  dueValue?: string,
-  completedValue?: string | null,
-) => {
-  if (status !== 'Выполнена') {
-    return null;
-  }
-  const dueDate = parseDateInput(dueValue);
-  const completedDate = parseDateInput(completedValue);
-  if (!dueDate || !completedDate) {
-    return null;
-  }
-  const diff = completedDate.getTime() - dueDate.getTime();
-  if (!Number.isFinite(diff)) {
-    return null;
-  }
-  if (Math.abs(diff) < COMPLETION_THRESHOLD_MS) {
-    return 'Выполнена точно в срок';
-  }
-  const offset = formatCompletionOffset(diff);
-  if (!offset) {
-    return 'Выполнена точно в срок';
-  }
-  return diff < 0
-    ? `Выполнена досрочно на ${offset}`
-    : `Выполнена с опозданием на ${offset}`;
-};
-
 // Fast Refresh обрабатывает вспомогательные компоненты как часть конфигурации таблицы
 
 export function DeadlineCountdownBadge({
@@ -560,11 +503,6 @@ export function DeadlineCountdownBadge({
   );
 
   const formatted = React.useMemo(() => formatDate(dueValue), [dueValue]);
-  const completionNote = React.useMemo(
-    () => buildCompletionNote(status, dueValue, completedAt),
-    [status, dueValue, completedAt],
-  );
-
   if (state.kind === 'invalid') {
     return (
       <span
@@ -588,9 +526,7 @@ export function DeadlineCountdownBadge({
   const className = countdownToneClassMap[toneKey];
   const parts = formatCountdownParts(state.remainingMs);
   const label = buildCountdownLabel(state);
-  const title = completionNote
-    ? `${completionNote}. ${buildCountdownTitle(state, formatted, rawDue)}`
-    : buildCountdownTitle(state, formatted, rawDue);
+  const title = buildCountdownTitle(state, formatted, rawDue);
   return (
     <span
       className={`${className} inline-flex items-center gap-1.5`}
@@ -626,9 +562,6 @@ export function DeadlineCountdownBadge({
           </span>
         </span>
       </span>
-      {completionNote ? (
-        <span className="sr-only">{completionNote}</span>
-      ) : null}
     </span>
   );
 }
@@ -925,6 +858,40 @@ export default function taskColumns(
 ): ColumnDef<TaskRow>[] {
   const cols: ColumnDef<TaskRow>[] = [
     {
+      header: 'Название',
+      accessorKey: 'title',
+      meta: {
+        width: 'clamp(10rem, 20vw, 20rem)',
+        minWidth: '8rem',
+        truncate: true,
+        cellClassName: 'align-top',
+      },
+      cell: (p) => {
+        const v = p.getValue<string>() || '';
+        const compact = compactText(v, 72);
+        const row = p.row.original as TaskRow;
+        const rowActions = options.rowActions?.(row) ?? [];
+        return (
+          <div className="flex min-w-0 flex-col items-start gap-2">
+            <span title={v} className={`${titleBadgeClass} whitespace-normal`}>
+              <span
+                className="block max-w-full break-words text-left leading-snug"
+                style={{
+                  display: '-webkit-box',
+                  WebkitLineClamp: 2,
+                  WebkitBoxOrient: 'vertical',
+                  overflow: 'hidden',
+                }}
+              >
+                {compact}
+              </span>
+            </span>
+            <RowActionButtons actions={rowActions} className="-ml-1" />
+          </div>
+        );
+      },
+    },
+    {
       header: 'Номер',
       id: 'number',
       accessorFn: (row) => {
@@ -1014,55 +981,6 @@ export default function taskColumns(
           >
             <span className="truncate">{compactText(label, 32)}</span>
           </EmployeeLink>
-        );
-      },
-    },
-    {
-      header: 'Название',
-      accessorKey: 'title',
-      meta: {
-        width: 'clamp(8rem, 18vw, 18rem)',
-        minWidth: '7rem',
-        truncate: true,
-        cellClassName: 'align-top',
-      },
-      cell: (p) => {
-        const v = p.getValue<string>() || '';
-        const compact = compactText(v, 72);
-        const row = p.row.original as TaskRow;
-        const rowActions = options.rowActions?.(row) ?? [];
-        const completionNote = buildCompletionNote(
-          row.status,
-          row.due_date ?? undefined,
-          row.completed_at ?? undefined,
-        );
-        return (
-          <div className="flex w-full items-start justify-between gap-2">
-            <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
-              <span
-                title={v}
-                className={`${titleBadgeClass} whitespace-normal`}
-              >
-                <span
-                  className="block max-w-full break-words text-left leading-snug"
-                  style={{
-                    display: '-webkit-box',
-                    WebkitLineClamp: 2,
-                    WebkitBoxOrient: 'vertical',
-                    overflow: 'hidden',
-                  }}
-                >
-                  {compact}
-                </span>
-              </span>
-              {completionNote ? (
-                <span className={completionNoteTextClass}>
-                  {completionNote}
-                </span>
-              ) : null}
-            </div>
-            <RowActionButtons actions={rowActions} />
-          </div>
         );
       },
     },
@@ -1259,101 +1177,81 @@ export default function taskColumns(
       },
     },
     {
-      header: 'Старт',
+      header: 'Логистика',
       accessorKey: 'start_location',
       meta: {
-        width: 'clamp(5.5rem, 14vw, 9.5rem)',
-        minWidth: '5rem',
-        truncate: true,
-        cellClassName: 'whitespace-nowrap',
+        width: 'clamp(10rem, 22vw, 18rem)',
+        minWidth: '9rem',
+        truncate: false,
       },
       cell: ({ row }) => {
-        const name = row.original.start_location ?? '';
-        const trimmed = name.trim();
-        const firstToken =
-          trimmed.split(/[\s,;]+/).filter(Boolean)[0] || trimmed;
-        const compact = compactText(firstToken, 24);
-        const link = row.original.start_location_link ?? undefined;
-        return link ? (
-          <a
-            href={link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={locationLinkBadgeClass}
-            title={name}
-          >
-            <span className="truncate">{compact}</span>
-          </a>
-        ) : (
-          <span title={name} className={locationBadgeClass}>
-            <span className="truncate">{compact}</span>
-          </span>
-        );
-      },
-    },
-    {
-      header: 'Финиш',
-      accessorKey: 'end_location',
-      meta: {
-        width: 'clamp(5.5rem, 14vw, 9.5rem)',
-        minWidth: '5rem',
-        truncate: true,
-        cellClassName: 'whitespace-nowrap',
-      },
-      cell: ({ row }) => {
-        const name = row.original.end_location ?? '';
-        const trimmed = name.trim();
-        const firstToken =
-          trimmed.split(/[\s,;]+/).filter(Boolean)[0] || trimmed;
-        const compact = compactText(firstToken, 24);
-        const link = row.original.end_location_link ?? undefined;
-        return link ? (
-          <a
-            href={link}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={locationLinkBadgeClass}
-            title={name}
-          >
-            <span className="truncate">{compact}</span>
-          </a>
-        ) : (
-          <span title={name} className={locationBadgeClass}>
-            <span className="truncate">{compact}</span>
-          </span>
-        );
-      },
-    },
-    {
-      header: 'Км',
-      accessorKey: 'route_distance_km',
-      meta: {
-        width: 'clamp(3.25rem, 6vw, 4.75rem)',
-        minWidth: '3rem',
-        truncate: true,
-        cellClassName: 'whitespace-nowrap text-center sm:text-left',
-        headerClassName: 'text-center sm:text-left',
-      },
-      cell: (p) => {
-        const raw = p.getValue<number | string | null>();
+        const items: React.ReactNode[] = [];
+        const startName = row.original.start_location ?? '';
+        const startLink = row.original.start_location_link ?? undefined;
+        const endName = row.original.end_location ?? '';
+        const endLink = row.original.end_location_link ?? undefined;
+        const pushLocation = (
+          label: string,
+          rawName: string,
+          link?: string,
+        ) => {
+          const trimmed = rawName.trim();
+          if (!trimmed) return;
+          const compact = compactText(trimmed, 28);
+          const display = `${label}: ${compact}`;
+          const title = `${label}: ${trimmed}`;
+          items.push(
+            link ? (
+              <a
+                key={`${label}-${trimmed}`}
+                href={link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={locationLinkBadgeClass}
+                title={title}
+              >
+                <span className="truncate">{display}</span>
+              </a>
+            ) : (
+              <span
+                key={`${label}-${trimmed}`}
+                title={title}
+                className={locationBadgeClass}
+              >
+                <span className="truncate">{display}</span>
+              </span>
+            ),
+          );
+        };
+        pushLocation('Старт', startName, startLink);
+        pushLocation('Финиш', endName, endLink);
+
+        const distanceRaw = row.original.route_distance_km;
         if (
-          raw === null ||
-          raw === undefined ||
-          (typeof raw === 'string' && !raw.trim())
+          distanceRaw !== null &&
+          distanceRaw !== undefined &&
+          !(typeof distanceRaw === 'string' && !distanceRaw.trim())
         ) {
-          return '';
+          const display = formatDistanceLabel(distanceRaw);
+          if (display) {
+            const badgeClass = getDistanceBadgeClass(distanceRaw);
+            const className = badgeClass || fallbackBadgeClass;
+            items.push(
+              <span
+                key={`distance-${display}`}
+                className={className}
+                title={`Км: ${display}`}
+              >
+                Км: {display}
+              </span>,
+            );
+          }
         }
-        const display = formatDistanceLabel(raw);
-        if (!display) {
-          return '';
+
+        if (!items.length) {
+          return <span className="text-muted-foreground">—</span>;
         }
-        const badgeClass = getDistanceBadgeClass(raw);
-        const className = badgeClass || fallbackBadgeClass;
-        return (
-          <span className={className} title={`${display} км`}>
-            {display}
-          </span>
-        );
+        return <div className="flex flex-wrap items-start gap-1">{items}</div>;
       },
     },
   ];

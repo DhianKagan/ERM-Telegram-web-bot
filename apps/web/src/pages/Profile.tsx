@@ -187,7 +187,7 @@ export default function Profile() {
         title="Личный кабинет"
         description="Управляйте основными данными профиля и контактами."
       />
-      <div className="mx-auto max-w-4xl space-y-4">
+      <div className="w-full space-y-4">
         {error && (
           <Card className="border-destructive/30 bg-destructive/5 text-destructive">
             {error}

@@ -128,7 +128,7 @@ describe('taskColumns', () => {
     expect(badge as HTMLElement).toHaveClass('bg-rose-500/30');
   });
 
-  it('фиксирует отсчёт после завершения задачи и выводит примечание под названием', () => {
+  it('фиксирует отсчёт после завершения задачи без примечания под названием', () => {
     jest.useFakeTimers().setSystemTime(new Date('2024-03-07T08:00:00Z'));
 
     const columns = taskColumns({});
@@ -180,8 +180,8 @@ describe('taskColumns', () => {
 
     const titleContainer = screen.getByTestId('title-cell');
     expect(
-      within(titleContainer).getByText('Выполнена досрочно на 2 дня'),
-    ).toBeInTheDocument();
+      within(titleContainer).queryByText('Выполнена досрочно на 2 дня'),
+    ).toBeNull();
 
     const dueContainer = screen.getByTestId('due-cell');
     expect(

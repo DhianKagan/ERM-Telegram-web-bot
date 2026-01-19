@@ -63,14 +63,6 @@ type PreviewState = {
   content?: string;
 };
 
-type TaskOption = {
-  id: string;
-  label: string;
-  title: string;
-  number?: string | null;
-  changedAt: number;
-};
-
 const previewIcons: Record<
   PreviewMode,
   React.ComponentType<{ className?: string }>
@@ -131,43 +123,12 @@ export default function StoragePage() {
   );
   const [detailsLoading, setDetailsLoading] = React.useState(false);
   const [preview, setPreview] = React.useState<PreviewState | null>(null);
-  const [tasksLoading, setTasksLoading] = React.useState(false);
-  const [taskOptions, setTaskOptions] = React.useState<TaskOption[]>([]);
-  const [taskMetaById, setTaskMetaById] = React.useState<
-    Record<string, TaskOption>
-  >({});
-  const [selectionByFile, setSelectionByFile] = React.useState<
-    Record<string, string>
-  >({});
-  const [attachLoadingId, setAttachLoadingId] = React.useState<string | null>(
-    null,
-  );
 
   const [diagnostics, setDiagnostics] =
     React.useState<StorageDiagnosticsReport | null>(null);
   const [diagnosticsLoading, setDiagnosticsLoading] = React.useState(false);
   const [diagnosticsError, setDiagnosticsError] = React.useState<string | null>(
     null,
-  );
-
-  const attachFileToTask = React.useCallback(
-    async (fileId: string, taskId: string): Promise<void> => {
-      const response = await authFetch(
-        `/api/v1/files/${encodeURIComponent(fileId)}/attach`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ taskId }),
-        },
-      );
-      if (!response.ok) {
-        const error = new Error('attach');
-        (error as { status?: number }).status = response.status;
-        throw error;
-      }
-      await response.json().catch(() => ({}));
-    },
-    [],
   );
 
   const loadFiles = React.useCallback(() => {
@@ -245,117 +206,6 @@ export default function StoragePage() {
       active = false;
     };
   }, [t]);
-
-  React.useEffect(() => {
-    let cancelled = false;
-    setTasksLoading(true);
-    authFetch('/api/v1/tasks/mentioned')
-      .then((res) => (res.ok ? res.json() : []))
-      .then((data) => {
-        if (cancelled) return;
-        const list = Array.isArray(data)
-          ? (data as Record<string, unknown>[])
-          : [];
-        const normalized = list
-          .map((task): TaskOption | null => {
-            const rawId =
-              typeof (task as { _id?: unknown })._id === 'string'
-                ? ((task as { _id: string })._id ?? '').trim()
-                : typeof (task as { id?: unknown }).id === 'string'
-                  ? ((task as { id: string }).id ?? '').trim()
-                  : '';
-            if (!rawId) {
-              return null;
-            }
-            const rawTitle = (task as { title?: unknown }).title;
-            const title =
-              typeof rawTitle === 'string' && rawTitle.trim().length > 0
-                ? rawTitle.trim()
-                : t('storage.attach.untitled');
-            const rawNumber = (task as { task_number?: unknown }).task_number;
-            const number =
-              typeof rawNumber === 'string' && rawNumber.trim().length > 0
-                ? rawNumber.trim()
-                : null;
-            const timestamps = [
-              (task as { changed_at?: unknown }).changed_at,
-              (task as { changedAt?: unknown }).changedAt,
-              (task as { updatedAt?: unknown }).updatedAt,
-              (task as { createdAt?: unknown }).createdAt,
-              (task as { submission_date?: unknown }).submission_date,
-            ];
-            const changedAt = timestamps
-              .map((value) => {
-                if (value instanceof Date) {
-                  const time = value.getTime();
-                  return Number.isNaN(time) ? 0 : time;
-                }
-                if (typeof value === 'string') {
-                  const time = Date.parse(value);
-                  return Number.isNaN(time) ? 0 : time;
-                }
-                if (typeof value === 'number' && Number.isFinite(value)) {
-                  return value;
-                }
-                return 0;
-              })
-              .reduce((max, current) => (current > max ? current : max), 0);
-            const shortId = rawId.slice(-6) || rawId;
-            const label = number
-              ? t('storage.attach.optionNumber', { number, title })
-              : t('storage.attach.optionId', { id: shortId, title });
-            return { id: rawId, label, title, number, changedAt };
-          })
-          .filter((item): item is TaskOption => Boolean(item));
-        normalized.sort((a, b) => b.changedAt - a.changedAt);
-        const limited = normalized.slice(0, 6);
-        const meta = limited.reduce<Record<string, TaskOption>>(
-          (acc, option) => {
-            acc[option.id] = option;
-            return acc;
-          },
-          {},
-        );
-        setTaskOptions(limited);
-        setTaskMetaById(meta);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setTaskOptions([]);
-        setTaskMetaById({});
-        showToast(t('storage.attach.tasksLoadError'), 'error');
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setTasksLoading(false);
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [t]);
-
-  React.useEffect(() => {
-    if (!taskOptions.length) {
-      setSelectionByFile((current) =>
-        Object.keys(current).length ? ({} as Record<string, string>) : current,
-      );
-      return;
-    }
-    const validIds = new Set(taskOptions.map((option) => option.id));
-    setSelectionByFile((current) => {
-      let changed = false;
-      const next: Record<string, string> = {};
-      Object.entries(current).forEach(([fileId, value]) => {
-        if (value && validIds.has(value)) {
-          next[fileId] = value;
-        } else if (value) {
-          changed = true;
-        }
-      });
-      return changed ? next : current;
-    });
-  }, [taskOptions]);
 
   React.useEffect(() => {
     const queryId = searchParams.get('file');
@@ -495,12 +345,6 @@ export default function StoragePage() {
     return sortedFiles.slice(start, start + PAGE_SIZE);
   }, [sortedFiles, pageIndex]);
 
-  const taskOptionsForSelect = React.useMemo(
-    () =>
-      taskOptions.map((option) => ({ value: option.id, label: option.label })),
-    [taskOptions],
-  );
-
   const handleDownload = React.useCallback(
     (file: StoredFile) => {
       if (!file.url) return;
@@ -536,71 +380,6 @@ export default function StoragePage() {
     [searchParams, selectedId, setSearchParams, t],
   );
 
-  const handleAttach = React.useCallback(
-    (file: StoredFile) => {
-      const selectedTaskId = selectionByFile[file.id];
-      if (!selectedTaskId) {
-        return;
-      }
-      if (!taskOptions.some((option) => option.id === selectedTaskId)) {
-        return;
-      }
-      setAttachLoadingId(file.id);
-      attachFileToTask(file.id, selectedTaskId)
-        .then(() => {
-          const meta = taskMetaById[selectedTaskId];
-          setFiles((current) =>
-            current.map((candidate) =>
-              candidate.id === file.id
-                ? {
-                    ...candidate,
-                    taskId: selectedTaskId,
-                    taskNumber: meta?.number ?? candidate.taskNumber ?? null,
-                    taskTitle: meta?.title ?? candidate.taskTitle ?? null,
-                  }
-                : candidate,
-            ),
-          );
-          if (selectedId === file.id) {
-            setSelectedFile((current) =>
-              current
-                ? {
-                    ...current,
-                    taskId: selectedTaskId,
-                    taskNumber: meta?.number ?? current.taskNumber ?? null,
-                    taskTitle: meta?.title ?? current.taskTitle ?? null,
-                  }
-                : current,
-            );
-          }
-          showToast(t('storage.attach.success'), 'success');
-        })
-        .catch((error) => {
-          const status = (error as { status?: number }).status;
-          if (status === 403) {
-            showToast(t('storage.attach.forbidden'), 'error');
-          } else {
-            showToast(t('storage.attach.error'), 'error');
-          }
-        })
-        .finally(() => {
-          setAttachLoadingId((current) =>
-            current === file.id ? null : current,
-          );
-        });
-    },
-    [
-      attachFileToTask,
-      selectionByFile,
-      taskOptions,
-      taskMetaById,
-      setFiles,
-      selectedId,
-      setSelectedFile,
-      t,
-    ],
-  );
-
   const toRow = React.useCallback(
     (file: StoredFile): StorageRow => {
       const hasTaskId = file.taskId != null && file.taskId !== '';
@@ -632,11 +411,6 @@ export default function StoragePage() {
         paramsWithTask.set('task', normalizedTaskId);
         taskLink = `?${paramsWithTask.toString()}`;
       }
-      const selectedCandidate = selectionByFile[file.id] ?? '';
-      const hasValidSelection = taskOptions.some(
-        (option) => option.id === selectedCandidate,
-      );
-      const selectedTaskId = hasValidSelection ? selectedCandidate : '';
       return {
         ...file,
         taskTitle: normalizedTitle,
@@ -649,32 +423,9 @@ export default function StoragePage() {
         taskLink,
         onDownload: () => handleDownload(file),
         onDelete: () => handleDelete(file),
-        selectedTaskId,
-        onTaskSelect: (taskId: string) => {
-          setSelectionByFile((current) => ({ ...current, [file.id]: taskId }));
-        },
-        onAttach: () => handleAttach(file),
-        attachLoading: attachLoadingId === file.id,
-        attachDisabled:
-          attachLoadingId === file.id ||
-          tasksLoading ||
-          !taskOptions.length ||
-          !hasValidSelection,
       };
     },
-    [
-      attachLoadingId,
-      handleAttach,
-      handleDelete,
-      handleDownload,
-      searchParams,
-      selectionByFile,
-      setSelectionByFile,
-      t,
-      taskOptions,
-      tasksLoading,
-      usersById,
-    ],
+    [handleDelete, handleDownload, searchParams, t, usersById],
   );
 
   const rows = React.useMemo<StorageRow[]>(
@@ -948,17 +699,9 @@ export default function StoragePage() {
               delete: t('storage.delete'),
               taskTitleHint: (title: string) =>
                 t('storage.taskTitleHint', { title }),
-              attachTitle: t('storage.attach.title'),
-              attachPlaceholder: t('storage.attach.placeholder'),
-              attachAction: t('storage.attach.button'),
-              attachProcessing: t('storage.attach.processing'),
-              attachEmpty: t('storage.attach.empty'),
-              attachLoading: t('storage.attach.loading'),
             },
             {
               onTaskOpen: openTaskDialog,
-              taskOptions: taskOptionsForSelect,
-              tasksLoading,
             },
           )}
           data={rows}
@@ -1051,46 +794,6 @@ export default function StoragePage() {
                 ) : null}
               </div>
             ) : null}
-            <section className="space-y-3">
-              <h3 className="text-sm font-semibold">
-                {t('storage.attach.title')}
-              </h3>
-              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                <Select
-                  value={selectedRow.selectedTaskId}
-                  onChange={(event) =>
-                    selectedRow.onTaskSelect(event.target.value)
-                  }
-                  disabled={selectedRow.attachLoading || tasksLoading}
-                  className="w-full sm:max-w-[16rem]"
-                >
-                  <option value="">{t('storage.attach.placeholder')}</option>
-                  {taskOptionsForSelect.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </Select>
-                <Button
-                  type="button"
-                  onClick={() => selectedRow.onAttach()}
-                  disabled={selectedRow.attachDisabled}
-                >
-                  {selectedRow.attachLoading
-                    ? t('storage.attach.processing')
-                    : t('storage.attach.button')}
-                </Button>
-              </div>
-              {tasksLoading ? (
-                <p className="text-xs text-muted-foreground">
-                  {t('storage.attach.loading')}
-                </p>
-              ) : taskOptionsForSelect.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  {t('storage.attach.empty')}
-                </p>
-              ) : null}
-            </section>
             <section className="space-y-2">
               <h3 className="text-sm font-semibold">
                 {t('storage.details.title')}

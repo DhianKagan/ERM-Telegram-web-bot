@@ -5,6 +5,9 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { PROJECT_TIMEZONE, PROJECT_TIMEZONE_LABEL, type Task } from 'shared';
 import { QuestionMarkCircleIcon } from '@heroicons/react/20/solid';
 import EmployeeLink from '../components/EmployeeLink';
+import RowActionButtons, {
+  type RowActionItem,
+} from '../components/RowActionButtons';
 import { badgeVariants } from '../components/ui/Badge';
 import { getDeadlineState, type DeadlineState } from './taskDeadline';
 import type { User as AppUser } from '../types/user';
@@ -121,7 +124,7 @@ const normalizePriorityLabel = (value: string) => {
   return trimmed;
 };
 
-const completionNoteTextClass = 'text-[11px] font-medium text-muted-foreground';
+const completionNoteTextClass = 'text-xs font-medium text-muted-foreground';
 
 const typeBadgeClassMap: Record<string, string> = {
   доставить: toneBadgeClass('primary'),
@@ -918,6 +921,7 @@ function ActualTimeCell({
 export default function taskColumns(
   users: Record<number, AppUser>,
   defaultKind: EntityKind = 'task',
+  options: { rowActions?: (row: TaskRow) => RowActionItem[] } = {},
 ): ColumnDef<TaskRow>[] {
   const cols: ColumnDef<TaskRow>[] = [
     {
@@ -1026,29 +1030,38 @@ export default function taskColumns(
         const v = p.getValue<string>() || '';
         const compact = compactText(v, 72);
         const row = p.row.original as TaskRow;
+        const rowActions = options.rowActions?.(row) ?? [];
         const completionNote = buildCompletionNote(
           row.status,
           row.due_date ?? undefined,
           row.completed_at ?? undefined,
         );
         return (
-          <div className="flex flex-col items-start gap-1">
-            <span title={v} className={`${titleBadgeClass} whitespace-normal`}>
+          <div className="flex w-full items-start justify-between gap-2">
+            <div className="flex min-w-0 flex-1 flex-col items-start gap-1">
               <span
-                className="block max-w-full break-words text-left leading-snug"
-                style={{
-                  display: '-webkit-box',
-                  WebkitLineClamp: 2,
-                  WebkitBoxOrient: 'vertical',
-                  overflow: 'hidden',
-                }}
+                title={v}
+                className={`${titleBadgeClass} whitespace-normal`}
               >
-                {compact}
+                <span
+                  className="block max-w-full break-words text-left leading-snug"
+                  style={{
+                    display: '-webkit-box',
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: 'vertical',
+                    overflow: 'hidden',
+                  }}
+                >
+                  {compact}
+                </span>
               </span>
-            </span>
-            {completionNote ? (
-              <span className={completionNoteTextClass}>{completionNote}</span>
-            ) : null}
+              {completionNote ? (
+                <span className={completionNoteTextClass}>
+                  {completionNote}
+                </span>
+              ) : null}
+            </div>
+            <RowActionButtons actions={rowActions} />
           </div>
         );
       },

@@ -50,6 +50,25 @@ export const fetchFile = (id: string) =>
     res.ok ? (res.json() as Promise<StoredFile>) : Promise.reject(res),
   );
 
+export const fetchFilesByTaskId = (taskId: string) =>
+  authFetch(`/api/v1/files?taskId=${encodeURIComponent(taskId)}`).then((res) =>
+    res.ok ? (res.json() as Promise<StoredFile[]>) : Promise.reject(res),
+  );
+
+export const linkFileToTask = (fileId: string, taskId: string) =>
+  authFetch(`/api/v1/files/${encodeURIComponent(fileId)}/link`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ taskId }),
+  });
+
+export const unlinkFileFromTask = (fileId: string) =>
+  authFetch(`/api/v1/files/${encodeURIComponent(fileId)}/link`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ taskId: null }),
+  });
+
 export const removeFile = (id: string) =>
   authFetch(`/api/v1/storage/${encodeURIComponent(id)}`, {
     method: 'DELETE',
@@ -63,4 +82,12 @@ export const runDiagnostics = async (): Promise<StorageDiagnosticsReport> => {
   return (await response.json()) as StorageDiagnosticsReport;
 };
 
-export default { fetchFiles, fetchFile, removeFile, runDiagnostics };
+export default {
+  fetchFiles,
+  fetchFile,
+  fetchFilesByTaskId,
+  linkFileToTask,
+  unlinkFileFromTask,
+  removeFile,
+  runDiagnostics,
+};

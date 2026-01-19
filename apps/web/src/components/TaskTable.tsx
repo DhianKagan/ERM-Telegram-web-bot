@@ -1,13 +1,19 @@
 // Назначение файла: таблица задач на основе SimpleTable
 // Основные модули: React, SimpleTable, taskColumns, useTasks, coerceTaskId
 import React from 'react';
-import { EyeIcon, PencilSquareIcon } from '@heroicons/react/24/outline';
+import {
+  EyeIcon,
+  PencilSquareIcon,
+  ShareIcon,
+  TrashIcon,
+} from '@heroicons/react/24/outline';
 import taskColumns, { TaskRow } from '../columns/taskColumns';
 import { SimpleTable } from '@/components/ui/simple-table';
 import type { User as AppUser } from '../types/user';
 import useTasks from '../context/useTasks';
 import coerceTaskId from '../utils/coerceTaskId';
 import matchTaskQuery from '../utils/matchTaskQuery';
+import type { RowActionItem } from './RowActionButtons';
 
 type EntityKind = 'task' | 'request';
 
@@ -20,7 +26,10 @@ interface TaskTableProps {
   entityKind?: EntityKind;
   onPageChange: (p: number) => void;
   onMineChange?: (v: boolean) => void;
-  onRowClick?: (id: string) => void;
+  onOpen?: (id: string) => void;
+  onEdit?: (id: string) => void;
+  onDelete?: (id: string) => void;
+  onShare?: (id: string) => void;
   toolbarChildren?: React.ReactNode;
   onDataChange?: (rows: TaskRow[]) => void;
 }
@@ -34,7 +43,10 @@ export default function TaskTable({
   entityKind = 'task',
   onPageChange,
   onMineChange,
-  onRowClick,
+  onOpen,
+  onEdit,
+  onDelete,
+  onShare,
   toolbarChildren,
   onDataChange,
 }: TaskTableProps) {
@@ -43,9 +55,49 @@ export default function TaskTable({
     () => users ?? {},
     [users],
   );
+  const resolveRowId = React.useCallback((row: TaskRow) => {
+    const original = row as TaskRow & Record<string, unknown>;
+    return coerceTaskId(original._id) || coerceTaskId(original.id);
+  }, []);
   const columns = React.useMemo(
-    () => taskColumns(userMap, entityKind),
-    [userMap, entityKind],
+    () =>
+      taskColumns(userMap, entityKind, {
+        rowActions: (row) => {
+          const normalizedId = resolveRowId(row);
+          if (!normalizedId) return [];
+          const actions: RowActionItem[] = [];
+          if (onOpen) {
+            actions.push({
+              label: 'Открыть',
+              icon: <EyeIcon className="size-4" />,
+              onClick: () => onOpen(normalizedId),
+            });
+          }
+          if (onEdit) {
+            actions.push({
+              label: 'Редактировать',
+              icon: <PencilSquareIcon className="size-4" />,
+              onClick: () => onEdit(normalizedId),
+            });
+          }
+          if (onDelete) {
+            actions.push({
+              label: 'Удалить',
+              icon: <TrashIcon className="size-4" />,
+              onClick: () => onDelete(normalizedId),
+            });
+          }
+          if (onShare) {
+            actions.push({
+              label: 'Поделиться',
+              icon: <ShareIcon className="size-4" />,
+              onClick: () => onShare(normalizedId),
+            });
+          }
+          return actions;
+        },
+      }),
+    [entityKind, onDelete, onEdit, onOpen, onShare, userMap],
   );
 
   React.useEffect(() => {
@@ -97,11 +149,6 @@ export default function TaskTable({
     return true;
   });
 
-  const resolveRowId = React.useCallback((row: TaskRow) => {
-    const original = row as TaskRow & Record<string, unknown>;
-    return coerceTaskId(original._id) || coerceTaskId(original.id);
-  }, []);
-
   return (
     <SimpleTable<TaskRow>
       columns={columns}
@@ -110,33 +157,9 @@ export default function TaskTable({
       pageSize={25}
       pageCount={pageCount}
       onPageChange={onPageChange}
-      onRowClick={(row) => {
-        const normalizedId = resolveRowId(row);
-        if (normalizedId) {
-          onRowClick?.(normalizedId);
-        }
-      }}
       showGlobalSearch={false}
       showFilters={false}
       toolbarChildren={toolbarChildren}
-      getRowActions={(row) => {
-        const normalizedId = resolveRowId(row);
-        if (!normalizedId || !onRowClick) return [];
-        return [
-          {
-            label: 'Открыть',
-            icon: <EyeIcon className="size-4" />,
-            onClick: () => onRowClick(normalizedId),
-            variant: 'outline',
-          },
-          {
-            label: 'Редактировать',
-            icon: <PencilSquareIcon className="size-4" />,
-            onClick: () => onRowClick(normalizedId),
-            variant: 'outline',
-          },
-        ];
-      }}
     />
   );
 }

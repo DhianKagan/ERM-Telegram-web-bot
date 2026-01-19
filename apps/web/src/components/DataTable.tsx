@@ -231,6 +231,20 @@ export default function DataTable<T>({
   const [scrollTop, setScrollTop] = React.useState(0);
   const [viewportHeight, setViewportHeight] = React.useState(maxBodyHeight);
   const [isSmUp, setIsSmUp] = React.useState(false);
+  const [isDragging, setIsDragging] = React.useState(false);
+  const dragState = React.useRef<{
+    startX: number;
+    startY: number;
+    scrollLeft: number;
+    scrollTop: number;
+    active: boolean;
+  }>({
+    startX: 0,
+    startY: 0,
+    scrollLeft: 0,
+    scrollTop: 0,
+    active: false,
+  });
 
   const virtualizationActive =
     enableVirtualization && isSmUp && rows.length > virtualizationThreshold;
@@ -270,12 +284,61 @@ export default function DataTable<T>({
     setScrollTop(0);
   }, [rows.length, virtualizationActive]);
 
+  React.useEffect(() => {
+    const handleMouseMove = (event: MouseEvent) => {
+      if (!dragState.current.active) return;
+      const container = virtualizationContainerRef.current;
+      if (!container) return;
+      event.preventDefault();
+      const dx = event.clientX - dragState.current.startX;
+      const dy = event.clientY - dragState.current.startY;
+      container.scrollLeft = dragState.current.scrollLeft - dx;
+      container.scrollTop = dragState.current.scrollTop - dy;
+    };
+    const handleMouseUp = () => {
+      if (!dragState.current.active) return;
+      dragState.current.active = false;
+      setIsDragging(false);
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, []);
+
   const handleScroll = React.useCallback(
     (event: React.UIEvent<HTMLDivElement>) => {
       if (!virtualizationActive) return;
       setScrollTop(event.currentTarget.scrollTop);
     },
     [virtualizationActive],
+  );
+
+  const handleMouseDown = React.useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if (event.button !== 0) return;
+      const target = event.target as HTMLElement | null;
+      if (
+        target?.closest(
+          'button, a, input, select, textarea, [data-drag-exclude]',
+        )
+      ) {
+        return;
+      }
+      const container = virtualizationContainerRef.current;
+      if (!container) return;
+      dragState.current = {
+        startX: event.clientX,
+        startY: event.clientY,
+        scrollLeft: container.scrollLeft,
+        scrollTop: container.scrollTop,
+        active: true,
+      };
+      setIsDragging(true);
+    },
+    [],
   );
 
   const totalHeight = rows.length * rowHeight;
@@ -392,11 +455,15 @@ export default function DataTable<T>({
         className="hidden table-auto sm:table"
         containerProps={{
           ref: virtualizationContainerRef,
-          className: 'hidden overflow-x-auto sm:block',
+          className: cn(
+            'hidden overflow-x-auto sm:block',
+            isDragging ? 'cursor-grabbing select-none' : 'cursor-grab',
+          ),
           style: virtualizationActive
             ? { maxHeight: maxBodyHeight }
             : undefined,
           onScroll: handleScroll,
+          onMouseDown: handleMouseDown,
         }}
       >
         <TableHeader>

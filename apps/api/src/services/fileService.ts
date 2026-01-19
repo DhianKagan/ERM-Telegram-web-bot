@@ -433,6 +433,21 @@ export const linkFileToTask = async (
   return updated ?? null;
 };
 
+export const linkFilesToTask = async (
+  taskId: Types.ObjectId | string,
+  fileIds: Types.ObjectId[],
+): Promise<void> => {
+  const normalizedTaskId = toObjectId(taskId);
+  if (!normalizedTaskId || fileIds.length === 0) return;
+  await File.updateMany(
+    { _id: { $in: fileIds } },
+    {
+      $addToSet: { relatedTaskIds: normalizedTaskId },
+      $set: { scope: 'task', detached: false },
+    },
+  ).exec();
+};
+
 export const unlinkFileFromTask = async (
   fileId: string,
   taskId?: string,

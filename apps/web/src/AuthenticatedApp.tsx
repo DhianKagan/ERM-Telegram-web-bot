@@ -38,7 +38,7 @@ function AppShell() {
   const { user } = useAuth();
   const { open, setOpen, isDesktop } = useSidebar();
   const { t } = useTranslation();
-  const contentOffsetClass = open ? 'lg:pl-56' : 'lg:pl-0';
+  const contentOffsetClass = open ? 'lg:pl-64' : 'lg:pl-0';
   return (
     <>
       {user && <Sidebar />}

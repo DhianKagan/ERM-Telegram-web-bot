@@ -2986,7 +2986,7 @@ export default function CollectionsPage() {
     moduleTabs.find((module) => module.key === activeModule) ?? moduleTabs[0];
 
   return (
-    <div className="flex w-full flex-col gap-6 px-3 pb-12 pt-4 sm:px-4 lg:px-6">
+    <div className="flex w-full flex-col gap-6 pb-12 pt-4">
       <Tabs
         value={activeModule}
         onValueChange={(value) =>
@@ -3896,20 +3896,20 @@ export default function CollectionsPage() {
                                     <div className="mt-2 flex flex-wrap gap-2 text-xs">
                                       <span
                                         className="ui-status-badge"
-                                        data-tone="brand"
+                                        data-tone="primary"
                                       >
                                         {event.eventTypeLabel}
                                       </span>
                                       <span
                                         className="ui-status-badge"
-                                        data-tone="muted"
+                                        data-tone="neutral"
                                       >
                                         {event.operationLabel}
                                       </span>
                                       {event.location ? (
                                         <span
                                           className="ui-status-badge"
-                                          data-tone="muted"
+                                          data-tone="neutral"
                                         >
                                           {event.location}
                                         </span>
@@ -3917,7 +3917,7 @@ export default function CollectionsPage() {
                                       {event.transferLocation ? (
                                         <span
                                           className="ui-status-badge"
-                                          data-tone="warning"
+                                          data-tone="danger"
                                         >
                                           Место перемещения:{' '}
                                           {event.transferLocation}
@@ -4040,8 +4040,8 @@ export default function CollectionsPage() {
                 {canManageUsers && userForm.telegram_id ? (
                   <Button
                     type="button"
-                    variant="outline"
-                    className="btn-error h-9 px-3 text-sm"
+                    variant="danger"
+                    size="sm"
                     onClick={() => setConfirmUserDelete(true)}
                   >
                     Удалить
@@ -4147,8 +4147,8 @@ export default function CollectionsPage() {
                   {canManageUsers && selectedEmployee.telegram_id ? (
                     <Button
                       type="button"
-                      variant="outline"
-                      className="btn-error h-9 px-3 text-sm"
+                      variant="danger"
+                      size="sm"
                       onClick={() => setConfirmEmployeeDelete(true)}
                     >
                       Удалить

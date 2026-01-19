@@ -35,7 +35,7 @@ export const buildEventLogColumns = (
       const actions = options.rowActions?.(row.original) ?? [];
       return (
         <div className="flex items-center justify-between gap-2">
-          <span className="ui-status-badge" data-tone="muted" title={value}>
+          <span className="ui-status-badge" data-tone="neutral" title={value}>
             {value || '—'}
           </span>
           <RowActionButtons actions={actions} />
@@ -80,7 +80,7 @@ export const buildEventLogColumns = (
       const badgeClassName = 'ui-status-badge whitespace-pre-line';
       if (!hasLocation && !hasTransferLocation) {
         return (
-          <span className="ui-status-badge" data-tone="muted">
+          <span className="ui-status-badge" data-tone="neutral">
             —
           </span>
         );
@@ -95,7 +95,7 @@ export const buildEventLogColumns = (
                 rel="noopener"
                 className={badgeClassName}
                 data-badge-label={location}
-                data-tone="in_progress"
+                data-tone="neutral"
                 title={location}
               >
                 {location}
@@ -104,7 +104,7 @@ export const buildEventLogColumns = (
               <span
                 className={badgeClassName}
                 data-badge-label={location}
-                data-tone="muted"
+                data-tone="neutral"
                 title={location}
               >
                 {location}
@@ -115,7 +115,7 @@ export const buildEventLogColumns = (
             <span
               className={badgeClassName}
               data-badge-label={`Место перемещения: ${transferLocation}`}
-              data-tone="warning"
+              data-tone="danger"
             >
               Место перемещения: {transferLocation}
             </span>

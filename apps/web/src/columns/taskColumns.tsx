@@ -54,7 +54,7 @@ export const creatorBadgeClass = `${pillBadgeBaseClass} w-full max-w-full justif
 
 const assigneeBadgeClass = `${pillBadgeBaseClass} normal-case ${badgeTextClass} ring-1 ring-[var(--border)] bg-[var(--bg-muted)]`;
 
-export const fallbackBadgeClass = 'ui-status-badge ui-status-badge--muted';
+export const fallbackBadgeClass = 'ui-status-badge ui-status-badge--neutral';
 
 const locationBadgeClass = `${pillBadgeBaseClass} normal-case ${badgeTextClass} ring-1 ring-[color:var(--color-success)]/30 bg-[color:var(--color-success)]/10`;
 

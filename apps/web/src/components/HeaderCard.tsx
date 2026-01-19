@@ -26,10 +26,7 @@ export default function HeaderCard({
 }: HeaderCardProps) {
   const hasSideContent = Boolean(filters || actions);
   return (
-    <Card
-      className={cn('w-full rounded-lg p-6', className)}
-      bodyClassName="gap-4"
-    >
+    <Card className={cn('w-full rounded-lg', className)} bodyClassName="gap-4">
       <div
         className={cn(
           'flex flex-col gap-4',

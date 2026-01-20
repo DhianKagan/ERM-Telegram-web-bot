@@ -264,7 +264,10 @@ function SortableTaskCard({ task, onOpen, cardClass }: SortableTaskCardProps) {
       {...attributes}
       {...listeners}
       style={style}
-      className={cn('flex shrink-0', cardClass)}
+      className={cn(
+        'flex shrink-0 cursor-grab active:cursor-grabbing',
+        cardClass,
+      )}
     >
       <TaskCard task={task} onOpen={onOpen} />
     </div>
@@ -497,24 +500,24 @@ export default function TaskBoard() {
     if (totalTasks > 60) {
       return {
         gapClass: 'gap-1.5',
-        cardClass: 'min-w-[8.75rem] max-w-[11rem]',
+        cardClass: 'min-w-[8.75rem] max-w-[11rem] h-[8.5rem]',
       } as const;
     }
     if (totalTasks > 36) {
       return {
         gapClass: 'gap-2',
-        cardClass: 'min-w-[9rem] max-w-[11.5rem]',
+        cardClass: 'min-w-[9rem] max-w-[11.5rem] h-[9rem]',
       } as const;
     }
     if (totalTasks > 18) {
       return {
         gapClass: 'gap-2.5',
-        cardClass: 'min-w-[9.5rem] max-w-[12.5rem]',
+        cardClass: 'min-w-[9.5rem] max-w-[12.5rem] h-[9.5rem]',
       } as const;
     }
     return {
       gapClass: 'gap-3',
-      cardClass: 'min-w-[10rem] max-w-[13rem]',
+      cardClass: 'min-w-[10rem] max-w-[13rem] h-[10rem]',
     } as const;
   }, [totalTasks]);
 

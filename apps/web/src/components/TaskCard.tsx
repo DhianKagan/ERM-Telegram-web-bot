@@ -202,7 +202,7 @@ export default function TaskCard({
   }
 
   return (
-    <div className="flex min-h-[4.5rem] w-full flex-col gap-2 rounded-lg border border-border/70 bg-card/90 p-2 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-within:ring-2 focus-within:ring-ring/60 focus-within:ring-offset-2 focus-within:ring-offset-background">
+    <div className="flex h-full min-h-[8.5rem] w-full flex-col justify-between gap-2 rounded-lg border border-border/70 bg-card/90 p-2 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-within:ring-2 focus-within:ring-ring/60 focus-within:ring-offset-2 focus-within:ring-offset-background">
       {typeLabel || hasTransportPoints ? (
         <div className="flex flex-wrap items-center gap-2">
           {typeLabel ? <span className={typeClass}>{typeLabel}</span> : null}

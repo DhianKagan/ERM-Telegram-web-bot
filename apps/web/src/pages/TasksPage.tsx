@@ -50,6 +50,10 @@ export default function TasksPage() {
   const [params, setParams] = useSearchParams();
   const location = useLocation();
   const [mine, setMine] = React.useState(params.get('mine') === '1');
+  const [isDesktop, setIsDesktop] = React.useState(() => {
+    if (typeof window === 'undefined') return true;
+    return window.matchMedia('(min-width: 1024px)').matches;
+  });
   const { version, refresh, controller, filters, setFilterUsers } = useTasks();
   const { user, loading: authLoading } = useAuth();
   const searchRef = React.useRef<GlobalSearchHandle>(null);
@@ -240,6 +244,17 @@ export default function TasksPage() {
     void refetchTasks();
   }, [canView, refetchTasks, user?.telegram_id, version]);
 
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const mediaQuery = window.matchMedia('(min-width: 1024px)');
+    const handleChange = (event: MediaQueryListEvent) => {
+      setIsDesktop(event.matches);
+    };
+    setIsDesktop(mediaQuery.matches);
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
   const userMap = React.useMemo(() => {
     const map: Record<number, User> = {};
     users.forEach((u) => {
@@ -272,6 +287,78 @@ export default function TasksPage() {
     },
     [params, setParams],
   );
+
+  const toolbarChildren = isDesktop ? (
+    <form
+      className="hidden lg:flex flex-wrap items-end gap-3"
+      onSubmit={(event) => {
+        event.preventDefault();
+        handleSearch();
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          handleReset();
+        }
+      }}
+    >
+      <GlobalSearch ref={searchRef} showActions={false} />
+      {isPrivileged ? (
+        <FormGroup label="Показывать">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button type="button" size="sm" variant="outline">
+                Показывать
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="min-w-48">
+              <DropdownMenuLabel className="text-xs">
+                Показывать
+              </DropdownMenuLabel>
+              <DropdownMenuCheckboxItem
+                checked={mine}
+                onSelect={(event) => event.preventDefault()}
+                onCheckedChange={(checked) =>
+                  handleMineChange(Boolean(checked))
+                }
+                className="text-xs"
+              >
+                Мои задачи
+              </DropdownMenuCheckboxItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </FormGroup>
+      ) : null}
+      <SearchFilters ref={filtersRef} inline compact showActions={false} />
+      <div className="flex flex-wrap items-center gap-2">
+        <Button type="submit" size="sm" variant="primary">
+          Искать
+        </Button>
+        <Button type="button" size="sm" variant="outline" onClick={handleReset}>
+          Сбросить
+        </Button>
+      </div>
+    </form>
+  ) : null;
+
+  const toolbarActions = isDesktop ? (
+    <>
+      <Button
+        type="button"
+        size="sm"
+        variant="primary"
+        onClick={() => {
+          params.set('newTask', '1');
+          setParams(params);
+        }}
+      >
+        Создать
+      </Button>
+      <Button type="button" size="sm" variant="outline" onClick={refresh}>
+        Обновить
+      </Button>
+    </>
+  ) : null;
 
   const openTask = React.useCallback(
     (id: string) => {
@@ -328,86 +415,89 @@ export default function TasksPage() {
         title="Панель задач"
         description="Единое представление по задачам и назначенным исполнителям."
         filters={
-          <FilterGrid
-            variant="plain"
-            onSearch={handleSearch}
-            onReset={handleReset}
-            actions={
-              <>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="primary"
-                  onClick={() => {
-                    params.set('newTask', '1');
-                    setParams(params);
-                  }}
-                >
-                  Создать
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={refresh}
-                >
-                  Обновить
-                </Button>
-              </>
-            }
-          >
-            <FormGroup label="Поиск">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button type="button" size="sm" variant="outline">
-                    Поиск
+          !isDesktop ? (
+            <FilterGrid
+              variant="plain"
+              onSearch={handleSearch}
+              onReset={handleReset}
+              className="lg:hidden"
+              actions={
+                <>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="primary"
+                    onClick={() => {
+                      params.set('newTask', '1');
+                      setParams(params);
+                    }}
+                  >
+                    Создать
                   </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="min-w-80">
-                  <DropdownMenuLabel className="text-xs">
-                    Поиск по задачам
-                  </DropdownMenuLabel>
-                  <div className="px-2 pb-2">
-                    <GlobalSearch ref={searchRef} showActions={false} />
-                  </div>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </FormGroup>
-            {isPrivileged ? (
-              <FormGroup label="Показывать">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={refresh}
+                  >
+                    Обновить
+                  </Button>
+                </>
+              }
+            >
+              <FormGroup label="Поиск">
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button type="button" size="sm" variant="outline">
-                      Показывать
+                      Поиск
                     </Button>
                   </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" className="min-w-48">
+                  <DropdownMenuContent align="start" className="min-w-80">
                     <DropdownMenuLabel className="text-xs">
-                      Показывать
+                      Поиск по задачам
                     </DropdownMenuLabel>
-                    <DropdownMenuCheckboxItem
-                      checked={mine}
-                      onSelect={(event) => event.preventDefault()}
-                      onCheckedChange={(checked) =>
-                        handleMineChange(Boolean(checked))
-                      }
-                      className="text-xs"
-                    >
-                      Мои задачи
-                    </DropdownMenuCheckboxItem>
+                    <div className="px-2 pb-2">
+                      <GlobalSearch ref={searchRef} showActions={false} />
+                    </div>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </FormGroup>
-            ) : null}
-            <div className="sm:col-span-2 lg:col-span-3">
-              <SearchFilters
-                ref={filtersRef}
-                inline
-                compact
-                showActions={false}
-              />
-            </div>
-          </FilterGrid>
+              {isPrivileged ? (
+                <FormGroup label="Показывать">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button type="button" size="sm" variant="outline">
+                        Показывать
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="min-w-48">
+                      <DropdownMenuLabel className="text-xs">
+                        Показывать
+                      </DropdownMenuLabel>
+                      <DropdownMenuCheckboxItem
+                        checked={mine}
+                        onSelect={(event) => event.preventDefault()}
+                        onCheckedChange={(checked) =>
+                          handleMineChange(Boolean(checked))
+                        }
+                        className="text-xs"
+                      >
+                        Мои задачи
+                      </DropdownMenuCheckboxItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </FormGroup>
+              ) : null}
+              <div className="sm:col-span-2 lg:col-span-3">
+                <SearchFilters
+                  ref={filtersRef}
+                  inline
+                  compact
+                  showActions={false}
+                />
+              </div>
+            </FilterGrid>
+          ) : null
         }
       />
 
@@ -432,6 +522,8 @@ export default function TasksPage() {
                 onEdit={openTask}
                 onDelete={handleDelete}
                 onShare={handleShare}
+                toolbarChildren={toolbarChildren}
+                toolbarActions={toolbarActions}
               />
             </div>
             <div className="grid gap-4 lg:hidden">

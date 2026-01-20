@@ -31,6 +31,7 @@ interface TaskTableProps {
   onDelete?: (id: string) => void;
   onShare?: (id: string) => void;
   toolbarChildren?: React.ReactNode;
+  toolbarActions?: React.ReactNode;
   onDataChange?: (rows: TaskRow[]) => void;
 }
 
@@ -48,6 +49,7 @@ export default function TaskTable({
   onDelete,
   onShare,
   toolbarChildren,
+  toolbarActions,
   onDataChange,
 }: TaskTableProps) {
   const { query, filters } = useTasks();
@@ -162,6 +164,7 @@ export default function TaskTable({
       wrapCellsAsBadges
       rowHeight={56}
       toolbarChildren={toolbarChildren}
+      toolbarActions={toolbarActions}
     />
   );
 }

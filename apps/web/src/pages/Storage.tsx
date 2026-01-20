@@ -124,6 +124,10 @@ export default function StoragePage() {
   );
   const [detailsLoading, setDetailsLoading] = React.useState(false);
   const [preview, setPreview] = React.useState<PreviewState | null>(null);
+  const [isDesktop, setIsDesktop] = React.useState(() => {
+    if (typeof window === 'undefined') return true;
+    return window.matchMedia('(min-width: 1024px)').matches;
+  });
 
   const [diagnostics, setDiagnostics] =
     React.useState<StorageDiagnosticsReport | null>(null);
@@ -167,25 +171,47 @@ export default function StoragePage() {
       });
   }, [loadFiles, t]);
 
+  const handleSearchSubmit = React.useCallback(() => {
+    setSearch((value) => value.trim());
+    setPageIndex(0);
+  }, []);
+
+  const handleSearchReset = React.useCallback(() => {
+    setSearch('');
+    setSort('uploaded_desc');
+    setTypeFilter('');
+    setLinkFilter('all');
+    setPageIndex(0);
+  }, []);
+
   const handleSearchKeyDown = React.useCallback(
     (event: React.KeyboardEvent<HTMLInputElement>) => {
       if (event.key === 'Enter') {
         event.preventDefault();
-        setSearch(event.currentTarget.value.trim());
-        setPageIndex(0);
+        handleSearchSubmit();
       }
       if (event.key === 'Escape') {
         event.preventDefault();
-        setSearch('');
-        setPageIndex(0);
+        handleSearchReset();
       }
     },
-    [],
+    [handleSearchReset, handleSearchSubmit],
   );
 
   React.useEffect(() => {
     void loadFiles();
   }, [loadFiles]);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const mediaQuery = window.matchMedia('(min-width: 1024px)');
+    const handleChange = (event: MediaQueryListEvent) => {
+      setIsDesktop(event.matches);
+    };
+    setIsDesktop(mediaQuery.matches);
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
 
   React.useEffect(() => {
     let active = true;
@@ -535,6 +561,114 @@ export default function StoragePage() {
     [diagnostics],
   );
 
+  const toolbarChildren = isDesktop ? (
+    <form
+      className="hidden lg:flex flex-wrap items-end gap-3"
+      onSubmit={(event) => {
+        event.preventDefault();
+        handleSearchSubmit();
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          handleSearchReset();
+        }
+      }}
+    >
+      <FormGroup label="Поиск" htmlFor="storage-search">
+        <Input
+          id="storage-search"
+          value={search}
+          onChange={(event) => {
+            setSearch(event.target.value);
+            setPageIndex(0);
+          }}
+          onKeyDown={handleSearchKeyDown}
+          placeholder={t('storage.searchPlaceholder') ?? ''}
+        />
+      </FormGroup>
+      <FormGroup label="Сортировка" htmlFor="storage-sort">
+        <Select
+          id="storage-sort"
+          value={sort}
+          onChange={(event) => {
+            setSort(event.target.value as SortOption);
+            setPageIndex(0);
+          }}
+        >
+          <option value="uploaded_desc">
+            {t('storage.sort.uploadedDesc')}
+          </option>
+          <option value="uploaded_asc">{t('storage.sort.uploadedAsc')}</option>
+          <option value="size_desc">{t('storage.sort.sizeDesc')}</option>
+          <option value="size_asc">{t('storage.sort.sizeAsc')}</option>
+        </Select>
+      </FormGroup>
+      <FormGroup
+        label={t('storage.filters.type')}
+        htmlFor="storage-type-filter"
+      >
+        <Select
+          id="storage-type-filter"
+          value={typeFilter}
+          onChange={(event) => {
+            setTypeFilter(event.target.value);
+            setPageIndex(0);
+          }}
+        >
+          <option value="">{t('storage.filters.typeAll')}</option>
+          <option value="__empty__">{t('storage.filters.typeUnknown')}</option>
+          {typeOptions.map((type) => (
+            <option key={type} value={type}>
+              {type}
+            </option>
+          ))}
+        </Select>
+      </FormGroup>
+      <FormGroup
+        label={t('storage.filters.linked')}
+        htmlFor="storage-link-filter"
+      >
+        <Select
+          id="storage-link-filter"
+          value={linkFilter}
+          onChange={(event) => {
+            setLinkFilter(event.target.value as typeof linkFilter);
+            setPageIndex(0);
+          }}
+        >
+          <option value="all">{t('storage.filters.linkedAll')}</option>
+          <option value="linked">{t('storage.filters.linkedOnly')}</option>
+          <option value="unlinked">{t('storage.filters.linkedNone')}</option>
+        </Select>
+      </FormGroup>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button type="submit" size="sm" variant="primary">
+          Искать
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={handleSearchReset}
+        >
+          Сбросить
+        </Button>
+      </div>
+    </form>
+  ) : null;
+
+  const toolbarActions = isDesktop ? (
+    <Button
+      type="button"
+      variant="secondary"
+      onClick={() => void loadFiles()}
+      disabled={loading}
+    >
+      {t('storage.refresh')}
+    </Button>
+  ) : null;
+
   return (
     <div className="space-y-6">
       <Breadcrumbs items={[{ label: t('storage.title') }]} />
@@ -597,98 +731,105 @@ export default function StoragePage() {
           title={t('storage.title')}
           description={t('storage.total', { count: filteredFiles.length })}
           filters={
-            <FilterGrid
-              variant="plain"
-              showDefaultActions={false}
-              actions={
-                <Button
-                  type="button"
-                  variant="secondary"
-                  onClick={() => void loadFiles()}
-                  disabled={loading}
-                >
-                  {t('storage.refresh')}
-                </Button>
-              }
-            >
-              <FormGroup label="Поиск" htmlFor="storage-search">
-                <Input
-                  id="storage-search"
-                  value={search}
-                  onChange={(event) => {
-                    setSearch(event.target.value);
-                    setPageIndex(0);
-                  }}
-                  onKeyDown={handleSearchKeyDown}
-                  placeholder={t('storage.searchPlaceholder') ?? ''}
-                />
-              </FormGroup>
-              <FormGroup label="Сортировка" htmlFor="storage-sort">
-                <Select
-                  id="storage-sort"
-                  value={sort}
-                  onChange={(event) => {
-                    setSort(event.target.value as SortOption);
-                    setPageIndex(0);
-                  }}
-                >
-                  <option value="uploaded_desc">
-                    {t('storage.sort.uploadedDesc')}
-                  </option>
-                  <option value="uploaded_asc">
-                    {t('storage.sort.uploadedAsc')}
-                  </option>
-                  <option value="size_desc">
-                    {t('storage.sort.sizeDesc')}
-                  </option>
-                  <option value="size_asc">{t('storage.sort.sizeAsc')}</option>
-                </Select>
-              </FormGroup>
-              <FormGroup
-                label={t('storage.filters.type')}
-                htmlFor="storage-type-filter"
+            !isDesktop ? (
+              <FilterGrid
+                variant="plain"
+                showDefaultActions={false}
+                className="lg:hidden"
+                actions={
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => void loadFiles()}
+                    disabled={loading}
+                  >
+                    {t('storage.refresh')}
+                  </Button>
+                }
               >
-                <Select
-                  id="storage-type-filter"
-                  value={typeFilter}
-                  onChange={(event) => {
-                    setTypeFilter(event.target.value);
-                    setPageIndex(0);
-                  }}
-                >
-                  <option value="">{t('storage.filters.typeAll')}</option>
-                  <option value="__empty__">
-                    {t('storage.filters.typeUnknown')}
-                  </option>
-                  {typeOptions.map((type) => (
-                    <option key={type} value={type}>
-                      {type}
+                <FormGroup label="Поиск" htmlFor="storage-search">
+                  <Input
+                    id="storage-search"
+                    value={search}
+                    onChange={(event) => {
+                      setSearch(event.target.value);
+                      setPageIndex(0);
+                    }}
+                    onKeyDown={handleSearchKeyDown}
+                    placeholder={t('storage.searchPlaceholder') ?? ''}
+                  />
+                </FormGroup>
+                <FormGroup label="Сортировка" htmlFor="storage-sort">
+                  <Select
+                    id="storage-sort"
+                    value={sort}
+                    onChange={(event) => {
+                      setSort(event.target.value as SortOption);
+                      setPageIndex(0);
+                    }}
+                  >
+                    <option value="uploaded_desc">
+                      {t('storage.sort.uploadedDesc')}
                     </option>
-                  ))}
-                </Select>
-              </FormGroup>
-              <FormGroup
-                label={t('storage.filters.linked')}
-                htmlFor="storage-link-filter"
-              >
-                <Select
-                  id="storage-link-filter"
-                  value={linkFilter}
-                  onChange={(event) => {
-                    setLinkFilter(event.target.value as typeof linkFilter);
-                    setPageIndex(0);
-                  }}
+                    <option value="uploaded_asc">
+                      {t('storage.sort.uploadedAsc')}
+                    </option>
+                    <option value="size_desc">
+                      {t('storage.sort.sizeDesc')}
+                    </option>
+                    <option value="size_asc">
+                      {t('storage.sort.sizeAsc')}
+                    </option>
+                  </Select>
+                </FormGroup>
+                <FormGroup
+                  label={t('storage.filters.type')}
+                  htmlFor="storage-type-filter"
                 >
-                  <option value="all">{t('storage.filters.linkedAll')}</option>
-                  <option value="linked">
-                    {t('storage.filters.linkedOnly')}
-                  </option>
-                  <option value="unlinked">
-                    {t('storage.filters.linkedNone')}
-                  </option>
-                </Select>
-              </FormGroup>
-            </FilterGrid>
+                  <Select
+                    id="storage-type-filter"
+                    value={typeFilter}
+                    onChange={(event) => {
+                      setTypeFilter(event.target.value);
+                      setPageIndex(0);
+                    }}
+                  >
+                    <option value="">{t('storage.filters.typeAll')}</option>
+                    <option value="__empty__">
+                      {t('storage.filters.typeUnknown')}
+                    </option>
+                    {typeOptions.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </Select>
+                </FormGroup>
+                <FormGroup
+                  label={t('storage.filters.linked')}
+                  htmlFor="storage-link-filter"
+                >
+                  <Select
+                    id="storage-link-filter"
+                    value={linkFilter}
+                    onChange={(event) => {
+                      setLinkFilter(event.target.value as typeof linkFilter);
+                      setPageIndex(0);
+                    }}
+                  >
+                    <option value="all">
+                      {t('storage.filters.linkedAll')}
+                    </option>
+                    <option value="linked">
+                      {t('storage.filters.linkedOnly')}
+                    </option>
+                    <option value="unlinked">
+                      {t('storage.filters.linkedNone')}
+                    </option>
+                  </Select>
+                </FormGroup>
+              </FilterGrid>
+            ) : null
           }
         />
         {loading ? (
@@ -723,6 +864,8 @@ export default function StoragePage() {
           showFilters={false}
           wrapCellsAsBadges
           rowHeight={56}
+          toolbarChildren={toolbarChildren}
+          toolbarActions={toolbarActions}
         />
       </section>
       <Modal open={Boolean(selectedId)} onClose={closeModal}>

@@ -29,6 +29,7 @@ type SimpleTableProps<T> = {
   onPageSizeChange?: (size: number) => void;
   onRowClick?: (row: T) => void;
   toolbarChildren?: React.ReactNode;
+  toolbarActions?: React.ReactNode;
   showGlobalSearch?: boolean;
   showFilters?: boolean;
   wrapCellsAsBadges?: boolean;

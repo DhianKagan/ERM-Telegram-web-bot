@@ -29,10 +29,6 @@ interface Props<T> {
   showFilters?: boolean;
 }
 
-type JsPdfWithAutoTable = InstanceType<typeof JsPDFClass> & {
-  autoTable: (options: AutoTableOptions) => void;
-};
-
 export default function TableToolbar<T>({
   table,
   children,
@@ -42,21 +38,51 @@ export default function TableToolbar<T>({
   const columns = table.getAllLeafColumns();
   const { t } = useTranslation();
 
-  const exportCsv = () => {
-    const headers = columns
-      .filter((c) => c.getIsVisible())
-      .map((c) => c.columnDef.header as string);
-    const rows = table
-      .getRowModel()
-      .rows.map((r) =>
-        r.getVisibleCells().map((c) => String(c.getValue() ?? '')),
-      );
-    const csv = [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+  type JsPdfWithAutoTable = InstanceType<typeof JsPDFClass> & {
+    autoTable: (options: AutoTableOptions) => void;
+  };
+
+  const downloadFile = (data: BlobPart, type: string, fileName: string) => {
+    const blob = new Blob([data], { type });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'table.csv';
+    a.download = fileName;
     a.click();
+    setTimeout(() => {
+      URL.revokeObjectURL(a.href);
+    }, 0);
+  };
+
+  const getExportData = () => {
+    const headers = columns
+      .filter((col) => col.getIsVisible())
+      .map((col) => {
+        const header = col.columnDef.header;
+        return typeof header === 'string' ? header : String(header ?? '');
+      });
+    const rows = table
+      .getRowModel()
+      .rows.map((row) =>
+        row.getVisibleCells().map((cell) => String(cell.getValue() ?? '')),
+      );
+    return { headers, rows };
+  };
+
+  const exportCsv = async () => {
+    const { utils } = await import('xlsx');
+    const { headers, rows } = getExportData();
+    const worksheet = utils.aoa_to_sheet([headers, ...rows]);
+    const csv = utils.sheet_to_csv(worksheet);
+    downloadFile(csv, 'text/csv;charset=utf-8;', 'table.csv');
+  };
+
+  const exportXlsx = async () => {
+    const { utils, writeFile } = await import('xlsx');
+    const { headers, rows } = getExportData();
+    const workbook = utils.book_new();
+    const worksheet = utils.aoa_to_sheet([headers, ...rows]);
+    utils.book_append_sheet(workbook, worksheet, 'Данные');
+    writeFile(workbook, 'table.xlsx');
   };
 
   const exportPdf = async () => {
@@ -64,14 +90,7 @@ export default function TableToolbar<T>({
     const autoTableEntry = 'jspdf-autotable';
     const { default: jsPDF } = await import(/* @vite-ignore */ pdfEntry);
     await import(/* @vite-ignore */ autoTableEntry);
-    const headers = columns
-      .filter((c) => c.getIsVisible())
-      .map((c) => c.columnDef.header as string);
-    const rows = table
-      .getRowModel()
-      .rows.map((r) =>
-        r.getVisibleCells().map((c) => String(c.getValue() ?? '')),
-      );
+    const { headers, rows } = getExportData();
     const doc = new jsPDF() as JsPdfWithAutoTable;
     doc.autoTable({ head: [headers], body: rows });
     doc.save('table.pdf');
@@ -83,7 +102,9 @@ export default function TableToolbar<T>({
   };
 
   const moveColumn = (id: string, dir: number) => {
-    const order = table.getState().columnOrder;
+    const order = table.getState().columnOrder.length
+      ? table.getState().columnOrder
+      : table.getAllLeafColumns().map((col) => col.id);
     const idx = order.indexOf(id);
     if (idx === -1) return;
     const next = idx + dir;
@@ -119,10 +140,17 @@ export default function TableToolbar<T>({
               <DropdownMenuSubContent>
                 <DropdownMenuItem
                   onSelect={() => {
-                    exportCsv();
+                    void exportCsv();
                   }}
                 >
                   CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onSelect={() => {
+                    void exportXlsx();
+                  }}
+                >
+                  XLSX
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onSelect={() => {
@@ -158,7 +186,7 @@ export default function TableToolbar<T>({
               </DropdownMenuSubContent>
             </DropdownMenuSub>
             <DropdownMenuSub>
-              <DropdownMenuSubTrigger>Сортировка</DropdownMenuSubTrigger>
+              <DropdownMenuSubTrigger>Колонки</DropdownMenuSubTrigger>
               <DropdownMenuSubContent className="min-w-64">
                 {columns.map((col) => (
                   <div

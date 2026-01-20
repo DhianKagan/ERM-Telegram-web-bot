@@ -32,6 +32,7 @@ interface DataTableProps<T> {
   onPageSizeChange?: (size: number) => void;
   onRowClick?: (row: T) => void;
   toolbarChildren?: React.ReactNode;
+  toolbarActions?: React.ReactNode;
   showGlobalSearch?: boolean;
   showFilters?: boolean;
   wrapCellsAsBadges?: boolean;
@@ -196,6 +197,7 @@ export default function DataTable<T>({
   onPageSizeChange,
   onRowClick,
   toolbarChildren,
+  toolbarActions,
   showGlobalSearch = true,
   showFilters = true,
   wrapCellsAsBadges = false,
@@ -402,6 +404,7 @@ export default function DataTable<T>({
         table={table as TableType<T>}
         showGlobalSearch={showGlobalSearch}
         showFilters={showFilters}
+        actions={toolbarActions}
       >
         {toolbarChildren}
       </TableToolbar>

@@ -50,6 +50,10 @@ export default function ArchivePage() {
   const [appliedSearch, setAppliedSearch] = React.useState('');
   const [refreshKey, setRefreshKey] = React.useState(0);
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
+  const [isDesktop, setIsDesktop] = React.useState(() => {
+    if (typeof window === 'undefined') return true;
+    return window.matchMedia('(min-width: 1024px)').matches;
+  });
 
   const access = typeof user?.access === 'number' ? user.access : 0;
   const canViewArchive = hasAccess(access, ARCHIVE_ACCESS);
@@ -130,6 +134,17 @@ export default function ArchivePage() {
     };
   }, [page, appliedSearch, refreshKey, canViewArchive, addToast]);
 
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return undefined;
+    const mediaQuery = window.matchMedia('(min-width: 1024px)');
+    const handleChange = (event: MediaQueryListEvent) => {
+      setIsDesktop(event.matches);
+    };
+    setIsDesktop(mediaQuery.matches);
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
   const handleSearchSubmit = React.useCallback(() => {
     setAppliedSearch(search.trim());
     setPage(0);
@@ -193,6 +208,58 @@ export default function ArchivePage() {
     }
   }, [selectedIds, addToast]);
 
+  const toolbarChildren = isDesktop ? (
+    <form
+      className="hidden lg:flex flex-wrap items-end gap-3"
+      onSubmit={(event) => {
+        event.preventDefault();
+        handleSearchSubmit();
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          handleSearchReset();
+        }
+      }}
+    >
+      <FormGroup label="Поиск" htmlFor="archive-search">
+        <Input
+          id="archive-search"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Поиск по номеру или названию"
+          aria-label="Поиск по архиву"
+        />
+      </FormGroup>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button type="submit" size="sm" variant="primary">
+          Искать
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          onClick={handleSearchReset}
+        >
+          Сбросить
+        </Button>
+      </div>
+    </form>
+  ) : null;
+
+  const toolbarActions =
+    isDesktop && canPurge ? (
+      <Button
+        type="button"
+        size="sm"
+        variant="destructive"
+        disabled={!selectedIds.size || purging || loading}
+        onClick={handlePurge}
+      >
+        Полное удаление
+      </Button>
+    ) : null;
+
   const columns = React.useMemo(
     () =>
       archiveColumns({
@@ -232,33 +299,36 @@ export default function ArchivePage() {
         title="Архив задач"
         description="Здесь отображаются удалённые задачи только для чтения."
         filters={
-          <FilterGrid
-            variant="plain"
-            onSearch={handleSearchSubmit}
-            onReset={handleSearchReset}
-            actions={
-              canPurge ? (
-                <Button
-                  type="button"
-                  variant="destructive"
-                  disabled={!selectedIds.size || purging || loading}
-                  onClick={handlePurge}
-                >
-                  Полное удаление
-                </Button>
-              ) : null
-            }
-          >
-            <FormGroup label="Поиск" htmlFor="archive-search">
-              <Input
-                id="archive-search"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Поиск по номеру или названию"
-                aria-label="Поиск по архиву"
-              />
-            </FormGroup>
-          </FilterGrid>
+          !isDesktop ? (
+            <FilterGrid
+              variant="plain"
+              onSearch={handleSearchSubmit}
+              onReset={handleSearchReset}
+              className="lg:hidden"
+              actions={
+                canPurge ? (
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    disabled={!selectedIds.size || purging || loading}
+                    onClick={handlePurge}
+                  >
+                    Полное удаление
+                  </Button>
+                ) : null
+              }
+            >
+              <FormGroup label="Поиск" htmlFor="archive-search">
+                <Input
+                  id="archive-search"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  placeholder="Поиск по номеру или названию"
+                  aria-label="Поиск по архиву"
+                />
+              </FormGroup>
+            </FilterGrid>
+          ) : null
         }
       />
       {loading ? (
@@ -275,6 +345,8 @@ export default function ArchivePage() {
         showFilters={false}
         wrapCellsAsBadges
         rowHeight={56}
+        toolbarChildren={toolbarChildren}
+        toolbarActions={toolbarActions}
       />
       <div className="text-sm text-muted-foreground">
         Найдено {total} {totalLabel}

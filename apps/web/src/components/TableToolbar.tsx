@@ -25,6 +25,7 @@ import {
 interface Props<T> {
   table: Table<T>;
   children?: React.ReactNode;
+  actions?: React.ReactNode;
   showGlobalSearch?: boolean;
   showFilters?: boolean;
 }
@@ -32,6 +33,7 @@ interface Props<T> {
 export default function TableToolbar<T>({
   table,
   children,
+  actions,
   showGlobalSearch = true,
   showFilters = true,
 }: Props<T>) {
@@ -120,7 +122,8 @@ export default function TableToolbar<T>({
         {showGlobalSearch ? <GlobalSearch /> : null}
         {children}
       </div>
-      <div className="ui-filter-row__actions">
+      <div className="ui-filter-row__actions flex flex-wrap items-center gap-2">
+        {actions}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button

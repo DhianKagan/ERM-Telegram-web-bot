@@ -1,7 +1,7 @@
 // Назначение: канбан-доска задач с перетаскиванием
 // Основные модули: React, dnd-kit, сервис задач
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   DndContext,
   KeyboardSensor,
@@ -22,10 +22,17 @@ import { CSS } from '@dnd-kit/utilities';
 import { useTranslation } from 'react-i18next';
 
 import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { FormGroup } from '@/components/ui/form-group';
 import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import ActionsDropdown from './components/ActionsDropdown';
 import TaskCard from './components/TaskCard';
 import TaskDialog from './components/TaskDialog';
 import useTasks from './context/useTasks';
@@ -60,6 +67,19 @@ type LayoutConfig = {
   gapClass: string;
   cardClass: string;
 };
+
+function useDebouncedValue<T>(value: T, delayMs: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const handle = window.setTimeout(() => {
+      setDebounced(value);
+    }, delayMs);
+    return () => {
+      window.clearTimeout(handle);
+    };
+  }, [value, delayMs]);
+  return debounced;
+}
 
 const DEFAULT_FILTERS: FilterState = {
   search: '',
@@ -320,6 +340,7 @@ function KanbanColumn({ status, tasks, layout, onOpen }: KanbanColumnProps) {
 export default function TaskBoard() {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [tasks, setTasks] = useState<KanbanTask[]>([]);
   const [filters, setFilters] = useState<FilterState>(() => ({
     ...DEFAULT_FILTERS,
@@ -327,6 +348,8 @@ export default function TaskBoard() {
   const [formState, setFormState] = useState<FilterState>(() => ({
     ...DEFAULT_FILTERS,
   }));
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [searchDraft, setSearchDraft] = useState(DEFAULT_FILTERS.search);
   const [params, setParams] = useSearchParams();
   const paramsSnapshot = params.toString();
   const open = params.get('newTask') !== null;
@@ -334,6 +357,7 @@ export default function TaskBoard() {
   const currentUserId =
     typeof user?.telegram_id === 'number' ? user.telegram_id : null;
   const accessMask = typeof user?.access === 'number' ? user.access : 0;
+  const sortSelectRef = useRef<HTMLSelectElement | null>(null);
   const isAdmin =
     (user?.role ?? '').toLowerCase() === 'admin' ||
     hasAccess(accessMask, ACCESS_ADMIN) ||
@@ -352,7 +376,17 @@ export default function TaskBoard() {
 
     setFilters((prev) => (areFiltersEqual(prev, next) ? prev : next));
     setFormState((prev) => (areFiltersEqual(prev, next) ? prev : next));
+    setSearchDraft(next.search);
   }, [paramsSnapshot]);
+
+  const debouncedSearch = useDebouncedValue(searchDraft, 300);
+  useEffect(() => {
+    setFormState((prev) =>
+      prev.search === debouncedSearch
+        ? prev
+        : { ...prev, search: debouncedSearch },
+    );
+  }, [debouncedSearch]);
 
   const updateParamsWithFilters = useCallback(
     (nextFilters: FilterState) => {
@@ -521,6 +555,43 @@ export default function TaskBoard() {
     } as const;
   }, [totalTasks]);
 
+  const openNewTaskDialog = useCallback(() => {
+    const next = new URLSearchParams(params);
+    next.set('newTask', '1');
+    next.delete('task');
+    setParams(next);
+  }, [params, setParams]);
+
+  const handleExport = useCallback(() => {
+    const fileName = `kanban-tasks-${new Date().toISOString().slice(0, 10)}.json`;
+    const payload = JSON.stringify(preparedTasks, null, 2);
+    const blob = new Blob([payload], {
+      type: 'application/json;charset=utf-8',
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = fileName;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }, [preparedTasks]);
+
+  const applyFilters = useCallback(
+    (nextFilters: FilterState) => {
+      setFilters(nextFilters);
+      updateParamsWithFilters(nextFilters);
+    },
+    [updateParamsWithFilters],
+  );
+
+  const resetFilters = useCallback(() => {
+    const next = { ...DEFAULT_FILTERS };
+    setSearchDraft(next.search);
+    setFormState(next);
+    setFilters(next);
+    updateParamsWithFilters(next);
+  }, [updateParamsWithFilters]);
+
   useEffect(() => {
     let active = true;
     fetchKanban()
@@ -620,6 +691,143 @@ export default function TaskBoard() {
     [params, setParams],
   );
 
+  const FiltersForm = ({
+    className,
+    actionsClassName,
+    onAfterSubmit,
+  }: {
+    className?: string;
+    actionsClassName?: string;
+    onAfterSubmit?: () => void;
+  }) => (
+    <form
+      className={cn('space-y-4', className)}
+      onSubmit={(event) => {
+        event.preventDefault();
+        const nextFilters = { ...formState, search: searchDraft };
+        setFormState(nextFilters);
+        applyFilters(nextFilters);
+        onAfterSubmit?.();
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          resetFilters();
+        }
+      }}
+    >
+      <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <FormGroup
+          label={t('kanban.filters.searchLabel')}
+          htmlFor="kanban-search"
+        >
+          <Input
+            id="kanban-search"
+            className="w-full"
+            value={searchDraft}
+            onChange={(event) => {
+              setSearchDraft(event.target.value);
+            }}
+            placeholder={t('kanban.filters.searchPlaceholder') ?? ''}
+          />
+        </FormGroup>
+        <FormGroup
+          label={t('kanban.filters.transportLabel')}
+          htmlFor="kanban-transport"
+        >
+          <Select
+            id="kanban-transport"
+            value={formState.transport}
+            onChange={(event) => {
+              const next = event.target.value as TransportFilter;
+              setFormState((prev) => ({ ...prev, transport: next }));
+            }}
+          >
+            <option value="any">{t('kanban.filters.transportAny')}</option>
+            <option value="car">{t('kanban.filters.transportCar')}</option>
+            <option value="truck">{t('kanban.filters.transportTruck')}</option>
+            <option value="none">{t('kanban.filters.transportNone')}</option>
+          </Select>
+        </FormGroup>
+        <FormGroup label={t('kanban.filters.sortLabel')} htmlFor="kanban-sort">
+          <Select
+            id="kanban-sort"
+            ref={sortSelectRef}
+            value={formState.sort}
+            onChange={(event) => {
+              const next = event.target.value as SortOption;
+              setFormState((prev) => ({ ...prev, sort: next }));
+            }}
+          >
+            <option value="title_asc">
+              {t('kanban.filters.sortTitleAsc')}
+            </option>
+            <option value="title_desc">
+              {t('kanban.filters.sortTitleDesc')}
+            </option>
+            <option value="number_asc">
+              {t('kanban.filters.sortNumberAsc')}
+            </option>
+            <option value="type_asc">{t('kanban.filters.sortTypeAsc')}</option>
+            <option value="status_asc">
+              {t('kanban.filters.sortStatusAsc')}
+            </option>
+            <option value="priority_asc">
+              {t('kanban.filters.sortPriorityAsc')}
+            </option>
+            <option value="executor_asc">
+              {t('kanban.filters.sortExecutorAsc')}
+            </option>
+            <option value="creator_asc">
+              {t('kanban.filters.sortCreatorAsc')}
+            </option>
+            <option value="driver_asc">
+              {t('kanban.filters.sortDriverAsc')}
+            </option>
+            <option value="transport_asc">
+              {t('kanban.filters.sortTransportAsc')}
+            </option>
+          </Select>
+        </FormGroup>
+      </div>
+      <div
+        className={cn(
+          'flex flex-wrap items-center justify-end gap-2',
+          actionsClassName,
+        )}
+      >
+        <Button
+          type="submit"
+          size="sm"
+          variant="primary"
+          className="min-w-[7rem]"
+        >
+          {t('kanban.filters.apply')}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="min-w-[7rem]"
+          onClick={() => {
+            resetFilters();
+          }}
+        >
+          {t('reset')}
+        </Button>
+        <Button
+          type="button"
+          size="sm"
+          variant="success"
+          className="min-w-[7rem]"
+          onClick={openNewTaskDialog}
+        >
+          Новая задача
+        </Button>
+      </div>
+    </form>
+  );
+
   return (
     <div className="space-y-6 p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -627,149 +835,39 @@ export default function TaskBoard() {
           <Button asChild variant="secondary">
             <Link to="/tasks">Таблица</Link>
           </Button>
-          <Button
-            size="sm"
-            variant="success"
-            onClick={() => {
-              const next = new URLSearchParams(params);
-              next.set('newTask', '1');
-              next.delete('task');
-              setParams(next);
-            }}
-          >
-            Новая задача
-          </Button>
         </div>
       </div>
       <section className="space-y-4 rounded border border-border bg-card/60 p-4 shadow-sm">
-        <header className="flex flex-col gap-1">
-          <h2 className="text-sm font-semibold text-foreground">
-            {t('kanban.filters.title')}
-          </h2>
-          <p className="text-xs text-muted-foreground">
-            {t('kanban.filters.result', { count: totalTasks })}
-          </p>
-        </header>
-        <form
-          className="space-y-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            const nextFilters = { ...formState };
-            setFilters(nextFilters);
-            updateParamsWithFilters(nextFilters);
-          }}
-          onKeyDown={(event) => {
-            if (event.key === 'Escape') {
-              event.preventDefault();
-              const next = { ...DEFAULT_FILTERS };
-              setFormState(next);
-              setFilters(next);
-              updateParamsWithFilters(next);
-            }
-          }}
-        >
-          <div className="grid w-full grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <FormGroup
-              label={t('kanban.filters.searchLabel')}
-              htmlFor="kanban-search"
-            >
-              <Input
-                id="kanban-search"
-                className="w-full"
-                value={formState.search}
-                onChange={(event) => {
-                  const next = event.target.value;
-                  setFormState((prev) => ({ ...prev, search: next }));
-                }}
-                placeholder={t('kanban.filters.searchPlaceholder') ?? ''}
-              />
-            </FormGroup>
-            <FormGroup
-              label={t('kanban.filters.transportLabel')}
-              htmlFor="kanban-transport"
-            >
-              <Select
-                id="kanban-transport"
-                value={formState.transport}
-                onChange={(event) => {
-                  const next = event.target.value as TransportFilter;
-                  setFormState((prev) => ({ ...prev, transport: next }));
-                }}
-              >
-                <option value="any">{t('kanban.filters.transportAny')}</option>
-                <option value="car">{t('kanban.filters.transportCar')}</option>
-                <option value="truck">
-                  {t('kanban.filters.transportTruck')}
-                </option>
-                <option value="none">
-                  {t('kanban.filters.transportNone')}
-                </option>
-              </Select>
-            </FormGroup>
-            <FormGroup
-              label={t('kanban.filters.sortLabel')}
-              htmlFor="kanban-sort"
-            >
-              <Select
-                id="kanban-sort"
-                value={formState.sort}
-                onChange={(event) => {
-                  const next = event.target.value as SortOption;
-                  setFormState((prev) => ({ ...prev, sort: next }));
-                }}
-              >
-                <option value="title_asc">
-                  {t('kanban.filters.sortTitleAsc')}
-                </option>
-                <option value="title_desc">
-                  {t('kanban.filters.sortTitleDesc')}
-                </option>
-                <option value="number_asc">
-                  {t('kanban.filters.sortNumberAsc')}
-                </option>
-                <option value="type_asc">
-                  {t('kanban.filters.sortTypeAsc')}
-                </option>
-                <option value="status_asc">
-                  {t('kanban.filters.sortStatusAsc')}
-                </option>
-                <option value="priority_asc">
-                  {t('kanban.filters.sortPriorityAsc')}
-                </option>
-                <option value="executor_asc">
-                  {t('kanban.filters.sortExecutorAsc')}
-                </option>
-                <option value="creator_asc">
-                  {t('kanban.filters.sortCreatorAsc')}
-                </option>
-                <option value="driver_asc">
-                  {t('kanban.filters.sortDriverAsc')}
-                </option>
-                <option value="transport_asc">
-                  {t('kanban.filters.sortTransportAsc')}
-                </option>
-              </Select>
-            </FormGroup>
+        <header className="flex flex-wrap items-center justify-between gap-3">
+          <div className="space-y-1">
+            <h2 className="text-sm font-semibold text-foreground">
+              {t('kanban.filters.title')}
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              {t('kanban.filters.result', { count: totalTasks })}
+            </p>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button type="submit" size="sm" variant="primary">
-              {t('kanban.filters.apply')}
-            </Button>
+          <div className="flex items-center gap-2">
             <Button
               type="button"
               size="sm"
               variant="outline"
-              onClick={() => {
-                const next = { ...DEFAULT_FILTERS };
-                setFormState(next);
-                setFilters(next);
-                updateParamsWithFilters(next);
-              }}
+              className="sm:hidden"
+              onClick={() => setFiltersOpen(true)}
             >
-              {t('reset')}
+              Фильтры
             </Button>
+            <ActionsDropdown
+              onManage={() => navigate('/tasks')}
+              onExport={handleExport}
+              onSettings={() => navigate('/cp/settings')}
+              onSort={() => sortSelectRef.current?.focus()}
+            />
           </div>
-        </form>
+        </header>
+        <div className="hidden sm:block">
+          <FiltersForm />
+        </div>
       </section>
       <div>
         <DndContext
@@ -803,6 +901,14 @@ export default function TaskBoard() {
           }}
         />
       )}
+      <Dialog open={filtersOpen} onOpenChange={setFiltersOpen}>
+        <DialogContent className="max-h-[90vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>Фильтры задач</DialogTitle>
+          </DialogHeader>
+          <FiltersForm onAfterSubmit={() => setFiltersOpen(false)} />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -15,6 +15,7 @@ type FilterGridProps = {
   showDefaultActions?: boolean;
   variant?: 'card' | 'plain';
   className?: string;
+  formClassName?: string;
 };
 
 export default function FilterGrid({
@@ -25,6 +26,7 @@ export default function FilterGrid({
   showDefaultActions = true,
   variant = 'card',
   className,
+  formClassName,
 }: FilterGridProps) {
   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -62,7 +64,10 @@ export default function FilterGrid({
       <form
         onSubmit={handleSubmit}
         onKeyDown={handleKeyDown}
-        className="grid grid-cols-1 items-end gap-4 sm:grid-cols-2 lg:grid-cols-4"
+        className={cn(
+          'grid grid-cols-1 items-end gap-4 sm:grid-cols-2 lg:grid-cols-4',
+          formClassName,
+        )}
       >
         {children}
         {actionsContent ? (

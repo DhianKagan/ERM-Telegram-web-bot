@@ -858,6 +858,30 @@ export default function taskColumns(
 ): ColumnDef<TaskRow>[] {
   const cols: ColumnDef<TaskRow>[] = [
     {
+      header: 'Тип',
+      accessorKey: 'task_type',
+      meta: {
+        width: 'clamp(4.5rem, 8vw, 6.5rem)',
+        minWidth: '4.5rem',
+        truncate: true,
+        cellClassName: 'whitespace-nowrap',
+      },
+      cell: (p) => {
+        const value = p.getValue<string>() || '';
+        const trimmed = value.trim();
+        if (!trimmed) {
+          return '';
+        }
+        const badgeClass = getTypeBadgeClass(trimmed);
+        const className = badgeClass || `${fallbackBadgeClass} normal-case`;
+        return (
+          <span className={className} title={trimmed}>
+            {trimmed}
+          </span>
+        );
+      },
+    },
+    {
       header: 'Название',
       accessorKey: 'title',
       meta: {
@@ -1149,30 +1173,6 @@ export default function taskColumns(
             status={row.status}
             entityKind={rowKind}
           />
-        );
-      },
-    },
-    {
-      header: 'Тип',
-      accessorKey: 'task_type',
-      meta: {
-        width: 'clamp(4.5rem, 8vw, 6.5rem)',
-        minWidth: '4.5rem',
-        truncate: true,
-        cellClassName: 'whitespace-nowrap',
-      },
-      cell: (p) => {
-        const value = p.getValue<string>() || '';
-        const trimmed = value.trim();
-        if (!trimmed) {
-          return '';
-        }
-        const badgeClass = getTypeBadgeClass(trimmed);
-        const className = badgeClass || `${fallbackBadgeClass} normal-case`;
-        return (
-          <span className={className} title={trimmed}>
-            {trimmed}
-          </span>
         );
       },
     },

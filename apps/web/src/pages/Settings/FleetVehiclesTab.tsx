@@ -2,6 +2,7 @@
 // Основные модули: React, services/fleets, FleetVehicleDialog, Modal, SimpleTable
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
+import { Button } from '@/components/ui/button';
 import { FormGroup } from '@/components/ui/form-group';
 import { Input } from '@/components/ui/input';
 import { SimpleTable } from '@/components/ui/simple-table';
@@ -372,6 +373,8 @@ export default function FleetVehiclesTab() {
             variant="plain"
             onSearch={handleSearchSubmit}
             onReset={handleSearchReset}
+            showDefaultActions={false}
+            formClassName="sm:grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,1fr)_auto]"
           >
             <FormGroup label="Поиск" htmlFor="fleet-vehicles-search">
               <Input
@@ -382,6 +385,19 @@ export default function FleetVehiclesTab() {
                 placeholder="Название или номер"
               />
             </FormGroup>
+            <div className="flex flex-wrap items-center justify-end gap-3">
+              <Button type="submit" size="sm" variant="primary">
+                Искать
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="primary"
+                onClick={handleSearchReset}
+              >
+                Сбросить
+              </Button>
+            </div>
           </FilterGrid>
         }
       />

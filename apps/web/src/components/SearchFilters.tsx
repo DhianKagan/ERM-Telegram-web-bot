@@ -5,6 +5,13 @@ import { TASK_STATUSES, PRIORITIES, TASK_TYPES } from 'shared';
 import { Button } from '@/components/ui/button';
 import { FormGroup } from '@/components/ui/form-group';
 import { Input } from '@/components/ui/input';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import useTasks from '../context/useTasks';
 import type { TaskFilterUser } from '../context/TasksContext';
 
@@ -16,6 +23,7 @@ export type SearchFiltersHandle = {
 interface Props {
   inline?: boolean;
   showActions?: boolean;
+  compact?: boolean;
 }
 
 const emptyFilters = {
@@ -28,7 +36,7 @@ const emptyFilters = {
 };
 
 const SearchFilters = React.forwardRef<SearchFiltersHandle, Props>(
-  ({ inline = false, showActions = true }, ref) => {
+  ({ inline = false, showActions = true, compact = false }, ref) => {
     const { filters, setFilters, filterUsers } = useTasks();
     const [local, setLocal] = React.useState(filters);
 
@@ -99,6 +107,183 @@ const SearchFilters = React.forwardRef<SearchFiltersHandle, Props>(
         resetFilters();
       }
     };
+
+    const renderCount = (count: number) =>
+      count > 0 ? (
+        <span className="rounded bg-muted px-1.5 text-[11px] font-medium text-muted-foreground">
+          {count}
+        </span>
+      ) : null;
+
+    const dropdownTriggerClassName =
+      'flex items-center gap-2 rounded border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring';
+
+    const keepOpen = (event: Event) => {
+      event.preventDefault();
+    };
+
+    const compactContent = (
+      <div
+        className="flex w-full flex-wrap items-center gap-2 text-xs"
+        onKeyDown={handleKeyDown}
+      >
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button type="button" className={dropdownTriggerClassName}>
+              Статус
+              {renderCount(local.status.length)}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="min-w-56">
+            <DropdownMenuLabel className="text-xs">Статус</DropdownMenuLabel>
+            <div className="max-h-52 overflow-y-auto">
+              {TASK_STATUSES.map((status) => (
+                <DropdownMenuCheckboxItem
+                  key={status}
+                  checked={local.status.includes(status)}
+                  onSelect={keepOpen}
+                  onCheckedChange={() => toggleString('status', status)}
+                  className="text-xs"
+                >
+                  {status}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button type="button" className={dropdownTriggerClassName}>
+              Приоритет
+              {renderCount(local.priority.length)}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="min-w-56">
+            <DropdownMenuLabel className="text-xs">Приоритет</DropdownMenuLabel>
+            <div className="max-h-52 overflow-y-auto">
+              {PRIORITIES.map((priority) => (
+                <DropdownMenuCheckboxItem
+                  key={priority}
+                  checked={local.priority.includes(priority)}
+                  onSelect={keepOpen}
+                  onCheckedChange={() => toggleString('priority', priority)}
+                  className="text-xs"
+                >
+                  {priority}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button type="button" className={dropdownTriggerClassName}>
+              Тип
+              {renderCount(local.taskTypes.length)}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="min-w-56">
+            <DropdownMenuLabel className="text-xs">
+              Тип задачи
+            </DropdownMenuLabel>
+            <div className="max-h-52 overflow-y-auto">
+              {TASK_TYPES.map((type) => (
+                <DropdownMenuCheckboxItem
+                  key={type}
+                  checked={local.taskTypes.includes(type)}
+                  onSelect={keepOpen}
+                  onCheckedChange={() => toggleString('taskTypes', type)}
+                  className="text-xs"
+                >
+                  {type}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button type="button" className={dropdownTriggerClassName}>
+              Исполнители
+              {renderCount(local.assignees.length)}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="min-w-72">
+            <DropdownMenuLabel className="text-xs">
+              Исполнители
+            </DropdownMenuLabel>
+            <div className="max-h-60 overflow-y-auto">
+              {filterUsers.map((user) => (
+                <DropdownMenuCheckboxItem
+                  key={user.id}
+                  checked={local.assignees.includes(user.id)}
+                  onSelect={keepOpen}
+                  onCheckedChange={() => toggleAssignee(user.id)}
+                  className="text-xs"
+                >
+                  {renderAssigneeLabel(user)}
+                </DropdownMenuCheckboxItem>
+              ))}
+              {filterUsers.length === 0 ? (
+                <div className="px-2 py-1 text-xs text-muted-foreground">
+                  Нет доступных исполнителей
+                </div>
+              ) : null}
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button type="button" className={dropdownTriggerClassName}>
+              Период
+              {renderCount(Number(Boolean(local.from || local.to)))}
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="min-w-64">
+            <DropdownMenuLabel className="text-xs">Период</DropdownMenuLabel>
+            <div className="space-y-2 px-2 pb-2">
+              <Input
+                type="date"
+                name="from"
+                value={local.from}
+                onChange={(e) => setLocal({ ...local, from: e.target.value })}
+              />
+              <Input
+                type="date"
+                name="to"
+                value={local.to}
+                onChange={(e) => setLocal({ ...local, to: e.target.value })}
+              />
+            </div>
+          </DropdownMenuContent>
+        </DropdownMenu>
+
+        {showActions ? (
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="primary"
+              onClick={applyFilters}
+            >
+              Искать
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={resetFilters}
+            >
+              Сбросить
+            </Button>
+          </div>
+        ) : null}
+      </div>
+    );
 
     const content = (
       <div
@@ -247,6 +432,7 @@ const SearchFilters = React.forwardRef<SearchFiltersHandle, Props>(
       </div>
     );
 
+    if (compact) return compactContent;
     if (inline) return content;
 
     return (

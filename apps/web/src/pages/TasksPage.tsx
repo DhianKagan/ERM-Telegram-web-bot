@@ -6,6 +6,13 @@ import { ClipboardDocumentListIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { FormGroup } from '@/components/ui/form-group';
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import FilterGrid from '@/components/FilterGrid';
 import PageHeader from '@/components/PageHeader';
 import GlobalSearch from '../components/GlobalSearch';
@@ -349,26 +356,56 @@ export default function TasksPage() {
               </>
             }
           >
-            <div className="sm:col-span-2 lg:col-span-1">
-              <GlobalSearch ref={searchRef} showActions={false} />
-            </div>
+            <FormGroup label="Поиск">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button type="button" size="sm" variant="outline">
+                    Поиск
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" className="min-w-80">
+                  <DropdownMenuLabel className="text-xs">
+                    Поиск по задачам
+                  </DropdownMenuLabel>
+                  <div className="px-2 pb-2">
+                    <GlobalSearch ref={searchRef} showActions={false} />
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </FormGroup>
             {isPrivileged ? (
               <FormGroup label="Показывать">
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    id="task-table-mine"
-                    name="mineTasks"
-                    type="checkbox"
-                    checked={mine}
-                    onChange={(e) => handleMineChange(e.target.checked)}
-                    className="size-4"
-                  />
-                  <span>Мои задачи</span>
-                </label>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button type="button" size="sm" variant="outline">
+                      Показывать
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="min-w-48">
+                    <DropdownMenuLabel className="text-xs">
+                      Показывать
+                    </DropdownMenuLabel>
+                    <DropdownMenuCheckboxItem
+                      checked={mine}
+                      onSelect={(event) => event.preventDefault()}
+                      onCheckedChange={(checked) =>
+                        handleMineChange(Boolean(checked))
+                      }
+                      className="text-xs"
+                    >
+                      Мои задачи
+                    </DropdownMenuCheckboxItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </FormGroup>
             ) : null}
             <div className="sm:col-span-2 lg:col-span-3">
-              <SearchFilters ref={filtersRef} inline showActions={false} />
+              <SearchFilters
+                ref={filtersRef}
+                inline
+                compact
+                showActions={false}
+              />
             </div>
           </FilterGrid>
         }

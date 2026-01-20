@@ -65,7 +65,7 @@ export default function ActionsDropdown({
             onSort?.();
           }}
         >
-          Сортировка
+          Колонки
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>

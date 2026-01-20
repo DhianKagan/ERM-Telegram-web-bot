@@ -1,11 +1,11 @@
 // Карточка задачи в канбане
 import React from 'react';
-import type { LucideIcon } from 'lucide-react';
-import { CarIcon, TruckIcon } from 'lucide-react';
+import { TruckIcon } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
 import { type Task } from 'shared';
 import { Button } from '@/components/ui/button';
+import { badgeVariants } from '@/components/ui/Badge';
 import {
   DeadlineCountdownBadge,
   fallbackBadgeClass,
@@ -131,16 +131,10 @@ const resolveTaskTitle = (task: TaskCardProps['task']): string | null => {
   return trimmed ? trimmed : null;
 };
 
-const pickTransportIcon = (transportType: string): LucideIcon | null => {
-  const normalized = transportType.toLowerCase();
-  if (normalized.includes('груз')) {
-    return TruckIcon;
-  }
-  if (normalized.includes('легк')) {
-    return CarIcon;
-  }
-  return CarIcon;
-};
+const transportBadgeClass = `${badgeVariants({
+  variant: 'pill',
+  size: 'sm',
+})} justify-center gap-1 px-2 text-muted-foreground`;
 
 export default function TaskCard({
   task,
@@ -159,11 +153,16 @@ export default function TaskCard({
     ? (getTypeBadgeClass(typeLabel) ?? `${fallbackBadgeClass} normal-case`)
     : null;
   const transportType = resolveTransportType(task);
-  const TransportIcon = transportType ? pickTransportIcon(transportType) : null;
+  const hasTransportPoints = Array.isArray(
+    (task as Record<string, unknown>).points,
+  )
+    ? ((task as Record<string, unknown>).points as unknown[]).length >= 2
+    : false;
+  const transportBadgeLabel = t('kanban.transportIconLabel', {
+    type: transportType ?? '',
+  });
   const titleText = resolveTaskTitle(task) ?? t('kanban.untitled');
-  const titleHint = transportType
-    ? `${titleText} • ${transportType}`
-    : titleText;
+  const titleHint = titleText;
 
   if (variant === 'list') {
     const description =
@@ -204,9 +203,15 @@ export default function TaskCard({
 
   return (
     <div className="flex min-h-[4.5rem] w-full flex-col gap-2 rounded-lg border border-border/70 bg-card/90 p-2 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md focus-within:ring-2 focus-within:ring-ring/60 focus-within:ring-offset-2 focus-within:ring-offset-background">
-      {typeLabel ? (
-        <div className="flex items-center justify-between">
-          <span className={typeClass}>{typeLabel}</span>
+      {typeLabel || hasTransportPoints ? (
+        <div className="flex flex-wrap items-center gap-2">
+          {typeLabel ? <span className={typeClass}>{typeLabel}</span> : null}
+          {hasTransportPoints ? (
+            <span className={transportBadgeClass} title={transportBadgeLabel}>
+              <TruckIcon aria-hidden="true" className="size-4" />
+              <span className="sr-only">{transportBadgeLabel}</span>
+            </span>
+          ) : null}
         </div>
       ) : null}
       <button
@@ -220,17 +225,6 @@ export default function TaskCard({
           }
         }}
       >
-        {TransportIcon ? (
-          <span className="flex items-center justify-center">
-            <TransportIcon
-              aria-hidden="true"
-              className="size-4 text-muted-foreground transition group-hover:text-primary"
-            />
-            <span className="sr-only">
-              {t('kanban.transportIconLabel', { type: transportType })}
-            </span>
-          </span>
-        ) : null}
         <span className="line-clamp-2 text-sm font-semibold leading-snug">
           {titleText}
         </span>

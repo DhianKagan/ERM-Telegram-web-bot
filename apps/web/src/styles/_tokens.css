@@ -135,8 +135,13 @@
     gap: 0.35rem;
     padding: 0.25rem 0.75rem;
     border-radius: 999px;
-    border: 1px solid var(--border);
-    background: var(--bg-muted);
+    border: 1px solid
+      color-mix(in srgb, var(--color-gray-300, #d0d5dd) 55%, #ffffff 45%);
+    background: color-mix(
+      in srgb,
+      var(--color-gray-200, #eaecf0) 35%,
+      #ffffff 65%
+    );
     color: var(--color-muted);
     font-size: 0.75rem;
     font-weight: 600;
@@ -153,8 +158,8 @@
   .ui-status-badge[data-tone='new'],
   .ui-status-badge--new {
     color: var(--color-primary);
-    background: color-mix(in srgb, var(--color-primary) 12%, #ffffff 88%);
-    border-color: color-mix(in srgb, var(--color-primary) 35%, #ffffff 65%);
+    background: color-mix(in srgb, var(--color-primary) 20%, #ffffff 80%);
+    border-color: color-mix(in srgb, var(--color-primary) 55%, #ffffff 45%);
   }
 
   .ui-status-badge[data-tone='neutral'],
@@ -162,8 +167,16 @@
   .ui-status-badge[data-tone='in_progress'],
   .ui-status-badge--in_progress {
     color: var(--color-neutral);
-    background: var(--bg-muted);
-    border-color: var(--border);
+    background: color-mix(
+      in srgb,
+      var(--color-gray-300, #d0d5dd) 28%,
+      #ffffff 72%
+    );
+    border-color: color-mix(
+      in srgb,
+      var(--color-gray-400, #98a2b3) 45%,
+      #ffffff 55%
+    );
   }
 
   .ui-status-badge[data-tone='success'],
@@ -171,8 +184,8 @@
   .ui-status-badge[data-tone='done'],
   .ui-status-badge--done {
     color: var(--color-success);
-    background: color-mix(in srgb, var(--color-success) 12%, #ffffff 88%);
-    border-color: color-mix(in srgb, var(--color-success) 35%, #ffffff 65%);
+    background: color-mix(in srgb, var(--color-success) 20%, #ffffff 80%);
+    border-color: color-mix(in srgb, var(--color-success) 55%, #ffffff 45%);
   }
 
   .ui-status-badge[data-tone='danger'],
@@ -180,15 +193,23 @@
   .ui-status-badge[data-tone='canceled'],
   .ui-status-badge--canceled {
     color: var(--color-danger);
-    background: color-mix(in srgb, var(--color-danger) 12%, #ffffff 88%);
-    border-color: color-mix(in srgb, var(--color-danger) 35%, #ffffff 65%);
+    background: color-mix(in srgb, var(--color-danger) 20%, #ffffff 80%);
+    border-color: color-mix(in srgb, var(--color-danger) 55%, #ffffff 45%);
   }
 
   .ui-status-badge[data-tone='muted'],
   .ui-status-badge--muted {
     color: var(--color-neutral);
-    background: var(--bg-muted);
-    border-color: var(--border);
+    background: color-mix(
+      in srgb,
+      var(--color-gray-300, #d0d5dd) 28%,
+      #ffffff 72%
+    );
+    border-color: color-mix(
+      in srgb,
+      var(--color-gray-400, #98a2b3) 45%,
+      #ffffff 55%
+    );
   }
 
   .table {
@@ -241,7 +262,7 @@
   }
 
   .ui-table--zebra tbody tr:nth-child(even) {
-    background: var(--bg-muted);
+    background: color-mix(in srgb, var(--color-primary) 4%, #ffffff 96%);
   }
 
   .ui-table--sticky thead th {
@@ -258,7 +279,7 @@
     padding: 0 var(--table-padding-x);
     height: var(--table-row-height);
     color: #0f172a;
-    background: #fafbff;
+    background: color-mix(in srgb, var(--color-primary) 3%, #ffffff 97%);
   }
 
   .ui-table__cell {

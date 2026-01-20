@@ -373,8 +373,16 @@ export default function FleetVehiclesTab() {
             variant="plain"
             onSearch={handleSearchSubmit}
             onReset={handleSearchReset}
-            showDefaultActions={false}
-            formClassName="sm:grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-[minmax(0,1fr)_auto]"
+            actions={
+              <Button
+                type="button"
+                size="sm"
+                variant="primary"
+                onClick={openCreate}
+              >
+                Добавить транспорт
+              </Button>
+            }
           >
             <FormGroup label="Поиск" htmlFor="fleet-vehicles-search">
               <Input
@@ -385,19 +393,6 @@ export default function FleetVehiclesTab() {
                 placeholder="Название или номер"
               />
             </FormGroup>
-            <div className="flex flex-wrap items-center justify-end gap-3">
-              <Button type="submit" size="sm" variant="primary">
-                Искать
-              </Button>
-              <Button
-                type="button"
-                size="sm"
-                variant="primary"
-                onClick={handleSearchReset}
-              >
-                Сбросить
-              </Button>
-            </div>
           </FilterGrid>
         }
       />

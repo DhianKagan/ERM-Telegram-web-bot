@@ -1441,9 +1441,9 @@ export default class TasksController {
             return;
           }
           if (this.isMessageForbiddenToDeleteError(error)) {
+            const details = this.formatTelegramError(error);
             console.warn(
-              `Личное сообщение ${messageId} у пользователя ${userId} нельзя удалить в Telegram`,
-              error,
+              `Личное сообщение ${messageId} у пользователя ${userId} нельзя удалить в Telegram${details ? ` (${details})` : ''}`,
             );
             return;
           }
@@ -1575,9 +1575,9 @@ export default class TasksController {
         return 'missing';
       }
       if (this.isMessageForbiddenToDeleteError(error)) {
+        const details = this.formatTelegramError(error);
         console.warn(
-          `Сообщение ${messageId} задачи нельзя удалить в Telegram`,
-          error,
+          `Сообщение ${messageId} задачи нельзя удалить в Telegram${details ? ` (${details})` : ''}`,
         );
         return 'forbidden';
       }
@@ -2223,6 +2223,15 @@ export default class TasksController {
           ? descriptionRaw.toLowerCase()
           : null,
     };
+  }
+
+  private formatTelegramError(error: unknown): string | null {
+    const { errorCode, description } = this.parseTelegramError(error);
+    if (typeof errorCode !== 'number' && !description) {
+      return null;
+    }
+    const code = typeof errorCode === 'number' ? errorCode : 'unknown';
+    return `${code}: ${description ?? 'unknown error'}`;
   }
 
   private async broadcastTaskSnapshot(

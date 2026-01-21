@@ -40,7 +40,12 @@ import parseGoogleAddress from '../utils/parseGoogleAddress';
 import { validateURL } from '../utils/validation';
 import extractCoords from '../utils/extractCoords';
 import { expandLink } from '../services/maps';
-import { ArrowPathIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import {
+  ArrowPathIcon,
+  DocumentTextIcon,
+  PlayCircleIcon,
+  XMarkIcon,
+} from '@heroicons/react/24/outline';
 import fetchRoute from '../services/route';
 import haversine from '../utils/haversine';
 import createRouteLink from '../utils/createRouteLink';
@@ -98,6 +103,45 @@ const ensureInlineMode = (value?: string | null): string | undefined => {
   }
   const separator = value.includes('?') ? '&' : '?';
   return `${value}${separator}mode=inline`;
+};
+
+const IMAGE_EXT_PATTERN = /\.(png|jpe?g|gif|webp|bmp|svg|heic|heif)$/i;
+const VIDEO_EXT_PATTERN = /\.(mp4|mov|mkv|webm|avi|m4v)$/i;
+const AUDIO_EXT_PATTERN = /\.(mp3|wav|ogg|m4a|aac|flac)$/i;
+
+const formatAttachmentSize = (size?: number): string | null => {
+  if (!Number.isFinite(size) || typeof size !== 'number' || size <= 0) {
+    return null;
+  }
+  const kb = size / 1024;
+  if (kb < 1024) {
+    return `${kb.toFixed(1)} КБ`;
+  }
+  return `${(kb / 1024).toFixed(1)} МБ`;
+};
+
+const resolveAttachmentKind = (
+  attachment: Attachment,
+  url: string,
+  thumbnail?: string,
+): 'image' | 'video' | 'audio' | 'file' => {
+  const type = typeof attachment.type === 'string' ? attachment.type : '';
+  const normalized = type.toLowerCase();
+  const basePath = url.split(/[?#]/, 1)[0] || url;
+  if (normalized.startsWith('video/') || VIDEO_EXT_PATTERN.test(basePath)) {
+    return 'video';
+  }
+  if (normalized.startsWith('audio/') || AUDIO_EXT_PATTERN.test(basePath)) {
+    return 'audio';
+  }
+  if (
+    normalized.startsWith('image/') ||
+    IMAGE_EXT_PATTERN.test(basePath) ||
+    Boolean(thumbnail)
+  ) {
+    return 'image';
+  }
+  return 'file';
 };
 
 const FILE_ID_PATTERN = /\/(?:api\/v1\/files)\/([0-9a-f]{24})/i;
@@ -1299,6 +1343,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const [previewAttachment, setPreviewAttachment] = React.useState<{
     name: string;
     url: string;
+    kind: 'image' | 'video';
+    poster?: string;
   } | null>(null);
   const [draft, setDraft] = React.useState<TaskDraft | null>(null);
   const [draftLoading, setDraftLoading] = React.useState(false);
@@ -4651,73 +4697,108 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                       <label className="block text-sm font-medium">
                         {t('attachments')}
                       </label>
-                      <ul className="flex flex-wrap gap-3">
+                      <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                         {attachments.map((a, index) => {
                           const resolvedUrl = resolveAttachmentUrl(a);
                           if (!resolvedUrl) return null;
                           const thumbnail = ensureInlineMode(a.thumbnailUrl);
                           const inlineUrl =
                             ensureInlineMode(resolvedUrl) ?? resolvedUrl;
-                          const basePath =
-                            inlineUrl.split(/[?#]/, 1)[0] || inlineUrl;
-                          const isImage =
-                            Boolean(thumbnail) ||
-                            /\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(basePath);
+                          const kind = resolveAttachmentKind(
+                            a,
+                            inlineUrl,
+                            thumbnail,
+                          );
                           const previewSrc = thumbnail ?? inlineUrl;
                           const key =
                             buildAttachmentKey(a) || `${a.name}-${index}`;
+                          const title = a.name || 'Файл';
+                          const sizeLabel = formatAttachmentSize(a.size);
                           return (
-                            <li
-                              key={key}
-                              className="flex flex-col items-start gap-1"
-                            >
-                              <div className="flex items-center gap-2">
-                                {isImage ? (
-                                  <button
-                                    type="button"
-                                    onClick={() =>
-                                      setPreviewAttachment({
-                                        name: a.name || 'Изображение',
-                                        url: inlineUrl,
-                                      })
-                                    }
-                                    className="group relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-100 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring focus:ring-indigo-200"
-                                    title={a.name || 'Изображение'}
-                                  >
+                            <li key={key} className="flex flex-col gap-2">
+                              {(kind === 'image' || kind === 'video') && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setPreviewAttachment({
+                                      name: title,
+                                      url: inlineUrl,
+                                      kind:
+                                        kind === 'video' ? 'video' : 'image',
+                                      poster: thumbnail ?? undefined,
+                                    })
+                                  }
+                                  className="group relative flex aspect-square w-full items-center justify-center overflow-hidden rounded-lg border border-slate-200 bg-slate-100 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md focus:outline-none focus:ring focus:ring-indigo-200"
+                                  title={title}
+                                >
+                                  {kind === 'image' ? (
                                     <img
                                       srcSet={`${previewSrc} 1x, ${inlineUrl} 2x`}
-                                      sizes="80px"
+                                      sizes="(min-width: 1024px) 120px, (min-width: 640px) 96px, 50vw"
                                       src={previewSrc}
-                                      alt={a.name || 'Изображение'}
+                                      alt={title}
                                       className="h-full w-full object-cover transition group-hover:scale-105"
                                     />
-                                  </button>
-                                ) : (
+                                  ) : thumbnail ? (
+                                    <img
+                                      srcSet={`${previewSrc} 1x, ${inlineUrl} 2x`}
+                                      sizes="(min-width: 1024px) 120px, (min-width: 640px) 96px, 50vw"
+                                      src={previewSrc}
+                                      alt={title}
+                                      className="h-full w-full object-cover transition group-hover:scale-105"
+                                    />
+                                  ) : (
+                                    <div className="flex h-full w-full items-center justify-center bg-slate-200 text-slate-500">
+                                      <PlayCircleIcon className="h-10 w-10" />
+                                    </div>
+                                  )}
+                                  {kind === 'video' && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-black/30 text-white">
+                                      <PlayCircleIcon className="h-10 w-10 drop-shadow" />
+                                    </div>
+                                  )}
+                                </button>
+                              )}
+                              {(kind === 'file' || kind === 'audio') && (
+                                <a
+                                  href={resolvedUrl}
+                                  target="_blank"
+                                  rel="noopener"
+                                  className="flex aspect-square w-full flex-col items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white text-center text-sm text-accentPrimary shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-md"
+                                >
+                                  <DocumentTextIcon className="h-8 w-8 text-slate-400" />
+                                  <span className="line-clamp-2 px-3 text-xs text-slate-600">
+                                    {title}
+                                  </span>
+                                </a>
+                              )}
+                              <div className="space-y-1">
+                                <div className="flex items-start justify-between gap-2">
                                   <a
                                     href={resolvedUrl}
                                     target="_blank"
                                     rel="noopener"
-                                    className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1 text-sm text-accentPrimary transition hover:bg-slate-100"
+                                    className="line-clamp-2 text-xs font-medium text-slate-700 hover:text-accentPrimary"
                                   >
-                                    {a.name || 'Файл'}
+                                    {title}
                                   </a>
-                                )}
-                                {editing && (
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    className="px-0 text-red-500"
-                                    onClick={() => removeAttachment(a)}
-                                  >
-                                    {t('delete')}
-                                  </Button>
-                                )}
+                                  {editing && (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      className="px-0 text-red-500"
+                                      onClick={() => removeAttachment(a)}
+                                    >
+                                      {t('delete')}
+                                    </Button>
+                                  )}
+                                </div>
+                                {sizeLabel ? (
+                                  <span className="text-xs text-slate-500">
+                                    {sizeLabel}
+                                  </span>
+                                ) : null}
                               </div>
-                              {a.name ? (
-                                <span className="max-w-[12rem] truncate text-xs text-slate-500">
-                                  {a.name}
-                                </span>
-                              ) : null}
                             </li>
                           );
                         })}
@@ -4991,11 +5072,20 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
             >
               <XMarkIcon className="h-6 w-6" />
             </button>
-            <img
-              src={previewAttachment.url}
-              alt={previewAttachment.name}
-              className="max-h-[75vh] w-full rounded-xl object-contain shadow-2xl"
-            />
+            {previewAttachment.kind === 'video' ? (
+              <video
+                src={previewAttachment.url}
+                poster={previewAttachment.poster}
+                controls
+                className="max-h-[75vh] w-full rounded-xl bg-black object-contain shadow-2xl"
+              />
+            ) : (
+              <img
+                src={previewAttachment.url}
+                alt={previewAttachment.name}
+                className="max-h-[75vh] w-full rounded-xl object-contain shadow-2xl"
+              />
+            )}
             <p className="mt-3 text-center text-sm text-white/80">
               {previewAttachment.name}
             </p>

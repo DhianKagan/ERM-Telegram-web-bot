@@ -50,6 +50,23 @@ const ACCEPTED_EXTENSIONS = new Set([
 ]);
 
 const ACCEPT_ATTR = ['image/*', 'video/*', ...Array.from(ACCEPTED_EXTENSIONS)];
+const IMAGE_EXTENSIONS = new Set([
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.gif',
+  '.webp',
+  '.bmp',
+  '.svg',
+  '.heic',
+  '.heif',
+]);
+const VIDEO_EXTENSIONS = new Set(['.mp4', '.mov', '.mkv']);
+
+const resolveExtension = (name: string): string => {
+  const dotIndex = name.lastIndexOf('.');
+  return dotIndex === -1 ? '' : name.slice(dotIndex).toLowerCase();
+};
 
 const cleanupUrl = (url: string) => {
   if (url.startsWith('blob:')) URL.revokeObjectURL(url);
@@ -100,12 +117,28 @@ export default function FileUploader({
   const { t } = useTranslation();
   const fileInputId = React.useId();
   const fileInputRef = React.useRef<HTMLInputElement | null>(null);
+  const resolvePreviewKind = (item: UploadItem): 'image' | 'video' | 'file' => {
+    const mime =
+      item.attachment?.type || item.file.type || 'application/octet-stream';
+    if (mime.startsWith('image/')) return 'image';
+    if (mime.startsWith('video/')) return 'video';
+    const ext = resolveExtension(item.name);
+    if (IMAGE_EXTENSIONS.has(ext)) return 'image';
+    if (VIDEO_EXTENSIONS.has(ext)) return 'video';
+    return 'file';
+  };
+  const resolvePreviewUrl = (item: UploadItem): string =>
+    ensureInlineMode(item.attachment?.thumbnailUrl) ||
+    ensureInlineMode(item.attachment?.url) ||
+    item.url;
+  const resolveFileBadge = (item: UploadItem): string => {
+    const ext = resolveExtension(item.name).replace('.', '').toUpperCase();
+    return ext || 'FILE';
+  };
 
   const handleFiles = (files: FileList | File[]) => {
     Array.from(files).forEach((file) => {
-      const dotIndex = file.name.lastIndexOf('.');
-      const ext =
-        dotIndex === -1 ? '' : file.name.slice(dotIndex).toLowerCase();
+      const ext = resolveExtension(file.name);
       if (!ACCEPTED_EXTENSIONS.has(ext)) {
         showToast(t('invalidFileType'), 'error');
         return;
@@ -139,7 +172,8 @@ export default function FileUploader({
                 attachment: att,
                 progress: 100,
                 url: previewUrl,
-                isImage: att.type.startsWith('image/'),
+                isImage:
+                  att.type.startsWith('image/') || Boolean(att.thumbnailUrl),
               };
             }),
           );
@@ -320,27 +354,44 @@ export default function FileUploader({
         <ul className="mt-2 space-y-2">
           {items.map((it, i) => (
             <li key={i} className="flex items-center gap-2">
-              {it.isImage && (
-                <img
-                  srcSet={`${
-                    ensureInlineMode(it.attachment?.thumbnailUrl) ||
-                    ensureInlineMode(it.attachment?.url) ||
-                    it.url
-                  } 1x, ${
-                    ensureInlineMode(it.attachment?.url) ||
-                    ensureInlineMode(it.attachment?.thumbnailUrl) ||
-                    it.url
-                  } 2x`}
-                  sizes="48px"
-                  src={
-                    ensureInlineMode(it.attachment?.thumbnailUrl) ||
-                    ensureInlineMode(it.attachment?.url) ||
-                    it.url
-                  }
-                  alt={it.name}
-                  className="h-12 w-12 rounded object-cover"
-                />
-              )}
+              {(() => {
+                const kind = resolvePreviewKind(it);
+                const previewUrl = resolvePreviewUrl(it);
+                if (kind === 'image') {
+                  return (
+                    <img
+                      srcSet={`${previewUrl} 1x, ${
+                        ensureInlineMode(it.attachment?.url) || it.url
+                      } 2x`}
+                      sizes="48px"
+                      src={previewUrl}
+                      alt={it.name}
+                      className="h-12 w-12 rounded object-cover"
+                    />
+                  );
+                }
+                if (kind === 'video') {
+                  return (
+                    <div className="relative h-12 w-12 overflow-hidden rounded bg-slate-100">
+                      <video
+                        className="h-full w-full object-cover"
+                        src={ensureInlineMode(it.attachment?.url) || it.url}
+                        poster={ensureInlineMode(it.attachment?.thumbnailUrl)}
+                        preload="metadata"
+                        muted
+                      />
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/20 text-xs font-semibold text-white">
+                        ▶
+                      </div>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="flex h-12 w-12 items-center justify-center rounded bg-slate-100 text-[10px] font-semibold text-slate-500">
+                    {resolveFileBadge(it)}
+                  </div>
+                );
+              })()}
               <div className="flex-1">
                 <p className="text-sm">
                   {it.name} ({(it.size / 1024 / 1024).toFixed(1)} {t('mb')})

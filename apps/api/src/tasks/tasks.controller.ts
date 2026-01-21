@@ -1622,6 +1622,87 @@ export default class TasksController {
     }
   }
 
+  private async editTaskMessageAsDeleted(
+    chat: string | number,
+    messageId: number,
+    title?: string,
+    topicId?: number,
+  ): Promise<boolean> {
+    const safeTitle =
+      typeof title === 'string' && title.trim()
+        ? `\n*${escapeMarkdownV2(title.trim())}*`
+        : '';
+    const text = `*Задача удалена*${safeTitle}`;
+    const options: Parameters<typeof bot.telegram.editMessageText>[4] = {
+      parse_mode: 'MarkdownV2',
+      link_preview_options: { is_disabled: true },
+    };
+    const topicOptions =
+      typeof topicId === 'number'
+        ? ({ message_thread_id: topicId } as const)
+        : {};
+    try {
+      await bot.telegram.editMessageText(chat, messageId, undefined, text, {
+        ...options,
+        ...topicOptions,
+      });
+      return true;
+    } catch (error) {
+      console.error(
+        `Не удалось обновить сообщение ${messageId} задачи при удалении`,
+        error,
+      );
+      return false;
+    }
+  }
+
+  private async editDirectMessageInPlace(
+    userId: number,
+    messageId: number,
+    message: string,
+    options: SendMessageOptions,
+  ): Promise<'updated' | 'missing' | 'forbidden' | 'failed'> {
+    const replyMarkup =
+      options.reply_markup &&
+      typeof options.reply_markup === 'object' &&
+      'inline_keyboard' in options.reply_markup
+        ? options.reply_markup
+        : undefined;
+    try {
+      await bot.telegram.editMessageText(
+        userId,
+        messageId,
+        undefined,
+        message,
+        {
+          parse_mode: options.parse_mode,
+          link_preview_options: options.link_preview_options,
+          ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+        },
+      );
+      return 'updated';
+    } catch (error) {
+      if (this.isMessageNotModifiedError(error)) {
+        return 'updated';
+      }
+      if (this.isMessageMissingOnEditError(error)) {
+        return 'missing';
+      }
+      if (this.isMessageForbiddenToEditError(error)) {
+        const details = this.formatTelegramError(error);
+        console.warn(
+          `Личное сообщение ${messageId} у пользователя ${userId} нельзя обновить в Telegram${details ? ` (${details})` : ''}`,
+        );
+        return 'forbidden';
+      }
+      console.error(
+        `Не удалось обновить личное сообщение ${messageId} у пользователя ${userId}`,
+        error,
+      );
+      return 'failed';
+    }
+  }
+
   private async updateTaskTelegramFields(
     taskId: string,
     set: Record<string, unknown>,
@@ -2196,6 +2277,17 @@ export default class TasksController {
     );
   }
 
+  private isMessageForbiddenToEditError(error: unknown): boolean {
+    const { errorCode, description } = this.parseTelegramError(error);
+    if (errorCode !== 400 || !description) {
+      return false;
+    }
+    return (
+      description.includes("message can't be edited") ||
+      description.includes('message is too old')
+    );
+  }
+
   private parseTelegramError(error: unknown): {
     errorCode: number | null;
     description: string | null;
@@ -2698,11 +2790,6 @@ export default class TasksController {
       delete plain.telegram_photos_message_id;
     }
 
-    const previousDirectMessages = this.normalizeDirectMessages(
-      previousPlain?.telegram_dm_message_ids,
-    );
-    await this.deleteDirectMessages(previousDirectMessages);
-
     const assignees = this.collectAssignees(plain);
     const normalizedActorId =
       typeof actorId === 'number' || typeof actorId === 'string'
@@ -2712,6 +2799,17 @@ export default class TasksController {
       // Не отправляем личное сообщение инициатору действия.
       assignees.delete(normalizedActorId);
     }
+    const previousDirectMessages = this.normalizeDirectMessages(
+      previousPlain?.telegram_dm_message_ids,
+    );
+    const previousDirectMessagesMap = new Map(
+      previousDirectMessages.map((entry) => [entry.user_id, entry.message_id]),
+    );
+    const staleDirectMessages = previousDirectMessages.filter(
+      (entry) => !assignees.has(entry.user_id),
+    );
+    await this.deleteDirectMessages(staleDirectMessages);
+
     if (assignees.size) {
       const dmKeyboard = buildDirectTaskKeyboard(
         messageLink,
@@ -2738,6 +2836,22 @@ export default class TasksController {
             `Получатель ${userId} отмечен как бот, личное уведомление пропущено`,
           );
           continue;
+        }
+        const previousMessageId = previousDirectMessagesMap.get(userId);
+        if (typeof previousMessageId === 'number') {
+          const editResult = await this.editDirectMessageInPlace(
+            userId,
+            previousMessageId,
+            dmText,
+            dmOptions,
+          );
+          if (editResult === 'updated') {
+            directMessages.push({
+              user_id: userId,
+              message_id: previousMessageId,
+            });
+            continue;
+          }
         }
         try {
           const sent = await bot.telegram.sendMessage(
@@ -3743,12 +3857,20 @@ export default class TasksController {
     }
     if (groupChatId) {
       for (const [messageId, meta] of messageTargets.entries()) {
-        await this.deleteTaskMessageSafely(
+        const deletionResult = await this.deleteTaskMessageSafely(
           groupChatId,
           messageId,
           meta.expected,
           meta.actual,
         );
+        if (deletionResult === 'forbidden') {
+          await this.editTaskMessageAsDeleted(
+            groupChatId,
+            messageId,
+            typeof plain.title === 'string' ? plain.title : undefined,
+            meta.actual ?? meta.expected,
+          );
+        }
       }
     }
     if (photosMessageId && normalizedAttachmentsChatId) {

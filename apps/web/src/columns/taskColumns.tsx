@@ -9,7 +9,11 @@ import RowActionButtons, {
   type RowActionItem,
 } from '../components/RowActionButtons';
 import { badgeVariants } from '../components/ui/Badge';
-import { getDeadlineState, type DeadlineState } from './taskDeadline';
+import {
+  formatDurationShort,
+  getDeadlineState,
+  type DeadlineState,
+} from './taskDeadline';
 import type { User as AppUser } from '../types/user';
 
 // Оформление бейджей статусов и приоритетов на дизайн-токенах
@@ -467,12 +471,14 @@ export function DeadlineCountdownBadge({
   rawDue,
   status,
   completedAt,
+  variant = 'stacked',
 }: {
   startValue?: string;
   dueValue?: string;
   rawDue?: string;
   status?: Task['status'];
   completedAt?: string | null;
+  variant?: 'stacked' | 'compact';
 }) {
   const completedDate = React.useMemo(
     () => parseDateInput(completedAt),
@@ -527,41 +533,51 @@ export function DeadlineCountdownBadge({
   const parts = formatCountdownParts(state.remainingMs);
   const label = buildCountdownLabel(state);
   const title = buildCountdownTitle(state, formatted, rawDue);
+  const compactLabel = formatDurationShort(state.remainingMs);
   return (
     <span
-      className={`${className} inline-flex items-center gap-1.5`}
+      className={`${className} inline-flex items-center ${variant === 'compact' ? 'gap-1 px-1.5 py-0.5 text-[0.68rem] leading-none' : 'gap-1.5'}`}
       title={title}
     >
       <span className="sr-only">{label}</span>
-      <span
-        aria-hidden
-        className="flex items-end gap-1 text-black dark:text-white"
-      >
-        <span className="flex flex-col items-center leading-tight">
-          <span className="text-[0.8rem] font-semibold tabular-nums">
-            {parts.paddedDays}
+      {variant === 'compact' ? (
+        <span
+          aria-hidden
+          className="truncate font-semibold tabular-nums text-black dark:text-white"
+        >
+          {compactLabel}
+        </span>
+      ) : (
+        <span
+          aria-hidden
+          className="flex items-end gap-1 text-black dark:text-white"
+        >
+          <span className="flex flex-col items-center leading-tight">
+            <span className="text-[0.8rem] font-semibold tabular-nums">
+              {parts.paddedDays}
+            </span>
+            <span className="text-[9px] font-medium text-black/80 dark:text-white/80">
+              дн
+            </span>
           </span>
-          <span className="text-[9px] font-medium text-black/80 dark:text-white/80">
-            дн
+          <span className="flex flex-col items-center leading-tight">
+            <span className="text-[0.8rem] font-semibold tabular-nums">
+              {parts.paddedHours}
+            </span>
+            <span className="text-[9px] font-medium text-black/80 dark:text-white/80">
+              ч
+            </span>
+          </span>
+          <span className="flex flex-col items-center leading-tight">
+            <span className="text-[0.8rem] font-semibold tabular-nums">
+              {parts.paddedMinutes}
+            </span>
+            <span className="text-[9px] font-medium text-black/80 dark:text-white/80">
+              м
+            </span>
           </span>
         </span>
-        <span className="flex flex-col items-center leading-tight">
-          <span className="text-[0.8rem] font-semibold tabular-nums">
-            {parts.paddedHours}
-          </span>
-          <span className="text-[9px] font-medium text-black/80 dark:text-white/80">
-            ч
-          </span>
-        </span>
-        <span className="flex flex-col items-center leading-tight">
-          <span className="text-[0.8rem] font-semibold tabular-nums">
-            {parts.paddedMinutes}
-          </span>
-          <span className="text-[9px] font-medium text-black/80 dark:text-white/80">
-            м
-          </span>
-        </span>
-      </span>
+      )}
     </span>
   );
 }

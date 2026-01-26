@@ -6,6 +6,22 @@ import RowActionButtons, {
   type RowActionItem,
 } from '../components/RowActionButtons';
 
+const compactText = (value: string, maxLength: number) => {
+  const trimmed = value.trim();
+  if (!trimmed || maxLength < 2 || trimmed.length <= maxLength) {
+    return trimmed;
+  }
+  const shortened = trimmed.slice(0, maxLength - 1).trimEnd();
+  return `${shortened}…`;
+};
+
+const formatLocationLabel = (value: string, maxLength = 28) => {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  const [firstLine] = trimmed.split(/\n+/);
+  return compactText(firstLine.trim(), maxLength);
+};
+
 export interface EventLogRow {
   id: string;
   number: string;
@@ -77,7 +93,13 @@ export const buildEventLogColumns = (
         row.original;
       const hasLocation = Boolean(location?.trim());
       const hasTransferLocation = Boolean(transferLocation?.trim());
-      const badgeClassName = 'ui-status-badge whitespace-pre-line';
+      const badgeClassName = 'ui-status-badge max-w-full truncate';
+      const locationLabel = hasLocation
+        ? formatLocationLabel(location ?? '', 28)
+        : '';
+      const transferLabel = hasTransferLocation
+        ? formatLocationLabel(transferLocation ?? '', 28)
+        : '';
       if (!hasLocation && !hasTransferLocation) {
         return (
           <span className="ui-status-badge" data-tone="neutral">
@@ -94,30 +116,31 @@ export const buildEventLogColumns = (
                 target="_blank"
                 rel="noopener"
                 className={badgeClassName}
-                data-badge-label={location}
+                data-badge-label={locationLabel}
                 data-tone="neutral"
                 title={location}
               >
-                {location}
+                {locationLabel}
               </a>
             ) : (
               <span
                 className={badgeClassName}
-                data-badge-label={location}
+                data-badge-label={locationLabel}
                 data-tone="neutral"
                 title={location}
               >
-                {location}
+                {locationLabel}
               </span>
             )
           ) : null}
           {isTransfer && hasTransferLocation ? (
             <span
               className={badgeClassName}
-              data-badge-label={`Место перемещения: ${transferLocation}`}
+              data-badge-label={`Место перемещения: ${transferLabel}`}
               data-tone="danger"
+              title={`Место перемещения: ${transferLocation}`}
             >
-              Место перемещения: {transferLocation}
+              Место перемещения: {transferLabel}
             </span>
           ) : null}
         </div>

@@ -373,15 +373,31 @@ export default function FleetVehiclesTab() {
             variant="plain"
             onSearch={handleSearchSubmit}
             onReset={handleSearchReset}
+            showDefaultActions={false}
             actions={
-              <Button
-                type="button"
-                size="sm"
-                variant="primary"
-                onClick={openCreate}
-              >
-                Добавить транспорт
-              </Button>
+              <div className="flex flex-col items-end gap-2">
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <Button type="submit" size="sm" variant="primary">
+                    Искать
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="primary"
+                    onClick={handleSearchReset}
+                  >
+                    Сбросить
+                  </Button>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="primary"
+                  onClick={openCreate}
+                >
+                  Добавить транспорт
+                </Button>
+              </div>
             }
           >
             <FormGroup label="Поиск" htmlFor="fleet-vehicles-search">

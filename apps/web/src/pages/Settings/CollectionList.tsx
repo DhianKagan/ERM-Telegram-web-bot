@@ -2,7 +2,7 @@
 // Основные модули: React, Pagination
 import React from 'react';
 
-import { Button } from '@/components/ui/button';
+import UnifiedSearch from '@/components/UnifiedSearch';
 import Pagination from '../../components/Pagination';
 import type { CollectionItem } from '../../services/collections';
 
@@ -36,29 +36,22 @@ export default function CollectionList({
     setSearch(searchValue ?? '');
   }, [searchValue]);
 
-  const submit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSearch(search);
-  };
-
   return (
     <div>
-      <form
-        onSubmit={submit}
-        className="mb-2 flex flex-col gap-2 sm:flex-row sm:items-center"
-      >
-        <input
+      <div className="mb-2">
+        <UnifiedSearch
           id={searchInputId}
-          name="collectionSearch"
-          className="h-10 w-full rounded border px-3 sm:h-9 sm:flex-1"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={setSearch}
+          onSearch={() => onSearch(search)}
+          onReset={() => {
+            setSearch('');
+            onSearch('');
+          }}
           placeholder="Поиск"
+          className="max-w-full"
         />
-        <Button type="submit" className="h-10 px-4 sm:h-9 sm:px-3">
-          Искать
-        </Button>
-      </form>
+      </div>
       <ul className="divide-y rounded border">
         {items.map((it) => (
           <li key={it._id}>

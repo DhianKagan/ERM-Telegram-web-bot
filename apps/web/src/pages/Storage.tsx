@@ -21,6 +21,7 @@ import FilterGrid from '@/components/FilterGrid';
 import PageHeader from '@/components/PageHeader';
 import { Input } from '../components/ui/input';
 import { Select } from '../components/ui/select';
+import UnifiedSearch from '@/components/UnifiedSearch';
 import { SimpleTable } from '@/components/ui/simple-table';
 import createStorageColumns, {
   type StorageRow,
@@ -183,20 +184,6 @@ export default function StoragePage() {
     setLinkFilter('all');
     setPageIndex(0);
   }, []);
-
-  const handleSearchKeyDown = React.useCallback(
-    (event: React.KeyboardEvent<HTMLInputElement>) => {
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        handleSearchSubmit();
-      }
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        handleSearchReset();
-      }
-    },
-    [handleSearchReset, handleSearchSubmit],
-  );
 
   React.useEffect(() => {
     void loadFiles();
@@ -576,15 +563,18 @@ export default function StoragePage() {
       }}
     >
       <FormGroup label="Поиск" htmlFor="storage-search">
-        <Input
+        <UnifiedSearch
           id="storage-search"
           value={search}
-          onChange={(event) => {
-            setSearch(event.target.value);
+          onChange={(value) => {
+            setSearch(value);
             setPageIndex(0);
           }}
-          onKeyDown={handleSearchKeyDown}
+          onSearch={handleSearchSubmit}
+          onReset={handleSearchReset}
           placeholder={t('storage.searchPlaceholder') ?? ''}
+          showActions={false}
+          handleKeys={false}
         />
       </FormGroup>
       <FormGroup label="Сортировка" htmlFor="storage-sort">
@@ -748,15 +738,17 @@ export default function StoragePage() {
                 }
               >
                 <FormGroup label="Поиск" htmlFor="storage-search">
-                  <Input
+                  <UnifiedSearch
                     id="storage-search"
                     value={search}
-                    onChange={(event) => {
-                      setSearch(event.target.value);
+                    onChange={(value) => {
+                      setSearch(value);
                       setPageIndex(0);
                     }}
-                    onKeyDown={handleSearchKeyDown}
+                    onSearch={handleSearchSubmit}
+                    onReset={handleSearchReset}
                     placeholder={t('storage.searchPlaceholder') ?? ''}
+                    showActions={false}
                   />
                 </FormGroup>
                 <FormGroup label="Сортировка" htmlFor="storage-sort">

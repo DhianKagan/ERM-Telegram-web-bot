@@ -1,7 +1,15 @@
 // Страница отображения маршрутных планов в виде карточек
 // Основные модули: React, listRoutePlans, компоненты интерфейса
 import React from 'react';
-import { TruckIcon } from '@heroicons/react/24/outline';
+import type { ColumnDef } from '@tanstack/react-table';
+import {
+  CheckCircleIcon,
+  PlayIcon,
+  Squares2X2Icon,
+  TableCellsIcon,
+  TrashIcon,
+  TruckIcon,
+} from '@heroicons/react/24/outline';
 import type {
   RoutePlan,
   RoutePlanRoute,
@@ -10,16 +18,27 @@ import type {
 } from 'shared';
 
 import { Button } from '@/components/ui/button';
+import ConfirmDialog from '@/components/ConfirmDialog';
 import StatusBadge, { mapStatusTone } from '@/components/ui/StatusBadge';
 import { FormGroup } from '@/components/ui/form-group';
 import { Select } from '@/components/ui/select';
+import {
+  SimpleTable,
+  type SimpleTableAction,
+} from '@/components/ui/simple-table';
+import UnifiedSearch from '@/components/UnifiedSearch';
 import Breadcrumbs from '../components/Breadcrumbs';
 import ActionBar from '../components/ActionBar';
 import SkeletonCard from '../components/SkeletonCard';
 import { useAuth } from '../context/useAuth';
 import { useToast } from '../context/useToast';
-import { listRoutePlans } from '../services/routePlans';
+import {
+  changeRoutePlanStatus,
+  deleteRoutePlan,
+  listRoutePlans,
+} from '../services/routePlans';
 import { ACCESS_ADMIN, ACCESS_MANAGER, hasAccess } from '../utils/access';
+import { expandSearchTokens } from '../utils/searchSynonyms';
 
 const STATUS_LABELS: Record<RoutePlanStatus | 'cancelled', string> = {
   draft: 'Новый',
@@ -96,6 +115,76 @@ const normalizeStatus = (
   return 'cancelled';
 };
 
+const normalizeCandidate = (value: string): string[] => {
+  const trimmed = value.trim().toLowerCase();
+  if (!trimmed) return [];
+  const collapsed = trimmed.replace(/[\s\-_/.]+/g, '');
+  if (collapsed && collapsed !== trimmed) {
+    return [trimmed, collapsed];
+  }
+  return [trimmed];
+};
+
+const pushCandidate = (target: Set<string>, value: unknown) => {
+  if (typeof value === 'string') {
+    normalizeCandidate(value).forEach((candidate) => target.add(candidate));
+    return;
+  }
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    normalizeCandidate(String(value)).forEach((candidate) =>
+      target.add(candidate),
+    );
+  }
+};
+
+const collectPlanSearchValues = (plan: RoutePlan): string[] => {
+  const values = new Set<string>();
+  pushCandidate(values, plan.id);
+  pushCandidate(values, plan.title);
+  pushCandidate(values, plan.notes);
+  pushCandidate(values, plan.status);
+  pushCandidate(values, plan.createdAt);
+  pushCandidate(values, plan.updatedAt);
+  pushCandidate(values, plan.metrics?.totalDistanceKm);
+  pushCandidate(values, plan.metrics?.totalTasks);
+  pushCandidate(values, plan.metrics?.totalRoutes);
+  pushCandidate(values, plan.metrics?.totalStops);
+
+  plan.tasks?.forEach((taskId) => pushCandidate(values, taskId));
+  (plan.routes ?? []).forEach((route) => {
+    pushCandidate(values, route.driverName);
+    pushCandidate(values, route.vehicleName);
+    pushCandidate(values, route.notes);
+    route.tasks?.forEach((task) => {
+      pushCandidate(values, task.taskId);
+      pushCandidate(values, task.title);
+      pushCandidate(values, task.startAddress);
+      pushCandidate(values, task.finishAddress);
+    });
+    route.stops?.forEach((stop) => {
+      pushCandidate(values, stop.address);
+      pushCandidate(values, stop.taskId);
+    });
+  });
+
+  return Array.from(values);
+};
+
+const matchPlanQuery = (plan: RoutePlan, query: string): boolean => {
+  const trimmed = query.trim().toLowerCase();
+  if (!trimmed) return true;
+  const tokenGroups = expandSearchTokens(trimmed);
+  if (!tokenGroups.length) return true;
+  const haystack = collectPlanSearchValues(plan);
+  if (!haystack.length) return false;
+  return tokenGroups.every((group) => {
+    const variations = group.flatMap((token) => normalizeCandidate(token));
+    return variations.some((variant) =>
+      haystack.some((candidate) => candidate.includes(variant)),
+    );
+  });
+};
+
 export default function Logistics() {
   const [plans, setPlans] = React.useState<RoutePlan[]>([]);
   const [loading, setLoading] = React.useState(true);
@@ -103,6 +192,17 @@ export default function Logistics() {
   const [statusFilter, setStatusFilter] = React.useState<
     RoutePlanStatus | 'cancelled' | 'all'
   >('all');
+  const [searchDraft, setSearchDraft] = React.useState('');
+  const [search, setSearch] = React.useState('');
+  const [viewMode, setViewMode] = React.useState<'cards' | 'table'>('cards');
+  const [pageIndex, setPageIndex] = React.useState(0);
+  const [deletePlan, setDeletePlan] = React.useState<RoutePlan | null>(null);
+  const [updatingPlanId, setUpdatingPlanId] = React.useState<string | null>(
+    null,
+  );
+  const [deletingPlanId, setDeletingPlanId] = React.useState<string | null>(
+    null,
+  );
   const { addToast } = useToast();
   const { user } = useAuth();
 
@@ -128,16 +228,187 @@ export default function Logistics() {
     void loadPlans();
   }, [loadPlans]);
 
+  const applySearch = React.useCallback(() => {
+    setSearch(searchDraft.trim());
+    setPageIndex(0);
+  }, [searchDraft]);
+
+  const resetSearch = React.useCallback(() => {
+    setSearchDraft('');
+    setSearch('');
+    setPageIndex(0);
+  }, []);
+
+  const handleStatusChange = React.useCallback(
+    async (planId: string, status: RoutePlanStatus) => {
+      if (!planId) return;
+      setUpdatingPlanId(planId);
+      try {
+        const updated = await changeRoutePlanStatus(planId, status);
+        setPlans((prev) =>
+          prev.map((plan) => (plan.id === planId ? updated : plan)),
+        );
+        addToast('Статус маршрутного плана обновлен');
+      } catch (err) {
+        const message =
+          err instanceof Error
+            ? err.message
+            : 'Не удалось обновить маршрутный план';
+        addToast(message);
+      } finally {
+        setUpdatingPlanId(null);
+      }
+    },
+    [addToast],
+  );
+
+  const handleDeleteConfirm = React.useCallback(async () => {
+    if (!deletePlan) return;
+    setDeletingPlanId(deletePlan.id);
+    try {
+      await deleteRoutePlan(deletePlan.id);
+      setPlans((prev) => prev.filter((plan) => plan.id !== deletePlan.id));
+      addToast('Маршрутный план удален');
+    } catch (err) {
+      const message =
+        err instanceof Error
+          ? err.message
+          : 'Не удалось удалить маршрутный план';
+      addToast(message);
+    } finally {
+      setDeletingPlanId(null);
+      setDeletePlan(null);
+    }
+  }, [addToast, deletePlan]);
+
   const filteredPlans = React.useMemo(() => {
-    if (statusFilter === 'all') return plans;
-    return plans.filter(
-      (plan) => normalizeStatus(plan.status) === statusFilter,
-    );
-  }, [plans, statusFilter]);
+    return plans.filter((plan) => {
+      if (statusFilter !== 'all') {
+        if (normalizeStatus(plan.status) !== statusFilter) return false;
+      }
+      if (search && !matchPlanQuery(plan, search)) return false;
+      return true;
+    });
+  }, [plans, search, statusFilter]);
+
+  React.useEffect(() => {
+    setPageIndex(0);
+  }, [search, statusFilter]);
+
+  const pageSize = 10;
+  const pageCount = Math.max(1, Math.ceil(filteredPlans.length / pageSize));
+  const pagedPlans = React.useMemo(() => {
+    const start = pageIndex * pageSize;
+    return filteredPlans.slice(start, start + pageSize);
+  }, [filteredPlans, pageIndex, pageSize]);
 
   const access = typeof user?.access === 'number' ? user.access : 0;
   const isAdmin = user?.role === 'admin' || hasAccess(access, ACCESS_ADMIN);
   const isManager = hasAccess(access, ACCESS_MANAGER);
+  const isManaging = isAdmin || isManager;
+
+  const statusSelectOptions = React.useMemo(
+    () =>
+      STATUS_OPTIONS.filter(
+        (option) => option.value !== 'all' && option.value !== 'cancelled',
+      ) as Array<{ value: RoutePlanStatus; label: string }>,
+    [],
+  );
+
+  const columns = React.useMemo<ColumnDef<RoutePlan>[]>(() => {
+    return [
+      {
+        header: 'Маршрутный план',
+        accessorKey: 'title',
+        cell: ({ row }) => (
+          <div className="min-w-0 space-y-1">
+            <p className="font-medium text-foreground">{row.original.title}</p>
+            <p className="text-xs text-muted-foreground">
+              {row.original.notes || '—'}
+            </p>
+          </div>
+        ),
+        meta: { minWidth: '16rem', truncate: false },
+      },
+      {
+        header: 'Статус',
+        cell: ({ row }) => {
+          const status = normalizeStatus(row.original.status);
+          const label = STATUS_LABELS[status] ?? status;
+          return (
+            <StatusBadge
+              status={label}
+              tone={mapStatusTone(status)}
+              className="whitespace-nowrap"
+            />
+          );
+        },
+        meta: { minWidth: '8rem', align: 'center' },
+      },
+      {
+        header: 'Создан',
+        cell: ({ row }) => formatDate(row.original.createdAt),
+        meta: { minWidth: '10rem' },
+      },
+      {
+        header: 'Водитель',
+        cell: ({ row }) => collectDrivers(row.original.routes ?? []),
+        meta: { minWidth: '10rem' },
+      },
+      {
+        header: 'Авто',
+        cell: ({ row }) => collectVehicles(row.original.routes ?? []),
+        meta: { minWidth: '10rem' },
+      },
+      {
+        header: 'Задачи',
+        cell: ({ row }) => {
+          const tasks = collectTasks(row.original.routes ?? []);
+          return tasks.length ? tasks.join(', ') : '—';
+        },
+        meta: { minWidth: '14rem', truncate: false },
+      },
+      {
+        header: 'Маршруты',
+        cell: ({ row }) => row.original.routes?.length ?? 0,
+        meta: { minWidth: '6rem', align: 'center' },
+      },
+    ];
+  }, []);
+
+  const rowActions = React.useCallback(
+    (plan: RoutePlan): SimpleTableAction<RoutePlan>[] => {
+      if (!isManaging) return [];
+      const actions: SimpleTableAction<RoutePlan>[] = [];
+      if (plan.status !== 'approved') {
+        actions.push({
+          label: 'В работу',
+          onClick: () => void handleStatusChange(plan.id, 'approved'),
+          variant: 'outline',
+          icon: <PlayIcon className="size-4" />,
+          disabled: updatingPlanId === plan.id,
+        });
+      }
+      if (plan.status !== 'completed') {
+        actions.push({
+          label: 'Завершить',
+          onClick: () => void handleStatusChange(plan.id, 'completed'),
+          variant: 'outline',
+          icon: <CheckCircleIcon className="size-4" />,
+          disabled: updatingPlanId === plan.id,
+        });
+      }
+      actions.push({
+        label: 'Удалить',
+        onClick: () => setDeletePlan(plan),
+        variant: 'destructive',
+        icon: <TrashIcon className="size-4" />,
+        disabled: deletingPlanId === plan.id,
+      });
+      return actions;
+    },
+    [deletingPlanId, handleStatusChange, isManaging, updatingPlanId],
+  );
 
   return (
     <div className="space-y-6">
@@ -155,6 +426,17 @@ export default function Logistics() {
         description="Просматривайте планы доставки без привязки к карте: задачи, назначенные водители и транспорт, статус и детали плана."
         filters={
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <FormGroup label="Поиск" htmlFor="logistics-search">
+              <UnifiedSearch
+                id="logistics-search"
+                value={searchDraft}
+                onChange={setSearchDraft}
+                onSearch={applySearch}
+                onReset={resetSearch}
+                placeholder="Название, водитель, авто, задача"
+                showActions
+              />
+            </FormGroup>
             <FormGroup label="Статус" htmlFor="logistics-status-filter">
               <Select
                 id="logistics-status-filter"
@@ -175,14 +457,36 @@ export default function Logistics() {
           </div>
         }
         toolbar={
-          <Button
-            onClick={() => void loadPlans()}
-            disabled={loading}
-            variant="outline"
-            size="sm"
-          >
-            {loading ? 'Обновляем…' : 'Обновить'}
-          </Button>
+          <>
+            <Button
+              onClick={() => void loadPlans()}
+              disabled={loading}
+              variant="outline"
+              size="sm"
+            >
+              {loading ? 'Обновляем…' : 'Обновить'}
+            </Button>
+            <Button
+              type="button"
+              variant={viewMode === 'cards' ? 'secondary' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('cards')}
+              disabled={viewMode === 'cards'}
+            >
+              <Squares2X2Icon className="mr-1 h-4 w-4" />
+              Карточки
+            </Button>
+            <Button
+              type="button"
+              variant={viewMode === 'table' ? 'secondary' : 'outline'}
+              size="sm"
+              onClick={() => setViewMode('table')}
+              disabled={viewMode === 'table'}
+            >
+              <TableCellsIcon className="mr-1 h-4 w-4" />
+              Таблица
+            </Button>
+          </>
         }
       />
       {!isAdmin && !isManager && (
@@ -205,7 +509,7 @@ export default function Logistics() {
         <div className="ui-card text-sm text-muted-foreground">
           Маршрутные планы отсутствуют.
         </div>
-      ) : (
+      ) : viewMode === 'cards' ? (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {filteredPlans.map((plan) => {
             const status = normalizeStatus(plan.status);
@@ -266,11 +570,62 @@ export default function Logistics() {
                     </p>
                   )}
                 </div>
+                {isManaging ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Select
+                      value={plan.status}
+                      onChange={(event) =>
+                        void handleStatusChange(
+                          plan.id,
+                          event.target.value as RoutePlanStatus,
+                        )
+                      }
+                      disabled={updatingPlanId === plan.id}
+                      aria-label="Статус маршрутного плана"
+                    >
+                      {statusSelectOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </Select>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => setDeletePlan(plan)}
+                      disabled={deletingPlanId === plan.id}
+                    >
+                      Удалить
+                    </Button>
+                  </div>
+                ) : null}
               </article>
             );
           })}
         </div>
+      ) : (
+        <SimpleTable
+          columns={columns}
+          data={pagedPlans}
+          pageIndex={pageIndex}
+          pageSize={pageSize}
+          pageCount={pageCount}
+          onPageChange={setPageIndex}
+          showGlobalSearch={false}
+          showFilters={false}
+          rowHeight={64}
+          getRowActions={isManaging ? rowActions : undefined}
+        />
       )}
+      <ConfirmDialog
+        open={Boolean(deletePlan)}
+        message={`Удалить маршрутный план \"${deletePlan?.title ?? ''}\"?`}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setDeletePlan(null)}
+        confirmText="Удалить"
+        cancelText="Отмена"
+      />
     </div>
   );
 }

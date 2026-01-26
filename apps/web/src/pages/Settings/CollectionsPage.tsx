@@ -21,6 +21,7 @@ import { Input } from '@/components/ui/input';
 import { Radio } from '@/components/ui/radio';
 import { Select } from '@/components/ui/select';
 import { SimpleTable } from '@/components/ui/simple-table';
+import UnifiedSearch from '@/components/UnifiedSearch';
 import FilterGrid from '@/components/FilterGrid';
 import PageHeader from '@/components/PageHeader';
 import {
@@ -2918,12 +2919,18 @@ export default function CollectionsPage() {
             htmlFor="settings-users-search"
             help={collectionSearchHint}
           >
-            <Input
+            <UnifiedSearch
               id="settings-users-search"
               value={userSearchDraft}
-              onChange={(event) => setUserSearchDraft(event.target.value)}
-              onKeyDown={handleUserSearchKeyDown}
+              onChange={setUserSearchDraft}
+              onSearch={submitUserSearch}
+              onReset={() => {
+                setUserSearchDraft('');
+                submitUserSearch();
+              }}
               placeholder={placeholder}
+              showActions={false}
+              handleKeys={false}
             />
           </FormGroup>
         </FilterGrid>
@@ -2951,14 +2958,15 @@ export default function CollectionsPage() {
             htmlFor="settings-collections-search"
             help={collectionSearchHint}
           >
-            <Input
+            <UnifiedSearch
               id="settings-collections-search"
               value={currentSearchDraft}
-              onChange={(event) =>
-                updateCollectionSearchDraft(event.target.value)
-              }
-              onKeyDown={handleCollectionSearchKeyDown}
+              onChange={updateCollectionSearchDraft}
+              onSearch={submitCollectionSearch}
+              onReset={resetCollectionSearch}
               placeholder={collectionSearchPlaceholder}
+              showActions={false}
+              handleKeys={false}
             />
           </FormGroup>
         </FilterGrid>

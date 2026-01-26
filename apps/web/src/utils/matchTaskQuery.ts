@@ -1,6 +1,7 @@
 // Назначение файла: сопоставление задач с текстовым запросом для глобального поиска
-// Модули: taskColumns (тип TaskRow)
+// Модули: taskColumns (тип TaskRow), searchSynonyms
 import type { TaskRow } from '../columns/taskColumns';
+import { expandSearchTokens } from './searchSynonyms';
 
 type UserLike = Record<string, unknown>;
 
@@ -137,20 +138,19 @@ const collectTaskSearchValues = (
   return Array.from(candidates);
 };
 
-const tokenize = (query: string): string[] =>
-  query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+const tokenize = (query: string): string[][] => expandSearchTokens(query);
 
 export default function matchTaskQuery(
   task: TaskRow,
   query: string,
   users: Record<number, UserLike>,
 ): boolean {
-  const tokens = tokenize(query);
-  if (!tokens.length) return true;
+  const tokenGroups = tokenize(query);
+  if (!tokenGroups.length) return true;
   const haystack = collectTaskSearchValues(task, users);
   if (!haystack.length) return false;
-  return tokens.every((token) => {
-    const variations = normalizeCandidate(token);
+  return tokenGroups.every((group) => {
+    const variations = group.flatMap((token) => normalizeCandidate(token));
     return variations.some((variant) =>
       haystack.some((candidate) => candidate.includes(variant)),
     );

@@ -3021,7 +3021,7 @@ export default function CollectionsPage() {
               ))}
             </Select>
           </div>
-          <TabsList className="hidden flex-nowrap items-center gap-4 overflow-x-auto rounded-lg bg-muted/60 p-2 sm:flex">
+          <TabsList className="hidden flex-nowrap items-center gap-4 overflow-x-auto no-scrollbar rounded-lg bg-muted/60 p-2 sm:flex">
             {moduleTabs.map((tab) => {
               const Icon = tab.icon;
               const labelId = `${tab.key}-module-tab-label`;
@@ -3082,7 +3082,7 @@ export default function CollectionsPage() {
                 ))}
               </Select>
             </div>
-            <TabsList className="hidden flex-nowrap items-center gap-4 overflow-x-auto rounded-lg bg-muted/60 p-2 sm:flex">
+            <TabsList className="hidden flex-nowrap items-center gap-4 overflow-x-auto no-scrollbar rounded-lg bg-muted/60 p-2 sm:flex">
               {directoryTypes.map((type) => {
                 const Icon = tabIcons[type.key as CollectionKey];
                 const labelId = `${type.key}-tab-label`;

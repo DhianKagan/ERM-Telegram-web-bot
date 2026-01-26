@@ -252,6 +252,16 @@
     border-radius: var(--radius);
     background: var(--bg-surface);
     box-shadow: var(--shadow-sm);
+    user-select: none;
+    cursor: grab;
+  }
+
+  .ui-table-container--dragging {
+    cursor: grabbing;
+  }
+
+  .ui-table-container :is(input, textarea, [contenteditable='true']) {
+    user-select: text;
   }
 
   .ui-table {

@@ -5,6 +5,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import UnifiedSearch from '@/components/UnifiedSearch';
 import { SimpleTable } from '@/components/ui/simple-table';
 import {
   CalendarDaysIcon,
@@ -943,6 +944,7 @@ export default function EventLog() {
             variant="plain"
             onSearch={applySearch}
             onReset={resetSearch}
+            formClassName="!grid-cols-1 !sm:grid-cols-1 !lg:grid-cols-1"
             actions={
               <Button
                 size="sm"
@@ -953,34 +955,17 @@ export default function EventLog() {
               </Button>
             }
           >
-            <div className="flex w-full flex-1 flex-col gap-1">
-              <label
-                htmlFor="events-search"
-                className="text-xs font-semibold text-foreground"
-              >
-                Поиск
-              </label>
-              <Input
-                id="events-search"
-                value={searchDraft}
-                onChange={(event) => setSearchDraft(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') {
-                    event.preventDefault();
-                    applySearch();
-                  }
-                  if (event.key === 'Escape') {
-                    event.preventDefault();
-                    resetSearch();
-                  }
-                }}
-                placeholder="Номер, описание или место"
-                className="shadow-xs"
-              />
-              <span className="text-xs text-muted-foreground">
-                Поиск по журналу событий
-              </span>
-            </div>
+            <UnifiedSearch
+              id="events-search"
+              value={searchDraft}
+              onChange={setSearchDraft}
+              onSearch={applySearch}
+              onReset={resetSearch}
+              placeholder="Номер, описание или место"
+              ariaLabel="Поиск по журналу событий"
+              hint="Поиск по журналу событий"
+              inputClassName="shadow-xs"
+            />
           </FilterGrid>
         }
       />

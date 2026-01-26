@@ -7,6 +7,7 @@ import archiveColumns from '../columns/archiveColumns';
 import { Button } from '@/components/ui/button';
 import { FormGroup } from '@/components/ui/form-group';
 import { Input } from '@/components/ui/input';
+import UnifiedSearch from '@/components/UnifiedSearch';
 import FilterGrid from '@/components/FilterGrid';
 import PageHeader from '@/components/PageHeader';
 import { useToast } from '../context/useToast';
@@ -223,12 +224,16 @@ export default function ArchivePage() {
       }}
     >
       <FormGroup label="Поиск" htmlFor="archive-search">
-        <Input
+        <UnifiedSearch
           id="archive-search"
           value={search}
-          onChange={(event) => setSearch(event.target.value)}
+          onChange={setSearch}
+          onSearch={handleSearchSubmit}
+          onReset={handleSearchReset}
           placeholder="Поиск по номеру или названию"
-          aria-label="Поиск по архиву"
+          ariaLabel="Поиск по архиву"
+          showActions={false}
+          handleKeys={false}
         />
       </FormGroup>
       <div className="flex flex-wrap items-center gap-2">

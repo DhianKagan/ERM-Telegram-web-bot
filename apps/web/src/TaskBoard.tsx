@@ -29,9 +29,10 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { FormGroup } from '@/components/ui/form-group';
-import { Input } from '@/components/ui/input';
 import { Select } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
+import { expandSearchTokenGroups } from '@/utils/searchSynonyms';
+import UnifiedSearch from '@/components/UnifiedSearch';
 import ActionsDropdown from './components/ActionsDropdown';
 import TaskCard from './components/TaskCard';
 import TaskDialog from './components/TaskDialog';
@@ -129,6 +130,11 @@ type KanbanTask = Task & {
 
 const normalizeSearchToken = (value: string): string =>
   value.trim().toLowerCase();
+
+const expandSearchGroups = (value: string): string[][] => {
+  const tokens = value.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  return expandSearchTokenGroups(tokens);
+};
 
 const pushSearchValue = (target: string[], value: unknown) => {
   if (typeof value === 'string') {
@@ -441,15 +447,12 @@ export default function TaskBoard() {
       }
 
       if (!normalizedSearch) return true;
-      const tokens = normalizedSearch
-        .split(/\s+/)
-        .map((token) => token.trim())
-        .filter(Boolean);
-      if (!tokens.length) return true;
+      const tokenGroups = expandSearchGroups(normalizedSearch);
+      if (!tokenGroups.length) return true;
       const haystack = collectSearchValues(task);
       if (!haystack.length) return false;
-      return tokens.every((token) =>
-        haystack.some((value) => value.includes(token)),
+      return tokenGroups.every((group) =>
+        group.some((token) => haystack.some((value) => value.includes(token))),
       );
     });
 
@@ -721,14 +724,13 @@ export default function TaskBoard() {
           label={t('kanban.filters.searchLabel')}
           htmlFor="kanban-search"
         >
-          <Input
+          <UnifiedSearch
             id="kanban-search"
-            className="w-full"
             value={searchDraft}
-            onChange={(event) => {
-              setSearchDraft(event.target.value);
-            }}
+            onChange={setSearchDraft}
             placeholder={t('kanban.filters.searchPlaceholder') ?? ''}
+            showActions={false}
+            handleKeys={false}
           />
         </FormGroup>
         <FormGroup

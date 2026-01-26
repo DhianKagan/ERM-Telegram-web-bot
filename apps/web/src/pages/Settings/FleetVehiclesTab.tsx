@@ -4,8 +4,8 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { Button } from '@/components/ui/button';
 import { FormGroup } from '@/components/ui/form-group';
-import { Input } from '@/components/ui/input';
 import { SimpleTable } from '@/components/ui/simple-table';
+import UnifiedSearch from '@/components/UnifiedSearch';
 import FilterGrid from '@/components/FilterGrid';
 import PageHeader from '@/components/PageHeader';
 import Modal from '../../components/Modal';
@@ -401,12 +401,14 @@ export default function FleetVehiclesTab() {
             }
           >
             <FormGroup label="Поиск" htmlFor="fleet-vehicles-search">
-              <Input
+              <UnifiedSearch
                 id="fleet-vehicles-search"
-                name="fleetVehicleSearch"
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
+                onChange={setSearch}
+                onSearch={handleSearchSubmit}
+                onReset={handleSearchReset}
                 placeholder="Название или номер"
+                showActions={false}
               />
             </FormGroup>
           </FilterGrid>

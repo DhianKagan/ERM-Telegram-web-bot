@@ -623,16 +623,31 @@ async function enrichAttachmentsFromContent(
   const previousAttachments = Array.isArray(previous?.attachments)
     ? (previous?.attachments as Attachment[])
     : undefined;
-  if (attachmentsRaw === undefined) {
-    const commentHtml =
-      typeof data.comment === 'string' ? data.comment : undefined;
-    const derived = buildAttachmentsFromCommentHtml(commentHtml ?? '', {
-      existing: previousAttachments,
+  const commentHtml = typeof data.comment === 'string' ? data.comment : '';
+  const descriptionHtml =
+    typeof data.task_description === 'string' ? data.task_description : '';
+  let derivedAttachments: Attachment[] = Array.isArray(attachmentsRaw)
+    ? attachmentsRaw.map((item) => ({ ...item }))
+    : Array.isArray(previousAttachments)
+      ? previousAttachments.map((item) => ({ ...item }))
+      : [];
+  if (commentHtml.trim()) {
+    derivedAttachments = buildAttachmentsFromCommentHtml(commentHtml, {
+      existing: derivedAttachments,
     });
-    if (derived.length === 0) {
+  }
+  if (descriptionHtml.trim()) {
+    derivedAttachments = buildAttachmentsFromCommentHtml(descriptionHtml, {
+      existing: derivedAttachments,
+    });
+  }
+  if (attachmentsRaw === undefined) {
+    if (derivedAttachments.length === 0) {
       return undefined;
     }
-    attachmentsRaw = derived;
+    attachmentsRaw = derivedAttachments;
+  } else {
+    attachmentsRaw = derivedAttachments;
   }
   if (!Array.isArray(attachmentsRaw) || attachmentsRaw.length === 0) {
     return [];

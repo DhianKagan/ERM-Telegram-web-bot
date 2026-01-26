@@ -158,6 +158,28 @@ describe('Привязка вложений к задачам', () => {
     );
   });
 
+  test('привязывает вложения из описания задачи при создании', async () => {
+    const inlineFileId = new Types.ObjectId();
+    await createTask(
+      {
+        task_description: `<p><img src="/api/v1/files/${inlineFileId}"></p>`,
+      },
+      7,
+    );
+    expect(mockFileUpdateMany).toHaveBeenNthCalledWith(
+      1,
+      {
+        _id: { $in: [inlineFileId] },
+        $or: [{ userId: 7 }, { taskId: createdTaskId }],
+      },
+      {
+        $set: { taskId: createdTaskId, detached: false, scope: 'task' },
+        $unset: { draftId: '' },
+        $addToSet: { relatedTaskIds: createdTaskId },
+      },
+    );
+  });
+
   test('разрешает первичную привязку вложений без идентификатора пользователя', async () => {
     const attachments = [
       {
@@ -226,6 +248,28 @@ describe('Привязка вложений к задачам', () => {
     expect(mockFileFind).toHaveBeenCalledWith({
       $or: [{ taskId: existingTaskId }, { relatedTaskIds: existingTaskId }],
     });
+  });
+
+  test('добавляет вложения из описания при обновлении', async () => {
+    const inlineFileId = new Types.ObjectId();
+    mockTaskFindById.mockResolvedValueOnce({
+      _id: existingTaskId,
+      status: 'Новая',
+      attachments: [],
+    });
+    await updateTask(
+      String(existingTaskId),
+      {
+        task_description: `<p><img src="/api/v1/files/${inlineFileId}"></p>`,
+      } as unknown as Record<string, unknown>,
+      1,
+    );
+
+    const call = mockTaskFindOneAndUpdate.mock.calls[0]!;
+    const setArg = call[1]?.$set as { attachments?: unknown[] };
+    expect(Array.isArray(setArg.attachments)).toBe(true);
+    const [attachment] = setArg.attachments as Record<string, unknown>[];
+    expect(attachment.url).toBe(`/api/v1/files/${inlineFileId}`);
   });
 
   test('парсит строковое представление вложений при обновлении', async () => {

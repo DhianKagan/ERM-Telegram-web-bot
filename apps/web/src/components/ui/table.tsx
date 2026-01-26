@@ -29,17 +29,99 @@ const Table = React.forwardRef<HTMLDivElement, TableProps>(
     },
     ref,
   ) => {
+    const {
+      onMouseDown: containerMouseDown,
+      className: containerClassName,
+      ...restContainerProps
+    } = containerProps ?? {};
+    const containerRef = React.useRef<HTMLDivElement>(null);
+    const dragStateRef = React.useRef({
+      isActive: false,
+      startX: 0,
+      startY: 0,
+      scrollLeft: 0,
+      scrollTop: 0,
+    });
+    const [isDragging, setIsDragging] = React.useState(false);
+
+    React.useImperativeHandle(
+      ref,
+      () => containerRef.current as HTMLDivElement,
+    );
+
     const tableStyle: React.CSSProperties = {
       ...((style as React.CSSProperties) ?? {}),
       ['--table-row-height' as string]: `${rowHeight}px`,
     };
 
+    const stopDragging = React.useCallback(() => {
+      if (!dragStateRef.current.isActive) {
+        return;
+      }
+      dragStateRef.current.isActive = false;
+      setIsDragging(false);
+    }, []);
+
+    const handleMouseMove = React.useCallback((event: MouseEvent) => {
+      if (!dragStateRef.current.isActive) {
+        return;
+      }
+      const container = containerRef.current;
+      if (!container) {
+        return;
+      }
+      const deltaX = event.pageX - dragStateRef.current.startX;
+      const deltaY = event.pageY - dragStateRef.current.startY;
+      container.scrollLeft = dragStateRef.current.scrollLeft - deltaX;
+      container.scrollTop = dragStateRef.current.scrollTop - deltaY;
+    }, []);
+
+    const handleMouseDown = React.useCallback(
+      (event: React.MouseEvent<HTMLDivElement>) => {
+        containerMouseDown?.(event);
+        if (event.defaultPrevented || event.button !== 0) {
+          return;
+        }
+        const container = containerRef.current;
+        if (!container) {
+          return;
+        }
+        dragStateRef.current = {
+          isActive: true,
+          startX: event.pageX,
+          startY: event.pageY,
+          scrollLeft: container.scrollLeft,
+          scrollTop: container.scrollTop,
+        };
+        setIsDragging(true);
+        event.preventDefault();
+      },
+      [containerMouseDown],
+    );
+
+    React.useEffect(() => {
+      if (!isDragging) {
+        return;
+      }
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', stopDragging);
+      return () => {
+        window.removeEventListener('mousemove', handleMouseMove);
+        window.removeEventListener('mouseup', stopDragging);
+      };
+    }, [handleMouseMove, isDragging, stopDragging]);
+
     return (
       <div
         data-slot="table-container"
-        {...containerProps}
-        ref={ref}
-        className={cn('ui-table-container', containerProps?.className)}
+        {...restContainerProps}
+        ref={containerRef}
+        onMouseDown={handleMouseDown}
+        className={cn(
+          'ui-table-container',
+          isDragging && 'ui-table-container--dragging',
+          containerClassName,
+        )}
       >
         <table
           data-slot="table"

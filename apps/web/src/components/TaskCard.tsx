@@ -232,7 +232,7 @@ export default function TaskCard({
       {taskNumber ? (
         <span className={secondaryTextClass}>{taskNumber}</span>
       ) : null}
-      <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex flex-nowrap items-center gap-1.5">
         <StatusBadge status={task.status ?? ''} tone={statusTone} />
         <DeadlineCountdownBadge
           startValue={startDate ?? undefined}
@@ -240,6 +240,7 @@ export default function TaskCard({
           rawDue={dueDate ?? undefined}
           status={task.status}
           completedAt={completedAt ?? undefined}
+          variant="compact"
         />
       </div>
     </div>

@@ -261,12 +261,6 @@ export default function FleetVehiclesTab() {
     void load();
   }, [load]);
 
-  const openCreate = React.useCallback(() => {
-    setMode('create');
-    setSelectedVehicle(null);
-    setModalOpen(true);
-  }, []);
-
   const openEdit = React.useCallback((item: FleetVehicleDto) => {
     setMode('update');
     setSelectedVehicle(item);
@@ -375,27 +369,17 @@ export default function FleetVehiclesTab() {
             onReset={handleSearchReset}
             showDefaultActions={false}
             actions={
-              <div className="flex flex-col items-end gap-2">
-                <div className="flex flex-wrap items-center justify-end gap-2">
-                  <Button type="submit" size="sm" variant="primary">
-                    Искать
-                  </Button>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="primary"
-                    onClick={handleSearchReset}
-                  >
-                    Сбросить
-                  </Button>
-                </div>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <Button type="submit" size="sm" variant="primary">
+                  Искать
+                </Button>
                 <Button
                   type="button"
                   size="sm"
                   variant="primary"
-                  onClick={openCreate}
+                  onClick={handleSearchReset}
                 >
-                  Добавить транспорт
+                  Сбросить
                 </Button>
               </div>
             }

@@ -77,7 +77,7 @@ export async function listRoutePlans(
   if (page) params.set('page', String(page));
   const response = await authFetch(`/api/v1/route-plans?${params.toString()}`);
   if (!response.ok) {
-    throw new Error('Не удалось загрузить маршрутные планы');
+    throw new Error('Не удалось загрузить маршрутные листы');
   }
   const payload = (await response.json()) as RoutePlanListResponsePayload;
   const items = Array.isArray(payload.items)
@@ -91,7 +91,7 @@ export async function listRoutePlans(
 export async function getRoutePlan(id: string): Promise<RoutePlan> {
   const response = await authFetch(`/api/v1/route-plans/${id}`);
   if (!response.ok) {
-    throw new Error('Маршрутный план не найден');
+    throw new Error('Маршрутный лист не найден');
   }
   const data = await response.json();
   return normalizePlan(data.plan as RoutePlan);
@@ -107,7 +107,7 @@ export async function updateRoutePlan(
     body: JSON.stringify(payload),
   });
   if (!response.ok) {
-    throw new Error('Не удалось сохранить маршрутный план');
+    throw new Error('Не удалось сохранить маршрутный лист');
   }
   const data = await response.json();
   return normalizePlan(data.plan as RoutePlan);
@@ -123,7 +123,7 @@ export async function changeRoutePlanStatus(
     body: JSON.stringify({ status }),
   });
   if (!response.ok) {
-    throw new Error('Не удалось обновить статус маршрутного плана');
+    throw new Error('Не удалось обновить статус маршрутного листа');
   }
   const data = await response.json();
   return normalizePlan(data.plan as RoutePlan);
@@ -134,7 +134,7 @@ export async function deleteRoutePlan(id: string): Promise<void> {
     method: 'DELETE',
   });
   if (!response.ok) {
-    throw new Error('Не удалось удалить маршрутный план');
+    throw new Error('Не удалось удалить маршрутный лист');
   }
 }
 

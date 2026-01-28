@@ -1,4 +1,4 @@
-// Страница отображения маршрутных планов в виде карточек
+// Страница отображения маршрутных листов в виде карточек
 // Основные модули: React, listRoutePlans, компоненты интерфейса
 import React from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
@@ -216,7 +216,7 @@ export default function Logistics() {
       const message =
         err instanceof Error
           ? err.message
-          : 'Не удалось загрузить маршрутные планы';
+          : 'Не удалось загрузить маршрутные листы';
       setError(message);
       addToast(message);
     } finally {
@@ -248,12 +248,12 @@ export default function Logistics() {
         setPlans((prev) =>
           prev.map((plan) => (plan.id === planId ? updated : plan)),
         );
-        addToast('Статус маршрутного плана обновлен');
+        addToast('Статус маршрутного листа обновлен');
       } catch (err) {
         const message =
           err instanceof Error
             ? err.message
-            : 'Не удалось обновить маршрутный план';
+            : 'Не удалось обновить маршрутный лист';
         addToast(message);
       } finally {
         setUpdatingPlanId(null);
@@ -268,12 +268,12 @@ export default function Logistics() {
     try {
       await deleteRoutePlan(deletePlan.id);
       setPlans((prev) => prev.filter((plan) => plan.id !== deletePlan.id));
-      addToast('Маршрутный план удален');
+      addToast('Маршрутный лист удален');
     } catch (err) {
       const message =
         err instanceof Error
           ? err.message
-          : 'Не удалось удалить маршрутный план';
+          : 'Не удалось удалить маршрутный лист';
       addToast(message);
     } finally {
       setDeletingPlanId(null);
@@ -318,7 +318,7 @@ export default function Logistics() {
   const columns = React.useMemo<ColumnDef<RoutePlan>[]>(() => {
     return [
       {
-        header: 'Маршрутный план',
+        header: 'Маршрутный лист',
         accessorKey: 'title',
         cell: ({ row }) => (
           <div className="min-w-0 space-y-1">
@@ -417,13 +417,13 @@ export default function Logistics() {
           <Breadcrumbs
             items={[
               { label: 'Логистика', href: '/logistics' },
-              { label: 'Маршрутные планы' },
+              { label: 'Маршрутные листы' },
             ]}
           />
         }
         icon={TruckIcon}
-        title="Маршрутные планы"
-        description="Просматривайте планы доставки без привязки к карте: задачи, назначенные водители и транспорт, статус и детали плана."
+        title="Маршрутные листы"
+        description="Просматривайте маршрутные листы доставки без привязки к карте: задачи, назначенные водители и транспорт, статус и детали."
         filters={
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <FormGroup label="Поиск" htmlFor="logistics-search">
@@ -433,7 +433,7 @@ export default function Logistics() {
                 onChange={setSearchDraft}
                 onSearch={applySearch}
                 onReset={resetSearch}
-                placeholder="Название, водитель, авто, задача"
+                placeholder="Маршрутный лист, водитель, авто, задача"
                 showActions
               />
             </FormGroup>
@@ -491,7 +491,7 @@ export default function Logistics() {
       />
       {!isAdmin && !isManager && (
         <p className="text-sm text-muted-foreground">
-          Управление маршрутными планами доступно администраторам и менеджерам.
+          Управление маршрутными листами доступно администраторам и менеджерам.
           Остальные пользователи могут просматривать список.
         </p>
       )}
@@ -507,7 +507,7 @@ export default function Logistics() {
         <SkeletonCard />
       ) : filteredPlans.length === 0 ? (
         <div className="ui-card text-sm text-muted-foreground">
-          Маршрутные планы отсутствуют.
+          Маршрутные листы отсутствуют.
         </div>
       ) : viewMode === 'cards' ? (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -581,7 +581,7 @@ export default function Logistics() {
                         )
                       }
                       disabled={updatingPlanId === plan.id}
-                      aria-label="Статус маршрутного плана"
+                      aria-label="Статус маршрутного листа"
                     >
                       {statusSelectOptions.map((option) => (
                         <option key={option.value} value={option.value}>
@@ -620,7 +620,7 @@ export default function Logistics() {
       )}
       <ConfirmDialog
         open={Boolean(deletePlan)}
-        message={`Удалить маршрутный план \"${deletePlan?.title ?? ''}\"?`}
+        message={`Удалить маршрутный лист \"${deletePlan?.title ?? ''}\"?`}
         onConfirm={handleDeleteConfirm}
         onCancel={() => setDeletePlan(null)}
         confirmText="Удалить"

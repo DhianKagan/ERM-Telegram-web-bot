@@ -102,7 +102,7 @@ describe('Logistics page (карточки)', () => {
 
     await renderPage();
 
-    expect(await screen.findByText('Маршрутные планы')).toBeInTheDocument();
+    expect(await screen.findByText('Маршрутные листы')).toBeInTheDocument();
     expect(screen.getByText('Маршрут 1')).toBeInTheDocument();
     expect(screen.getByText('Новый')).toBeInTheDocument();
     expect(screen.getByText('Иван')).toBeInTheDocument();

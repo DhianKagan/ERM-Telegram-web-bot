@@ -4,6 +4,7 @@ import React from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
 import {
   CheckCircleIcon,
+  PencilSquareIcon,
   PlayIcon,
   Squares2X2Icon,
   TableCellsIcon,
@@ -30,6 +31,7 @@ import UnifiedSearch from '@/components/UnifiedSearch';
 import Breadcrumbs from '../components/Breadcrumbs';
 import ActionBar from '../components/ActionBar';
 import SkeletonCard from '../components/SkeletonCard';
+import RoutePlanDialog from './RoutePlanDialog';
 import { useAuth } from '../context/useAuth';
 import { useToast } from '../context/useToast';
 import {
@@ -203,6 +205,8 @@ export default function Logistics() {
   const [deletingPlanId, setDeletingPlanId] = React.useState<string | null>(
     null,
   );
+  const [dialogOpen, setDialogOpen] = React.useState(false);
+  const [dialogPlanId, setDialogPlanId] = React.useState<string | null>(null);
   const { addToast } = useToast();
   const { user } = useAuth();
 
@@ -280,6 +284,39 @@ export default function Logistics() {
       setDeletePlan(null);
     }
   }, [addToast, deletePlan]);
+
+  const openCreateDialog = React.useCallback(() => {
+    setDialogPlanId(null);
+    setDialogOpen(true);
+  }, []);
+
+  const openEditDialog = React.useCallback((planId: string) => {
+    setDialogPlanId(planId);
+    setDialogOpen(true);
+  }, []);
+
+  const closeDialog = React.useCallback(() => {
+    setDialogOpen(false);
+    setDialogPlanId(null);
+  }, []);
+
+  const handleDialogSaved = React.useCallback(
+    (plan: RoutePlan) => {
+      setPlans((prev) => {
+        const existingIndex = prev.findIndex((item) => item.id === plan.id);
+        if (existingIndex >= 0) {
+          const next = [...prev];
+          next[existingIndex] = plan;
+          return next;
+        }
+        return [plan, ...prev];
+      });
+      addToast(
+        dialogPlanId ? 'Маршрутный лист обновлен' : 'Маршрутный лист создан',
+      );
+    },
+    [addToast, dialogPlanId],
+  );
 
   const filteredPlans = React.useMemo(() => {
     return plans.filter((plan) => {
@@ -380,6 +417,12 @@ export default function Logistics() {
     (plan: RoutePlan): SimpleTableAction<RoutePlan>[] => {
       if (!isManaging) return [];
       const actions: SimpleTableAction<RoutePlan>[] = [];
+      actions.push({
+        label: 'Редактировать',
+        onClick: () => openEditDialog(plan.id),
+        variant: 'outline',
+        icon: <PencilSquareIcon className="size-4" />,
+      });
       if (plan.status !== 'approved') {
         actions.push({
           label: 'В работу',
@@ -407,7 +450,13 @@ export default function Logistics() {
       });
       return actions;
     },
-    [deletingPlanId, handleStatusChange, isManaging, updatingPlanId],
+    [
+      deletingPlanId,
+      handleStatusChange,
+      isManaging,
+      openEditDialog,
+      updatingPlanId,
+    ],
   );
 
   return (
@@ -466,6 +515,11 @@ export default function Logistics() {
             >
               {loading ? 'Обновляем…' : 'Обновить'}
             </Button>
+            {isManaging ? (
+              <Button type="button" size="sm" onClick={openCreateDialog}>
+                Создать маршрутный лист
+              </Button>
+            ) : null}
             <Button
               type="button"
               variant={viewMode === 'cards' ? 'secondary' : 'outline'}
@@ -592,6 +646,15 @@ export default function Logistics() {
                     <Button
                       type="button"
                       size="sm"
+                      variant="outline"
+                      onClick={() => openEditDialog(plan.id)}
+                      disabled={deletingPlanId === plan.id}
+                    >
+                      Редактировать
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
                       variant="destructive"
                       onClick={() => setDeletePlan(plan)}
                       disabled={deletingPlanId === plan.id}
@@ -625,6 +688,12 @@ export default function Logistics() {
         onCancel={() => setDeletePlan(null)}
         confirmText="Удалить"
         cancelText="Отмена"
+      />
+      <RoutePlanDialog
+        open={dialogOpen}
+        planId={dialogPlanId}
+        onClose={closeDialog}
+        onSaved={handleDialogSaved}
       />
     </div>
   );

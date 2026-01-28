@@ -6,6 +6,7 @@ import { validationResult } from 'express-validator';
 import type { RoutePlanStatus } from 'shared';
 import {
   listPlans,
+  createDraftFromInputs,
   getPlan,
   updatePlan,
   updatePlanStatus,
@@ -17,6 +18,12 @@ import type RequestWithUser from '../types/request';
 import { sendProblem } from '../utils/problem';
 
 type RoutePlanUpdateRequestBody = {
+  title?: unknown;
+  notes?: unknown;
+  routes?: unknown;
+};
+
+type RoutePlanCreateRequestBody = {
   title?: unknown;
   notes?: unknown;
   routes?: unknown;
@@ -65,6 +72,45 @@ export async function detail(req: Request, res: Response): Promise<void> {
     return;
   }
   res.json({ plan });
+}
+
+export async function create(
+  req: RequestWithUser<
+    Record<string, string>,
+    unknown,
+    RoutePlanCreateRequestBody
+  >,
+  res: Response,
+): Promise<void> {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    const errorList = errors.array();
+    sendProblem(req, res, {
+      type: 'about:blank',
+      title: 'Ошибка валидации',
+      status: 400,
+      detail: 'Ошибка валидации',
+      errors: errorList,
+    });
+    return;
+  }
+
+  const title =
+    typeof req.body?.title === 'string' ? req.body.title : undefined;
+  const notes =
+    req.body?.notes === null || typeof req.body?.notes === 'string'
+      ? (req.body?.notes as string | null)
+      : undefined;
+  const actorId = parseActorId(req.user?.id);
+  const routes = normalizeRoutesPayload(req.body?.routes) ?? [];
+
+  const plan = await createDraftFromInputs(routes, {
+    actorId,
+    title,
+    notes,
+  });
+
+  res.status(201).json({ plan });
 }
 
 const normalizeRoutesPayload = (
@@ -227,6 +273,7 @@ export async function remove(req: Request, res: Response): Promise<void> {
 
 export default {
   list,
+  create,
   detail,
   update,
   changeStatus,

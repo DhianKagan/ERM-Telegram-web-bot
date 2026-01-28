@@ -23,6 +23,26 @@ router.get(
 
 router.get('/:id', authMiddleware(), asyncHandler(ctrl.detail));
 
+router.post(
+  '/',
+  authMiddleware(),
+  ...validate([
+    body('title').optional().isString(),
+    body('notes').optional({ nullable: true }).isString(),
+    body('routes').optional().isArray(),
+    body('routes.*.id').optional({ nullable: true }).isString(),
+    body('routes.*.order').optional().isInt(),
+    body('routes.*.vehicleId').optional({ nullable: true }).isString(),
+    body('routes.*.vehicleName').optional({ nullable: true }).isString(),
+    body('routes.*.driverId').optional({ nullable: true }).isString(),
+    body('routes.*.driverName').optional({ nullable: true }).isString(),
+    body('routes.*.notes').optional({ nullable: true }).isString(),
+    body('routes.*.tasks').optional().isArray({ min: 1 }),
+    body('routes.*.tasks.*').optional().isString(),
+  ]),
+  asyncHandler(ctrl.create),
+);
+
 router.patch(
   '/:id',
   authMiddleware(),

@@ -61,6 +61,8 @@ export interface RoutePlanUpdatePayload {
   }>;
 }
 
+export type RoutePlanCreatePayload = RoutePlanUpdatePayload;
+
 export interface RoutePlanListResponse {
   items: RoutePlan[];
   total: number;
@@ -92,6 +94,21 @@ export async function getRoutePlan(id: string): Promise<RoutePlan> {
   const response = await authFetch(`/api/v1/route-plans/${id}`);
   if (!response.ok) {
     throw new Error('Маршрутный лист не найден');
+  }
+  const data = await response.json();
+  return normalizePlan(data.plan as RoutePlan);
+}
+
+export async function createRoutePlan(
+  payload: RoutePlanCreatePayload,
+): Promise<RoutePlan> {
+  const response = await authFetch('/api/v1/route-plans', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    throw new Error('Не удалось создать маршрутный лист');
   }
   const data = await response.json();
   return normalizePlan(data.plan as RoutePlan);
@@ -141,6 +158,7 @@ export async function deleteRoutePlan(id: string): Promise<void> {
 export default {
   listRoutePlans,
   getRoutePlan,
+  createRoutePlan,
   updateRoutePlan,
   changeRoutePlanStatus,
   deleteRoutePlan,

@@ -3,7 +3,6 @@
 
 import { Types } from 'mongoose';
 import {
-  PROJECT_TIMEZONE,
   generateMultiRouteLink,
   type LogisticsRoutePlanUpdateReason,
   type RoutePlan as SharedRoutePlan,
@@ -260,16 +259,49 @@ const buildLegacyPoints = (task: TaskSource): TaskPoint[] => {
   return points;
 };
 
-const defaultTitle = (): string => {
+const LOG_TITLE_PREFIX = 'LOG_';
+const LOG_TITLE_WIDTH = 5;
+const LOG_TITLE_PATTERN = /^LOG_\d{5}$/;
+
+const formatLogTitle = (index: number): string => {
+  const safeIndex = Number.isFinite(index) && index >= 0 ? index : 0;
+  return `${LOG_TITLE_PREFIX}${String(safeIndex).padStart(
+    LOG_TITLE_WIDTH,
+    '0',
+  )}`;
+};
+
+const generateLogTitle = async (): Promise<string> => {
   try {
-    const formatter = new Intl.DateTimeFormat('ru-UA', {
-      dateStyle: 'medium',
-      timeStyle: 'short',
-      timeZone: PROJECT_TIMEZONE,
-    });
-    return `Маршрутный план ${formatter.format(new Date())}`;
+    const [latest] = await RoutePlanModel.aggregate([
+      {
+        $match: {
+          title: { $regex: LOG_TITLE_PATTERN },
+        },
+      },
+      {
+        $addFields: {
+          logIndex: {
+            $toInt: {
+              $substrBytes: [
+                '$title',
+                LOG_TITLE_PREFIX.length,
+                LOG_TITLE_WIDTH,
+              ],
+            },
+          },
+        },
+      },
+      { $sort: { logIndex: -1 } },
+      { $limit: 1 },
+    ]);
+    const lastIndex =
+      typeof latest?.logIndex === 'number' && Number.isFinite(latest.logIndex)
+        ? latest.logIndex
+        : -1;
+    return formatLogTitle(lastIndex + 1);
   } catch {
-    return `Маршрутный план ${new Date().toISOString()}`;
+    return formatLogTitle(0);
   }
 };
 
@@ -673,7 +705,8 @@ export async function createDraftFromInputs(
     taskIds,
   } = await buildRoutesFromInput(routes, hintMap);
   const title =
-    normalizeString(options.title, TITLE_MAX_LENGTH) ?? defaultTitle();
+    normalizeString(options.title, TITLE_MAX_LENGTH) ??
+    (await generateLogTitle());
   const notes = normalizeString(options.notes, NOTES_MAX_LENGTH);
   const plan = await RoutePlanModel.create({
     title,

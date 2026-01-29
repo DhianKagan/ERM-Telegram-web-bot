@@ -1144,6 +1144,9 @@ export default function CollectionsPage() {
   );
   const [taskFieldItems, setTaskFieldItems] = useState<CollectionItem[]>([]);
   const [taskTypeItems, setTaskTypeItems] = useState<CollectionItem[]>([]);
+  const [routePlanSettings, setRoutePlanSettings] = useState<CollectionItem[]>(
+    [],
+  );
   const [tasksLoading, setTasksLoading] = useState(false);
   const [eventLogs, setEventLogs] = useState<CollectionItem[]>([]);
   const [eventLogsLoading, setEventLogsLoading] = useState(false);
@@ -1468,18 +1471,21 @@ export default function CollectionsPage() {
   const loadTaskSettings = useCallback(async () => {
     setTasksLoading(true);
     try {
-      const [fields, types] = await Promise.all([
+      const [fields, types, routePlans] = await Promise.all([
         fetchAllCollectionItems('task_fields'),
         fetchAllCollectionItems('task_types'),
+        fetchAllCollectionItems('route_plan_settings'),
       ]);
       setTaskFieldItems(fields);
       setTaskTypeItems(types);
+      setRoutePlanSettings(routePlans);
       setHint((prev) => (prev === TASK_SETTINGS_ERROR_HINT ? '' : prev));
     } catch (error) {
       const message =
         error instanceof Error ? error.message : TASK_SETTINGS_ERROR_HINT;
       setTaskFieldItems([]);
       setTaskTypeItems([]);
+      setRoutePlanSettings([]);
       setHint(message || TASK_SETTINGS_ERROR_HINT);
     } finally {
       setTasksLoading(false);
@@ -1591,6 +1597,49 @@ export default function CollectionsPage() {
               meta,
             },
             { collectionType: 'task_types' },
+          );
+        }
+        await loadTaskSettings();
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : TASK_TYPE_SAVE_ERROR;
+        throw new Error(message || TASK_TYPE_SAVE_ERROR);
+      }
+    },
+    [loadTaskSettings],
+  );
+
+  const saveRoutePlanSetting = useCallback(
+    async (
+      item: CollectionItem,
+      payload: { label: string; tg_theme_url: string },
+    ) => {
+      const trimmedLabel = payload.label.trim();
+      if (!trimmedLabel) {
+        throw new Error('Название не может быть пустым');
+      }
+      const trimmedUrl = payload.tg_theme_url.trim();
+      try {
+        const meta: Record<string, string> = {};
+        if (trimmedUrl) meta.tg_theme_url = trimmedUrl;
+        if (item.meta?.virtual) {
+          await createCollectionItem('route_plan_settings', {
+            name: item.name,
+            value: trimmedLabel,
+            ...(Object.keys(meta).length ? { meta } : {}),
+          });
+        } else {
+          if (!trimmedUrl) {
+            meta.tg_theme_url = '';
+          }
+          await updateCollectionItem(
+            item._id,
+            {
+              name: item.name,
+              value: trimmedLabel,
+              meta,
+            },
+            { collectionType: 'route_plan_settings' },
           );
         }
         await loadTaskSettings();
@@ -3453,11 +3502,13 @@ export default function CollectionsPage() {
                     <TaskSettingsTab
                       fields={taskFieldItems}
                       types={taskTypeItems}
+                      routePlanSettings={routePlanSettings}
                       loading={tasksLoading}
                       onSaveField={saveTaskField}
                       onDeleteField={deleteTaskField}
                       onSaveType={saveTaskType}
                       onDeleteType={deleteTaskType}
+                      onSaveRoutePlanSetting={saveRoutePlanSetting}
                     />
                   </TabsContent>
                 );

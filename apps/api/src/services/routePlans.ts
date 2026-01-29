@@ -19,6 +19,7 @@ import { Task, type TaskPoint } from '../db/model';
 import { chatId } from '../config';
 import { call as telegramCall } from './telegramApi';
 import { getUser } from '../db/queries';
+import { resolveRoutePlanTarget } from './routePlanSettings';
 import {
   notifyRoutePlanRemoved,
   notifyRoutePlanUpdated,
@@ -975,11 +976,26 @@ const canTransition = (from: RoutePlanStatus, to: RoutePlanStatus): boolean => {
   return allowed.includes(to);
 };
 
+export const resolveRoutePlanSendTarget = async (): Promise<{
+  chatId?: string;
+  topicId?: number;
+}> => {
+  const settingsTarget = await resolveRoutePlanTarget();
+  if (settingsTarget?.chatId) {
+    return settingsTarget;
+  }
+  if (!chatId) {
+    return {};
+  }
+  return { chatId };
+};
+
 const notifyPlanApproved = async (
   plan: SharedRoutePlan,
   actorId?: number | null,
 ): Promise<void> => {
-  if (!chatId) return;
+  const target = await resolveRoutePlanSendTarget();
+  if (!target.chatId) return;
   const actor =
     typeof actorId === 'number' && Number.isFinite(actorId)
       ? await getUser(actorId)
@@ -1033,7 +1049,10 @@ const notifyPlanApproved = async (
   lines.push(summary.join(', '));
   try {
     await telegramCall('sendMessage', {
-      chat_id: chatId,
+      chat_id: target.chatId,
+      ...(typeof target.topicId === 'number'
+        ? { message_thread_id: target.topicId }
+        : {}),
       text: lines.join('\n'),
     });
   } catch (error) {

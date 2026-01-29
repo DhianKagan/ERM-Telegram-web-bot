@@ -7,10 +7,10 @@ process.env.JWT_SECRET = 's';
 process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
 process.env.APP_URL = 'https://localhost';
 
-const express = require('express');
-const request = require('supertest');
-const { stopScheduler } = require('../src/services/scheduler');
-const { stopQueue } = require('../src/services/messageQueue');
+import express from 'express';
+import request from 'supertest';
+import { stopScheduler } from '../src/services/scheduler';
+import { stopQueue } from '../src/services/messageQueue';
 
 jest.mock('../src/utils/rateLimiter', () => () => (_req, _res, next) => next());
 jest.mock('../src/middleware/auth', () => () => (_req, _res, next) => next());
@@ -24,8 +24,8 @@ jest.mock('../src/db/repos/collectionRepo', () => ({
   update: jest.fn(),
 }));
 
-const repo = require('../src/db/repos/collectionRepo');
-const collectionsRouter = require('../src/routes/collections').default;
+import * as repo from '../src/db/repos/collectionRepo';
+import collectionsRouter from '../src/routes/collections';
 
 let app;
 
@@ -69,4 +69,18 @@ test('возвращает 400 при пустом value для других к�
   expect(response.status).toBe(400);
   expect(repo.create).not.toHaveBeenCalled();
   expect(String(response.body.detail)).toContain('value');
+});
+
+test('возвращает 400 при неверной tg-ссылке в настройках маршрутов', async () => {
+  const response = await request(app)
+    .post('/api/v1/collections')
+    .send({
+      type: 'route_plan_settings',
+      name: 'Маршрутные листы',
+      value: 'Маршрутные листы',
+      meta: { tg_theme_url: 'https://example.com/invalid' },
+    });
+  expect(response.status).toBe(400);
+  expect(repo.create).not.toHaveBeenCalled();
+  expect(String(response.body.detail)).toContain('Telegram');
 });

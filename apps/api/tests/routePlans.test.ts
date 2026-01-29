@@ -68,6 +68,12 @@ test('POST /api/v1/route-plans создает маршрутный лист', as
     .send({
       title: 'Тестовый лист',
       notes: 'Заметка',
+      creatorId: 5,
+      executorId: 7,
+      companyPointIds: ['point-1'],
+      transportId: 'transport-1',
+      transportName: 'Газель',
+      tasks: ['task-2'],
       routes: [{ tasks: ['task-1'] }],
     });
 
@@ -79,6 +85,12 @@ test('POST /api/v1/route-plans создает маршрутный лист', as
       actorId: 42,
       title: 'Тестовый лист',
       notes: 'Заметка',
+      creatorId: 5,
+      executorId: 7,
+      companyPointIds: ['point-1'],
+      transportId: 'transport-1',
+      transportName: 'Газель',
+      tasks: ['task-2'],
     }),
   );
 });

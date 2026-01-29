@@ -61,6 +61,12 @@ export interface RoutePlanUpdatePayload {
   title?: string;
   notes?: string | null;
   routes?: RoutePlanRouteInput[];
+  creatorId?: number | string | null;
+  executorId?: number | string | null;
+  companyPointIds?: string[];
+  transportId?: string | null;
+  transportName?: string | null;
+  tasks?: string[];
 }
 
 export interface RoutePlanListFilters {
@@ -76,6 +82,12 @@ export interface CreateRoutePlanOptions {
   title?: string;
   notes?: string | null;
   reason?: LogisticsRoutePlanUpdateReason;
+  creatorId?: number | string | null;
+  executorId?: number | string | null;
+  companyPointIds?: string[];
+  transportId?: string | null;
+  transportName?: string | null;
+  tasks?: string[];
 }
 
 type TaskMap = Map<string, TaskSource>;
@@ -167,6 +179,27 @@ const normalizeId = (value: unknown): string | null => {
     return normalizeId((value as { toString(): string }).toString());
   }
   return null;
+};
+
+const normalizeObjectIds = (values: unknown): Types.ObjectId[] => {
+  if (!Array.isArray(values)) return [];
+  return values
+    .map((value) => parseObjectId(value))
+    .filter((id): id is Types.ObjectId => Boolean(id));
+};
+
+const normalizeTaskIds = (values: unknown): Types.ObjectId[] => {
+  if (!Array.isArray(values)) return [];
+  const ids = values
+    .map((value) => parseObjectId(value))
+    .filter((id): id is Types.ObjectId => Boolean(id));
+  const seen = new Set<string>();
+  return ids.filter((id) => {
+    const key = id.toHexString();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 };
 
 const cloneCoords = (
@@ -553,6 +586,11 @@ const serializePlan = (plan: RoutePlanDocument): SharedRoutePlan => {
     _id: Types.ObjectId | string;
     title?: string;
     status: RoutePlanStatus;
+    creatorId?: number | null;
+    executorId?: number | null;
+    companyPointIds?: Array<Types.ObjectId | string>;
+    transportId?: Types.ObjectId | string | null;
+    transportName?: string | null;
     suggestedBy?: number;
     method?: 'angle' | 'trip';
     count?: number;
@@ -576,6 +614,11 @@ const serializePlan = (plan: RoutePlanDocument): SharedRoutePlan => {
   const {
     title,
     status,
+    creatorId,
+    executorId,
+    companyPointIds,
+    transportId,
+    transportName,
     suggestedBy,
     method,
     count,
@@ -628,6 +671,14 @@ const serializePlan = (plan: RoutePlanDocument): SharedRoutePlan => {
         .filter((id): id is string => Boolean(id))
     : [];
 
+  const companyPoints = Array.isArray(companyPointIds)
+    ? companyPointIds
+        .map((id) => normalizeId(id))
+        .filter((id): id is string => Boolean(id))
+    : [];
+
+  const normalizedTransportId = normalizeId(transportId);
+
   const toIso = (value: Date | string | undefined): string | undefined => {
     if (!value) return undefined;
     if (value instanceof Date) {
@@ -647,6 +698,20 @@ const serializePlan = (plan: RoutePlanDocument): SharedRoutePlan => {
         : String(plan._id),
     title: typeof title === 'string' ? title : '',
     status,
+    creatorId:
+      typeof creatorId === 'number' && Number.isFinite(creatorId)
+        ? Number(creatorId)
+        : null,
+    executorId:
+      typeof executorId === 'number' && Number.isFinite(executorId)
+        ? Number(executorId)
+        : null,
+    companyPointIds: companyPoints,
+    transportId: normalizedTransportId,
+    transportName:
+      typeof transportName === 'string' && transportName.trim()
+        ? transportName.trim()
+        : null,
     suggestedBy:
       typeof suggestedBy === 'number' && Number.isFinite(suggestedBy)
         ? Number(suggestedBy)
@@ -704,13 +769,28 @@ export async function createDraftFromInputs(
     metrics,
     taskIds,
   } = await buildRoutesFromInput(routes, hintMap);
+  const normalizedTasks = normalizeTaskIds(options.tasks);
+  const mergedTasks = normalizeTaskIds([...taskIds, ...normalizedTasks]);
   const title =
     normalizeString(options.title, TITLE_MAX_LENGTH) ??
     (await generateLogTitle());
   const notes = normalizeString(options.notes, NOTES_MAX_LENGTH);
+  const creatorId = parseNumeric(options.creatorId);
+  const executorId = parseNumeric(options.executorId);
+  const transportId = parseObjectId(options.transportId);
+  const transportName = normalizeString(
+    options.transportName,
+    VEHICLE_NAME_MAX_LENGTH,
+  );
+  const companyPointIds = normalizeObjectIds(options.companyPointIds);
   const plan = await RoutePlanModel.create({
     title,
     status: 'draft',
+    creatorId,
+    executorId,
+    companyPointIds,
+    transportId,
+    transportName,
     suggestedBy:
       typeof options.actorId === 'number' && Number.isFinite(options.actorId)
         ? Number(options.actorId)
@@ -719,9 +799,18 @@ export async function createDraftFromInputs(
     count: options.count,
     notes,
     routes: builtRoutes,
-    metrics,
-    tasks: taskIds,
+    metrics: {
+      ...metrics,
+      totalTasks: mergedTasks.length,
+    },
+    tasks: mergedTasks,
   });
+  if (mergedTasks.length) {
+    await Task.updateMany(
+      { _id: { $in: mergedTasks } },
+      { $set: { routePlanId: plan._id } },
+    );
+  }
   const serialized = serializePlan(plan);
   const reason: LogisticsRoutePlanUpdateReason = options.reason ?? 'created';
   notifyRoutePlanUpdated(serialized, reason);
@@ -778,16 +867,72 @@ export async function updatePlan(
     plan.notes = normalizeString(payload.notes, NOTES_MAX_LENGTH) ?? undefined;
   }
 
+  if (payload.creatorId === null || payload.creatorId !== undefined) {
+    plan.creatorId = parseNumeric(payload.creatorId);
+  }
+
+  if (payload.executorId === null || payload.executorId !== undefined) {
+    plan.executorId = parseNumeric(payload.executorId);
+  }
+
+  if (payload.transportId === null || payload.transportId !== undefined) {
+    plan.transportId = parseObjectId(payload.transportId);
+  }
+
+  if (payload.transportName === null || payload.transportName !== undefined) {
+    if (payload.transportName === null) {
+      plan.transportName = null;
+    } else {
+      plan.transportName = normalizeString(
+        payload.transportName,
+        VEHICLE_NAME_MAX_LENGTH,
+      );
+    }
+  }
+
+  if (payload.companyPointIds !== undefined) {
+    plan.companyPointIds = normalizeObjectIds(payload.companyPointIds);
+  }
+
+  let nextTasks: Types.ObjectId[] | null = null;
   if (Array.isArray(payload.routes)) {
     const { routes, metrics, taskIds } = await buildRoutesFromInput(
       payload.routes,
     );
     plan.routes = routes;
     plan.metrics = metrics;
-    plan.tasks = taskIds;
+    nextTasks = taskIds;
+  }
+
+  if (payload.tasks !== undefined) {
+    const normalizedTasks = normalizeTaskIds(payload.tasks);
+    nextTasks = normalizeTaskIds([
+      ...(nextTasks ?? plan.tasks ?? []),
+      ...normalizedTasks,
+    ]);
+  }
+
+  if (nextTasks) {
+    plan.tasks = nextTasks;
+    plan.metrics = {
+      ...plan.metrics,
+      totalTasks: nextTasks.length,
+    };
   }
 
   await plan.save();
+  if (nextTasks) {
+    await Task.updateMany(
+      { routePlanId: plan._id, _id: { $nin: nextTasks } },
+      { $set: { routePlanId: null } },
+    );
+    if (nextTasks.length) {
+      await Task.updateMany(
+        { _id: { $in: nextTasks } },
+        { $set: { routePlanId: plan._id } },
+      );
+    }
+  }
   const serialized = serializePlan(plan);
   notifyRoutePlanUpdated(serialized, 'updated');
   return serialized;
@@ -956,6 +1101,10 @@ export async function removePlan(id: string): Promise<boolean> {
   if (!res) {
     return false;
   }
+  await Task.updateMany(
+    { routePlanId: objectId },
+    { $set: { routePlanId: null } },
+  );
   const planId = normalizeId(res._id) ?? normalizeId(id);
   if (planId) {
     notifyRoutePlanRemoved(planId);

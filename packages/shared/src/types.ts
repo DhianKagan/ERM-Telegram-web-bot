@@ -20,6 +20,7 @@ export interface Task {
   kind?: 'task' | 'request';
   request_id?: string;
   task_number?: string;
+  routePlanId?: string | null;
   completed_at?: string | null;
   in_progress_at?: string | null;
   assignees?: number[];
@@ -215,6 +216,11 @@ export interface RoutePlan {
   id: string;
   title: string;
   status: RoutePlanStatus;
+  creatorId?: number | null;
+  executorId?: number | null;
+  companyPointIds?: string[];
+  transportId?: string | null;
+  transportName?: string | null;
   suggestedBy?: number | null;
   method?: 'angle' | 'trip';
   count?: number;

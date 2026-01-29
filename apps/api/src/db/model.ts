@@ -233,6 +233,7 @@ export interface TaskAttrs {
   kind?: TaskKind;
   request_id?: string;
   task_number?: string;
+  routePlanId?: Types.ObjectId | null;
   submission_date?: Date;
   applicant?: Applicant;
   logistics_details?: Logistics;
@@ -342,6 +343,11 @@ const taskSchema = new Schema<TaskDocument>(
     },
     request_id: String,
     task_number: String,
+    routePlanId: {
+      type: Schema.Types.ObjectId,
+      ref: 'RoutePlan',
+      default: null,
+    },
     submission_date: Date,
     applicant: applicantSchema,
     logistics_details: logisticsSchema,

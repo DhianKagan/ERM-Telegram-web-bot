@@ -21,12 +21,24 @@ type RoutePlanUpdateRequestBody = {
   title?: unknown;
   notes?: unknown;
   routes?: unknown;
+  creatorId?: unknown;
+  executorId?: unknown;
+  companyPointIds?: unknown;
+  transportId?: unknown;
+  transportName?: unknown;
+  tasks?: unknown;
 };
 
 type RoutePlanCreateRequestBody = {
   title?: unknown;
   notes?: unknown;
   routes?: unknown;
+  creatorId?: unknown;
+  executorId?: unknown;
+  companyPointIds?: unknown;
+  transportId?: unknown;
+  transportName?: unknown;
+  tasks?: unknown;
 };
 
 type RoutePlanStatusRequestBody = {
@@ -44,6 +56,19 @@ const parseActorId = (value: unknown): number | undefined => {
     return Number.isFinite(parsed) ? parsed : undefined;
   }
   return undefined;
+};
+
+const parseOptionalUserId = (value: unknown): number | null | undefined => {
+  if (value === null) return null;
+  return parseActorId(value);
+};
+
+const normalizeStringList = (value: unknown): string[] | undefined => {
+  if (!Array.isArray(value)) return undefined;
+  const list = value
+    .map((item) => (typeof item === 'string' ? item.trim() : String(item)))
+    .filter((item) => item.length > 0);
+  return list.length ? list : [];
 };
 
 export async function list(req: Request, res: Response): Promise<void> {
@@ -103,11 +128,30 @@ export async function create(
       : undefined;
   const actorId = parseActorId(req.user?.id);
   const routes = normalizeRoutesPayload(req.body?.routes) ?? [];
+  const creatorId = parseOptionalUserId(req.body?.creatorId);
+  const executorId = parseOptionalUserId(req.body?.executorId);
+  const companyPointIds = normalizeStringList(req.body?.companyPointIds);
+  const transportId =
+    req.body?.transportId === null || typeof req.body?.transportId === 'string'
+      ? (req.body?.transportId as string | null)
+      : undefined;
+  const transportName =
+    req.body?.transportName === null ||
+    typeof req.body?.transportName === 'string'
+      ? (req.body?.transportName as string | null)
+      : undefined;
+  const tasks = normalizeStringList(req.body?.tasks);
 
   const plan = await createDraftFromInputs(routes, {
     actorId,
     title,
     notes,
+    creatorId,
+    executorId,
+    companyPointIds,
+    transportId,
+    transportName,
+    tasks,
   });
 
   res.status(201).json({ plan });
@@ -204,6 +248,20 @@ export async function update(
         ? (req.body?.notes as string | null)
         : undefined,
     routes: normalizeRoutesPayload(req.body?.routes),
+    creatorId: parseOptionalUserId(req.body?.creatorId),
+    executorId: parseOptionalUserId(req.body?.executorId),
+    companyPointIds: normalizeStringList(req.body?.companyPointIds),
+    transportId:
+      req.body?.transportId === null ||
+      typeof req.body?.transportId === 'string'
+        ? (req.body?.transportId as string | null)
+        : undefined,
+    transportName:
+      req.body?.transportName === null ||
+      typeof req.body?.transportName === 'string'
+        ? (req.body?.transportName as string | null)
+        : undefined,
+    tasks: normalizeStringList(req.body?.tasks),
   };
 
   const plan = await updatePlan(req.params.id, payload);

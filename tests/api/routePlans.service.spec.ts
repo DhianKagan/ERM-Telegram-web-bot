@@ -237,6 +237,67 @@ describe('routePlans service analytics', function () {
     assert.equal(message.plan.status, 'approved');
   });
 
+  it('сохраняет дополнительные поля и связывает задачи с маршрутным планом', async () => {
+    const taskA = await Task.create({
+      title: 'Погрузка',
+      status: 'Новая',
+    });
+    const taskB = await Task.create({
+      title: 'Разгрузка',
+      status: 'Новая',
+    });
+
+    const taskAId = (taskA._id as Types.ObjectId).toHexString();
+    const taskBId = (taskB._id as Types.ObjectId).toHexString();
+    const pointId = new Types.ObjectId().toHexString();
+    const transportId = new Types.ObjectId().toHexString();
+
+    const plan = await createDraftFromInputs([], {
+      creatorId: 11,
+      executorId: 22,
+      companyPointIds: [pointId],
+      transportId,
+      transportName: 'Фургон',
+      tasks: [taskAId],
+    });
+
+    assert.equal(plan.creatorId, 11);
+    assert.equal(plan.executorId, 22);
+    assert.deepEqual(plan.companyPointIds, [pointId]);
+    assert.equal(plan.transportId, transportId);
+    assert.equal(plan.transportName, 'Фургон');
+    assert.deepEqual(plan.tasks, [taskAId]);
+
+    const storedTaskA = await Task.findById(taskAId);
+    assert.ok(storedTaskA?.routePlanId);
+    assert.equal(
+      (storedTaskA?.routePlanId as Types.ObjectId).toHexString(),
+      plan.id,
+    );
+
+    const updated = await updatePlan(plan.id, {
+      executorId: 33,
+      transportName: null,
+      companyPointIds: [],
+      tasks: [taskBId],
+    });
+
+    assert.ok(updated);
+    assert.equal(updated?.executorId, 33);
+    assert.equal(updated?.transportName, null);
+    assert.deepEqual(updated?.companyPointIds, []);
+    assert.deepEqual(updated?.tasks, [taskBId]);
+
+    const refreshedTaskA = await Task.findById(taskAId);
+    const refreshedTaskB = await Task.findById(taskBId);
+    assert.equal(refreshedTaskA?.routePlanId ?? null, null);
+    assert.ok(refreshedTaskB?.routePlanId);
+    assert.equal(
+      (refreshedTaskB?.routePlanId as Types.ObjectId).toHexString(),
+      plan.id,
+    );
+  });
+
   it('публикует событие при удалении маршрутного плана', async () => {
     const plan = await createDraftFromInputs([
       {

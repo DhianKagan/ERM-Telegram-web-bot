@@ -17,6 +17,9 @@ const normalizeRoutes = (routes?: RoutePlanRoute[]): RoutePlanRoute[] => {
 const normalizePlan = (plan: RoutePlan): RoutePlan => {
   const routes = normalizeRoutes(plan.routes);
   const tasks = Array.isArray(plan.tasks) ? plan.tasks : [];
+  const companyPointIds = Array.isArray(plan.companyPointIds)
+    ? plan.companyPointIds
+    : [];
   const totalStops = routes.reduce(
     (sum, route) => sum + (route.stops?.length ?? 0),
     0,
@@ -30,6 +33,11 @@ const normalizePlan = (plan: RoutePlan): RoutePlan => {
     ...plan,
     routes,
     tasks,
+    companyPointIds,
+    transportId: plan.transportId ?? null,
+    transportName: plan.transportName ?? null,
+    creatorId: plan.creatorId ?? null,
+    executorId: plan.executorId ?? null,
     metrics: plan.metrics ?? {
       totalDistanceKm: null,
       totalRoutes: routes.length,
@@ -49,6 +57,12 @@ type RoutePlanListResponsePayload = {
 export interface RoutePlanUpdatePayload {
   title?: string;
   notes?: string | null;
+  creatorId?: number | null;
+  executorId?: number | null;
+  companyPointIds?: string[];
+  transportId?: string | null;
+  transportName?: string | null;
+  tasks?: string[];
   routes?: Array<{
     id?: string;
     order?: number;

@@ -37,6 +37,11 @@ export type RoutePlanRouteEntry = Omit<
 export interface RoutePlanAttrs {
   title: string;
   status: RoutePlanStatus;
+  creatorId?: number | null;
+  executorId?: number | null;
+  companyPointIds?: Types.ObjectId[];
+  transportId?: Types.ObjectId | null;
+  transportName?: string | null;
   suggestedBy?: number | null;
   method?: 'angle' | 'trip';
   count?: number;
@@ -137,6 +142,14 @@ const routePlanSchema = new Schema<RoutePlanAttrs>(
       enum: ['draft', 'approved', 'completed'],
       default: 'draft',
     },
+    creatorId: Number,
+    executorId: Number,
+    companyPointIds: {
+      type: [{ type: Schema.Types.ObjectId, ref: 'CollectionItem' }],
+      default: [],
+    },
+    transportId: { type: Schema.Types.ObjectId, ref: 'Fleet', default: null },
+    transportName: String,
     suggestedBy: Number,
     method: { type: String, enum: ['angle', 'trip'] },
     count: Number,

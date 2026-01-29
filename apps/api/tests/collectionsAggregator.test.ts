@@ -60,6 +60,13 @@ beforeAll(async () => {
     name: 'Сотрудник каталога',
     value: 'active',
   });
+
+  await CollectionItem.create({
+    type: 'route_plan_settings',
+    name: 'default',
+    value: 'Маршрутные листы',
+    meta: { tg_theme_url: 'https://t.me/c/123456/789' },
+  });
 });
 
 afterAll(async () => {
@@ -107,5 +114,19 @@ describe('Агрегация коллекций', () => {
     );
     expect(legacy.meta.source).toBe('employees');
     expect(legacy.meta.departmentId).toBeDefined();
+  });
+
+  it('сериализует tg-ссылку для настроек маршрутов', async () => {
+    const res = await request(app)
+      .get('/api/v1/collections')
+      .query({ type: 'route_plan_settings' });
+    expect(res.status).toBe(200);
+    const item = res.body.items.find(
+      (entry: { name: string }) => entry.name === 'default',
+    );
+    expect(item).toBeDefined();
+    expect(item.meta.tg_theme_url).toBe('https://t.me/c/123456/789');
+    expect(item.meta.tg_chat_id).toBe('-100123456');
+    expect(item.meta.tg_topic_id).toBe(789);
   });
 });

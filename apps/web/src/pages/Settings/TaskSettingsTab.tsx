@@ -32,9 +32,20 @@ type TaskTypeItem = CollectionItem & {
   };
 };
 
+type RoutePlanSettingItem = CollectionItem & {
+  meta?: CollectionItem['meta'] & {
+    defaultLabel?: string;
+    virtual?: boolean;
+    tg_theme_url?: string;
+    tg_chat_id?: string;
+    tg_topic_id?: number;
+  };
+};
+
 interface TaskSettingsTabProps {
   fields: TaskFieldItem[];
   types: TaskTypeItem[];
+  routePlanSettings: RoutePlanSettingItem[];
   loading: boolean;
   onSaveField: (item: TaskFieldItem, label: string) => Promise<void>;
   onDeleteField: (item: TaskFieldItem) => Promise<void>;
@@ -43,6 +54,10 @@ interface TaskSettingsTabProps {
     payload: { label: string; tg_theme_url: string; tg_photos_url: string },
   ) => Promise<void>;
   onDeleteType: (item: TaskTypeItem) => Promise<void>;
+  onSaveRoutePlanSetting: (
+    item: RoutePlanSettingItem,
+    payload: { label: string; tg_theme_url: string },
+  ) => Promise<void>;
 }
 
 const CARD_CLASS =
@@ -357,6 +372,133 @@ const TypeCard: React.FC<{
   );
 };
 
+const RoutePlanCard: React.FC<{
+  item: RoutePlanSettingItem;
+  label: string;
+  url: string;
+  onChangeLabel: (value: string) => void;
+  onChangeUrl: (value: string) => void;
+  onSave: () => Promise<void>;
+  onReset: () => void;
+  saving: boolean;
+  error?: string;
+}> = ({
+  item,
+  label,
+  url,
+  onChangeLabel,
+  onChangeUrl,
+  onSave,
+  onReset,
+  saving,
+  error,
+}) => {
+  const [localError, setLocalError] = React.useState<string | undefined>(error);
+
+  React.useEffect(() => {
+    setLocalError(error);
+  }, [error]);
+
+  const defaultLabel = item.meta?.defaultLabel ?? item.name;
+  const storedLabel = item.value?.trim() || defaultLabel;
+  const storedUrl =
+    typeof item.meta?.tg_theme_url === 'string' ? item.meta.tg_theme_url : '';
+  const trimmedLabel = label.trim();
+  const trimmedUrl = url.trim();
+  const dirty =
+    trimmedLabel !== storedLabel || trimmedUrl !== (storedUrl || '');
+
+  const handleSave = async () => {
+    setLocalError(undefined);
+    try {
+      await onSave();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setLocalError(message);
+    }
+  };
+
+  const handleReset = () => {
+    setLocalError(undefined);
+    onReset();
+  };
+
+  return (
+    <article className={CARD_CLASS}>
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h4 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+              {defaultLabel}
+            </h4>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Настройка: <span className="font-mono">{item.name}</span>
+            </p>
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              Название
+            </span>
+            <Input
+              value={label}
+              onChange={(event) => onChangeLabel(event.target.value)}
+              placeholder={defaultLabel}
+              aria-label={`Название настройки ${defaultLabel}`}
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+              Ссылка на тему Telegram
+            </span>
+            <Input
+              value={url}
+              onChange={(event) => onChangeUrl(event.target.value)}
+              placeholder="https://t.me/c/..."
+              aria-label={`Ссылка темы для ${defaultLabel}`}
+            />
+          </label>
+        </div>
+        {item.meta?.tg_chat_id ? (
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Чат: {item.meta.tg_chat_id}
+          </p>
+        ) : null}
+        {item.meta?.tg_topic_id ? (
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Тема: {item.meta.tg_topic_id}
+          </p>
+        ) : null}
+        {localError ? (
+          <p className="text-sm text-rose-600" role="alert">
+            {localError}
+          </p>
+        ) : null}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            size="sm"
+            onClick={handleSave}
+            disabled={saving || !trimmedLabel || !dirty}
+          >
+            {saving ? <Spinner /> : 'Сохранить'}
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={handleReset}
+            disabled={saving}
+          >
+            Сбросить
+          </Button>
+        </div>
+      </div>
+    </article>
+  );
+};
+
 const sortByOrder = <T extends { meta?: { order?: number } }>(
   items: T[],
 ): T[] =>
@@ -403,11 +545,13 @@ const useDraftMap = <TItem extends CollectionItem, TDraft>(
 const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
   fields,
   types,
+  routePlanSettings,
   loading,
   onSaveField,
   onDeleteField,
   onSaveType,
   onDeleteType,
+  onSaveRoutePlanSetting,
 }) => {
   const selectFieldDraft = React.useCallback(
     (item: TaskFieldItem) =>
@@ -428,11 +572,28 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
     }),
     [],
   );
+  const selectRoutePlanDraft = React.useCallback(
+    (item: RoutePlanSettingItem) => ({
+      label: item.value?.trim() || item.meta?.defaultLabel || item.name,
+      url:
+        typeof item.meta?.tg_theme_url === 'string'
+          ? item.meta.tg_theme_url
+          : '',
+    }),
+    [],
+  );
 
   const [fieldDrafts, setFieldDrafts] = useDraftMap(fields, selectFieldDraft);
   const [typeDrafts, setTypeDrafts] = useDraftMap(types, selectTypeDraft);
+  const [routePlanDrafts, setRoutePlanDrafts] = useDraftMap(
+    routePlanSettings,
+    selectRoutePlanDraft,
+  );
   const [savingField, setSavingField] = React.useState<string | null>(null);
   const [savingType, setSavingType] = React.useState<string | null>(null);
+  const [savingRoutePlan, setSavingRoutePlan] = React.useState<string | null>(
+    null,
+  );
   const [deletingField, setDeletingField] = React.useState<string | null>(null);
   const [deletingType, setDeletingType] = React.useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = React.useState<Record<string, string>>(
@@ -441,9 +602,16 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
   const [typeErrors, setTypeErrors] = React.useState<Record<string, string>>(
     {},
   );
+  const [routePlanErrors, setRoutePlanErrors] = React.useState<
+    Record<string, string>
+  >({});
 
   const sortedFields = React.useMemo(() => sortByOrder(fields), [fields]);
   const sortedTypes = React.useMemo(() => sortByOrder(types), [types]);
+  const sortedRoutePlans = React.useMemo(
+    () => sortByOrder(routePlanSettings),
+    [routePlanSettings],
+  );
 
   const handleFieldChange = (name: string, value: string) => {
     setFieldDrafts((prev) => ({ ...prev, [name]: value }));
@@ -464,6 +632,21 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
       },
     }));
     setTypeErrors((prev) => ({ ...prev, [name]: '' }));
+  };
+
+  const handleRoutePlanChange = (
+    name: string,
+    patch: Partial<{ label: string; url: string }>,
+  ) => {
+    setRoutePlanDrafts((prev) => ({
+      ...prev,
+      [name]: {
+        label: prev[name]?.label ?? '',
+        url: prev[name]?.url ?? '',
+        ...patch,
+      },
+    }));
+    setRoutePlanErrors((prev) => ({ ...prev, [name]: '' }));
   };
 
   const saveField = async (item: TaskFieldItem) => {
@@ -541,6 +724,34 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
     }
   };
 
+  const saveRoutePlanSetting = async (item: RoutePlanSettingItem) => {
+    const draft = routePlanDrafts[item.name] ?? {
+      label: '',
+      url: '',
+    };
+    setSavingRoutePlan(item.name);
+    setRoutePlanErrors((prev) => ({ ...prev, [item.name]: '' }));
+    try {
+      await onSaveRoutePlanSetting(item, {
+        label: draft.label,
+        tg_theme_url: draft.url,
+      });
+      setRoutePlanDrafts((prev) => ({
+        ...prev,
+        [item.name]: {
+          label: draft.label,
+          url: draft.url,
+        },
+      }));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setRoutePlanErrors((prev) => ({ ...prev, [item.name]: message }));
+      throw err;
+    } finally {
+      setSavingRoutePlan((prev) => (prev === item.name ? null : prev));
+    }
+  };
+
   const deleteType = async (item: TaskTypeItem) => {
     if (item.meta?.virtual) {
       return;
@@ -564,6 +775,14 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
       [item.name]: selectTypeDraft(item),
     }));
     setTypeErrors((prev) => ({ ...prev, [item.name]: '' }));
+  };
+
+  const revertRoutePlanDraft = (item: RoutePlanSettingItem) => {
+    setRoutePlanDrafts((prev) => ({
+      ...prev,
+      [item.name]: selectRoutePlanDraft(item),
+    }));
+    setRoutePlanErrors((prev) => ({ ...prev, [item.name]: '' }));
   };
 
   return (
@@ -643,6 +862,42 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
                 saving={savingType === item.name}
                 deleting={deletingType === item.name}
                 error={typeErrors[item.name]}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+      <section className={SECTION_GAP}>
+        <header className="space-y-1">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+            Маршрутные листы
+          </h3>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Укажите тему Telegram для уведомлений о маршрутах.
+          </p>
+        </header>
+        {loading && !sortedRoutePlans.length ? (
+          <div className="flex items-center justify-center py-6">
+            <Spinner />
+          </div>
+        ) : (
+          <div className="grid gap-4 lg:grid-cols-2">
+            {sortedRoutePlans.map((item) => (
+              <RoutePlanCard
+                key={item._id}
+                item={item}
+                label={routePlanDrafts[item.name]?.label ?? ''}
+                url={routePlanDrafts[item.name]?.url ?? ''}
+                onChangeLabel={(value) =>
+                  handleRoutePlanChange(item.name, { label: value })
+                }
+                onChangeUrl={(value) =>
+                  handleRoutePlanChange(item.name, { url: value })
+                }
+                onSave={() => saveRoutePlanSetting(item)}
+                onReset={() => revertRoutePlanDraft(item)}
+                saving={savingRoutePlan === item.name}
+                error={routePlanErrors[item.name]}
               />
             ))}
           </div>

@@ -143,6 +143,24 @@ const applyTaskTypeDefaults = (
   }
 };
 
+const applyRoutePlanSettingsDefaults = (item: AggregatedCollectionItem) => {
+  const meta = item.meta ?? {};
+  const url =
+    typeof meta.tg_theme_url === 'string' ? meta.tg_theme_url.trim() : '';
+  const parsed = url ? parseTelegramTopicUrl(url) : null;
+  item.meta = {
+    ...meta,
+    defaultLabel: item.value || 'Маршрутные листы',
+    tg_theme_url: url || undefined,
+    tg_chat_id: parsed?.chatId,
+    tg_topic_id: parsed?.topicId,
+    virtual: Boolean(meta.virtual),
+  };
+  if (!item.value) {
+    item.value = item.meta.defaultLabel as string;
+  }
+};
+
 const ensureTaskFieldItems = (items: AggregatedCollectionItem[]) => {
   const existing = new Map<string, AggregatedCollectionItem>();
   items
@@ -213,6 +231,28 @@ const ensureTaskTypeItems = (items: AggregatedCollectionItem[]) => {
     });
 };
 
+const ensureRoutePlanSettingsItems = (items: AggregatedCollectionItem[]) => {
+  const existing = items.filter((item) => item.type === 'route_plan_settings');
+  if (existing.length) {
+    existing.forEach((item) => applyRoutePlanSettingsDefaults(item));
+    return;
+  }
+  const virtual: AggregatedCollectionItem = {
+    _id: 'virtual:route_plan_settings:default',
+    type: 'route_plan_settings',
+    name: 'default',
+    value: 'Маршрутные листы',
+    meta: {
+      defaultLabel: 'Маршрутные листы',
+      tg_theme_url: undefined,
+      tg_chat_id: undefined,
+      tg_topic_id: undefined,
+      virtual: true,
+    },
+  };
+  items.push(virtual);
+};
+
 const compareByOrder = (a?: unknown, b?: unknown): number => {
   const left = typeof a === 'number' ? a : Number.POSITIVE_INFINITY;
   const right = typeof b === 'number' ? b : Number.POSITIVE_INFINITY;
@@ -280,6 +320,9 @@ export async function listCollectionsWithLegacy(
   }
   if (!typeFilter || typeFilter === 'task_types') {
     ensureTaskTypeItems(items);
+  }
+  if (!typeFilter || typeFilter === 'route_plan_settings') {
+    ensureRoutePlanSettingsItems(items);
   }
 
   if (shouldIncludeLegacyType(typeFilter)) {

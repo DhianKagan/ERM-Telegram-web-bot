@@ -18,6 +18,7 @@ import { sendProblem } from '../utils/problem';
 import validate from '../utils/validate';
 import { parseTelegramTopicUrl } from '../utils/telegramTopics';
 import { invalidateTaskTypeSettingsCache } from '../services/taskTypeSettings';
+import { invalidateRoutePlanSettingsCache } from '../services/routePlanSettings';
 import { ACCESS_ADMIN, ACCESS_USER, hasAccess } from '../utils/accessMask';
 import type { RequestWithUser } from '../types/request';
 
@@ -101,6 +102,27 @@ const prepareMetaByType = (
       meta.tg_photos_url = photosUrl;
       meta.tg_photos_chat_id = parsed.chatId;
       meta.tg_photos_topic_id = parsed.topicId;
+    }
+    if (!Object.keys(meta).length) {
+      return { meta: undefined };
+    }
+    return { meta };
+  }
+  if (type === 'route_plan_settings') {
+    if (!metaRaw || typeof metaRaw !== 'object') {
+      return { meta: undefined };
+    }
+    const rawUrl = (metaRaw as { tg_theme_url?: unknown }).tg_theme_url;
+    const url = typeof rawUrl === 'string' ? rawUrl.trim() : '';
+    const meta: Record<string, unknown> = {};
+    if (url) {
+      const parsed = parseTelegramTopicUrl(url);
+      if (!parsed) {
+        return { error: TELEGRAM_TOPIC_HINT };
+      }
+      meta.tg_theme_url = url;
+      meta.tg_chat_id = parsed.chatId;
+      meta.tg_topic_id = parsed.topicId;
     }
     if (!Object.keys(meta).length) {
       return { meta: undefined };
@@ -197,6 +219,9 @@ router.post(
       });
       if (type === 'task_types') {
         invalidateTaskTypeSettingsCache();
+      }
+      if (type === 'route_plan_settings') {
+        invalidateRoutePlanSettingsCache();
       }
       res.status(201).json(item);
     } catch (error) {
@@ -303,6 +328,9 @@ router.put(
       if (existing.type === 'task_types') {
         invalidateTaskTypeSettingsCache();
       }
+      if (existing.type === 'route_plan_settings') {
+        invalidateRoutePlanSettingsCache();
+      }
       res.json(item);
     } catch (error) {
       if (error instanceof MongooseError.ValidationError) {
@@ -319,45 +347,43 @@ router.put(
   },
 );
 
-router.delete(
-  '/:id',
-  ...base,
-  param('id').isMongoId(),
-  async (req, res) => {
-    const item = await CollectionItem.findById(req.params.id);
-    if (!item) {
-      res.sendStatus(404);
-      return;
-    }
-    if (item.type !== 'event_logs' && !isAdminRequest(req)) {
-      sendProblem(req, res, {
-        type: 'about:blank',
-        title: 'Доступ запрещён',
-        status: 403,
-        detail: 'Forbidden',
+router.delete('/:id', ...base, param('id').isMongoId(), async (req, res) => {
+  const item = await CollectionItem.findById(req.params.id);
+  if (!item) {
+    res.sendStatus(404);
+    return;
+  }
+  if (item.type !== 'event_logs' && !isAdminRequest(req)) {
+    sendProblem(req, res, {
+      type: 'about:blank',
+      title: 'Доступ запрещён',
+      status: 403,
+      detail: 'Forbidden',
+    });
+    return;
+  }
+  if (item.type === 'departments') {
+    const hasTasks = await Task.exists({
+      department: item._id,
+    } as Record<string, unknown>);
+    const hasEmployees = await Employee.exists({ departmentId: item._id });
+    if (hasTasks || hasEmployees) {
+      res.status(409).json({
+        error:
+          'Нельзя удалить департамент: есть связанные задачи или сотрудники',
       });
       return;
     }
-    if (item.type === 'departments') {
-      const hasTasks = await Task.exists({
-        department: item._id,
-      } as Record<string, unknown>);
-      const hasEmployees = await Employee.exists({ departmentId: item._id });
-      if (hasTasks || hasEmployees) {
-        res.status(409).json({
-          error:
-            'Нельзя удалить департамент: есть связанные задачи или сотрудники',
-        });
-        return;
-      }
-    }
-    const type = item.type;
-    await item.deleteOne();
-    if (type === 'task_types') {
-      invalidateTaskTypeSettingsCache();
-    }
-    res.json({ status: 'ok' });
-  },
-);
+  }
+  const type = item.type;
+  await item.deleteOne();
+  if (type === 'task_types') {
+    invalidateTaskTypeSettingsCache();
+  }
+  if (type === 'route_plan_settings') {
+    invalidateRoutePlanSettingsCache();
+  }
+  res.json({ status: 'ok' });
+});
 
 export default router;

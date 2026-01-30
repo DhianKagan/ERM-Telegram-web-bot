@@ -33,6 +33,7 @@ apps/web/tsconfig.tsbuildinfo
 apps/web/src
 patch_cjs
 scripts
+!scripts/run_husky_install.mjs
 
 # Кэшированные шрифты и изображения (пересоздаются скриптами)
 apps/api/public/fonts/*.ttf

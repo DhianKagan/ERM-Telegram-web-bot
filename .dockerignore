@@ -6,6 +6,7 @@ docker-compose.yml
 # переменные окружения
 .env
 .env.*
+*.log
 *.md
 
 # Тесты и вспомогательные инструменты
@@ -15,6 +16,7 @@ loadtest
 profiling
 prometheus
 Railway
+docs
 tests
 coverage
 reports
@@ -25,8 +27,12 @@ playwright-report
 dist
 apps/api/dist
 apps/api/tsconfig.tsbuildinfo
+apps/api/src
 apps/web/dist
 apps/web/tsconfig.tsbuildinfo
+apps/web/src
+patch_cjs
+scripts
 
 # Кэшированные шрифты и изображения (пересоздаются скриптами)
 apps/api/public/fonts/*.ttf

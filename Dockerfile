@@ -31,6 +31,9 @@ RUN pnpm install --offline --frozen-lockfile || pnpm install --no-frozen-lockfil
 FROM node:20-slim
 WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=build /app .
+COPY --from=build /app/apps/api/dist /app/dist
+COPY --from=build /app/apps/api/public /app/public
+COPY --from=build /app/package.json /app/package.json
+COPY --from=build /app/node_modules /app/node_modules
 EXPOSE 3000
 CMD ["sh", "-c", "node dist/scripts/db/ensureDefaults.js && cd apps/api && ./node_modules/.bin/pm2-runtime ecosystem.config.cjs"]

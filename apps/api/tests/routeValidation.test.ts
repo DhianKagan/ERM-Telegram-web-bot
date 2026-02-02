@@ -22,11 +22,24 @@ test('table отклоняет некорректные координаты', a
     osrmRequestDuration: { startTimer: () => () => {} },
     osrmErrorsTotal: { inc: jest.fn() },
   }));
-  const { table } = require('../src/services/route');
+  const { table } = await import('../src/services/route');
   global.fetch = jest.fn();
   await expect(table('1,1;../../../etc', {})).rejects.toThrow(
     'Некорректные координаты после нормализации',
   );
+  expect(fetch).not.toHaveBeenCalled();
+});
+
+test('table учитывает разделитель "|" при ограничении количества точек', async () => {
+  process.env.ROUTE_TABLE_GUARD = '1';
+  process.env.ROUTE_TABLE_MAX_POINTS = '2';
+  jest.doMock('../src/metrics', () => ({
+    osrmRequestDuration: { startTimer: () => () => {} },
+    osrmErrorsTotal: { inc: jest.fn() },
+  }));
+  const { table } = await import('../src/services/route');
+  global.fetch = jest.fn();
+  await expect(table('1,1|2,2|3,3', {})).rejects.toThrow('Слишком много точек');
   expect(fetch).not.toHaveBeenCalled();
 });
 
@@ -38,7 +51,7 @@ test('использует дефолт ROUTE_TABLE_MAX_POINTS при отриц
     osrmRequestDuration: { startTimer: () => () => {} },
     osrmErrorsTotal: { inc: jest.fn() },
   }));
-  const { table } = require('../src/services/route');
+  const { table } = await import('../src/services/route');
   global.fetch = jest.fn().mockResolvedValue({
     ok: true,
     text: async () => JSON.stringify({}),
@@ -59,7 +72,7 @@ test('использует дефолт ROUTE_TABLE_MIN_INTERVAL_MS при от�
     osrmRequestDuration: { startTimer: () => () => {} },
     osrmErrorsTotal: { inc: jest.fn() },
   }));
-  const { table } = require('../src/services/route');
+  const { table } = await import('../src/services/route');
   global.fetch = jest.fn().mockResolvedValue({
     ok: true,
     text: async () => JSON.stringify({}),
@@ -69,7 +82,7 @@ test('использует дефолт ROUTE_TABLE_MIN_INTERVAL_MS при от�
   const mid = Date.now();
   await table('1,1;2,2', {});
   const diff = Date.now() - mid;
-  // Допускаем 20 мс погрешности таймеров, чтобы избежать флаки
+  // Допускаем 20 мс погрешности таймеров, чтобы избежать флаки
   expect(diff).toBeGreaterThanOrEqual(180);
   expect(warn).toHaveBeenCalledWith(
     'ROUTE_TABLE_MIN_INTERVAL_MS должен быть положительным. Используется значение по умолчанию 200',

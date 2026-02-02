@@ -14,6 +14,10 @@ const isBotBlockedError = (description?: string): boolean =>
   typeof description === 'string' &&
   description.toLowerCase().includes('bot was blocked by the user');
 
+const isChatNotFoundError = (description?: string): boolean =>
+  typeof description === 'string' &&
+  description.toLowerCase().includes('chat not found');
+
 /**
  * Вызов метода Telegram API с повторными попытками
  */
@@ -33,14 +37,20 @@ export async function call<T = unknown>(
     });
     const data: TelegramResponse<T> = await res.json();
     if (!res.ok || !data.ok) {
-      if (isBotBlockedError(data.description)) {
+      if (
+        isBotBlockedError(data.description) ||
+        isChatNotFoundError(data.description)
+      ) {
         return undefined as T;
       }
       throw new Error(data.description);
     }
     return data.result;
   } catch (err) {
-    if (err instanceof Error && isBotBlockedError(err.message)) {
+    if (
+      err instanceof Error &&
+      (isBotBlockedError(err.message) || isChatNotFoundError(err.message))
+    ) {
       return undefined as T;
     }
     if (attempt < 3) {

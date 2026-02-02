@@ -34,6 +34,11 @@ apps/web/src
 patch_cjs
 scripts
 !scripts/run_husky_install.mjs
+!scripts/ensure-fonts.mjs
+!scripts/convert-fonts.mjs
+!scripts/package.json
+!scripts/db/ensureDefaults.ts
+!scripts/db/mongoUrl.ts
 
 # Кэшированные шрифты и изображения (пересоздаются скриптами)
 apps/api/public/fonts/*.ttf

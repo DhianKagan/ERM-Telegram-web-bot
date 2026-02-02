@@ -10,6 +10,10 @@ export interface TelegramResponse<T> {
   description?: string;
 }
 
+const isBotBlockedError = (description?: string): boolean =>
+  typeof description === 'string' &&
+  description.toLowerCase().includes('bot was blocked by the user');
+
 /**
  * Вызов метода Telegram API с повторными попытками
  */
@@ -28,9 +32,17 @@ export async function call<T = unknown>(
       signal: controller.signal,
     });
     const data: TelegramResponse<T> = await res.json();
-    if (!res.ok || !data.ok) throw new Error(data.description);
+    if (!res.ok || !data.ok) {
+      if (isBotBlockedError(data.description)) {
+        return undefined as T;
+      }
+      throw new Error(data.description);
+    }
     return data.result;
   } catch (err) {
+    if (err instanceof Error && isBotBlockedError(err.message)) {
+      return undefined as T;
+    }
     if (attempt < 3) {
       const delay = 2 ** attempt * 500;
       await new Promise((r) => setTimeout(r, delay));

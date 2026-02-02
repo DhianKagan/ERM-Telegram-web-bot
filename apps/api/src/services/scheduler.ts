@@ -20,7 +20,7 @@ const resolveChatId = (): string | undefined =>
 let reminderTask: ScheduledTask | undefined;
 let cleanupTask: ScheduledTask | undefined;
 
-const REMINDER_INTERVAL_MS = 60 * 60 * 1000;
+const REMINDER_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
 const deadlineFormatter = new Intl.DateTimeFormat('ru-RU', {
   day: '2-digit',
@@ -70,10 +70,21 @@ export function startScheduler(): void {
       for (const id of ids) {
         const user = await User.findOne({ telegram_id: id }).lean();
         if (user && user.receive_reminders !== false) {
+          const groupChatId = resolveChatId();
+          const link = buildChatMessageLink(
+            groupChatId,
+            t.telegram_message_id,
+            t.telegram_topic_id,
+          );
+          const text = link
+            ? `Напоминание: <a href="${link}">${t.title}</a>`
+            : `Напоминание: ${t.title}`;
           await enqueue(() =>
             call('sendMessage', {
               chat_id: user.telegram_id,
-              text: `Напоминание: ${t.title}`,
+              text,
+              parse_mode: link ? 'HTML' : undefined,
+              link_preview_options: link ? { is_disabled: true } : undefined,
             }),
           );
           notified = true;

@@ -32,6 +32,7 @@ FROM node:20-slim
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build /app/apps/api/dist /app/dist
+COPY --from=build /app/dist/scripts/db /app/dist/scripts/db
 COPY --from=build /app/apps/api/public /app/public
 COPY --from=build /app/package.json /app/package.json
 COPY --from=build /app/node_modules /app/node_modules

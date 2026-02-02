@@ -222,3 +222,45 @@ test('startBot настраивает webhook при TELEGRAM_WEBHOOK_URL', asyn
   delete process.env.TELEGRAM_WEBHOOK_URL;
   delete process.env.TELEGRAM_WEBHOOK_SECRET;
 });
+
+test('startBot настраивает webhook по умолчанию в production', async () => {
+  jest.resetModules();
+  const originalEnv = { ...process.env };
+  try {
+    process.env.NODE_ENV = 'production';
+    process.env.BOT_TOKEN = 't';
+    process.env.CHAT_ID = '1';
+    process.env.JWT_SECRET = 'test-secret';
+    process.env.APP_URL = 'https://example.com';
+    delete process.env.TELEGRAM_WEBHOOK_URL;
+    delete process.env.TELEGRAM_WEBHOOK_SECRET;
+
+    const { startBot } = await import('../src/bot/bot');
+    const { __launch, __telegram } = (await import('telegraf')) as unknown as {
+      __launch: jest.Mock;
+      __telegram: {
+        setWebhook: jest.Mock;
+      };
+    };
+
+    __launch.mockClear();
+    __telegram.setWebhook.mockClear();
+
+    await startBot();
+
+    expect(__telegram.setWebhook).toHaveBeenCalledWith(
+      'https://example.com/api/telegram/webhook',
+      {
+        drop_pending_updates: true,
+      },
+    );
+    expect(__launch).not.toHaveBeenCalled();
+  } finally {
+    Object.keys(process.env).forEach((key) => {
+      if (!(key in originalEnv)) {
+        delete process.env[key];
+      }
+    });
+    Object.assign(process.env, originalEnv);
+  }
+});

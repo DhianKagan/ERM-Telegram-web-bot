@@ -394,6 +394,23 @@ if (telegramWebhookUrlRaw) {
       error,
     );
   }
+} else if (strictEnvs.has(nodeEnv)) {
+  try {
+    const webhookUrl = new URL(appUrlEnv);
+    webhookUrl.pathname = '/api/telegram/webhook';
+    webhookUrl.search = '';
+    webhookUrl.hash = '';
+    telegramWebhookUrl = webhookUrl.toString();
+    telegramWebhookPath = webhookUrl.pathname || '/';
+    console.info(
+      'TELEGRAM_WEBHOOK_URL не задан; используется URL по умолчанию для webhook.',
+    );
+  } catch (error) {
+    console.warn(
+      'Не удалось сформировать URL для Telegram webhook из APP_URL',
+      error,
+    );
+  }
 }
 
 const telegramWebhookSecretValue = (

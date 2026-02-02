@@ -28,9 +28,11 @@ dist
 apps/api/dist
 apps/api/tsconfig.tsbuildinfo
 apps/api/src
+!apps/api/src/**
 apps/web/dist
 apps/web/tsconfig.tsbuildinfo
 apps/web/src
+!apps/web/src/**
 patch_cjs
 scripts
 !scripts/run_husky_install.mjs

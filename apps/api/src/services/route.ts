@@ -61,7 +61,10 @@ type Endpoint = (typeof allowed)[number];
 type OsrmResponse = {
   code?: string;
   message?: string;
-  routes?: Array<{ distance?: number; geometry?: { coordinates?: Position[] } | null }>;
+  routes?: Array<{
+    distance?: number;
+    geometry?: { coordinates?: Position[] } | null;
+  }>;
   waypoints?: unknown;
 };
 
@@ -127,7 +130,10 @@ export function normalizePointsString(raw: string): Array<[number, number]> {
 }
 
 /** Haversine */
-export function haversineDistanceMeters(a: [number, number], b: [number, number]): number {
+export function haversineDistanceMeters(
+  a: [number, number],
+  b: [number, number],
+): number {
   const toRad = (v: number) => (v * Math.PI) / 180;
   const R = 6371000; // m
   const dLat = toRad(b[1] - a[1]);
@@ -136,7 +142,8 @@ export function haversineDistanceMeters(a: [number, number], b: [number, number]
   const lat2 = toRad(b[1]);
   const sinDlat = Math.sin(dLat / 2);
   const sinDlon = Math.sin(dLon / 2);
-  const aa = sinDlat * sinDlat + sinDlon * sinDlon * Math.cos(lat1) * Math.cos(lat2);
+  const aa =
+    sinDlat * sinDlat + sinDlon * sinDlon * Math.cos(lat1) * Math.cos(lat2);
   const c = 2 * Math.atan2(Math.sqrt(aa), Math.sqrt(1 - aa));
   return R * c;
 }
@@ -154,7 +161,13 @@ function precheckLocations(locations: Array<[number, number]>) {
       return { ok: false, reason: 'invalid_segment', index: i };
     }
     if (d > MAX_SEGMENT_M) {
-      return { ok: false, reason: 'segment_too_long', index: i, distanceMeters: d, maxSegmentM: MAX_SEGMENT_M };
+      return {
+        ok: false,
+        reason: 'segment_too_long',
+        index: i,
+        distanceMeters: d,
+        maxSegmentM: MAX_SEGMENT_M,
+      };
     }
   }
   return { ok: true };
@@ -163,7 +176,9 @@ function precheckLocations(locations: Array<[number, number]>) {
 /* ----------------------
    Helper: mask headers for logs
    ---------------------- */
-function maskHeaders(headers?: Record<string, unknown>): Record<string, unknown> | undefined {
+function maskHeaders(
+  headers?: Record<string, unknown>,
+): Record<string, unknown> | undefined {
   if (!headers) return undefined;
   const out: Record<string, unknown> = {};
   for (const k of Object.keys(headers)) {
@@ -191,12 +206,16 @@ async function call<T>(
     throw new Error('Некорректные координаты после нормализации');
   }
 
-  const pre = endpoint === 'nearest' ? { ok: true } : precheckLocations(locations);
+  const pre =
+    endpoint === 'nearest' ? { ok: true } : precheckLocations(locations);
   if (!pre.ok) {
     // return a structure that the caller can interpret as no-route
-    logger.warn({ reason: pre.reason, details: pre }, 'Precheck of locations failed');
+    logger.warn(
+      { reason: pre.reason, details: pre },
+      'Precheck of locations failed',
+    );
     // we'll return an object that usually doesn't match expected shape - but callers will handle null
-    return ({} as unknown) as T;
+    return {} as unknown as T;
   }
 
   // rebuild coords string from normalized way (lon,lat;lon2,lat2)
@@ -204,7 +223,8 @@ async function call<T>(
 
   const safeCoords = normalizedCoordsStr;
   const url = buildEndpointUrl(endpoint, safeCoords);
-  for (const [k, v] of Object.entries(params)) url.searchParams.append(k, String(v));
+  for (const [k, v] of Object.entries(params))
+    url.searchParams.append(k, String(v));
   const key = buildCacheKey(endpoint, safeCoords, params);
   const cached = await cacheGet<T>(key);
   if (cached) return cached;
@@ -217,20 +237,41 @@ async function call<T>(
 
   const routeDebug = process.env.ROUTE_DEBUG === '1';
   if (routeDebug) {
-    logger.info({ reqId: trace?.traceId, url: url.toString(), headers: maskHeaders(headers) }, 'Route: Calling upstream (debug)');
+    logger.info(
+      {
+        reqId: trace?.traceId,
+        url: url.toString(),
+        headers: maskHeaders(headers),
+      },
+      'Route: Calling upstream (debug)',
+    );
   }
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30_000);
   const timer = osrmRequestDuration.startTimer({ endpoint });
   try {
-    const res = await fetch(url.toString(), { headers, signal: controller.signal });
+    const res = await fetch(url.toString(), {
+      headers,
+      signal: controller.signal,
+    });
     const raw = await res.text();
 
     // debug logging
     if (routeDebug) {
-      const preview = typeof raw === 'string' && raw.length > 2000 ? raw.slice(0, 2000) + '...[truncated]' : raw;
-      logger.info({ reqId: trace?.traceId, url: url.toString(), status: res.status, body: preview }, 'Route upstream response (debug)');
+      const preview =
+        typeof raw === 'string' && raw.length > 2000
+          ? raw.slice(0, 2000) + '...[truncated]'
+          : raw;
+      logger.info(
+        {
+          reqId: trace?.traceId,
+          url: url.toString(),
+          status: res.status,
+          body: preview,
+        },
+        'Route upstream response (debug)',
+      );
     }
 
     // try parse
@@ -238,13 +279,29 @@ async function call<T>(
     try {
       data = raw ? (JSON.parse(raw) as OsrmResponse) : null;
     } catch {
-      logger.error({ reqId: trace?.traceId, url: url.toString(), status: res.status, body: raw }, 'Non-JSON response from routing service');
+      logger.error(
+        {
+          reqId: trace?.traceId,
+          url: url.toString(),
+          status: res.status,
+          body: raw,
+        },
+        'Non-JSON response from routing service',
+      );
       throw new Error('Routing service returned non-JSON response');
     }
 
     if (!res.ok) {
       // log the upstream body and do not throw for 400/404 (graceful handling)
-      logger.error({ reqId: trace?.traceId, url: url.toString(), status: res.status, body: data }, 'Routing service returned non-ok status');
+      logger.error(
+        {
+          reqId: trace?.traceId,
+          url: url.toString(),
+          status: res.status,
+          body: data,
+        },
+        'Routing service returned non-ok status',
+      );
       osrmErrorsTotal.inc({ endpoint, reason: String(res.status) });
 
       if (res.status === 400 || res.status === 404) {
@@ -252,7 +309,9 @@ async function call<T>(
         await cacheSet(key, data);
         return data as T;
       }
-      throw new Error(data?.message || data?.code || `Route error status ${res.status}`);
+      throw new Error(
+        data?.message || data?.code || `Route error status ${res.status}`,
+      );
     }
 
     timer({ endpoint, status: res.status });
@@ -261,7 +320,8 @@ async function call<T>(
   } catch (e) {
     osrmErrorsTotal.inc({
       endpoint,
-      reason: e instanceof Error && e.name === 'AbortError' ? 'timeout' : 'error',
+      reason:
+        e instanceof Error && e.name === 'AbortError' ? 'timeout' : 'error',
     });
     timer({ endpoint, status: 0 });
     throw e;
@@ -316,31 +376,68 @@ export async function getRouteDistance(
 
   const routeDebug = process.env.ROUTE_DEBUG === '1';
   if (routeDebug) {
-    logger.info({ reqId: trace?.traceId, url: routeUrl.toString(), headers: maskHeaders(headers) }, 'RouteDistance: calling upstream (debug)');
+    logger.info(
+      {
+        reqId: trace?.traceId,
+        url: routeUrl.toString(),
+        headers: maskHeaders(headers),
+      },
+      'RouteDistance: calling upstream (debug)',
+    );
   }
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 30_000);
   const timer = osrmRequestDuration.startTimer({ endpoint: 'route' });
   try {
-    const res = await fetch(routeUrl.toString(), { headers, signal: controller.signal });
+    const res = await fetch(routeUrl.toString(), {
+      headers,
+      signal: controller.signal,
+    });
     const raw = await res.text();
 
     if (routeDebug) {
-      const preview = typeof raw === 'string' && raw.length > 2000 ? raw.slice(0, 2000) + '...[truncated]' : raw;
-      logger.info({ reqId: trace?.traceId, url: routeUrl.toString(), status: res.status, body: preview }, 'RouteDistance upstream response (debug)');
+      const preview =
+        typeof raw === 'string' && raw.length > 2000
+          ? raw.slice(0, 2000) + '...[truncated]'
+          : raw;
+      logger.info(
+        {
+          reqId: trace?.traceId,
+          url: routeUrl.toString(),
+          status: res.status,
+          body: preview,
+        },
+        'RouteDistance upstream response (debug)',
+      );
     }
 
     let data: OsrmResponse | null = null;
     try {
       data = raw ? (JSON.parse(raw) as OsrmResponse) : null;
     } catch {
-      logger.error({ reqId: trace?.traceId, url: routeUrl.toString(), status: res.status, body: raw }, 'Non-JSON response from routing service (route)');
+      logger.error(
+        {
+          reqId: trace?.traceId,
+          url: routeUrl.toString(),
+          status: res.status,
+          body: raw,
+        },
+        'Non-JSON response from routing service (route)',
+      );
       throw new Error('Routing service returned non-JSON response');
     }
 
     if (!res.ok || data?.code !== 'Ok') {
-      logger.error({ reqId: trace?.traceId, url: routeUrl.toString(), status: res.status, body: data }, 'Routing service returned error for routeDistance');
+      logger.error(
+        {
+          reqId: trace?.traceId,
+          url: routeUrl.toString(),
+          status: res.status,
+          body: data,
+        },
+        'Routing service returned error for routeDistance',
+      );
       osrmErrorsTotal.inc({ endpoint: 'route', reason: String(res.status) });
 
       if (res.status === 400 || res.status === 404) {
@@ -348,7 +445,9 @@ export async function getRouteDistance(
         return { distance: undefined, waypoints: data?.waypoints };
       }
 
-      throw new Error(data?.message || data?.code || `Route error status ${res.status}`);
+      throw new Error(
+        data?.message || data?.code || `Route error status ${res.status}`,
+      );
     }
 
     timer({ endpoint: 'route', status: res.status });
@@ -361,7 +460,8 @@ export async function getRouteDistance(
   } catch (e) {
     osrmErrorsTotal.inc({
       endpoint: 'route',
-      reason: e instanceof Error && e.name === 'AbortError' ? 'timeout' : 'error',
+      reason:
+        e instanceof Error && e.name === 'AbortError' ? 'timeout' : 'error',
     });
     timer({ endpoint: 'route', status: 0 });
     throw e;
@@ -378,7 +478,10 @@ export async function routeGeometry(
   if (locations.length < 2) return null;
   const pre = precheckLocations(locations);
   if (!pre.ok) {
-    logger.warn({ pre, points }, 'routeGeometry precheck failed - returning null');
+    logger.warn(
+      { pre, points },
+      'routeGeometry precheck failed - returning null',
+    );
     return null;
   }
 
@@ -391,7 +494,12 @@ export async function routeGeometry(
   });
 
   // If upstream returned an error body (400/404) the call() returned the raw data.
-  if (!data || !data.routes || !Array.isArray(data.routes) || data.routes.length === 0) {
+  if (
+    !data ||
+    !data.routes ||
+    !Array.isArray(data.routes) ||
+    data.routes.length === 0
+  ) {
     return null;
   }
 
@@ -407,8 +515,9 @@ export async function table<T = unknown>(
   params: Record<string, string | number> = {},
 ): Promise<T> {
   if (tableGuard) {
-    const count = points.split(';').length;
-    if (count > tableMaxPoints) throw new Error('Слишком много точек');
+    const normalizedCount = normalizePointsString(points).length;
+    if (normalizedCount > tableMaxPoints)
+      throw new Error('Слишком много точек');
     const now = Date.now();
     const diff = now - tableLastCall;
     if (diff < tableMinInterval)

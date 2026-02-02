@@ -31,9 +31,17 @@ RUN pnpm install --offline --frozen-lockfile || pnpm install --no-frozen-lockfil
 FROM node:20-slim
 WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=build /app/apps/api/dist /app/dist
+COPY --from=build /app/apps/api/dist /app/apps/api/dist
+COPY --from=build /app/apps/api/public /app/apps/api/public
+COPY --from=build /app/apps/api/ecosystem.config.cjs /app/apps/api/ecosystem.config.cjs
+COPY --from=build /app/apps/api/package.json /app/apps/api/package.json
+COPY --from=build /app/apps/api/node_modules /app/apps/api/node_modules
+COPY --from=build /app/apps/worker/dist /app/apps/worker/dist
+COPY --from=build /app/apps/worker/package.json /app/apps/worker/package.json
+COPY --from=build /app/apps/worker/node_modules /app/apps/worker/node_modules
+COPY --from=build /app/packages/shared/dist /app/packages/shared/dist
+COPY --from=build /app/packages/shared/package.json /app/packages/shared/package.json
 COPY --from=build /app/dist/scripts/db /app/dist/scripts/db
-COPY --from=build /app/apps/api/public /app/public
 COPY --from=build /app/package.json /app/package.json
 COPY --from=build /app/node_modules /app/node_modules
 EXPOSE 3000

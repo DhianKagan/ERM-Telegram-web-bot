@@ -55,182 +55,190 @@ const formatDuration = (ms: number) => {
 
 export function startScheduler(): void {
   const expr = process.env.SCHEDULE_CRON || '0 * * * *';
-  reminderTask = schedule(expr, async () => {
-    const now = new Date();
-    const tasks = await Task.find({
-      remind_at: { $lte: now },
-      status: { $ne: 'done' },
-    }).lean();
-    for (const t of tasks) {
-      const ids = new Set<number>();
-      if (t.assigned_user_id) ids.add(t.assigned_user_id as number);
-      if (Array.isArray(t.assignees))
-        (t.assignees as number[]).forEach((id) => ids.add(id));
-      let notified = false;
-      for (const id of ids) {
-        const user = await User.findOne({ telegram_id: id }).lean();
-        if (user && user.receive_reminders !== false) {
+  reminderTask = schedule(
+    expr,
+    async () => {
+      const now = new Date();
+      const tasks = await Task.find({
+        remind_at: { $lte: now },
+        status: { $ne: 'done' },
+      }).lean();
+      for (const t of tasks) {
+        const ids = new Set<number>();
+        if (t.assigned_user_id) ids.add(t.assigned_user_id as number);
+        if (Array.isArray(t.assignees))
+          (t.assignees as number[]).forEach((id) => ids.add(id));
+        let notified = false;
+        for (const id of ids) {
+          const user = await User.findOne({ telegram_id: id }).lean();
+          if (user && user.receive_reminders !== false) {
+            const groupChatId = resolveChatId();
+            const link = buildChatMessageLink(
+              groupChatId,
+              t.telegram_message_id,
+              t.telegram_topic_id,
+            );
+            const text = link
+              ? `Напоминание: <a href="${link}">${t.title}</a>`
+              : `Напоминание: ${t.title}`;
+            await enqueue(() =>
+              call('sendMessage', {
+                chat_id: user.telegram_id,
+                text,
+                parse_mode: link ? 'HTML' : undefined,
+                link_preview_options: link ? { is_disabled: true } : undefined,
+              }),
+            );
+            notified = true;
+          }
+        }
+        if (!notified) {
+          const groupChatId = resolveChatId();
+          if (groupChatId) {
+            await enqueue(() =>
+              call('sendMessage', {
+                chat_id: groupChatId,
+                text: `Напоминание: ${t.title}`,
+              }),
+            );
+          }
+        }
+      }
+      if (tasks.length) {
+        await Task.updateMany(
+          { _id: { $in: tasks.map((t) => t._id) } },
+          { $unset: { remind_at: '' } },
+        );
+      }
+
+      const reminderCutoff = new Date(now.getTime() - REMINDER_INTERVAL_MS);
+      const deadlineTasks = await Task.find({
+        due_date: { $exists: true, $ne: null },
+        status: { $nin: ['Выполнена', 'Отменена'] },
+        $and: [
+          {
+            $or: [
+              { deadline_reminder_sent_at: { $exists: false } },
+              { deadline_reminder_sent_at: { $lte: reminderCutoff } },
+            ],
+          },
+          {
+            $or: [
+              { assignees: { $exists: true, $ne: [] } },
+              { assigned_user_id: { $exists: true } },
+            ],
+          },
+        ],
+      }).lean();
+
+      if (deadlineTasks.length) {
+        const processedIds: string[] = [];
+        const preferenceCache = new Map<number, boolean>();
+        for (const t of deadlineTasks) {
+          const recipients = new Set<number>();
+          if (typeof t.assigned_user_id === 'number') {
+            recipients.add(t.assigned_user_id);
+          }
+          if (Array.isArray(t.assignees)) {
+            (t.assignees as number[]).forEach((id) => recipients.add(id));
+          }
+          if (!recipients.size) continue;
+
+          const allowedRecipients: number[] = [];
+          for (const userId of recipients) {
+            if (!preferenceCache.has(userId)) {
+              const user = await User.findOne({ telegram_id: userId }).lean();
+              preferenceCache.set(
+                userId,
+                !user || user.receive_reminders !== false,
+              );
+            }
+            if (preferenceCache.get(userId)) {
+              allowedRecipients.push(userId);
+            }
+          }
+          if (!allowedRecipients.length) continue;
+
+          const dueRaw = (t.due_date as unknown) ?? null;
+          const dueDate = dueRaw
+            ? new Date(dueRaw as string | number | Date)
+            : null;
+          if (!dueDate || Number.isNaN(dueDate.getTime())) continue;
+
+          const identifier =
+            (t.task_number && String(t.task_number)) ||
+            (t.request_id && String(t.request_id)) ||
+            (typeof t._id === 'object' && t._id !== null && 'toString' in t._id
+              ? (t._id as { toString(): string }).toString()
+              : String(t._id));
+          const diffMs = dueDate.getTime() - now.getTime();
+          const durationText = formatDuration(Math.abs(diffMs));
+          const formattedDue = deadlineFormatter
+            .format(dueDate)
+            .replace(', ', ' ');
           const groupChatId = resolveChatId();
           const link = buildChatMessageLink(
             groupChatId,
             t.telegram_message_id,
             t.telegram_topic_id,
           );
-          const text = link
-            ? `Напоминание: <a href="${link}">${t.title}</a>`
-            : `Напоминание: ${t.title}`;
-          await enqueue(() =>
-            call('sendMessage', {
-              chat_id: user.telegram_id,
-              text,
-              parse_mode: link ? 'HTML' : undefined,
-              link_preview_options: link ? { is_disabled: true } : undefined,
-            }),
-          );
-          notified = true;
-        }
-      }
-      if (!notified) {
-        const groupChatId = resolveChatId();
-        if (groupChatId) {
-          await enqueue(() =>
-            call('sendMessage', {
-              chat_id: groupChatId,
-              text: `Напоминание: ${t.title}`,
-            }),
-          );
-        }
-      }
-    }
-    if (tasks.length) {
-      await Task.updateMany(
-        { _id: { $in: tasks.map((t) => t._id) } },
-        { $unset: { remind_at: '' } },
-      );
-    }
+          if (!link) continue;
+          const prefix = `Дедлайн задачи <a href="${link}">${identifier}</a>`;
+          const base = `${prefix} — срок ${formattedDue} (${PROJECT_TIMEZONE_LABEL}), `;
+          const messageText =
+            diffMs <= 0
+              ? `${base}просрочен на ${durationText}.`
+              : `${base}время дедлайна через ${durationText}.`;
 
-    const reminderCutoff = new Date(now.getTime() - REMINDER_INTERVAL_MS);
-    const deadlineTasks = await Task.find({
-      due_date: { $exists: true, $ne: null },
-      status: { $nin: ['Выполнена', 'Отменена'] },
-      $and: [
-        {
-          $or: [
-            { deadline_reminder_sent_at: { $exists: false } },
-            { deadline_reminder_sent_at: { $lte: reminderCutoff } },
-          ],
-        },
-        {
-          $or: [
-            { assignees: { $exists: true, $ne: [] } },
-            { assigned_user_id: { $exists: true } },
-          ],
-        },
-      ],
-    }).lean();
-
-    if (deadlineTasks.length) {
-      const processedIds: string[] = [];
-      const preferenceCache = new Map<number, boolean>();
-      for (const t of deadlineTasks) {
-        const recipients = new Set<number>();
-        if (typeof t.assigned_user_id === 'number') {
-          recipients.add(t.assigned_user_id);
-        }
-        if (Array.isArray(t.assignees)) {
-          (t.assignees as number[]).forEach((id) => recipients.add(id));
-        }
-        if (!recipients.size) continue;
-
-        const allowedRecipients: number[] = [];
-        for (const userId of recipients) {
-          if (!preferenceCache.has(userId)) {
-            const user = await User.findOne({ telegram_id: userId }).lean();
-            preferenceCache.set(
-              userId,
-              !user || user.receive_reminders !== false,
-            );
-          }
-          if (preferenceCache.get(userId)) {
-            allowedRecipients.push(userId);
-          }
-        }
-        if (!allowedRecipients.length) continue;
-
-        const dueRaw = (t.due_date as unknown) ?? null;
-        const dueDate = dueRaw
-          ? new Date(dueRaw as string | number | Date)
-          : null;
-        if (!dueDate || Number.isNaN(dueDate.getTime())) continue;
-
-        const identifier =
-          (t.task_number && String(t.task_number)) ||
-          (t.request_id && String(t.request_id)) ||
-          (typeof t._id === 'object' && t._id !== null && 'toString' in t._id
-            ? (t._id as { toString(): string }).toString()
-            : String(t._id));
-        const diffMs = dueDate.getTime() - now.getTime();
-        const durationText = formatDuration(Math.abs(diffMs));
-        const formattedDue = deadlineFormatter
-          .format(dueDate)
-          .replace(', ', ' ');
-        const groupChatId = resolveChatId();
-        const link = buildChatMessageLink(
-          groupChatId,
-          t.telegram_message_id,
-          t.telegram_topic_id,
-        );
-        if (!link) continue;
-        const prefix = `Дедлайн задачи <a href="${link}">${identifier}</a>`;
-        const base = `${prefix} — срок ${formattedDue} (${PROJECT_TIMEZONE_LABEL}), `;
-        const messageText =
-          diffMs <= 0
-            ? `${base}просрочен на ${durationText}.`
-            : `${base}время дедлайна через ${durationText}.`;
-
-        await Promise.allSettled(
-          allowedRecipients.map((userId) =>
-            enqueue(() =>
-              call('sendMessage', {
-                chat_id: userId,
-                text: messageText,
-                parse_mode: link ? 'HTML' : undefined,
-                link_preview_options: { is_disabled: true },
+          await Promise.allSettled(
+            allowedRecipients.map((userId) =>
+              enqueue(() =>
+                call('sendMessage', {
+                  chat_id: userId,
+                  text: messageText,
+                  parse_mode: link ? 'HTML' : undefined,
+                  link_preview_options: { is_disabled: true },
+                }),
+              ).catch((error) => {
+                console.error(
+                  `Не удалось отправить напоминание пользователю ${userId}`,
+                  error,
+                );
               }),
-            ).catch((error) => {
-              console.error(
-                `Не удалось отправить напоминание пользователю ${userId}`,
-                error,
-              );
-            }),
-          ),
-        );
+            ),
+          );
 
-        const id =
-          typeof t._id === 'object' && t._id !== null && 'toString' in t._id
-            ? (t._id as { toString(): string }).toString()
-            : String(t._id);
-        processedIds.push(id);
-      }
+          const id =
+            typeof t._id === 'object' && t._id !== null && 'toString' in t._id
+              ? (t._id as { toString(): string }).toString()
+              : String(t._id);
+          processedIds.push(id);
+        }
 
-      if (processedIds.length) {
-        await Task.updateMany(
-          { _id: { $in: processedIds } },
-          { $set: { deadline_reminder_sent_at: now } },
-        );
+        if (processedIds.length) {
+          await Task.updateMany(
+            { _id: { $in: processedIds } },
+            { $set: { deadline_reminder_sent_at: now } },
+          );
+        }
       }
-    }
-  });
+    },
+    { timezone: PROJECT_TIMEZONE },
+  );
 
   if (storageCleanupRetentionDays > 0) {
     const retentionMs = storageCleanupRetentionDays * 24 * 60 * 60 * 1000;
-    cleanupTask = schedule(storageCleanupCron, async () => {
-      const cutoff = new Date(Date.now() - retentionMs);
-      const removed = await removeDetachedFilesOlderThan(cutoff);
-      if (removed > 0) {
-        console.info('Очистка хранилища завершена, удалено файлов:', removed);
-      }
-    });
+    cleanupTask = schedule(
+      storageCleanupCron,
+      async () => {
+        const cutoff = new Date(Date.now() - retentionMs);
+        const removed = await removeDetachedFilesOlderThan(cutoff);
+        if (removed > 0) {
+          console.info('Очистка хранилища завершена, удалено файлов:', removed);
+        }
+      },
+      { timezone: PROJECT_TIMEZONE },
+    );
   }
 }
 

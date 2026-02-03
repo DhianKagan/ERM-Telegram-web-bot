@@ -12,35 +12,60 @@ jest.mock('dns/promises', () => ({
   lookup: jest.fn().mockResolvedValue([{ address: '1.1.1.1', family: 4 }]),
 }));
 
-const {
+import {
   expandMapsUrl,
   extractCoords,
   searchAddress,
   reverseGeocode,
-} = require('../src/services/maps');
-
-const { stopScheduler } = require('../src/services/scheduler');
-const { stopQueue } = require('../src/services/messageQueue');
+} from '../src/services/maps';
+import { stopScheduler } from '../src/services/scheduler';
+import { stopQueue } from '../src/services/messageQueue';
 
 test('expandMapsUrl возвращает полный url', async () => {
   const text = jest.fn();
-  global.fetch = jest.fn().mockResolvedValue({
-    url: 'https://maps.google.com/@10.1,20.2,15z',
-    text,
-  });
+  global.fetch = jest
+    .fn()
+    .mockResolvedValueOnce({
+      status: 302,
+      headers: new Headers({
+        location: 'https://maps.google.com/@10.1,20.2,15z',
+      }),
+    })
+    .mockResolvedValueOnce({
+      status: 200,
+      headers: new Headers(),
+      text,
+    });
   const res = await expandMapsUrl('https://maps.app.goo.gl/test');
-  expect(fetch).toHaveBeenCalledWith('https://maps.app.goo.gl/test', {
-    redirect: 'follow',
+  expect(fetch).toHaveBeenNthCalledWith(1, 'https://maps.app.goo.gl/test', {
+    redirect: 'manual',
   });
+  expect(fetch).toHaveBeenNthCalledWith(
+    2,
+    'https://maps.google.com/@10.1,20.2,15z',
+    {
+      redirect: 'manual',
+    },
+  );
   expect(res).toBe('https://maps.google.com/@10.1,20.2,15z');
   expect(text).not.toHaveBeenCalled();
 });
 
 test('expandMapsUrl нормализует ссылку статической карты', async () => {
-  global.fetch = jest.fn().mockResolvedValue({
-    url: 'https://maps.google.com/maps/api/staticmap?center=46.47561,30.709174&zoom=16&size=200x200&markers=46.47561,30.709174&sensor=false',
-    text: jest.fn(),
-  });
+  global.fetch = jest
+    .fn()
+    .mockResolvedValueOnce({
+      status: 302,
+      headers: new Headers({
+        location:
+          'https://maps.google.com/maps/api/staticmap?center=46.47561,30.709174&zoom=16&size=200x200&markers=46.47561,30.709174&sensor=false',
+      }),
+    })
+    .mockResolvedValueOnce({
+      status: 200,
+      headers: new Headers(),
+      text: jest.fn(),
+    });
   const res = await expandMapsUrl('https://maps.app.goo.gl/static');
   expect(res).toBe('https://www.google.com/maps/@46.475610,30.709174,17z');
 });
@@ -49,7 +74,8 @@ test('expandMapsUrl парсит ссылку из html-ответа', async () 
   const html =
     '<html><head><link rel="canonical" href="https://www.google.com/maps/place/Point/@48.123456,30.654321,17z" /></head></html>';
   global.fetch = jest.fn().mockResolvedValue({
-    url: 'https://maps.app.goo.gl/test',
+    status: 200,
+    headers: new Headers(),
     text: jest.fn().mockResolvedValue(html),
   });
   const res = await expandMapsUrl('https://maps.app.goo.gl/test');
@@ -61,7 +87,8 @@ test('expandMapsUrl парсит ссылку из html-ответа', async () 
 test('expandMapsUrl строит ссылку по координатам из тела', async () => {
   const html = '<html><body>!3d49.98765!4d36.12345</body></html>';
   global.fetch = jest.fn().mockResolvedValue({
-    url: 'https://maps.app.goo.gl/test',
+    status: 200,
+    headers: new Headers(),
     text: jest.fn().mockResolvedValue(html),
   });
   const res = await expandMapsUrl('https://maps.app.goo.gl/test');

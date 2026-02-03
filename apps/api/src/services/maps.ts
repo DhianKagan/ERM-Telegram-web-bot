@@ -30,6 +30,54 @@ const MAPS_URL_PATTERNS = [
   /https:\/\/maps\.google\.[^"'\s<>]+/gi,
 ];
 
+const ALLOWED_MAPS_HOSTS = new Set([
+  'goo.gl',
+  'maps.app.goo.gl',
+  'maps.google.com',
+  'www.google.com',
+]);
+
+const isAllowedMapsHost = (host: string): boolean => {
+  if (ALLOWED_MAPS_HOSTS.has(host)) {
+    return true;
+  }
+  return host.startsWith('maps.google.') || host.startsWith('www.google.');
+};
+
+const assertSafeMapsUrl = async (urlObj: URL): Promise<void> => {
+  if (urlObj.protocol !== 'https:') {
+    throw new Error('Недопустимый протокол URL');
+  }
+
+  if (urlObj.username || urlObj.password) {
+    throw new Error('URL не должен содержать userinfo');
+  }
+
+  if (urlObj.port && urlObj.port !== '' && urlObj.port !== '443') {
+    throw new Error('Недопустимый порт URL');
+  }
+
+  const host = urlObj.hostname.toLowerCase();
+  if (!isAllowedMapsHost(host)) {
+    throw new Error('Недопустимый домен URL');
+  }
+
+  let addresses;
+  try {
+    addresses = await lookup(host, { all: true });
+  } catch {
+    throw new Error('Не удалось разрешить домен URL');
+  }
+  if (!addresses || addresses.length === 0) {
+    throw new Error('Не удалось разрешить домен URL');
+  }
+  for (const addr of addresses) {
+    if (isPrivateIp(addr.address)) {
+      throw new Error('Домен URL разрешается во внутренний или запрещённый IP');
+    }
+  }
+};
+
 const decodeMapsUrlCandidate = (candidate: string): string | null => {
   if (!candidate) return null;
   let current = candidate.replace(/\\\//g, '/').replace(/\\u003d/gi, '=');
@@ -127,12 +175,6 @@ export type { Coordinates };
 
 export async function expandMapsUrl(shortUrl: string): Promise<string> {
   // Развёртывает короткий URL Google Maps с проверкой домена и протокола
-  const allowedHosts = [
-    'goo.gl',
-    'maps.app.goo.gl',
-    'maps.google.com',
-    'www.google.com',
-  ];
   let urlObj: URL;
 
   try {
@@ -141,42 +183,31 @@ export async function expandMapsUrl(shortUrl: string): Promise<string> {
     throw new Error('Некорректный URL');
   }
 
-  if (urlObj.protocol !== 'https:') {
-    throw new Error('Недопустимый протокол URL');
-  }
-
-  if (urlObj.username || urlObj.password) {
-    throw new Error('URL не должен содержать userinfo');
-  }
-
-  if (urlObj.port && urlObj.port !== '' && urlObj.port !== '443') {
-    throw new Error('Недопустимый порт URL');
-  }
-
-  if (!allowedHosts.includes(urlObj.hostname)) {
-    throw new Error('Недопустимый домен URL');
-  }
-
-  // Митигируем SSRF: разрешаем домен и проверяем IP-адреса
-  let addresses;
-  try {
-    addresses = await lookup(urlObj.hostname, { all: true });
-  } catch {
-    throw new Error('Не удалось разрешить домен URL');
-  }
-  if (!addresses || addresses.length === 0) {
-    throw new Error('Не удалось разрешить домен URL');
-  }
-  for (const addr of addresses) {
-    if (isPrivateIp(addr.address)) {
-      throw new Error('Домен URL разрешается во внутренний или запрещённый IP');
+  const fetchWithSafeRedirects = async (
+    initialUrl: URL,
+    maxRedirects = 5,
+  ): Promise<{ res: Response; finalUrl: URL }> => {
+    let currentUrl = initialUrl;
+    for (let i = 0; i <= maxRedirects; i += 1) {
+      await assertSafeMapsUrl(currentUrl);
+      const res = await fetch(currentUrl.toString(), { redirect: 'manual' });
+      if (res.status >= 300 && res.status < 400) {
+        const location = res.headers.get('location');
+        if (!location) {
+          throw new Error('Ответ редиректа без заголовка Location');
+        }
+        currentUrl = new URL(location, currentUrl);
+        continue;
+      }
+      return { res, finalUrl: currentUrl };
     }
-  }
+    throw new Error('Слишком много редиректов');
+  };
 
-  const res = await fetch(urlObj.toString(), { redirect: 'follow' });
-  const finalUrl = normalizeMapsUrl(res.url || urlObj.toString());
-  if (hasCoordsInUrl(finalUrl)) {
-    return finalUrl;
+  const { res, finalUrl } = await fetchWithSafeRedirects(urlObj);
+  const finalUrlString = normalizeMapsUrl(finalUrl.toString());
+  if (hasCoordsInUrl(finalUrlString)) {
+    return finalUrlString;
   }
 
   if (typeof (res as { text?: () => Promise<string> }).text === 'function') {
@@ -196,7 +227,7 @@ export async function expandMapsUrl(shortUrl: string): Promise<string> {
     }
   }
 
-  return finalUrl;
+  return finalUrlString;
 }
 
 // Проверка, что IP-адрес не является внутренним, loopback или link-local

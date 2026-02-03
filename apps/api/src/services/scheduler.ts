@@ -59,90 +59,142 @@ export function startScheduler(): void {
     expr,
     async () => {
       const now = new Date();
-      const tasks = await Task.find({
-        remind_at: { $lte: now },
-        status: { $ne: 'done' },
-      }).lean();
-      for (const t of tasks) {
-        const ids = new Set<number>();
-        if (t.assigned_user_id) ids.add(t.assigned_user_id as number);
-        if (Array.isArray(t.assignees))
-          (t.assignees as number[]).forEach((id) => ids.add(id));
-        let notified = false;
-        for (const id of ids) {
-          const user = await User.findOne({ telegram_id: id }).lean();
-          if (user && user.receive_reminders !== false) {
-            const groupChatId = resolveChatId();
-            const link = buildChatMessageLink(
-              groupChatId,
-              t.telegram_message_id,
-              t.telegram_topic_id,
-            );
-            const text = link
-              ? `Напоминание: <a href="${link}">${t.title}</a>`
-              : `Напоминание: ${t.title}`;
-            await enqueue(() =>
-              call('sendMessage', {
-                chat_id: user.telegram_id,
-                text,
-                parse_mode: link ? 'HTML' : undefined,
-                link_preview_options: link ? { is_disabled: true } : undefined,
-              }),
-            );
-            notified = true;
-          }
-        }
-        if (!notified) {
-          const groupChatId = resolveChatId();
-          if (groupChatId) {
-            await enqueue(() =>
-              call('sendMessage', {
-                chat_id: groupChatId,
-                text: `Напоминание: ${t.title}`,
-              }),
-            );
-          }
-        }
-      }
-      if (tasks.length) {
-        await Task.updateMany(
-          { _id: { $in: tasks.map((t) => t._id) } },
+      while (true) {
+        const task = await Task.findOneAndUpdate(
+          {
+            remind_at: { $lte: now },
+            status: { $ne: 'done' },
+          },
           { $unset: { remind_at: '' } },
-        );
+          { sort: { remind_at: 1 }, returnDocument: 'before' },
+        ).lean();
+
+        if (!task) {
+          break;
+        }
+
+        const originalRemindAt = task.remind_at
+          ? new Date(task.remind_at as unknown as string | number | Date)
+          : null;
+
+        try {
+          const ids = new Set<number>();
+          if (task.assigned_user_id) ids.add(task.assigned_user_id as number);
+          if (Array.isArray(task.assignees))
+            (task.assignees as number[]).forEach((id) => ids.add(id));
+          let notified = false;
+          for (const id of ids) {
+            const user = await User.findOne({ telegram_id: id }).lean();
+            if (user && user.receive_reminders !== false) {
+              const groupChatId = resolveChatId();
+              const link = buildChatMessageLink(
+                groupChatId,
+                task.telegram_message_id,
+                task.telegram_topic_id,
+              );
+              const text = link
+                ? `Напоминание: <a href="${link}">${task.title}</a>`
+                : `Напоминание: ${task.title}`;
+              await enqueue(() =>
+                call('sendMessage', {
+                  chat_id: user.telegram_id,
+                  text,
+                  parse_mode: link ? 'HTML' : undefined,
+                  link_preview_options: link
+                    ? { is_disabled: true }
+                    : undefined,
+                }),
+              );
+              notified = true;
+            }
+          }
+          if (!notified) {
+            const groupChatId = resolveChatId();
+            if (groupChatId) {
+              await enqueue(() =>
+                call('sendMessage', {
+                  chat_id: groupChatId,
+                  text: `Напоминание: ${task.title}`,
+                }),
+              );
+            }
+          }
+        } catch (error) {
+          console.error('Не удалось отправить напоминание по задаче', error);
+          if (originalRemindAt) {
+            await Task.updateOne(
+              { _id: task._id },
+              { $set: { remind_at: originalRemindAt } },
+            );
+          }
+        }
       }
 
       const reminderCutoff = new Date(now.getTime() - REMINDER_INTERVAL_MS);
-      const deadlineTasks = await Task.find({
-        due_date: { $exists: true, $ne: null },
-        status: { $nin: ['Выполнена', 'Отменена'] },
-        $and: [
+      const preferenceCache = new Map<number, boolean>();
+      while (true) {
+        const task = await Task.findOneAndUpdate(
           {
-            $or: [
-              { deadline_reminder_sent_at: { $exists: false } },
-              { deadline_reminder_sent_at: { $lte: reminderCutoff } },
+            due_date: { $exists: true, $ne: null },
+            status: { $nin: ['Выполнена', 'Отменена'] },
+            $and: [
+              {
+                $or: [
+                  { deadline_reminder_sent_at: { $exists: false } },
+                  { deadline_reminder_sent_at: { $lte: reminderCutoff } },
+                ],
+              },
+              {
+                $or: [
+                  { assignees: { $exists: true, $ne: [] } },
+                  { assigned_user_id: { $exists: true } },
+                ],
+              },
             ],
           },
-          {
-            $or: [
-              { assignees: { $exists: true, $ne: [] } },
-              { assigned_user_id: { $exists: true } },
-            ],
-          },
-        ],
-      }).lean();
+          { $set: { deadline_reminder_sent_at: now } },
+          { sort: { due_date: 1 }, returnDocument: 'before' },
+        ).lean();
 
-      if (deadlineTasks.length) {
-        const processedIds: string[] = [];
-        const preferenceCache = new Map<number, boolean>();
-        for (const t of deadlineTasks) {
+        if (!task) {
+          break;
+        }
+
+        const previousReminderSentAt = task.deadline_reminder_sent_at
+          ? new Date(
+              task.deadline_reminder_sent_at as unknown as
+                | string
+                | number
+                | Date,
+            )
+          : null;
+
+        const restoreDeadlineReminder = async () => {
+          if (previousReminderSentAt) {
+            await Task.updateOne(
+              { _id: task._id },
+              { $set: { deadline_reminder_sent_at: previousReminderSentAt } },
+            );
+          } else {
+            await Task.updateOne(
+              { _id: task._id },
+              { $unset: { deadline_reminder_sent_at: '' } },
+            );
+          }
+        };
+
+        try {
           const recipients = new Set<number>();
-          if (typeof t.assigned_user_id === 'number') {
-            recipients.add(t.assigned_user_id);
+          if (typeof task.assigned_user_id === 'number') {
+            recipients.add(task.assigned_user_id);
           }
-          if (Array.isArray(t.assignees)) {
-            (t.assignees as number[]).forEach((id) => recipients.add(id));
+          if (Array.isArray(task.assignees)) {
+            (task.assignees as number[]).forEach((id) => recipients.add(id));
           }
-          if (!recipients.size) continue;
+          if (!recipients.size) {
+            await restoreDeadlineReminder();
+            continue;
+          }
 
           const allowedRecipients: number[] = [];
           for (const userId of recipients) {
@@ -157,20 +209,28 @@ export function startScheduler(): void {
               allowedRecipients.push(userId);
             }
           }
-          if (!allowedRecipients.length) continue;
+          if (!allowedRecipients.length) {
+            await restoreDeadlineReminder();
+            continue;
+          }
 
-          const dueRaw = (t.due_date as unknown) ?? null;
+          const dueRaw = (task.due_date as unknown) ?? null;
           const dueDate = dueRaw
             ? new Date(dueRaw as string | number | Date)
             : null;
-          if (!dueDate || Number.isNaN(dueDate.getTime())) continue;
+          if (!dueDate || Number.isNaN(dueDate.getTime())) {
+            await restoreDeadlineReminder();
+            continue;
+          }
 
           const identifier =
-            (t.task_number && String(t.task_number)) ||
-            (t.request_id && String(t.request_id)) ||
-            (typeof t._id === 'object' && t._id !== null && 'toString' in t._id
-              ? (t._id as { toString(): string }).toString()
-              : String(t._id));
+            (task.task_number && String(task.task_number)) ||
+            (task.request_id && String(task.request_id)) ||
+            (typeof task._id === 'object' &&
+            task._id !== null &&
+            'toString' in task._id
+              ? (task._id as { toString(): string }).toString()
+              : String(task._id));
           const diffMs = dueDate.getTime() - now.getTime();
           const durationText = formatDuration(Math.abs(diffMs));
           const formattedDue = deadlineFormatter
@@ -179,10 +239,13 @@ export function startScheduler(): void {
           const groupChatId = resolveChatId();
           const link = buildChatMessageLink(
             groupChatId,
-            t.telegram_message_id,
-            t.telegram_topic_id,
+            task.telegram_message_id,
+            task.telegram_topic_id,
           );
-          if (!link) continue;
+          if (!link) {
+            await restoreDeadlineReminder();
+            continue;
+          }
           const prefix = `Дедлайн задачи <a href="${link}">${identifier}</a>`;
           const base = `${prefix} — срок ${formattedDue} (${PROJECT_TIMEZONE_LABEL}), `;
           const messageText =
@@ -190,7 +253,7 @@ export function startScheduler(): void {
               ? `${base}просрочен на ${durationText}.`
               : `${base}время дедлайна через ${durationText}.`;
 
-          await Promise.allSettled(
+          const results = await Promise.allSettled(
             allowedRecipients.map((userId) =>
               enqueue(() =>
                 call('sendMessage', {
@@ -199,27 +262,24 @@ export function startScheduler(): void {
                   parse_mode: link ? 'HTML' : undefined,
                   link_preview_options: { is_disabled: true },
                 }),
-              ).catch((error) => {
-                console.error(
-                  `Не удалось отправить напоминание пользователю ${userId}`,
-                  error,
-                );
-              }),
+              ),
             ),
           );
+          results
+            .filter((result) => result.status === 'rejected')
+            .forEach((result) => {
+              console.error(
+                'Не удалось отправить напоминание о дедлайне',
+                result,
+              );
+            });
 
-          const id =
-            typeof t._id === 'object' && t._id !== null && 'toString' in t._id
-              ? (t._id as { toString(): string }).toString()
-              : String(t._id);
-          processedIds.push(id);
-        }
-
-        if (processedIds.length) {
-          await Task.updateMany(
-            { _id: { $in: processedIds } },
-            { $set: { deadline_reminder_sent_at: now } },
-          );
+          if (!results.some((result) => result.status === 'fulfilled')) {
+            await restoreDeadlineReminder();
+          }
+        } catch (error) {
+          console.error('Ошибка отправки напоминаний о дедлайне', error);
+          await restoreDeadlineReminder();
         }
       }
     },

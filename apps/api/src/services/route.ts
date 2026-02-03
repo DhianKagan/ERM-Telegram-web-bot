@@ -428,7 +428,7 @@ export async function getRouteDistance(
       throw new Error('Routing service returned non-JSON response');
     }
 
-    if (!res.ok || data?.code !== 'Ok') {
+    if (!res.ok) {
       logger.error(
         {
           reqId: trace?.traceId,
@@ -448,6 +448,33 @@ export async function getRouteDistance(
       throw new Error(
         data?.message || data?.code || `Route error status ${res.status}`,
       );
+    }
+
+    if (data?.code && data.code !== 'Ok') {
+      logger.warn(
+        {
+          reqId: trace?.traceId,
+          url: routeUrl.toString(),
+          status: res.status,
+          body: data,
+        },
+        'Routing service returned non-Ok code for routeDistance',
+      );
+      await cacheSet(key, { distance: undefined, waypoints: data?.waypoints });
+      return { distance: undefined, waypoints: data?.waypoints };
+    }
+
+    if (!data) {
+      logger.error(
+        {
+          reqId: trace?.traceId,
+          url: routeUrl.toString(),
+          status: res.status,
+          body: data,
+        },
+        'Routing service returned empty response for routeDistance',
+      );
+      throw new Error('Routing service returned empty response');
     }
 
     timer({ endpoint: 'route', status: res.status });

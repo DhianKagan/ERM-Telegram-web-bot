@@ -20,6 +20,7 @@ function normalizePath(input: string): string {
 
 const CSRF_PATH = '/api/v1/csrf';
 const PROFILE_PATH = '/api/v1/auth/profile';
+let csrfRequest: Promise<string | null> | null = null;
 
 interface FetchOptions extends globalThis.RequestInit {
   headers?: Record<string, string>;
@@ -165,6 +166,43 @@ async function sendRequest(
   return fetch(url, opts);
 }
 
+async function fetchCsrfToken(): Promise<string | null> {
+  if (unavailablePaths.has(CSRF_PATH)) {
+    return null;
+  }
+  if (csrfRequest) {
+    return csrfRequest;
+  }
+  csrfRequest = (async () => {
+    try {
+      const res = await fetch(CSRF_PATH, { credentials: 'include' });
+      if (res.status === 404) {
+        unavailablePaths.add(CSRF_PATH);
+        return null;
+      }
+      if (!res.ok) {
+        return null;
+      }
+      const data = (await res.json().catch(() => ({}))) as {
+        csrfToken?: string;
+      };
+      if (data.csrfToken) {
+        setCsrfToken(data.csrfToken);
+        unavailablePaths.delete(CSRF_PATH);
+        return data.csrfToken;
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  })();
+  try {
+    return await csrfRequest;
+  } finally {
+    csrfRequest = null;
+  }
+}
+
 export default async function authFetch(
   url: string,
   options: AuthFetchOptions = {},
@@ -186,22 +224,9 @@ export default async function authFetch(
     });
   }
   if (!token && !unavailablePaths.has(CSRF_PATH)) {
-    try {
-      const res = await fetch('/api/v1/csrf', { credentials: 'include' });
-      if (res.status === 404) {
-        unavailablePaths.add(CSRF_PATH);
-      } else if (res.ok) {
-        const data = (await res.json().catch(() => ({}))) as {
-          csrfToken?: string;
-        };
-        if (data.csrfToken) {
-          token = data.csrfToken;
-          saveToken(token);
-          unavailablePaths.delete(CSRF_PATH);
-        }
-      }
-    } catch {
-      /* игнорируем */
+    token = await fetchCsrfToken();
+    if (token) {
+      saveToken(token);
     }
   }
   if (token) headers['X-XSRF-TOKEN'] = token;
@@ -227,24 +252,17 @@ export default async function authFetch(
         console.error(e);
       }
     }
-    try {
-      const r = await fetch('/api/v1/csrf', { credentials: 'include' });
-      if (r.ok) {
-        const d = (await r.json().catch(() => ({}))) as { csrfToken?: string };
-        if (d.csrfToken) {
-          saveToken(d.csrfToken);
-          headers['X-XSRF-TOKEN'] = d.csrfToken;
+    const refreshedToken = await fetchCsrfToken();
+    if (refreshedToken) {
+      saveToken(refreshedToken);
+      headers['X-XSRF-TOKEN'] = refreshedToken;
+      res = await sendRequest(url, opts, onProgress);
+      if (res.ok) {
+        try {
+          localStorage.removeItem('csrf_payload');
+        } catch (e) {
+          console.error(e);
         }
-      }
-    } catch {
-      /* игнорируем */
-    }
-    res = await sendRequest(url, opts, onProgress);
-    if (res.ok) {
-      try {
-        localStorage.removeItem('csrf_payload');
-      } catch (e) {
-        console.error(e);
       }
     }
   }

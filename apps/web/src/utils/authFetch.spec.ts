@@ -111,4 +111,39 @@ describe('authFetch', () => {
     expect(second.status).toBe(404);
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it('делит один запрос CSRF между параллельными вызовами', async () => {
+    getCsrfTokenMock.mockReturnValue(undefined);
+    const fetchMock = globalThis.fetch as jest.MockedFunction<
+      typeof globalThis.fetch
+    >;
+    let resolveCsrf: (value: Response) => void = () => undefined;
+    const csrfPromise = new Promise<Response>((resolve) => {
+      resolveCsrf = resolve;
+    });
+    fetchMock.mockImplementation((input: RequestInfo | URL) => {
+      if (input === '/api/v1/csrf') {
+        return csrfPromise;
+      }
+      return Promise.resolve(new Response(null, { status: 200 }));
+    });
+    const authFetch = await loadAuthFetch();
+    const first = authFetch('/api/v1/tasks', { noRedirect: true });
+    const second = authFetch('/api/v1/tasks', { noRedirect: true });
+    resolveCsrf(
+      new Response(JSON.stringify({ csrfToken: 'token' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    );
+    await Promise.all([first, second]);
+    const csrfCalls = fetchMock.mock.calls.filter(
+      ([input]) => input === '/api/v1/csrf',
+    );
+    const taskCalls = fetchMock.mock.calls.filter(
+      ([input]) => input === '/api/v1/tasks',
+    );
+    expect(csrfCalls).toHaveLength(1);
+    expect(taskCalls).toHaveLength(2);
+  });
 });

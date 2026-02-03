@@ -1,5 +1,18 @@
 // Назначение: автотесты. Модули: jest, supertest.
-import type { Express, NextFunction, Request, Response } from 'express';
+import express, {
+  type Express,
+  type NextFunction,
+  type Request,
+  type Response,
+} from 'express';
+import request from 'supertest';
+import cookieParser from 'cookie-parser';
+import session from 'express-session';
+import lusca from 'lusca';
+import { stopScheduler } from '../src/services/scheduler';
+import { stopQueue } from '../src/services/messageQueue';
+import authRouter from '../src/routes/authUser';
+import routeRouter from '../src/routes/route';
 
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
@@ -7,12 +20,6 @@ process.env.CHAT_ID = '1';
 process.env.JWT_SECRET = 's';
 process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
 process.env.APP_URL = 'https://localhost';
-
-const express = require('express');
-const request = require('supertest');
-const cookieParser = require('cookie-parser');
-const session = require('express-session');
-const lusca = require('lusca');
 
 jest.mock('../src/auth/auth.controller.ts', () => ({
   sendCode: jest.fn((_req: Request, res: Response) => res.json({ ok: true })),
@@ -49,16 +56,18 @@ jest.mock('../src/services/route', () => ({
   nearest: jest.fn(async () => ({})),
   match: jest.fn(async () => ({})),
   trip: jest.fn(async () => ({})),
+  normalizePointsString: jest.fn((points: string) =>
+    points
+      .split(/[;|]/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .map(() => [0, 0]),
+  ),
 }));
 
 jest.mock('../src/geo/osrm', () => ({
   getOsrmDistance: jest.fn(async () => 0.1),
 }));
-
-const authRouter = require('../src/routes/authUser').default;
-const routeRouter = require('../src/routes/route').default;
-const { stopScheduler } = require('../src/services/scheduler');
-const { stopQueue } = require('../src/services/messageQueue');
 
 let app: Express;
 beforeAll(() => {

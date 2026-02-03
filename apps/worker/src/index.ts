@@ -35,6 +35,24 @@ const deadLetterQueue = new Queue<DeadLetterJobData>(QueueName.DeadLetter, {
   defaultJobOptions: { removeOnComplete: false, removeOnFail: false },
 });
 
+void deadLetterQueue
+  .waitUntilReady()
+  .then(() => {
+    logger.info({ queue: QueueName.DeadLetter }, 'BullMQ DLQ connection ready');
+  })
+  .catch((error) => {
+    logger.error(
+      { alert: true, queue: QueueName.DeadLetter, error },
+      'BullMQ DLQ connection error',
+    );
+  });
+deadLetterQueue.on('error', (error) => {
+  logger.error(
+    { alert: true, queue: QueueName.DeadLetter, error },
+    'BullMQ DLQ connection error',
+  );
+});
+
 const forwardToDlq = async (
   job: Job<unknown, unknown, string> | undefined,
   error: Error | null,
@@ -73,7 +91,9 @@ const routingWorker = new Worker<RouteDistanceJobData, RouteDistanceJobResult>(
   async (job: Job<RouteDistanceJobData, RouteDistanceJobResult>) => {
     // Preserve optional traceparent propagation from job.data
     const traceparent =
-      typeof job.data === 'object' && job.data !== null && 'traceparent' in job.data
+      typeof job.data === 'object' &&
+      job.data !== null &&
+      'traceparent' in job.data
         ? (job.data as { traceparent?: unknown }).traceparent
         : undefined;
 
@@ -83,7 +103,11 @@ const routingWorker = new Worker<RouteDistanceJobData, RouteDistanceJobResult>(
       ...(typeof traceparent === 'string' ? { traceparent } : {}),
     } as typeof workerConfig.routing & { traceparent?: string };
 
-    return calculateRouteDistance(job.data.start, job.data.finish, routingConfigWithTrace);
+    return calculateRouteDistance(
+      job.data.start,
+      job.data.finish,
+      routingConfigWithTrace,
+    );
   },
   {
     ...baseQueueOptions,
@@ -111,6 +135,24 @@ geocodingWorker.on('failed', (job, error) =>
 routingWorker.on('failed', (job, error) =>
   handleFailure('Router', job, error as Error),
 );
+geocodingWorker.on('ready', () => {
+  logger.info({ queue: QueueName.LogisticsGeocoding }, 'Geocoder worker ready');
+});
+geocodingWorker.on('error', (error) => {
+  logger.error(
+    { alert: true, queue: QueueName.LogisticsGeocoding, error },
+    'Geocoder worker connection error',
+  );
+});
+routingWorker.on('ready', () => {
+  logger.info({ queue: QueueName.LogisticsRouting }, 'Router worker ready');
+});
+routingWorker.on('error', (error) => {
+  logger.error(
+    { alert: true, queue: QueueName.LogisticsRouting, error },
+    'Router worker connection error',
+  );
+});
 
 const shutdown = async (): Promise<void> => {
   logger.info('Shutting down BullMQ workers...');

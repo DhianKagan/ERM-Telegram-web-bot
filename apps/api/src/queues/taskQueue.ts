@@ -1,6 +1,7 @@
 // apps/api/src/queues/taskQueue.ts
 // Назначение: постановка задач в очереди BullMQ и ожидание результатов
 import { Queue, QueueEvents, type JobsOptions, type Job } from 'bullmq';
+import { createHash } from 'node:crypto';
 import {
   QueueJobName,
   QueueName,
@@ -22,9 +23,35 @@ const bundles = new Map<QueueName, QueueBundle>();
 const buildJobOptions = (): JobsOptions => ({
   attempts: queueConfig.attempts,
   backoff: { type: 'exponential', delay: queueConfig.backoffMs },
-  removeOnComplete: true,
-  removeOnFail: false,
+  removeOnComplete: { age: 86400, count: 1000 },
+  removeOnFail: { age: 86400, count: 1000 },
 });
+
+const buildJobId = (prefix: string, payload: unknown): string => {
+  const hash = createHash('sha1').update(JSON.stringify(payload)).digest('hex');
+  return `${prefix}:${hash}`;
+};
+
+const disableQueues = (reason: string, error?: unknown): void => {
+  if (!queueConfig.enabled) {
+    return;
+  }
+  queueConfig.enabled = false;
+  console.error(`Очереди BullMQ отключены: ${reason}`, error);
+  for (const bundle of bundles.values()) {
+    void bundle.queue.close().catch(() => undefined);
+    void bundle.events.close().catch(() => undefined);
+  }
+  bundles.clear();
+};
+
+const enableQueues = (): void => {
+  if (queueConfig.enabled || !queueConfig.connection) {
+    return;
+  }
+  queueConfig.enabled = true;
+  console.info('Очереди BullMQ снова доступны');
+};
 
 const createQueueBundle = (queueName: QueueName): QueueBundle | null => {
   if (!queueConfig.enabled || !queueConfig.connection) {
@@ -41,15 +68,40 @@ const createQueueBundle = (queueName: QueueName): QueueBundle | null => {
     defaultJobOptions: buildJobOptions(),
   });
 
+  void queue
+    .waitUntilReady()
+    .then(() => {
+      enableQueues();
+      console.info(`Очередь BullMQ готова к работе: ${queueName}`);
+    })
+    .catch((error) => {
+      disableQueues(`ошибка готовности очереди ${queueName}`, error);
+    });
+  queue.on('error', (error) => {
+    disableQueues(`ошибка соединения в очереди ${queueName}`, error);
+  });
+
   const events = new QueueEvents(queueName, options);
+  void events
+    .waitUntilReady()
+    .then(() => {
+      enableQueues();
+      console.info(`События BullMQ готовы: ${queueName}`);
+    })
+    .catch((error) => {
+      disableQueues(`ошибка готовности событий очереди ${queueName}`, error);
+    });
   events.on('error', (error) => {
-    console.error('События очереди BullMQ недоступны', error);
+    disableQueues(`события очереди ${queueName} недоступны`, error);
   });
 
   return { queue, events } satisfies QueueBundle;
 };
 
 export const getQueueBundle = (queueName: QueueName): QueueBundle | null => {
+  if (!queueConfig.enabled || !queueConfig.connection) {
+    return null;
+  }
   const existing = bundles.get(queueName);
   if (existing) {
     return existing;
@@ -67,7 +119,10 @@ const waitForResult = async <T>(
   fallback: () => Promise<T>,
 ): Promise<T> => {
   try {
-    const result = await job.waitUntilFinished(events, queueConfig.jobTimeoutMs);
+    const result = await job.waitUntilFinished(
+      events,
+      queueConfig.jobTimeoutMs,
+    );
     return result as T;
   } catch (error) {
     console.error('Не удалось дождаться результата задачи BullMQ', error);
@@ -84,8 +139,10 @@ export const requestGeocodingJob = async (
   }
 
   try {
-    const job = await bundle.queue.add(QueueJobName.GeocodeAddress, {
-      address,
+    const payload = { address };
+    const job = await bundle.queue.add(QueueJobName.GeocodeAddress, payload, {
+      ...buildJobOptions(),
+      jobId: buildJobId('geocode', payload),
     });
     return waitForResult<GeocodingJobResult>(job, bundle.events, () =>
       geocodeAddress(address),
@@ -121,8 +178,14 @@ export const requestRouteDistanceJob = async (
 
   try {
     // include traceparent in job data so worker can propagate it
-    const jobPayload = { ...params, ...(context?.traceparent ? { traceparent: context.traceparent } : {}) };
-    const job = await bundle.queue.add(QueueJobName.RouteDistance, jobPayload);
+    const jobPayload = {
+      ...params,
+      ...(context?.traceparent ? { traceparent: context.traceparent } : {}),
+    };
+    const job = await bundle.queue.add(QueueJobName.RouteDistance, jobPayload, {
+      ...buildJobOptions(),
+      jobId: buildJobId('route', jobPayload),
+    });
     return waitForResult<RouteDistanceJobResult>(
       job,
       bundle.events,

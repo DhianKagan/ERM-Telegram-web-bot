@@ -70,7 +70,7 @@ type OsrmResponse = {
 
 export function validateCoords(value: string): string {
   const coordRx =
-    /^-?\d+(\.\d+)?,-?\d+(\.\d+)?(;-?\d+(\.\d+)?,-?\d+(\.\d+)?)*$/;
+    /^-?\d+(\.\d+)?,-?\d+(\.\d+)?([;|]-?\d+(\.\d+)?,-?\d+(\.\d+)?)*$/;
   if (!coordRx.test(value)) throw new Error('Некорректные координаты');
   return value;
 }

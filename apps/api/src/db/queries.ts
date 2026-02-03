@@ -33,10 +33,12 @@ import {
   buildAttachmentsFromCommentHtml,
   coerceAttachments,
   extractAttachmentIds,
+  extractFileIdFromUrl,
 } from '../utils/attachments';
 import {
   clearTaskLinksForTask,
   detachFilesForTask,
+  deleteFilesForTask,
   findFilesForAttachments,
   updateFilesByFilter,
 } from '../services/fileService';
@@ -1565,13 +1567,22 @@ export async function deleteTask(
     ? (data.attachments as Attachment[])
     : [];
   const fileIds = extractAttachmentIds(attachments);
-  await detachFilesForTask(doc._id as Types.ObjectId, {
-    $or: [
-      { taskId: doc._id as Types.ObjectId },
-      { relatedTaskIds: doc._id as Types.ObjectId },
-      { _id: { $in: fileIds } },
-    ],
-  });
+  const fileIdsFromFiles: Types.ObjectId[] = [];
+  const filesField = Array.isArray(data.files) ? data.files : [];
+  if (filesField.length > 0) {
+    const seen = new Set(fileIds.map((id) => id.toHexString()));
+    filesField.forEach((entry) => {
+      if (typeof entry !== 'string') return;
+      const extracted = extractFileIdFromUrl(entry);
+      if (!extracted || seen.has(extracted)) return;
+      seen.add(extracted);
+      fileIdsFromFiles.push(new Types.ObjectId(extracted));
+    });
+  }
+  await deleteFilesForTask(doc._id as Types.ObjectId, [
+    ...fileIds,
+    ...fileIdsFromFiles,
+  ]);
   const fallbackUserId =
     typeof data.created_by === 'number' && Number.isFinite(data.created_by)
       ? data.created_by

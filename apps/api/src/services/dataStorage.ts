@@ -142,6 +142,104 @@ const normalizeLookupId = (value: unknown): string | null => {
   return null;
 };
 
+const normalizeFileIdSet = (ids: Iterable<string>): Set<string> => {
+  const result = new Set<string>();
+  for (const id of ids) {
+    const normalized = normalizeObjectIdString(String(id));
+    if (normalized) {
+      result.add(normalized);
+    }
+  }
+  return result;
+};
+
+const filterAttachmentsByIds = (
+  attachments: Attachment[] | null | undefined,
+  ids: Set<string>,
+): { next: Attachment[] | null | undefined; changed: boolean } => {
+  if (!Array.isArray(attachments)) {
+    return { next: attachments, changed: false };
+  }
+  let changed = false;
+  const next = attachments.filter((attachment) => {
+    if (!attachment || typeof attachment.url !== 'string') return true;
+    const fileId = extractFileIdFromUrl(attachment.url);
+    if (fileId && ids.has(fileId.toLowerCase())) {
+      changed = true;
+      return false;
+    }
+    return true;
+  });
+  return { next, changed };
+};
+
+const filterFilesByIds = (
+  files: unknown,
+  ids: Set<string>,
+): { next: unknown; changed: boolean } => {
+  if (!Array.isArray(files)) {
+    return { next: files, changed: false };
+  }
+  let changed = false;
+  const next = files.filter((entry) => {
+    if (typeof entry !== 'string') return true;
+    const matches = collectIdsFromString(entry);
+    const shouldRemove = matches.some((id) => ids.has(id));
+    if (shouldRemove) {
+      changed = true;
+    }
+    return !shouldRemove;
+  });
+  return { next, changed };
+};
+
+const removeFileReferencesFromTasks = async (
+  ids: Set<string>,
+): Promise<void> => {
+  if (ids.size === 0) return;
+  const normalizedIds = normalizeFileIdSet(ids);
+  if (normalizedIds.size === 0) return;
+  const query = buildAttachmentQuery(Array.from(normalizedIds));
+  if (!query) return;
+  const tasks = await Task.find(query)
+    .select(['_id', 'attachments', 'files'])
+    .lean();
+  if (!tasks.length) return;
+  const bulk: Array<{
+    updateOne: {
+      filter: { _id: Types.ObjectId };
+      update: { $set: { attachments: Attachment[]; files: unknown } };
+    };
+  }> = [];
+  tasks.forEach((task) => {
+    const attachmentsResult = filterAttachmentsByIds(
+      (task as { attachments?: Attachment[] | null }).attachments,
+      normalizedIds,
+    );
+    const filesResult = filterFilesByIds(
+      (task as { files?: unknown }).files,
+      normalizedIds,
+    );
+    if (!attachmentsResult.changed && !filesResult.changed) {
+      return;
+    }
+    bulk.push({
+      updateOne: {
+        filter: { _id: task._id as Types.ObjectId },
+        update: {
+          $set: {
+            attachments: attachmentsResult.next ?? [],
+            files: filesResult.next ?? [],
+          },
+        },
+      },
+    });
+  });
+  if (bulk.length > 0) {
+    await Task.bulkWrite(bulk);
+  }
+};
+
 const collectTaskFileReferences = (task: {
   attachments?: Attachment[] | null;
   files?: unknown;
@@ -472,6 +570,15 @@ export async function deleteFilesForTask(
     orConditions.length === 1 ? orConditions[0] : { $or: orConditions };
   const files = await File.find(filter).lean();
   if (files.length === 0) return;
+  const cleanupIds = new Set<string>();
+  files.forEach((file) => {
+    const normalized = normalizeLookupId(file._id);
+    if (normalized) {
+      cleanupIds.add(normalized);
+    }
+  });
+  uniqueExtraIds.forEach((id) => cleanupIds.add(id.toHexString()));
+  await removeFileReferencesFromTasks(cleanupIds);
   await Promise.all(
     files.map(async (file) => {
       await unlinkWithinUploads(file.path);

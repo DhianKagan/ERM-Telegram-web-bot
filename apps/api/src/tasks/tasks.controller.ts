@@ -65,6 +65,7 @@ import {
 } from '../utils/accessMask';
 import { ensureCommentHtml, syncCommentMessage } from '../tasks/taskComments';
 import { cleanupUploadedFiles } from '../utils/requestUploads';
+import { normalizeFilename } from '../utils/filename';
 import { normalizeTaskFilters } from './filterUtils';
 import {
   finalizePendingUploads as finalizeTaskUploads,
@@ -216,6 +217,13 @@ type NormalizedAttachment =
       name?: string;
       size?: number;
     }
+  | {
+      kind: 'document';
+      url: string;
+      mimeType?: string;
+      name?: string;
+      size?: number;
+    }
   | { kind: 'youtube'; url: string; title?: string };
 
 type NormalizedImage = Extract<NormalizedAttachment, { kind: 'image' }>;
@@ -245,6 +253,7 @@ type SendDocumentOptions = NonNullable<
   Parameters<typeof bot.telegram.sendDocument>[2]
 >;
 type PhotoInput = Parameters<typeof bot.telegram.sendPhoto>[1];
+type DocumentInput = Parameters<typeof bot.telegram.sendDocument>[1];
 type DirectMessageEntry = { user_id: number; message_id: number };
 
 const SUPPORTED_PHOTO_MIME_TYPES = new Set([
@@ -683,6 +692,55 @@ export default class TasksController {
     }
   }
 
+  private async resolveDocumentInputWithCache(
+    url: string,
+    cache: Map<string, LocalPhotoInfo | null>,
+  ): Promise<DocumentInput> {
+    if (!url) return url;
+    const telegramFileId = await this.resolveTelegramFileId(url);
+    if (telegramFileId) {
+      return telegramFileId;
+    }
+    if (!cache.has(url)) {
+      const info = await this.resolveLocalPhotoInfo(url);
+      cache.set(url, info ?? null);
+    }
+    const info = cache.get(url);
+    if (!info) {
+      return url;
+    }
+    try {
+      const stream = createReadStream(info.absolutePath);
+      await new Promise<void>((resolve, reject) => {
+        const handleOpen = () => {
+          stream.off('error', handleError);
+          resolve();
+        };
+        const handleError = (streamError: NodeJS.ErrnoException) => {
+          stream.off('open', handleOpen);
+          reject(streamError);
+        };
+        stream.once('open', handleOpen);
+        stream.once('error', handleError);
+      });
+      const descriptor = {
+        source: stream,
+        filename: info.filename,
+        ...(info.contentType ? { contentType: info.contentType } : {}),
+      };
+      return descriptor as DocumentInput;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException)?.code !== 'ENOENT') {
+        console.error(
+          `Не удалось открыть файл ${info.absolutePath} для отправки в Telegram`,
+          error,
+        );
+      }
+      cache.set(url, null);
+      return url;
+    }
+  }
+
   private normalizeInlineImages(inline: InlineImage[] | undefined) {
     if (!inline?.length) return [] as NormalizedImage[];
     const result: NormalizedImage[] = [];
@@ -737,7 +795,7 @@ export default class TasksController {
         if (YOUTUBE_URL_REGEXP.test(url)) {
           const title =
             typeof attachment.name === 'string' && attachment.name.trim()
-              ? attachment.name.trim()
+              ? normalizeFilename(attachment.name.trim())
               : undefined;
           registerExtra({ kind: 'youtube', url, title });
           return;
@@ -746,42 +804,51 @@ export default class TasksController {
           typeof attachment.type === 'string'
             ? attachment.type.trim().toLowerCase()
             : '';
-        if (!type.startsWith('image/')) return;
         const absolute = toAbsoluteAttachmentUrl(url);
         if (!absolute) return;
         const [mimeType] = type.split(';', 1);
         const name =
           typeof attachment.name === 'string' && attachment.name.trim()
-            ? attachment.name.trim()
+            ? normalizeFilename(attachment.name.trim())
             : undefined;
         const size =
           typeof attachment.size === 'number' &&
           Number.isFinite(attachment.size)
             ? attachment.size
             : undefined;
-        if (mimeType && SUPPORTED_PHOTO_MIME_TYPES.has(mimeType)) {
-          if (size !== undefined && size > MAX_PHOTO_SIZE_BYTES) {
-            const localId = this.extractLocalFileId(absolute);
-            if (!localId) {
-              registerExtra({
-                kind: 'unsupported-image',
-                url: absolute,
-                mimeType,
-                name,
-                size,
-              });
+        if (type.startsWith('image/')) {
+          if (mimeType && SUPPORTED_PHOTO_MIME_TYPES.has(mimeType)) {
+            if (size !== undefined && size > MAX_PHOTO_SIZE_BYTES) {
+              const localId = this.extractLocalFileId(absolute);
+              if (!localId) {
+                registerExtra({
+                  kind: 'unsupported-image',
+                  url: absolute,
+                  mimeType,
+                  name,
+                  size,
+                });
+                return;
+              }
+              registerImage({ kind: 'image', url: absolute });
               return;
             }
             registerImage({ kind: 'image', url: absolute });
             return;
           }
-          registerImage({ kind: 'image', url: absolute });
+          registerExtra({
+            kind: 'unsupported-image',
+            url: absolute,
+            mimeType,
+            name,
+            ...(size !== undefined ? { size } : {}),
+          });
           return;
         }
         registerExtra({
-          kind: 'unsupported-image',
+          kind: 'document',
           url: absolute,
-          mimeType,
+          mimeType: mimeType || undefined,
           name,
           ...(size !== undefined ? { size } : {}),
         });
@@ -1290,7 +1357,7 @@ export default class TasksController {
       await access(target);
       const filenameSource =
         typeof record.name === 'string' && record.name.trim()
-          ? record.name.trim()
+          ? normalizeFilename(record.name.trim())
           : normalizedPath;
       const filename = path.basename(filenameSource);
       const contentType =
@@ -1340,6 +1407,12 @@ export default class TasksController {
       }
       if (item.kind === 'image' && candidate.kind === 'image') {
         return (item.caption ?? '') === (candidate.caption ?? '');
+      }
+      if (item.kind === 'document' && candidate.kind === 'document') {
+        return (
+          (item.name ?? '') === (candidate.name ?? '') &&
+          (item.mimeType ?? '') === (candidate.mimeType ?? '')
+        );
       }
       return true;
     });
@@ -1810,6 +1883,8 @@ export default class TasksController {
       cache ?? new Map<string, LocalPhotoInfo | null>();
     const resolvePhotoInput = (url: string) =>
       this.resolvePhotoInputWithCache(url, localPhotoInfoCache);
+    const resolveDocumentInput = (url: string) =>
+      this.resolveDocumentInputWithCache(url, localPhotoInfoCache);
 
     const pendingImages: { url: string; caption?: string }[] = [];
     type SendMediaGroupOptions = Parameters<
@@ -1997,6 +2072,30 @@ export default class TasksController {
         );
         if (response?.message_id) {
           sentMessageIds.push(response.message_id);
+        }
+        continue;
+      }
+      if (attachment.kind === 'document') {
+        try {
+          const response = await bot.telegram.sendDocument(
+            chat,
+            await resolveDocumentInput(attachment.url),
+            documentOptionsBase(),
+          );
+          if (response?.message_id) {
+            sentMessageIds.push(response.message_id);
+          }
+          await this.persistTelegramFileId(
+            attachment.url,
+            this.extractTelegramDocumentId(response),
+          );
+        } catch (error) {
+          console.error(
+            'Не удалось отправить файл вложения',
+            attachment.mimeType ?? 'unknown',
+            attachment.name ?? attachment.url,
+            error,
+          );
         }
       }
     }

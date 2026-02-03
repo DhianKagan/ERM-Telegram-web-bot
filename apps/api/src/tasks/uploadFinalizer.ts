@@ -12,6 +12,7 @@ import {
 import { clearUploadContext } from './uploadContext';
 import { uploadsDir } from '../config/storage';
 import { Task } from '../db/model';
+import { extractFileIdFromUrl } from '../utils/attachments';
 import { buildFileUrl, buildThumbnailUrl } from '../utils/fileUrls';
 import { writeLog } from '../services/wgLogEngine';
 import { moveFile } from '../utils/moveFile';
@@ -21,6 +22,7 @@ const uploadsDirAbs = path.resolve(uploadsDir);
 const TEMP_URL_PREFIX = 'temp://';
 
 type AttachmentLike = {
+  fileId?: string;
   name?: string;
   url?: string;
   thumbnailUrl?: string;
@@ -39,6 +41,46 @@ const toObjectId = (value: string | Types.ObjectId | undefined) => {
     return new Types.ObjectId(value);
   }
   return undefined;
+};
+
+const normalizeAttachmentEntry = (entry: AttachmentLike): AttachmentLike => {
+  const normalized = { ...entry };
+  const fileIdRaw =
+    typeof normalized.fileId === 'string' ? normalized.fileId.trim() : '';
+  const urlRaw =
+    typeof normalized.url === 'string' ? normalized.url.trim() : '';
+  if (!urlRaw && fileIdRaw) {
+    normalized.url = buildFileUrl(fileIdRaw);
+  }
+  if (!fileIdRaw && urlRaw) {
+    const extracted = extractFileIdFromUrl(urlRaw);
+    if (extracted) {
+      normalized.fileId = extracted;
+    }
+  }
+  return normalized;
+};
+
+const normalizeAttachmentList = (
+  list: AttachmentLike[] = [],
+): AttachmentLike[] => {
+  const seen = new Set<string>();
+  const result: AttachmentLike[] = [];
+  list.forEach((entry) => {
+    if (!entry || typeof entry !== 'object') return;
+    const normalized = normalizeAttachmentEntry(entry);
+    const urlKey =
+      typeof normalized.url === 'string' ? normalized.url.trim() : '';
+    const fileIdKey =
+      typeof normalized.fileId === 'string' ? normalized.fileId.trim() : '';
+    const key = urlKey ? `url:${urlKey}` : fileIdKey ? `id:${fileIdKey}` : '';
+    if (key) {
+      if (seen.has(key)) return;
+      seen.add(key);
+    }
+    result.push(normalized);
+  });
+  return result;
 };
 
 const ensureWithin = (base: string, target: string): string => {
@@ -99,7 +141,7 @@ export const finalizePendingUploads = async (
   const pending = consumePendingUploads(req);
   if (pending.length === 0) {
     return {
-      attachments: options.attachments ? [...options.attachments] : [],
+      attachments: normalizeAttachmentList(options.attachments ?? []),
       created: [],
       fileIds: [],
     };
@@ -167,6 +209,7 @@ export const finalizePendingUploads = async (
       });
       createdIds.push(String(doc._id));
       const attachment: AttachmentLike = {
+        fileId: String(doc._id),
         name: entry.originalName,
         url: buildFileUrl(doc._id),
         thumbnailUrl: thumbnailRelative
@@ -210,14 +253,15 @@ export const finalizePendingUploads = async (
     }
     replacements.delete(key);
   });
+  const normalizedApplied = normalizeAttachmentList(applied);
   if (normalizedTaskId) {
     await Task.updateOne(
       { _id: normalizedTaskId },
-      { attachments: applied },
+      { attachments: normalizedApplied },
     ).exec();
   }
   return {
-    attachments: applied,
+    attachments: normalizedApplied,
     created: createdAttachments,
     fileIds: createdIds,
   };

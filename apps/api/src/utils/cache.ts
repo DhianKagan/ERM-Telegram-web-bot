@@ -101,6 +101,7 @@ export async function cacheSet<T>(
 }
 
 export async function cacheDel(key: string): Promise<void> {
+  if (!enabled) return;
   if (redisUrl) {
     const c = await getClient();
     if (c && redisReady) {
@@ -118,6 +119,7 @@ export async function cacheDel(key: string): Promise<void> {
 }
 
 export async function cacheClear(): Promise<void> {
+  if (!enabled) return;
   if (redisUrl) {
     const c = await getClient();
     if (c && redisReady) {

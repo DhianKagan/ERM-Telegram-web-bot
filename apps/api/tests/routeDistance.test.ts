@@ -1,5 +1,8 @@
 // Назначение: автотесты. Модули: jest, supertest.
 // Тесты функции getRouteDistance сервиса маршрутов
+import type { clearRouteCache as clearRouteCacheType } from '../src/services/route';
+import type { getRouteDistance as getRouteDistanceType } from '../src/services/route';
+
 process.env.ROUTING_URL = 'https://localhost:8000/route';
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
@@ -9,7 +12,14 @@ process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
 process.env.APP_URL = 'https://localhost';
 process.env.ROUTE_CACHE_ENABLED = '0';
 
-const { getRouteDistance, clearRouteCache } = require('../src/services/route');
+let getRouteDistance: typeof getRouteDistanceType;
+let clearRouteCache: typeof clearRouteCacheType;
+
+beforeAll(async () => {
+  ({ getRouteDistance, clearRouteCache } = await import(
+    '../src/services/route'
+  ));
+});
 
 beforeEach(async () => {
   await clearRouteCache();
@@ -53,4 +63,27 @@ test('getRouteDistance выбрасывает ошибку при неверно
   await expect(
     getRouteDistance({ lat: 1, lng: 2 }, { lat: 1.5, lng: 2.5 }),
   ).rejects.toThrow('Bad');
+});
+
+test('getRouteDistance возвращает undefined при коде NoRoute', async () => {
+  global.fetch = jest.fn().mockResolvedValue({
+    ok: true,
+    status: 200,
+    text: async () =>
+      JSON.stringify({
+        code: 'NoRoute',
+        routes: [],
+        waypoints: [],
+      }),
+    json: async () => ({
+      code: 'NoRoute',
+      routes: [],
+      waypoints: [],
+    }),
+  });
+  const res = await getRouteDistance(
+    { lat: 1, lng: 2 },
+    { lat: 1.5, lng: 2.5 },
+  );
+  expect(res.distance).toBeUndefined();
 });

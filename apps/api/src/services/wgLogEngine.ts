@@ -312,7 +312,11 @@ function safeToString(value: unknown): string {
     if (typeof value === 'number' || typeof value === 'boolean')
       return String(value);
     if (typeof value === 'bigint') return value.toString();
-    if (typeof value === 'object') return JSON.stringify(sanitizeValue(value));
+    if (typeof value === 'object') {
+      const sanitized = sanitizeValue(value);
+      const serialized = JSON.stringify(sanitized);
+      return typeof serialized === 'string' ? serialized : '[unserializable]';
+    }
     return String(value);
   } catch {
     return '[unserializable]';

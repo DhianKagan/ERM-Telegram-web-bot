@@ -29,6 +29,7 @@ import container from '../di';
 import { TOKENS } from '../di/tokens';
 import TaskSyncController from '../controllers/taskSync.controller';
 import { checkFile } from '../utils/fileCheck';
+import { normalizeFilename } from '../utils/filename';
 
 const router: Router = Router();
 
@@ -67,7 +68,7 @@ const storage = multer.diskStorage({
     cb(null, userDir);
   },
   filename: (_req, file, cb) => {
-    const original = path.basename(file.originalname);
+    const original = normalizeFilename(path.basename(file.originalname));
     cb(null, `${Date.now()}_${original}`);
   },
 });
@@ -139,7 +140,7 @@ const buildAttachmentPayload = (
       ? `/uploads/${file.thumbnailPath.trim()}`
       : undefined;
   const payload: Attachment = {
-    name: typeof file.name === 'string' ? file.name : 'Файл',
+    name: typeof file.name === 'string' ? normalizeFilename(file.name) : 'Файл',
     url: `/api/v1/files/${String(file._id)}`,
     uploadedBy,
     uploadedAt,
@@ -305,7 +306,14 @@ router.get(
       const userIdFilter =
         scope === 'global' || isAdmin ? undefined : (uid ?? undefined);
       const files = await listFiles({ userId: userIdFilter, scope });
-      res.json(files);
+      const normalized = files.map((file) => ({
+        ...file,
+        name:
+          typeof file.name === 'string'
+            ? normalizeFilename(file.name)
+            : file.name,
+      }));
+      res.json(normalized);
     } catch (err) {
       next(err);
     }
@@ -331,9 +339,12 @@ router.post(
       const uploadsAbs = path.resolve(uploadsDir);
       const storedPath = path.resolve(file.destination, file.filename);
       const relative = ensureRelativePath(storedPath, uploadsAbs);
+      const normalizedName = normalizeFilename(
+        path.basename(file.originalname),
+      );
       const record = await createFileRecord({
         userId,
-        name: file.originalname,
+        name: normalizedName,
         path: relative,
         type: file.mimetype,
         size: file.size,

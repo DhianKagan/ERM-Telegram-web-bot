@@ -36,6 +36,7 @@ import {
   staleUserFilesGraceMinutes,
 } from '../config/limits';
 import { checkFile } from '../utils/fileCheck';
+import { normalizeFilename } from '../utils/filename';
 import { coerceAttachments, extractFileIdFromUrl } from '../utils/attachments';
 import { appendPendingUpload } from '../utils/requestUploads';
 import { ensureUploadContext } from '../tasks/uploadContext';
@@ -349,7 +350,7 @@ export const processUploads: RequestHandler = async (req, res, next) => {
         );
       };
       for (const f of files) {
-        const original = path.basename(f.originalname);
+        const original = normalizeFilename(path.basename(f.originalname));
         const storedPath = path.resolve(f.destination, f.filename);
         const withinContext = isInsideDir(context.dir, storedPath);
         const withinUploads = isInsideDir(uploadsDirAbs, storedPath);
@@ -469,7 +470,7 @@ const storage = multer.diskStorage({
     }
   },
   filename: (_req, file, cb) => {
-    const original = path.basename(file.originalname);
+    const original = normalizeFilename(path.basename(file.originalname));
     cb(null, `${Date.now()}_${original}`);
   },
 });
@@ -653,7 +654,7 @@ export const handleChunks: RequestHandler = async (req, res) => {
     }
     fs.writeFileSync(chunkPath, file.buffer);
     if (idx + 1 === total) {
-      const originalName = path.basename(file.originalname);
+      const originalName = normalizeFilename(path.basename(file.originalname));
       const storedName = `${Date.now()}_${originalName}`;
       const final = path.resolve(dir, storedName);
       let cleanedTemp = false;

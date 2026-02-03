@@ -9,6 +9,7 @@ interface ConnectOptions {
   serverSelectionTimeoutMS?: number;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 type MongooseSchema<TRecord> = unknown;
 
 interface MongooseModel<TRecord> {
@@ -100,6 +101,7 @@ const scopedRequireHints = (() => {
 const createScopedLoaders = <TModule>(
   specifier: string,
 ): Array<() => TModule> => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const loaders: Array<() => TModule> = [() => require(specifier) as TModule];
 
   for (const hint of scopedRequireHints) {
@@ -139,16 +141,16 @@ const loadDotenvModule = (): DotenvModule | null => {
 
 const dotenv = loadDotenvModule();
 
-const mongoose: MongooseModule = (() => {
+const loadMongooseModule = (): MongooseModule | null => {
   const moduleInstance = resolveModule<MongooseModule>('mongoose');
   if (!moduleInstance) {
-    throw new Error(
+    console.warn(
       'Модуль mongoose не найден. Убедитесь, что зависимости приложения установлены перед запуском ensureDefaults.',
     );
   }
 
   return moduleInstance;
-})();
+};
 
 // Загружаем переменные окружения, не обращаясь к config
 const envPath = path.resolve(__dirname, '../..', '.env');
@@ -168,15 +170,25 @@ interface RoleRecord {
   permissions?: string[];
 }
 
-const roleSchema = new mongoose.Schema<RoleRecord>({
-  name: String,
-  permissions: [String],
-});
-const Role = mongoose.model<RoleRecord>('Role', roleSchema);
+const createRoleModel = (
+  mongoose: MongooseModule,
+): MongooseModel<RoleRecord> => {
+  const roleSchema = new mongoose.Schema<RoleRecord>({
+    name: String,
+    permissions: [String],
+  });
+
+  return mongoose.model<RoleRecord>('Role', roleSchema);
+};
 
 async function ensureDefaults(): Promise<void> {
   if (!/^mongodb(\+srv)?:\/\//.test(mongoUrl)) {
     console.warn('Не задан MONGO_DATABASE_URL, пропускаем инициализацию');
+    return;
+  }
+
+  const mongoose = loadMongooseModule();
+  if (!mongoose) {
     return;
   }
 
@@ -202,6 +214,7 @@ async function ensureDefaults(): Promise<void> {
   }
 
   const roleNames = ['user', 'admin', 'manager'];
+  const Role = createRoleModel(mongoose);
 
   for (const name of roleNames) {
     const res = await Role.updateOne(

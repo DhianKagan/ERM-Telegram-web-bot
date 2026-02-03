@@ -87,10 +87,29 @@ function getProxyToken(): string | undefined {
    Normalization & checks
    ---------------------- */
 
-const PRECISION_DECIMALS = Number(process.env.ROUTE_PRECISION_DECIMALS || '6'); // rounding decimals
-const MAX_SEGMENT_M = Number(process.env.ROUTE_MAX_SEGMENT_M || '200000'); // 200 km default
+const defaultPrecisionDecimals = 6;
+let precisionDecimals = Number(
+  process.env.ROUTE_PRECISION_DECIMALS || String(defaultPrecisionDecimals),
+); // rounding decimals
+if (!Number.isFinite(precisionDecimals) || precisionDecimals < 0) {
+  console.warn(
+    'ROUTE_PRECISION_DECIMALS должен быть неотрицательным числом. Используется значение по умолчанию 6',
+  );
+  precisionDecimals = defaultPrecisionDecimals;
+}
 
-function roundCoord(value: number, decimals = PRECISION_DECIMALS): number {
+const defaultMaxSegmentM = 200000; // 200 km default
+let maxSegmentM = Number(
+  process.env.ROUTE_MAX_SEGMENT_M || String(defaultMaxSegmentM),
+);
+if (!Number.isFinite(maxSegmentM) || maxSegmentM <= 0) {
+  console.warn(
+    'ROUTE_MAX_SEGMENT_M должен быть положительным числом. Используется значение по умолчанию 200000',
+  );
+  maxSegmentM = defaultMaxSegmentM;
+}
+
+function roundCoord(value: number, decimals = precisionDecimals): number {
   const factor = Math.pow(10, decimals);
   return Math.round(value * factor) / factor;
 }
@@ -160,13 +179,13 @@ function precheckLocations(locations: Array<[number, number]>) {
     if (!Number.isFinite(d)) {
       return { ok: false, reason: 'invalid_segment', index: i };
     }
-    if (d > MAX_SEGMENT_M) {
+    if (d > maxSegmentM) {
       return {
         ok: false,
         reason: 'segment_too_long',
         index: i,
         distanceMeters: d,
-        maxSegmentM: MAX_SEGMENT_M,
+        maxSegmentM: maxSegmentM,
       };
     }
   }

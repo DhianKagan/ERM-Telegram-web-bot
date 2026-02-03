@@ -4,10 +4,31 @@ import { extractCoords as sharedExtractCoords } from 'shared';
 export type LatLng = { lat: number; lng: number };
 export type LonLatPair = [number, number]; // [lon, lat]
 
-const PRECISION_DECIMALS = Number(process.env.ROUTE_PRECISION_DECIMALS || '6');
-export const MAX_SEGMENT_M = Number(process.env.ROUTE_MAX_SEGMENT_M || '200000'); // default 200km
+const defaultPrecisionDecimals = 6;
+let precisionDecimals = Number(
+  process.env.ROUTE_PRECISION_DECIMALS || String(defaultPrecisionDecimals),
+);
+if (!Number.isFinite(precisionDecimals) || precisionDecimals < 0) {
+  console.warn(
+    'ROUTE_PRECISION_DECIMALS должен быть неотрицательным числом. Используется значение по умолчанию 6',
+  );
+  precisionDecimals = defaultPrecisionDecimals;
+}
 
-function roundCoord(value: number, decimals = PRECISION_DECIMALS): number {
+const defaultMaxSegmentM = 200000; // default 200km
+let maxSegmentM = Number(
+  process.env.ROUTE_MAX_SEGMENT_M || String(defaultMaxSegmentM),
+);
+if (!Number.isFinite(maxSegmentM) || maxSegmentM <= 0) {
+  console.warn(
+    'ROUTE_MAX_SEGMENT_M должен быть положительным числом. Используется значение по умолчанию 200000',
+  );
+  maxSegmentM = defaultMaxSegmentM;
+}
+
+export const MAX_SEGMENT_M = maxSegmentM;
+
+function roundCoord(value: number, decimals = precisionDecimals): number {
   const factor = Math.pow(10, decimals);
   return Math.round(value * factor) / factor;
 }
@@ -58,7 +79,8 @@ export function haversineDistanceMeters(a: LonLatPair, b: LonLatPair): number {
   const lat2 = toRad(b[1]);
   const sinDlat = Math.sin(dLat / 2);
   const sinDlon = Math.sin(dLon / 2);
-  const aa = sinDlat * sinDlat + sinDlon * sinDlon * Math.cos(lat1) * Math.cos(lat2);
+  const aa =
+    sinDlat * sinDlat + sinDlon * sinDlon * Math.cos(lat1) * Math.cos(lat2);
   const c = 2 * Math.atan2(Math.sqrt(aa), Math.sqrt(1 - aa));
   return R * c;
 }
@@ -101,7 +123,12 @@ export function parsePointInput(input: unknown): LatLng | null {
     const maybeLongitude = obj.longitude ?? obj.lon ?? obj.lng;
     const latN = Number(maybeLatitude as unknown);
     const lngN = Number(maybeLongitude as unknown);
-    if (Number.isFinite(latN) && Number.isFinite(lngN) && isValidLat(latN) && isValidLon(lngN)) {
+    if (
+      Number.isFinite(latN) &&
+      Number.isFinite(lngN) &&
+      isValidLat(latN) &&
+      isValidLon(lngN)
+    ) {
       return { lat: roundCoord(latN), lng: roundCoord(lngN) };
     }
     // Try swapped keys (lng, lat)
@@ -109,7 +136,12 @@ export function parsePointInput(input: unknown): LatLng | null {
     const maybeLongitude2 = obj.lat;
     const lat2 = Number(maybeLatitude2 as unknown);
     const lng2 = Number(maybeLongitude2 as unknown);
-    if (Number.isFinite(lat2) && Number.isFinite(lng2) && isValidLat(lat2) && isValidLon(lng2)) {
+    if (
+      Number.isFinite(lat2) &&
+      Number.isFinite(lng2) &&
+      isValidLat(lat2) &&
+      isValidLon(lng2)
+    ) {
       return { lat: roundCoord(lat2), lng: roundCoord(lng2) };
     }
     return null;
@@ -176,7 +208,9 @@ export function parsePointInput(input: unknown): LatLng | null {
 /**
  * Convert lat/lng object to [lon, lat] array
  */
-export function latLngToLonLat(input: LatLng | [number, number]): [number, number] {
+export function latLngToLonLat(
+  input: LatLng | [number, number],
+): [number, number] {
   if (Array.isArray(input)) {
     return [Number(input[0]), Number(input[1])];
   }

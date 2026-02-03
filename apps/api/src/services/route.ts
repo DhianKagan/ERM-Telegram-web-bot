@@ -201,8 +201,16 @@ function maskHeaders(
   if (!headers) return undefined;
   const out: Record<string, unknown> = {};
   for (const k of Object.keys(headers)) {
-    if (k.toLowerCase() === 'authorization') out[k] = '<REDACTED>';
-    else out[k] = headers[k];
+    const key = k.toLowerCase();
+    if (
+      key === 'authorization' ||
+      key === 'x-proxy-token' ||
+      key === 'proxy-authorization'
+    ) {
+      out[k] = '<REDACTED>';
+    } else {
+      out[k] = headers[k];
+    }
   }
   return out;
 }

@@ -43,5 +43,9 @@ COPY --from=build /app/packages/shared/dist /app/packages/shared/dist
 COPY --from=build /app/packages/shared/package.json /app/packages/shared/package.json
 COPY --from=build /app/dist/scripts/db /app/dist/scripts/db
 COPY --from=build /app/package.json /app/package.json
+# Ensure root workspace node_modules (hoisted by pnpm) are available in final image.
+# pnpm workspaces install places many packages in root node_modules; pm2 and other shared
+# deps can be hoisted there. Copy it so binaries like pm2-runtime are present.
+COPY --from=build /app/node_modules /app/node_modules
 EXPOSE 3000
 CMD ["sh", "-c", "node dist/scripts/db/ensureDefaults.js && cd apps/api && ./node_modules/.bin/pm2-runtime ecosystem.config.cjs"]

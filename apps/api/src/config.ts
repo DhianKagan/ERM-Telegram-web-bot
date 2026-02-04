@@ -465,7 +465,7 @@ const portFromRailway = parsePort(process.env.RAILWAY_TCP_PORT);
 const portFromEnv = parsePort(process.env.PORT);
 const portFromHostPort = parsePort(process.env.HOST_PORT);
 
-const selectedPort = portFromRailway ?? portFromEnv ?? portFromHostPort ?? 3000;
+const selectedPort = portFromEnv ?? portFromRailway ?? portFromHostPort ?? 3000;
 
 if (
   portFromRailway !== undefined &&
@@ -473,7 +473,7 @@ if (
   portFromRailway !== portFromEnv
 ) {
   console.warn(
-    `Railway принудительно использует порт ${portFromRailway}, игнорируем PORT=${portFromEnv}.`,
+    `PORT=${portFromEnv} отличается от RAILWAY_TCP_PORT=${portFromRailway}, используем PORT.`,
   );
 }
 

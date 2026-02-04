@@ -10,8 +10,8 @@ process.env.APP_URL = 'https://localhost';
 process.env.MONGO_DATABASE_URL =
   'mongodb://mongo:pass@erm-mongodb.railway.internal:27017/ermdb?authSource=admin';
 
-const { stopScheduler } = require('../../apps/api/src/services/scheduler');
-const { stopQueue } = require('../../apps/api/src/services/messageQueue');
+import { stopScheduler } from '../../apps/api/src/services/scheduler';
+import { stopQueue } from '../../apps/api/src/services/messageQueue';
 
 const originalEnv = { ...process.env };
 
@@ -27,7 +27,7 @@ describe('config port detection', () => {
     jest.resetModules();
   });
 
-  test('предпочитает RAILWAY_TCP_PORT', () => {
+  test('предпочитает PORT', async () => {
     process.env.RAILWAY_TCP_PORT = '51234';
     process.env.PORT = '3001';
 
@@ -35,17 +35,17 @@ describe('config port detection', () => {
       .spyOn(console, 'warn')
       .mockImplementation(() => undefined);
 
-    const config = require('../../apps/api/src/config');
+    const { default: config } = await import('../../apps/api/src/config');
 
-    expect(config.port).toBe(51234);
+    expect(config.port).toBe(3001);
     expect(warnSpy).toHaveBeenCalledWith(
-      'Railway принудительно использует порт 51234, игнорируем PORT=3001.',
+      'PORT=3001 отличается от RAILWAY_TCP_PORT=51234, используем PORT.',
     );
 
     warnSpy.mockRestore();
   });
 
-  test('поддерживает формат tcp://host:port в RAILWAY_TCP_PORT', () => {
+  test('поддерживает формат tcp://host:port в RAILWAY_TCP_PORT', async () => {
     process.env.RAILWAY_TCP_PORT = 'tcp://0.0.0.0:44567';
     process.env.PORT = '3001';
 
@@ -53,17 +53,17 @@ describe('config port detection', () => {
       .spyOn(console, 'warn')
       .mockImplementation(() => undefined);
 
-    const config = require('../../apps/api/src/config');
+    const { default: config } = await import('../../apps/api/src/config');
 
-    expect(config.port).toBe(44567);
+    expect(config.port).toBe(3001);
     expect(warnSpy).toHaveBeenCalledWith(
-      'Railway принудительно использует порт 44567, игнорируем PORT=3001.',
+      'PORT=3001 отличается от RAILWAY_TCP_PORT=44567, используем PORT.',
     );
 
     warnSpy.mockRestore();
   });
 
-  test('игнорирует HOST_PORT', () => {
+  test('игнорирует HOST_PORT', async () => {
     process.env.HOST_PORT = '8080';
     process.env.PORT = '4567';
 
@@ -71,7 +71,7 @@ describe('config port detection', () => {
       .spyOn(console, 'warn')
       .mockImplementation(() => undefined);
 
-    const config = require('../../apps/api/src/config');
+    const { default: config } = await import('../../apps/api/src/config');
 
     expect(config.port).toBe(4567);
     expect(warnSpy).toHaveBeenCalledWith(
@@ -81,7 +81,7 @@ describe('config port detection', () => {
     warnSpy.mockRestore();
   });
 
-  test('возвращает порт по умолчанию при некорректных значениях', () => {
+  test('возвращает порт по умолчанию при некорректных значениях', async () => {
     process.env.PORT = 'abc';
     process.env.RAILWAY_TCP_PORT = '';
     process.env.HOST_PORT = '-1';
@@ -90,7 +90,7 @@ describe('config port detection', () => {
       .spyOn(console, 'warn')
       .mockImplementation(() => undefined);
 
-    const config = require('../../apps/api/src/config');
+    const { default: config } = await import('../../apps/api/src/config');
 
     expect(config.port).toBe(3000);
     expect(warnSpy).not.toHaveBeenCalled();

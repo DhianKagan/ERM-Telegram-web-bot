@@ -2001,9 +2001,6 @@ export async function startBot(retry = 0): Promise<void> {
   );
 }
 
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
-
 export const __resetCloseThrottleForTests = (): void => {
   if (process.env.NODE_ENV === 'test') {
     closeThrottleUntil = 0;

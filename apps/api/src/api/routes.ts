@@ -155,6 +155,9 @@ export default async function registerRoutes(
     '/api/v1/maps/expand',
   ];
   const csrfExcludePrefix = ['/api/tma'];
+  app.get('/', (_req: Request, res: Response) => {
+    res.status(200).send({ status: 'ok' });
+  });
   app.post('/', (_req: Request, res: Response) => {
     res.status(404).send('Not found');
   });

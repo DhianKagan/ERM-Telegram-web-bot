@@ -1,0 +1,22 @@
+diff --git a/Procfile b/Procfile
+index d460ea7..ac67e7f 100644
+--- a/Procfile
++++ b/Procfile
+@@ -2,6 +2,5 @@
+ # Запускает сервисы через pm2.
+ # После сборки выполняем скрипт синхронизации команд меню.
+ web: pnpm build \
+-  && ./scripts/set_bot_commands.sh \
+-  && pnpm --filter apps/api run start:pm2
++  && ./scripts/railway/start.sh
+ worker: pnpm --filter worker run start
+diff --git a/nixpacks.toml b/nixpacks.toml
+index fb97b22..812142d 100644
+--- a/nixpacks.toml
++++ b/nixpacks.toml
+@@ -15,4 +15,4 @@ cmds = ["pnpm install --frozen-lockfile"]
+ cmds = ["pnpm build"]
+ 
+ [start]
+-cmd = "pnpm --filter apps/api run start:pm2"
++cmd = "./scripts/railway/start.sh"

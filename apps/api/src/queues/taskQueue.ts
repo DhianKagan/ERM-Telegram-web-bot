@@ -113,6 +113,17 @@ export const getQueueBundle = (queueName: QueueName): QueueBundle | null => {
   return created;
 };
 
+export const closeQueueBundles = async (): Promise<void> => {
+  const closers = Array.from(bundles.values()).map(async (bundle) => {
+    await Promise.all([
+      bundle.queue.close().catch(() => undefined),
+      bundle.events.close().catch(() => undefined),
+    ]);
+  });
+  bundles.clear();
+  await Promise.all(closers);
+};
+
 const waitForResult = async <T>(
   job: Job,
   events: QueueEvents,

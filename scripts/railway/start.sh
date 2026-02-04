@@ -5,15 +5,17 @@ ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT_DIR"
 
 PM2_RUNTIME_PATH="apps/api/node_modules/.bin/pm2-runtime"
-PM2_PACKAGE_JSON="apps/api/node_modules/pm2/package.json"
-DOTENV_PACKAGE_JSON="apps/api/node_modules/dotenv/package.json"
-MONGOOSE_PACKAGE_JSON="apps/api/node_modules/mongoose/package.json"
+
+can_resolve_module() {
+  module_name="$1"
+  node -e "require.resolve('${module_name}', { paths: ['${ROOT_DIR}/apps/api'] })" >/dev/null 2>&1
+}
 
 if [ ! -d "node_modules/.pnpm" ] \
   || [ ! -x "$PM2_RUNTIME_PATH" ] \
-  || [ ! -f "$PM2_PACKAGE_JSON" ] \
-  || [ ! -f "$DOTENV_PACKAGE_JSON" ] \
-  || [ ! -f "$MONGOOSE_PACKAGE_JSON" ]; then
+  || ! can_resolve_module "pm2/bin/pm2-runtime" \
+  || ! can_resolve_module "dotenv" \
+  || ! can_resolve_module "mongoose"; then
   echo "Зависимости не найдены или pm2-runtime отсутствует, устанавливаем production-зависимости для apps/api..."
   corepack enable
   pnpm --filter apps/api... -s install --frozen-lockfile --prod

@@ -5,6 +5,7 @@ ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT_DIR"
 
 PM2_RUNTIME_PATH="apps/api/node_modules/.bin/pm2-runtime"
+PM2_PATH="apps/api/node_modules/.bin/pm2"
 
 can_resolve_module() {
   module_name="$1"
@@ -28,5 +29,11 @@ fi
 if [ -f "dist/scripts/db/ensureDefaults.js" ]; then
   node dist/scripts/db/ensureDefaults.js
 fi
+
+mkdir -p /var/log/pm2
+"$PM2_PATH" install pm2-logrotate
+"$PM2_PATH" set pm2-logrotate:max_size 10M
+"$PM2_PATH" set pm2-logrotate:retain 7
+"$PM2_PATH" set pm2-logrotate:compress true
 
 exec pnpm --filter apps/api exec pm2-runtime apps/api/ecosystem.config.cjs

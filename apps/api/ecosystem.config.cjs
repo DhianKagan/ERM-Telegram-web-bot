@@ -16,8 +16,8 @@ module.exports = {
       min_uptime: 5000,
       restart_delay: 5000,
       max_memory_restart: '512M',
-      out_file: 'logs/api.out.log',
-      error_file: 'logs/api.err.log',
+      out_file: '/var/log/pm2/api.out.log',
+      error_file: '/var/log/pm2/api.err.log',
       merge_logs: true,
       log_date_format: 'YYYY-MM-DD HH:mm:ss.SSS Z',
       env_production: {
@@ -40,8 +40,8 @@ module.exports = {
       min_uptime: 5000,
       restart_delay: 5000,
       max_memory_restart: '512M',
-      out_file: 'logs/bot.out.log',
-      error_file: 'logs/bot.err.log',
+      out_file: '/var/log/pm2/bot.out.log',
+      error_file: '/var/log/pm2/bot.err.log',
       merge_logs: true,
       log_date_format: 'YYYY-MM-DD HH:mm:ss.SSS Z',
       env_production: {
@@ -64,8 +64,8 @@ module.exports = {
       min_uptime: 5000,
       restart_delay: 5000,
       max_memory_restart: '512M',
-      out_file: 'logs/worker.out.log',
-      error_file: 'logs/worker.err.log',
+      out_file: '/var/log/pm2/worker.out.log',
+      error_file: '/var/log/pm2/worker.err.log',
       merge_logs: true,
       log_date_format: 'YYYY-MM-DD HH:mm:ss.SSS Z',
       env_production: {

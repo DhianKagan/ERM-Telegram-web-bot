@@ -22,7 +22,7 @@
 
 Чат-агент: анализ, планирование, предложения патчей/файлов, небольшие правки по запросу. Не запускает Codex-CI по умолчанию.
 
-Codex (PR-агент): создаёт финальные PR/патчи, может выполнять CI-стадии (fast/full) в рамках политики session_limits и patch_policy. Codex требует pr.diff/плана перед автоматической работой и ограничен по сессиям.
+Codex (PR-агент): создаёт финальные PR/патчи, может выполнять CI-стадии (fast/full) в рамках политики session_limits. Codex требует pr.diff/плана перед автоматической работой и ограничен по сессиям.
 
 Формат ответа — обязателен (строго)
 
@@ -38,7 +38,7 @@ Plan: цели, шаги, риски (≤3), ожидаемый результа
 
 Commands: точный набор команд (без destructive) для воспроизведения
 
-Changes: unified patch (*** Begin Patch ... *** End Patch) и полные файлы (--- Begin File: path ... --- End File: path) — оба обязательны при изменениях кода
+Changes: unified patch (**_ Begin Patch ... _** End Patch) и полные файлы (--- Begin File: path ... --- End File: path) — оба обязательны при изменениях кода
 
 PR: branch name, commit message, body шаблон, чек-лист DoD, выдержки логов (если есть)
 
@@ -94,17 +94,7 @@ pnpm -w test
 pnpm -w lint
 Опционально (smoke): docker build -t ermbot:test -f Dockerfile .
 
-Политика патчей (patch_policy)
-
-Формат: cjs-patch в patch_cjs/ с именем NNN-description.cjs
-
-Оркестратор: node patch_cjs/apply-all.cjs
-
-После применения: pnpm install и pnpm -F web run prebuild
-
-Роллбек: git restore <paths> (в JSON — hint)
-
-Для Windows: проверять кроссплатформенность .cjs
+Ручная система patch_cjs удалена и не используется.
 
 Правила работы с кодом — практично
 
@@ -146,7 +136,7 @@ apps/api/src/generated/**, packages/types/generated/** — правки толь
 
 Конфигурации мониторинга (prometheus/, profiling/) — менять только с SRE.
 
-docs/archive/** — не редактировать содержимое, лишь обновлять ссылки.
+docs/archive/\*\* — не редактировать содержимое, лишь обновлять ссылки.
 
 Стандарты оформления и соглашения
 
@@ -164,9 +154,9 @@ Translation / messages: все текстовые сообщения бота в
 
 Mode: Standard; Timezone: Europe/Kyiv
 Assumptions:
-1) ...
-2) ...
 
+1. ...
+2. ...
 
 Пример branch / commit / PR:
 
@@ -190,7 +180,6 @@ DoD: чек-лист (build, tsc, tests, lint)
 
 Mode: Standard; Timezone: Europe/Kyiv
 Смотрите .openai/assistant_instructions.json и AGENTS.md в корне репозитория — они содержат правила и workflow.
-
 
 (Этот краткий промпт в окружении должен ссылаться на JSON; не дублируйте правила.)
 

@@ -4,8 +4,11 @@ set -e
 ROOT_DIR="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT_DIR"
 
-if [ ! -d "node_modules/.pnpm" ] || [ ! -d "apps/api/node_modules/pm2" ]; then
-  echo "Зависимости не найдены, устанавливаем production-зависимости..."
+PM2_RUNTIME_PATH="apps/api/node_modules/pm2/bin/pm2-runtime"
+PM2_RUNTIME_BIN="apps/api/node_modules/.bin/pm2-runtime"
+
+if [ ! -d "node_modules/.pnpm" ] || [ ! -x "$PM2_RUNTIME_PATH" ] || [ ! -x "$PM2_RUNTIME_BIN" ]; then
+  echo "Зависимости не найдены или pm2-runtime отсутствует, устанавливаем production-зависимости..."
   corepack enable
   pnpm -w -s install --frozen-lockfile --prod
 fi

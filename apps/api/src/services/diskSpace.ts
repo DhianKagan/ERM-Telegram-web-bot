@@ -19,6 +19,7 @@ const diskFreeGauge = new Gauge({
 
 const THRESHOLD = Number(process.env.DISK_FREE_WARN || 1073741824);
 let warned = false;
+let monitor: NodeJS.Timeout | null = null;
 
 export async function checkDiskSpace(): Promise<void> {
   try {
@@ -61,8 +62,15 @@ export function startDiskMonitor(): void {
     return;
   }
   checkDiskSpace();
-  const interval = setInterval(checkDiskSpace, 60 * 60 * 1000);
-  if (typeof interval.unref === 'function') {
-    interval.unref();
+  monitor = setInterval(checkDiskSpace, 60 * 60 * 1000);
+  if (typeof monitor.unref === 'function') {
+    monitor.unref();
+  }
+}
+
+export function stopDiskMonitor(): void {
+  if (monitor) {
+    clearInterval(monitor);
+    monitor = null;
   }
 }

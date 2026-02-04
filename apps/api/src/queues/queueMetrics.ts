@@ -77,3 +77,10 @@ export const startQueueMetricsPoller = (): void => {
 
   poller.unref?.();
 };
+
+export const stopQueueMetricsPoller = (): void => {
+  if (poller) {
+    clearInterval(poller);
+    poller = null;
+  }
+};

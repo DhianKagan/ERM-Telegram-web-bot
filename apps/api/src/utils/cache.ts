@@ -139,3 +139,31 @@ export async function cacheClear(): Promise<void> {
 export function getCacheBackend(): 'redis' | 'memory' {
   return redisUrl && redisReady && !redisDisabled ? 'redis' : 'memory';
 }
+
+export async function closeCacheClient(): Promise<void> {
+  if (!clientPromise) {
+    return;
+  }
+  const c = await clientPromise;
+  if (!c) {
+    return;
+  }
+  try {
+    await c.quit();
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    console.warn(
+      'Не удалось завершить Redis соединение, пробуем disconnect',
+      reason,
+    );
+    try {
+      c.disconnect();
+    } catch (disconnectError) {
+      const disconnectReason =
+        disconnectError instanceof Error
+          ? disconnectError.message
+          : String(disconnectError);
+      console.warn('Не удалось отключить Redis соединение', disconnectReason);
+    }
+  }
+}

@@ -8,7 +8,7 @@
     "predev": "node ../../scripts/ensure-fonts.mjs",
     "prebuild": "node ../../scripts/ensure-fonts.mjs",
     "dev": "vite",
-    "build": "pnpm exec cross-env TAILWIND_DISABLE_ESM_LOADER=1 vite build",
+    "build": "pnpm exec cross-env vite build",
     "build:dist": "pnpm run prebuild && pnpm exec vite build --outDir dist && node ../../scripts/prepare_size_artifacts.mjs",
     "lint": "pnpm exec eslint .",
     "preview": "vite preview",

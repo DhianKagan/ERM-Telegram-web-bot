@@ -5,6 +5,17 @@ type RedisConnection = {
   url: string;
 };
 
+const normalizeEnvValue = (value: string | undefined): string => {
+  if (!value) {
+    return '';
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return '';
+  }
+  return trimmed.replace(/^(['"])(.*)\1$/, '$2').trim();
+};
+
 const parsePositiveInt = (
   value: string | undefined,
   fallback: number,
@@ -19,7 +30,7 @@ const parsePositiveInt = (
   return normalized;
 };
 
-const redisUrlRaw = (process.env.QUEUE_REDIS_URL || '').trim();
+const redisUrlRaw = normalizeEnvValue(process.env.QUEUE_REDIS_URL);
 let redisUrl: string | null = null;
 if (redisUrlRaw) {
   try {
@@ -38,7 +49,7 @@ if (redisUrlRaw) {
   }
 }
 
-const prefixRaw = (process.env.QUEUE_PREFIX || 'erm').trim();
+const prefixRaw = normalizeEnvValue(process.env.QUEUE_PREFIX) || 'erm';
 const prefix = prefixRaw || 'erm';
 
 export const queueConfig = {

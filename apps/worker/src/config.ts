@@ -18,6 +18,17 @@ type RedisConnection = {
 
 type GeocoderProvider = 'nominatim' | 'openrouteservice';
 
+const normalizeEnvValue = (value: string | undefined): string => {
+  if (!value) {
+    return '';
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return '';
+  }
+  return trimmed.replace(/^(['"])(.*)\1$/, '$2').trim();
+};
+
 const detectGeocoderProvider = (url: string): GeocoderProvider => {
   const normalized = url.toLowerCase();
   if (normalized.includes('openrouteservice')) {
@@ -40,7 +51,7 @@ const parsePositiveInt = (
   return normalized;
 };
 
-const redisUrlRaw = (process.env.QUEUE_REDIS_URL || '').trim();
+const redisUrlRaw = normalizeEnvValue(process.env.QUEUE_REDIS_URL);
 if (!redisUrlRaw) {
   throw new Error('QUEUE_REDIS_URL обязателен для запуска воркера BullMQ');
 }
@@ -63,8 +74,8 @@ try {
 }
 
 const geocoderEnabledFlag =
-  (process.env.GEOCODER_ENABLED || '1').trim() !== '0';
-const geocoderUrlRaw = (process.env.GEOCODER_URL || '').trim();
+  normalizeEnvValue(process.env.GEOCODER_ENABLED) !== '0';
+const geocoderUrlRaw = normalizeEnvValue(process.env.GEOCODER_URL);
 let geocoderBaseUrl = '';
 let geocoderProvider: GeocoderProvider = 'nominatim';
 if (geocoderEnabledFlag && geocoderUrlRaw) {
@@ -85,21 +96,17 @@ if (geocoderEnabledFlag && geocoderUrlRaw) {
   }
 }
 
-const geocoderUserAgentRaw = (process.env.GEOCODER_USER_AGENT || '').trim();
+const geocoderUserAgentRaw = normalizeEnvValue(process.env.GEOCODER_USER_AGENT);
 const geocoderUserAgent = geocoderUserAgentRaw || 'ERM Logistics geocoder';
-const geocoderEmailRaw = (process.env.GEOCODER_EMAIL || '').trim();
+const geocoderEmailRaw = normalizeEnvValue(process.env.GEOCODER_EMAIL);
 const geocoderEmail = geocoderEmailRaw || undefined;
-const geocoderApiKeyRaw = (
-  process.env.GEOCODER_API_KEY ||
-  process.env.ORS_API_KEY ||
-  ''
-).trim();
+const geocoderApiKeyRaw = normalizeEnvValue(
+  process.env.GEOCODER_API_KEY || process.env.ORS_API_KEY,
+);
 const geocoderApiKey = geocoderApiKeyRaw || undefined;
-const geocoderProxyTokenRaw = (
-  process.env.GEOCODER_PROXY_TOKEN ||
-  process.env.PROXY_TOKEN ||
-  ''
-).trim();
+const geocoderProxyTokenRaw = normalizeEnvValue(
+  process.env.GEOCODER_PROXY_TOKEN || process.env.PROXY_TOKEN,
+);
 const geocoderProxyToken = geocoderProxyTokenRaw || undefined;
 
 if (geocoderProvider === 'openrouteservice' && !geocoderApiKey) {
@@ -110,7 +117,7 @@ if (geocoderProvider === 'openrouteservice' && !geocoderApiKey) {
 
 // --- Изменённая логика: ROUTING_URL теперь опционален ---
 // Если переменной нет или формат некорректный — маршрутизация отключается и логируется.
-const routingUrlRaw = (process.env.ROUTING_URL || '').trim();
+const routingUrlRaw = normalizeEnvValue(process.env.ROUTING_URL);
 let routingBaseUrl: string | undefined;
 if (!routingUrlRaw) {
   logger.info('ROUTING_URL не задан; функциональность маршрутизации отключена');
@@ -128,21 +135,19 @@ if (!routingUrlRaw) {
   }
 }
 
-const osrmAlgorithmRaw = (process.env.OSRM_ALGORITHM || '').trim();
+const osrmAlgorithmRaw = normalizeEnvValue(process.env.OSRM_ALGORITHM);
 
 // ---- НОВОЕ: token для маршрутизации (если нужно аутентифицировать вызовы маршрутизации) ----
 // Читаем либо GEOCODER_PROXY_TOKEN (часто используют для прокси), либо PROXY_TOKEN
-const routingProxyTokenRaw = (
-  process.env.GEOCODER_PROXY_TOKEN ||
-  process.env.PROXY_TOKEN ||
-  ''
-).trim();
+const routingProxyTokenRaw = normalizeEnvValue(
+  process.env.GEOCODER_PROXY_TOKEN || process.env.PROXY_TOKEN,
+);
 const routingProxyToken = routingProxyTokenRaw || undefined;
 // -------------------------------------------------------------------------------------------
 
 export const workerConfig = {
   connection: { url: redisUrl } satisfies RedisConnection,
-  prefix: (process.env.QUEUE_PREFIX || 'erm').trim() || 'erm',
+  prefix: normalizeEnvValue(process.env.QUEUE_PREFIX) || 'erm',
   attempts: parsePositiveInt(process.env.QUEUE_ATTEMPTS, 3),
   backoffMs: parsePositiveInt(process.env.QUEUE_BACKOFF_MS, 5000),
   concurrency: parsePositiveInt(process.env.QUEUE_CONCURRENCY, 4),

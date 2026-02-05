@@ -32,7 +32,13 @@ if (!sessionSecret) {
 
 export async function buildApp(): Promise<express.Express> {
   const { default: connect } = await import('../db/connection');
-  await connect();
+  void connect().catch((error: unknown) => {
+    const err = error as { message?: string };
+    console.error(
+      'Не удалось подключиться к MongoDB при старте API:',
+      err?.message ?? 'Неизвестная ошибка',
+    );
+  });
   await import('../db/model');
 
   const app = express();

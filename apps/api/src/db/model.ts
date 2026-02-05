@@ -19,8 +19,10 @@ const normalizePriorityValue = (value?: string | null) => {
 if (process.env.NODE_ENV !== 'test') {
   connect().catch((e: unknown) => {
     const err = e as { message?: string };
-    console.error('Не удалось подключиться к MongoDB:', err.message);
-    process.exit(1);
+    console.error(
+      'Не удалось подключиться к MongoDB:',
+      err.message ?? 'Неизвестная ошибка',
+    );
   });
 }
 

@@ -2,8 +2,9 @@
  * Назначение файла: конфигурация pm2 для запуска API и бота.
  * Основные модули: pm2.
  */
-module.exports = {
-  apps: [
+const redisUrl = (process.env.QUEUE_REDIS_URL || '').trim();
+
+const apps = [
     {
       name: 'api',
       script: 'dist/server.js',
@@ -52,29 +53,35 @@ module.exports = {
         QUEUE_CONCURRENCY: process.env.QUEUE_CONCURRENCY,
       },
     },
-    {
-      name: 'worker',
-      script: '../worker/dist/index.js',
-      cwd: __dirname,
-      instances: 1,
-      exec_mode: 'fork',
-      watch: false,
-      autorestart: true,
-      max_restarts: 10,
-      min_uptime: 5000,
-      restart_delay: 5000,
-      max_memory_restart: '512M',
-      out_file: '/var/log/pm2/worker.out.log',
-      error_file: '/var/log/pm2/worker.err.log',
-      merge_logs: true,
-      log_date_format: 'YYYY-MM-DD HH:mm:ss.SSS Z',
-      env_production: {
-        NODE_ENV: 'production',
-        QUEUE_REDIS_URL: process.env.QUEUE_REDIS_URL,
-        TELEGRAM_WEBHOOK_URL: process.env.TELEGRAM_WEBHOOK_URL,
-        TELEGRAM_WEBHOOK_SECRET: process.env.TELEGRAM_WEBHOOK_SECRET,
-        QUEUE_CONCURRENCY: process.env.QUEUE_CONCURRENCY,
-      },
+  ];
+
+if (redisUrl) {
+  apps.push({
+    name: 'worker',
+    script: '../worker/dist/index.js',
+    cwd: __dirname,
+    instances: 1,
+    exec_mode: 'fork',
+    watch: false,
+    autorestart: true,
+    max_restarts: 10,
+    min_uptime: 5000,
+    restart_delay: 5000,
+    max_memory_restart: '512M',
+    out_file: '/var/log/pm2/worker.out.log',
+    error_file: '/var/log/pm2/worker.err.log',
+    merge_logs: true,
+    log_date_format: 'YYYY-MM-DD HH:mm:ss.SSS Z',
+    env_production: {
+      NODE_ENV: 'production',
+      QUEUE_REDIS_URL: process.env.QUEUE_REDIS_URL,
+      TELEGRAM_WEBHOOK_URL: process.env.TELEGRAM_WEBHOOK_URL,
+      TELEGRAM_WEBHOOK_SECRET: process.env.TELEGRAM_WEBHOOK_SECRET,
+      QUEUE_CONCURRENCY: process.env.QUEUE_CONCURRENCY,
     },
-  ],
+  });
+}
+
+module.exports = {
+  apps,
 };

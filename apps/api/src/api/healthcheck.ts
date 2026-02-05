@@ -4,6 +4,9 @@ import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import { performance } from 'node:perf_hooks';
 
+const startedAt = Date.now();
+const DEFAULT_GRACE_SECONDS = 60;
+
 type DependencyStatus = 'up' | 'down';
 
 type MongoHealth = {
@@ -64,11 +67,25 @@ export async function collectHealthStatus(): Promise<HealthPayload> {
   };
 }
 
+const getGracePeriodMs = (): number => {
+  const raw = process.env.HEALTHCHECK_GRACE_SECONDS;
+  if (!raw) {
+    return DEFAULT_GRACE_SECONDS * 1000;
+  }
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    return DEFAULT_GRACE_SECONDS * 1000;
+  }
+  return parsed * 1000;
+};
+
 export default async function healthcheck(
   _req: Request,
   res: Response,
 ): Promise<void> {
   const payload = await collectHealthStatus();
-  const httpStatus = payload.status === 'ok' ? 200 : 503;
+  const graceMs = getGracePeriodMs();
+  const withinGrace = Date.now() - startedAt < graceMs;
+  const httpStatus = payload.status === 'ok' || withinGrace ? 200 : 503;
   res.status(httpStatus).json(payload);
 }

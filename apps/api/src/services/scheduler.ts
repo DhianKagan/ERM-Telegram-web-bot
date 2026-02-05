@@ -64,18 +64,15 @@ export function startScheduler(): void {
           {
             remind_at: { $lte: now },
             status: { $ne: 'done' },
+            processing: { $ne: true },
           },
-          { $unset: { remind_at: '' } },
-          { sort: { remind_at: 1 }, returnDocument: 'before' },
+          { $set: { processing: true } },
+          { sort: { remind_at: 1 }, returnDocument: 'after' },
         ).lean();
 
         if (!task) {
           break;
         }
-
-        const originalRemindAt = task.remind_at
-          ? new Date(task.remind_at as unknown as string | number | Date)
-          : null;
 
         try {
           const ids = new Set<number>();
@@ -119,14 +116,16 @@ export function startScheduler(): void {
               );
             }
           }
+          await Task.updateOne(
+            { _id: task._id },
+            { $set: { processing: false }, $unset: { remind_at: '' } },
+          );
         } catch (error) {
           console.error('Не удалось отправить напоминание по задаче', error);
-          if (originalRemindAt) {
-            await Task.updateOne(
-              { _id: task._id },
-              { $set: { remind_at: originalRemindAt } },
-            );
-          }
+          await Task.updateOne(
+            { _id: task._id },
+            { $set: { processing: false } },
+          );
         }
       }
 

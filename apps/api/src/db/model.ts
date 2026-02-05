@@ -253,6 +253,7 @@ export interface TaskAttrs {
   start_date?: Date;
   due_date?: Date;
   remind_at?: Date;
+  processing?: boolean;
   location?: string;
 
   // Согласовано с shared: допускаем null там, где это может приходить
@@ -371,6 +372,7 @@ const taskSchema = new Schema<TaskDocument>(
     start_date: Date,
     due_date: Date,
     remind_at: Date,
+    processing: Boolean,
     location: String,
     start_location: String,
     start_location_link: String,

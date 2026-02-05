@@ -22,6 +22,22 @@ export const isTestEnvironment =
   Boolean(process.env.JEST_WORKER_ID) ||
   isMochaRun;
 const strictEnvs = new Set(['production', 'production-build']);
+const parseBooleanFlag = (
+  source: string | undefined,
+  defaultValue = false,
+): boolean => {
+  if (source === undefined) {
+    return defaultValue;
+  }
+  const normalized = source.trim().toLowerCase();
+  if (!normalized) {
+    return defaultValue;
+  }
+  return ['1', 'true', 'yes', 'on'].includes(normalized);
+};
+const allowMissingEnv =
+  parseBooleanFlag(process.env.ALLOW_MISSING_ENV) ||
+  Boolean(process.env.RAILWAY_ENVIRONMENT);
 
 // Загружаем .env из корня проекта, чтобы избежать undefined переменных при запуске из каталога bot
 dotenv.config({ path: path.resolve(__dirname, '../../..', '.env') });
@@ -135,33 +151,49 @@ for (const key of required) {
   if (current) {
     continue;
   }
-  if (strictEnvs.has(nodeEnv)) {
-    throw new Error(`Переменная ${key} не задана`);
-  }
   if (isTestEnvironment) {
     process.env[key] = fallback[key];
-  } else {
+    continue;
+  }
+  if (strictEnvs.has(nodeEnv) && !allowMissingEnv) {
     throw new Error(`Переменная ${key} не задана`);
   }
+  console.warn(`Переменная ${key} не задана, используем значение по умолчанию`);
+  process.env[key] = fallback[key];
 }
 
-const mongoUrlEnv = (
+const mongoUrlEnvRaw = (
   process.env.MONGO_DATABASE_URL ||
   process.env.MONGODB_URI ||
   process.env.DATABASE_URL ||
   ''
 ).trim();
+const fallbackMongoUrl = 'mongodb://localhost:27017/ermdb';
+const mongoUrlEnv = mongoUrlEnvRaw || (allowMissingEnv ? fallbackMongoUrl : '');
 if (!/^mongodb(\+srv)?:\/\//.test(mongoUrlEnv)) {
-  throw new Error(
-    'MONGO_DATABASE_URL должен начинаться с mongodb:// или mongodb+srv://',
-  );
+  if (allowMissingEnv) {
+    console.warn(
+      'MONGO_DATABASE_URL не задан или имеет неверный формат, используем mongodb://localhost:27017/ermdb',
+    );
+  } else {
+    throw new Error(
+      'MONGO_DATABASE_URL должен начинаться с mongodb:// или mongodb+srv://',
+    );
+  }
 }
 
 let parsedMongoUrl: URL;
 try {
   parsedMongoUrl = new URL(mongoUrlEnv);
 } catch {
-  throw new Error('MONGO_DATABASE_URL имеет неверный формат');
+  if (allowMissingEnv) {
+    console.warn(
+      'MONGO_DATABASE_URL имеет неверный формат, используем mongodb://localhost:27017/ermdb',
+    );
+    parsedMongoUrl = new URL(fallbackMongoUrl);
+  } else {
+    throw new Error('MONGO_DATABASE_URL имеет неверный формат');
+  }
 }
 
 const fallbackMessages: string[] = [];
@@ -172,9 +204,13 @@ if (dbFallback) {
 
 const dbName = parsedMongoUrl.pathname.replace(/^\/+/, '');
 if (!dbName) {
-  throw new Error(
-    'MONGO_DATABASE_URL должен содержать имя базы данных после хоста, например /ermdb',
-  );
+  if (allowMissingEnv) {
+    parsedMongoUrl.pathname = '/ermdb';
+  } else {
+    throw new Error(
+      'MONGO_DATABASE_URL должен содержать имя базы данных после хоста, например /ermdb',
+    );
+  }
 }
 
 const credentialMessages = applyMongoCredentialFallback(parsedMongoUrl);
@@ -201,11 +237,19 @@ if (fallbackMessages.length) {
 const finalMongoUrl = parsedMongoUrl.toString();
 process.env.MONGO_DATABASE_URL = finalMongoUrl;
 
-const appUrlEnv = (process.env.APP_URL || '').trim();
+let appUrlEnv = (process.env.APP_URL || '').trim();
 if (!/^https:\/\//.test(appUrlEnv)) {
-  throw new Error(
-    'APP_URL должен начинаться с https://, иначе Web App не будет работать',
-  );
+  if (allowMissingEnv) {
+    console.warn(
+      'APP_URL не задан или имеет неверный формат, используем https://localhost',
+    );
+    process.env.APP_URL = fallback.APP_URL;
+    appUrlEnv = fallback.APP_URL;
+  } else {
+    throw new Error(
+      'APP_URL должен начинаться с https://, иначе Web App не будет работать',
+    );
+  }
 }
 
 const rawOsrmBase = (
@@ -273,20 +317,6 @@ export const graphhopperConfig = {
   matrixUrl: graphhopperMatrixUrl,
   apiKey: graphhopperApiKey,
   profile: graphhopperProfile,
-};
-
-const parseBooleanFlag = (
-  source: string | undefined,
-  defaultValue = false,
-): boolean => {
-  if (source === undefined) {
-    return defaultValue;
-  }
-  const normalized = source.trim().toLowerCase();
-  if (!normalized) {
-    return defaultValue;
-  }
-  return ['1', 'true', 'yes', 'on'].includes(normalized);
 };
 
 const geocoderEnabledFlag = parseBooleanFlag(

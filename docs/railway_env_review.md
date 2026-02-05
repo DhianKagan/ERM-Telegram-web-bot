@@ -8,7 +8,7 @@
 
 - Все ключевые секреты присутствуют (BOT_TOKEN, CHAT_ID, JWT_SECRET, SESSION_SECRET) и должны оставаться секретами в Railway.
 - NODE_ENV=production и LOCALE=ru соответствуют настройкам продакшена.
-- ADMIN_ROLE_ID и USER_ROLE_ID совпадают с актуальными значениями.
+- ADMIN_ROLE_ID и USER_ROLE_ID больше не требуются в окружении и могут быть удалены.
 
 ## MongoDB
 

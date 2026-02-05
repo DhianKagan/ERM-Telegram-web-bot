@@ -672,6 +672,18 @@ docker run -d -p 9090:9090 \
 подключается по SSH к серверу, читает процессы pm2 и проверяет HTTP-эндпойнт
 `/health`.
 
+Если `pm2` не установлен глобально, используйте локальный бинарь
+`./apps/api/node_modules/.bin/pm2`.
+
+Минимальный набор команд для диагностики процессов:
+
+```bash
+./apps/api/node_modules/.bin/pm2 ls
+./apps/api/node_modules/.bin/pm2 stop bot
+./apps/api/node_modules/.bin/pm2 restart worker
+./apps/api/node_modules/.bin/pm2 logs bot --lines 100
+```
+
 1. Сохраните приватный ключ деплоя в `~/.ssh` контейнера и выставьте переменные
    окружения:
 

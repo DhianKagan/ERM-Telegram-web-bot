@@ -30,6 +30,14 @@ const baseQueueOptions = {
   prefix: workerConfig.prefix,
 } as const;
 
+const geocodingQueue = new Queue<GeocodingJobData>(
+  QueueName.LogisticsGeocoding,
+  baseQueueOptions,
+);
+const routingQueue = new Queue<RouteDistanceJobData>(
+  QueueName.LogisticsRouting,
+  baseQueueOptions,
+);
 const deadLetterQueue = new Queue<DeadLetterJobData>(QueueName.DeadLetter, {
   ...baseQueueOptions,
   defaultJobOptions: { removeOnComplete: false, removeOnFail: false },
@@ -154,22 +162,63 @@ routingWorker.on('error', (error) => {
   );
 });
 
-const shutdown = async (): Promise<void> => {
-  logger.info('Shutting down BullMQ workers...');
-  await Promise.all([
-    geocodingWorker.close(),
-    routingWorker.close(),
-    deadLetterQueue.close(),
-  ]);
-  logger.info('Workers stopped');
-  process.exit(0);
+const shutdownTimeoutMs = Number.parseInt(
+  process.env.WORKER_SHUTDOWN_TIMEOUT_MS || '30000',
+  10,
+);
+let isShuttingDown = false;
+
+const pauseQueues = async (): Promise<void> => {
+  try {
+    await Promise.all([geocodingQueue.pause(), routingQueue.pause()]);
+    logger.info('Queues paused, stopping workers...');
+  } catch (error) {
+    logger.warn({ error }, 'Failed to pause queues before shutdown');
+  }
+};
+
+const shutdown = async (signal: NodeJS.Signals): Promise<void> => {
+  if (isShuttingDown) {
+    logger.warn({ signal }, 'Shutdown already in progress');
+    return;
+  }
+  isShuttingDown = true;
+  logger.info(
+    { signal, timeoutMs: shutdownTimeoutMs },
+    'Shutting down BullMQ workers...',
+  );
+
+  const shutdownTimer = setTimeout(() => {
+    logger.error(
+      { timeoutMs: shutdownTimeoutMs },
+      'Graceful shutdown timed out, forcing exit',
+    );
+    process.exit(1);
+  }, shutdownTimeoutMs);
+
+  try {
+    await pauseQueues();
+    await Promise.all([geocodingWorker.close(), routingWorker.close()]);
+    await Promise.all([
+      geocodingQueue.close(),
+      routingQueue.close(),
+      deadLetterQueue.close(),
+    ]);
+    clearTimeout(shutdownTimer);
+    logger.info('Workers stopped');
+    process.exit(0);
+  } catch (error) {
+    clearTimeout(shutdownTimer);
+    logger.error({ error }, 'Graceful shutdown failed');
+    process.exit(1);
+  }
 };
 
 process.on('SIGINT', () => {
-  void shutdown();
+  void shutdown('SIGINT');
 });
 process.on('SIGTERM', () => {
-  void shutdown();
+  void shutdown('SIGTERM');
 });
 
 logger.info(

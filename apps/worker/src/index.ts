@@ -30,6 +30,25 @@ const baseQueueOptions = {
   prefix: workerConfig.prefix,
 } as const;
 
+const buildJobOptions = () => ({
+  attempts: workerConfig.attempts,
+  backoff: { type: 'exponential' as const, delay: workerConfig.backoffMs },
+  removeOnComplete: { count: 1000 },
+  removeOnFail: { age: 86400 },
+});
+
+const resolveTaskId = (data: unknown): string | null => {
+  if (!data || typeof data !== 'object') {
+    return null;
+  }
+  if ('taskId' in data) {
+    const raw = (data as { taskId?: unknown }).taskId;
+    if (typeof raw === 'string' && raw) return raw;
+    if (typeof raw === 'number' && Number.isFinite(raw)) return String(raw);
+  }
+  return null;
+};
+
 const geocodingQueue = new Queue<GeocodingJobData>(
   QueueName.LogisticsGeocoding,
   baseQueueOptions,
@@ -40,7 +59,7 @@ const routingQueue = new Queue<RouteDistanceJobData>(
 );
 const deadLetterQueue = new Queue<DeadLetterJobData>(QueueName.DeadLetter, {
   ...baseQueueOptions,
-  defaultJobOptions: { removeOnComplete: false, removeOnFail: false },
+  defaultJobOptions: buildJobOptions(),
 });
 
 void deadLetterQueue
@@ -75,9 +94,14 @@ const forwardToDlq = async (
     failedAt: Date.now(),
   };
 
+  const taskId = resolveTaskId(payload.payload);
+  const jobId = taskId
+    ? `task-remind:${taskId}`
+    : `dlq:${String(job.id ?? payload.failedAt)}`;
+
   await deadLetterQueue.add(QueueJobName.DeadLetter, payload, {
-    removeOnComplete: false,
-    removeOnFail: false,
+    ...buildJobOptions(),
+    jobId,
   });
 };
 

@@ -23,8 +23,8 @@ const bundles = new Map<QueueName, QueueBundle>();
 const buildJobOptions = (): JobsOptions => ({
   attempts: queueConfig.attempts,
   backoff: { type: 'exponential', delay: queueConfig.backoffMs },
-  removeOnComplete: { age: 86400, count: 1000 },
-  removeOnFail: { age: 86400, count: 1000 },
+  removeOnComplete: { count: 1000 },
+  removeOnFail: { age: 86400 },
 });
 
 const buildJobId = (prefix: string, payload: unknown): string => {

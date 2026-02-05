@@ -44,9 +44,21 @@ dotenv.config({ path: path.resolve(__dirname, '../../..', '.env') });
 
 type EnvPick = { key: string; value: string };
 
+const normalizeEnvValue = (value: string | undefined): string => {
+  if (!value) {
+    return '';
+  }
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return '';
+  }
+  const unquoted = trimmed.replace(/^(['"])(.*)\1$/, '$2').trim();
+  return unquoted;
+};
+
 const pickFirstFilled = (keys: readonly string[]): EnvPick | undefined => {
   for (const key of keys) {
-    const raw = process.env[key];
+    const raw = normalizeEnvValue(process.env[key]);
     if (!raw) {
       continue;
     }
@@ -147,8 +159,9 @@ const fallback: Record<(typeof required)[number], string> = {
 };
 
 for (const key of required) {
-  const current = (process.env[key] || '').trim();
+  const current = normalizeEnvValue(process.env[key]);
   if (current) {
+    process.env[key] = current;
     continue;
   }
   if (isTestEnvironment) {
@@ -162,12 +175,11 @@ for (const key of required) {
   process.env[key] = fallback[key];
 }
 
-const mongoUrlEnvRaw = (
+const mongoUrlEnvRaw = normalizeEnvValue(
   process.env.MONGO_DATABASE_URL ||
-  process.env.MONGODB_URI ||
-  process.env.DATABASE_URL ||
-  ''
-).trim();
+    process.env.MONGODB_URI ||
+    process.env.DATABASE_URL,
+);
 const fallbackMongoUrl = 'mongodb://localhost:27017/ermdb';
 const mongoUrlEnv = mongoUrlEnvRaw || (allowMissingEnv ? fallbackMongoUrl : '');
 if (!/^mongodb(\+srv)?:\/\//.test(mongoUrlEnv)) {
@@ -237,7 +249,7 @@ if (fallbackMessages.length) {
 const finalMongoUrl = parsedMongoUrl.toString();
 process.env.MONGO_DATABASE_URL = finalMongoUrl;
 
-let appUrlEnv = (process.env.APP_URL || '').trim();
+let appUrlEnv = normalizeEnvValue(process.env.APP_URL);
 if (!/^https:\/\//.test(appUrlEnv)) {
   if (allowMissingEnv) {
     console.warn(
@@ -252,16 +264,15 @@ if (!/^https:\/\//.test(appUrlEnv)) {
   }
 }
 
-const rawOsrmBase = (
-  process.env.OSRM_BASE_URL ||
-  process.env.ROUTING_URL ||
-  'http://localhost:5000'
-).trim();
+const rawOsrmBase = normalizeEnvValue(
+  process.env.OSRM_BASE_URL || process.env.ROUTING_URL,
+);
+const osrmBaseCandidate = rawOsrmBase || 'http://localhost:5000';
 
 let osrmBaseUrlValue: string;
 let routingUrlEnv: string;
 try {
-  const parsed = new URL(rawOsrmBase);
+  const parsed = new URL(osrmBaseCandidate);
   if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
     throw new Error('OSRM_BASE_URL должен начинаться с http:// или https://');
   }
@@ -281,9 +292,9 @@ try {
   throw new Error(`OSRM_BASE_URL имеет неверный формат: ${message}`);
 }
 
-const graphhopperMatrixUrlRaw = (
-  process.env.GRAPHHOPPER_MATRIX_URL || ''
-).trim();
+const graphhopperMatrixUrlRaw = normalizeEnvValue(
+  process.env.GRAPHHOPPER_MATRIX_URL,
+);
 let graphhopperMatrixUrl: string | undefined;
 if (graphhopperMatrixUrlRaw) {
   try {
@@ -305,12 +316,14 @@ if (graphhopperMatrixUrlRaw) {
   }
 }
 
-const graphhopperApiKeyRaw = (process.env.GRAPHHOPPER_API_KEY || '').trim();
+const graphhopperApiKeyRaw = normalizeEnvValue(process.env.GRAPHHOPPER_API_KEY);
 const graphhopperApiKey = graphhopperApiKeyRaw
   ? graphhopperApiKeyRaw
   : undefined;
 
-const graphhopperProfileRaw = (process.env.GRAPHHOPPER_PROFILE || '').trim();
+const graphhopperProfileRaw = normalizeEnvValue(
+  process.env.GRAPHHOPPER_PROFILE,
+);
 const graphhopperProfile = graphhopperProfileRaw || 'car';
 
 export const graphhopperConfig = {
@@ -323,9 +336,9 @@ const geocoderEnabledFlag = parseBooleanFlag(
   process.env.GEOCODER_ENABLED,
   true,
 );
-const geocoderBaseUrlRaw = (
-  process.env.GEOCODER_URL || 'https://nominatim.openstreetmap.org/search'
-).trim();
+const geocoderBaseUrlRaw =
+  normalizeEnvValue(process.env.GEOCODER_URL) ||
+  'https://nominatim.openstreetmap.org/search';
 let geocoderBaseUrl = geocoderBaseUrlRaw;
 if (geocoderBaseUrlRaw) {
   try {
@@ -347,9 +360,9 @@ if (geocoderBaseUrlRaw) {
   }
 }
 
-const geocoderUserAgentRaw = (process.env.GEOCODER_USER_AGENT || '').trim();
+const geocoderUserAgentRaw = normalizeEnvValue(process.env.GEOCODER_USER_AGENT);
 const geocoderUserAgent = geocoderUserAgentRaw || 'ERM Logistics geocoder';
-const geocoderEmailRaw = (process.env.GEOCODER_EMAIL || '').trim();
+const geocoderEmailRaw = normalizeEnvValue(process.env.GEOCODER_EMAIL);
 const geocoderEmail = geocoderEmailRaw || undefined;
 const geocoderEnabled =
   geocoderEnabledFlag && Boolean(geocoderBaseUrl) && !isTestEnvironment;
@@ -361,7 +374,7 @@ export const geocoderConfig = {
   email: geocoderEmail,
 };
 
-let cookieDomainEnv = (process.env.COOKIE_DOMAIN || '').trim();
+let cookieDomainEnv = normalizeEnvValue(process.env.COOKIE_DOMAIN);
 if (cookieDomainEnv) {
   if (/^https?:\/\//.test(cookieDomainEnv)) {
     try {
@@ -385,7 +398,7 @@ const botApiUrlBlockedHosts = new Set([
 ]);
 
 let botApiUrlValue: string | undefined;
-const botApiUrlRaw = (process.env.BOT_API_URL || '').trim();
+const botApiUrlRaw = normalizeEnvValue(process.env.BOT_API_URL);
 if (botApiUrlRaw) {
   try {
     const parsed = new URL(botApiUrlRaw);
@@ -407,7 +420,9 @@ if (botApiUrlRaw) {
   }
 }
 
-const telegramWebhookUrlRaw = (process.env.TELEGRAM_WEBHOOK_URL || '').trim();
+const telegramWebhookUrlRaw = normalizeEnvValue(
+  process.env.TELEGRAM_WEBHOOK_URL,
+);
 let telegramWebhookUrl: string | undefined;
 let telegramWebhookPath: string | undefined;
 if (telegramWebhookUrlRaw) {
@@ -443,9 +458,9 @@ if (telegramWebhookUrlRaw) {
   }
 }
 
-const telegramWebhookSecretValue = (
-  process.env.TELEGRAM_WEBHOOK_SECRET || ''
-).trim();
+const telegramWebhookSecretValue = normalizeEnvValue(
+  process.env.TELEGRAM_WEBHOOK_SECRET,
+);
 
 export const botToken = process.env.BOT_TOKEN;
 export const botApiUrl = botApiUrlValue;

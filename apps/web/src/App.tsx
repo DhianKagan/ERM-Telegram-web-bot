@@ -54,12 +54,32 @@ function AppContent({
   const isAttachmentMenu = location.pathname.startsWith('/menu');
   useEffect(() => {
     if (loading || isAttachmentMenu) return;
+    const allowedPrefixes = [
+      '/login',
+      '/menu',
+      '/tasks',
+      '/requests',
+      '/events',
+      '/mg',
+      '/cp',
+      '/theme',
+      '/profile',
+    ];
+    const isKnownPath = allowedPrefixes.some(
+      (prefix) =>
+        location.pathname === prefix ||
+        location.pathname.startsWith(`${prefix}/`),
+    );
+    if (!isKnownPath) {
+      navigate('/tasks', { replace: true });
+      return;
+    }
     if (!user && !isLogin) {
       navigate('/login', { replace: true });
     } else if (user && isLogin) {
       navigate('/tasks', { replace: true });
     }
-  }, [isAttachmentMenu, isLogin, loading, navigate, user]);
+  }, [isAttachmentMenu, isLogin, loading, location.pathname, navigate, user]);
   const alert = (
     <AlertDialog
       open={!!initialAlert}

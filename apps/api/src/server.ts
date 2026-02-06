@@ -10,6 +10,7 @@ import { stopQueueMetricsPoller } from './queues/queueMetrics';
 import { stopDiskMonitor } from './services/diskSpace';
 import { stopQueue } from './services/messageQueue';
 import { closeCacheClient } from './utils/cache';
+import { markHealthcheckGraceStart } from './api/healthcheck';
 
 const shutdownTimeoutMs = Number(process.env.SHUTDOWN_TIMEOUT_MS || 30000);
 
@@ -20,6 +21,7 @@ buildApp()
     let shuttingDown = false;
 
     server.listen(port, '0.0.0.0', () => {
+      markHealthcheckGraceStart();
       console.log(`API запущен на порту ${port}`);
       console.log(
         `Окружение: ${process.env.NODE_ENV || 'development'}, Node ${process.version}`,

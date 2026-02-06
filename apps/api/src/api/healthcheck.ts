@@ -4,7 +4,7 @@ import { Request, Response } from 'express';
 import mongoose from 'mongoose';
 import { performance } from 'node:perf_hooks';
 
-const startedAt = Date.now();
+let graceStartAt = Date.now();
 const DEFAULT_GRACE_SECONDS = 60;
 
 type DependencyStatus = 'up' | 'down';
@@ -79,13 +79,17 @@ const getGracePeriodMs = (): number => {
   return parsed * 1000;
 };
 
+export const markHealthcheckGraceStart = (): void => {
+  graceStartAt = Date.now();
+};
+
 export default async function healthcheck(
   _req: Request,
   res: Response,
 ): Promise<void> {
   const payload = await collectHealthStatus();
   const graceMs = getGracePeriodMs();
-  const withinGrace = Date.now() - startedAt < graceMs;
+  const withinGrace = Date.now() - graceStartAt < graceMs;
   const httpStatus = payload.status === 'ok' || withinGrace ? 200 : 503;
   res.status(httpStatus).json(payload);
 }

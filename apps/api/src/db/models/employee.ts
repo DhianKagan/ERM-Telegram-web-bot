@@ -9,7 +9,7 @@ export interface EmployeeAttrs {
   name: string;
 }
 
-export interface EmployeeDocument extends EmployeeAttrs, Document {}
+export interface EmployeeDocument extends EmployeeAttrs, Document { }
 
 const employeeSchema = new Schema<EmployeeDocument>({
   departmentId: {
@@ -21,5 +21,9 @@ const employeeSchema = new Schema<EmployeeDocument>({
   positionId: { type: Schema.Types.ObjectId, ref: 'CollectionItem' },
   name: { type: String, required: true },
 });
+
+employeeSchema.index({ departmentId: 1 });
+employeeSchema.index({ divisionId: 1 });
+employeeSchema.index({ positionId: 1 });
 
 export const Employee = model<EmployeeDocument>('Employee', employeeSchema);

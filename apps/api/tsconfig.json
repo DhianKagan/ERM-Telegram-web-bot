@@ -19,6 +19,12 @@
     ],
     "composite": true
   },
-  "include": ["src"],
-  "references": [{ "path": "../../packages/shared" }]
+  "include": [
+    "src"
+  ],
+  "references": [
+    {
+      "path": "../../packages/shared"
+    }
+  ]
 }

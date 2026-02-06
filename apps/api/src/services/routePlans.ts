@@ -1,7 +1,7 @@
 // Назначение: сервис управления маршрутными планами и уведомлениями.
 // Основные модули: mongoose, shared, db/models/routePlan, telegramApi, db/queries
 
-import { Types } from 'mongoose';
+import mongoose, { Types } from 'mongoose';
 import {
   generateMultiRouteLink,
   type LogisticsRoutePlanUpdateReason,
@@ -347,8 +347,8 @@ async function buildRoutesFromInput(
     .map((route, idx) => {
       const tasks = Array.isArray(route.tasks)
         ? route.tasks
-            .map((id) => normalizeId(id))
-            .filter((id): id is string => Boolean(id))
+          .map((id) => normalizeId(id))
+          .filter((id): id is string => Boolean(id))
         : [];
       return {
         id:
@@ -650,13 +650,13 @@ const serializePlan = (plan: RoutePlanDocument): SharedRoutePlan => {
     typeof rawMetrics?.totalDistanceKm === 'number'
       ? Number(rawMetrics.totalDistanceKm)
       : sortedRoutes.reduce(
-          (sum, route) =>
-            sum +
-            (Number.isFinite(route.metrics?.distanceKm)
-              ? Number(route.metrics?.distanceKm)
-              : 0),
-          0,
-        );
+        (sum, route) =>
+          sum +
+          (Number.isFinite(route.metrics?.distanceKm)
+            ? Number(route.metrics?.distanceKm)
+            : 0),
+        0,
+      );
   const totalTasks =
     typeof rawMetrics?.totalTasks === 'number'
       ? Number(rawMetrics.totalTasks)
@@ -668,14 +668,14 @@ const serializePlan = (plan: RoutePlanDocument): SharedRoutePlan => {
 
   const taskIds = Array.isArray(rawTasks)
     ? rawTasks
-        .map((id) => normalizeId(id))
-        .filter((id): id is string => Boolean(id))
+      .map((id) => normalizeId(id))
+      .filter((id): id is string => Boolean(id))
     : [];
 
   const companyPoints = Array.isArray(companyPointIds)
     ? companyPointIds
-        .map((id) => normalizeId(id))
-        .filter((id): id is string => Boolean(id))
+      .map((id) => normalizeId(id))
+      .filter((id): id is string => Boolean(id))
     : [];
 
   const normalizedTransportId = normalizeId(transportId);
@@ -754,68 +754,95 @@ export async function createDraftFromInputs(
   options: CreateRoutePlanOptions = {},
   taskHints?: Iterable<TaskSource>,
 ): Promise<SharedRoutePlan> {
-  let hintMap: TaskMap | undefined;
-  if (taskHints) {
-    hintMap = new Map<string, TaskSource>();
-    for (const hint of taskHints) {
-      const key = normalizeId(hint._id);
-      if (key) {
-        hintMap.set(key, hint);
+  const session = await mongoose.startSession();
+  let resultPlan: SharedRoutePlan | null = null;
+
+  try {
+    await session.withTransaction(async () => {
+      let hintMap: TaskMap | undefined;
+      if (taskHints) {
+        hintMap = new Map<string, TaskSource>();
+        for (const hint of taskHints) {
+          const key = normalizeId(hint._id);
+          if (key) {
+            hintMap.set(key, hint);
+          }
+        }
       }
+
+      const {
+        routes: builtRoutes,
+        metrics,
+        taskIds,
+      } = await buildRoutesFromInput(routes, hintMap);
+      const normalizedTasks = normalizeTaskIds(options.tasks);
+      const mergedTasks = normalizeTaskIds([...taskIds, ...normalizedTasks]);
+      const title =
+        normalizeString(options.title, TITLE_MAX_LENGTH) ??
+        (await generateLogTitle());
+      const notes = normalizeString(options.notes, NOTES_MAX_LENGTH);
+      const creatorId = parseNumeric(options.creatorId);
+      const executorId = parseNumeric(options.executorId);
+      const transportId = parseObjectId(options.transportId);
+      const transportName = normalizeString(
+        options.transportName,
+        VEHICLE_NAME_MAX_LENGTH,
+      );
+      const companyPointIds = normalizeObjectIds(options.companyPointIds);
+
+      const [plan] = await RoutePlanModel.create(
+        [
+          {
+            title,
+            status: 'draft',
+            creatorId,
+            executorId,
+            companyPointIds,
+            transportId,
+            transportName,
+            suggestedBy:
+              typeof options.actorId === 'number' && Number.isFinite(options.actorId)
+                ? Number(options.actorId)
+                : undefined,
+            method: options.method,
+            count: options.count,
+            notes,
+            routes: builtRoutes,
+            metrics: {
+              ...metrics,
+              totalTasks: mergedTasks.length,
+            },
+            tasks: mergedTasks,
+          },
+        ],
+        { session },
+      );
+
+      if (mergedTasks.length) {
+        await Task.updateMany(
+          { _id: { $in: mergedTasks } },
+          { $set: { routePlanId: plan._id } },
+          { session },
+        );
+      }
+      resultPlan = serializePlan(plan);
+    });
+  } catch (error) {
+    if (session.inTransaction()) {
+      await session.abortTransaction();
     }
+    throw error;
+  } finally {
+    await session.endSession();
   }
 
-  const {
-    routes: builtRoutes,
-    metrics,
-    taskIds,
-  } = await buildRoutesFromInput(routes, hintMap);
-  const normalizedTasks = normalizeTaskIds(options.tasks);
-  const mergedTasks = normalizeTaskIds([...taskIds, ...normalizedTasks]);
-  const title =
-    normalizeString(options.title, TITLE_MAX_LENGTH) ??
-    (await generateLogTitle());
-  const notes = normalizeString(options.notes, NOTES_MAX_LENGTH);
-  const creatorId = parseNumeric(options.creatorId);
-  const executorId = parseNumeric(options.executorId);
-  const transportId = parseObjectId(options.transportId);
-  const transportName = normalizeString(
-    options.transportName,
-    VEHICLE_NAME_MAX_LENGTH,
-  );
-  const companyPointIds = normalizeObjectIds(options.companyPointIds);
-  const plan = await RoutePlanModel.create({
-    title,
-    status: 'draft',
-    creatorId,
-    executorId,
-    companyPointIds,
-    transportId,
-    transportName,
-    suggestedBy:
-      typeof options.actorId === 'number' && Number.isFinite(options.actorId)
-        ? Number(options.actorId)
-        : undefined,
-    method: options.method,
-    count: options.count,
-    notes,
-    routes: builtRoutes,
-    metrics: {
-      ...metrics,
-      totalTasks: mergedTasks.length,
-    },
-    tasks: mergedTasks,
-  });
-  if (mergedTasks.length) {
-    await Task.updateMany(
-      { _id: { $in: mergedTasks } },
-      { $set: { routePlanId: plan._id } },
-    );
+  if (!resultPlan) {
+    throw new Error('Failed to create route plan transaction');
   }
-  const serialized = serializePlan(plan);
+
   const reason: LogisticsRoutePlanUpdateReason = options.reason ?? 'created';
-  notifyRoutePlanUpdated(serialized, reason);
-  return serialized;
+  notifyRoutePlanUpdated(resultPlan, reason);
+  return resultPlan;
 }
 
 export async function listPlans(
@@ -854,89 +881,109 @@ export async function updatePlan(
 ): Promise<SharedRoutePlan | null> {
   const objectId = parseObjectId(id);
   if (!objectId) return null;
-  const plan = await RoutePlanModel.findById(objectId);
-  if (!plan) return null;
+  const session = await mongoose.startSession();
+  let resultPlan: SharedRoutePlan | null = null;
 
-  if (typeof payload.title === 'string') {
-    const nextTitle = normalizeString(payload.title, TITLE_MAX_LENGTH);
-    if (nextTitle) {
-      plan.title = nextTitle;
+  try {
+    await session.withTransaction(async () => {
+      const plan = await RoutePlanModel.findById(objectId).session(session);
+      if (!plan) return;
+
+      if (typeof payload.title === 'string') {
+        const nextTitle = normalizeString(payload.title, TITLE_MAX_LENGTH);
+        if (nextTitle) {
+          plan.title = nextTitle;
+        }
+      }
+
+      if (payload.notes === null || typeof payload.notes === 'string') {
+        plan.notes = normalizeString(payload.notes, NOTES_MAX_LENGTH) ?? undefined;
+      }
+
+      if (payload.creatorId === null || payload.creatorId !== undefined) {
+        plan.creatorId = parseNumeric(payload.creatorId);
+      }
+
+      if (payload.executorId === null || payload.executorId !== undefined) {
+        plan.executorId = parseNumeric(payload.executorId);
+      }
+
+      if (payload.transportId === null || payload.transportId !== undefined) {
+        plan.transportId = parseObjectId(payload.transportId);
+      }
+
+      if (payload.transportName === null || payload.transportName !== undefined) {
+        if (payload.transportName === null) {
+          plan.transportName = null;
+        } else {
+          plan.transportName = normalizeString(
+            payload.transportName,
+            VEHICLE_NAME_MAX_LENGTH,
+          );
+        }
+      }
+
+      if (payload.companyPointIds !== undefined) {
+        plan.companyPointIds = normalizeObjectIds(payload.companyPointIds);
+      }
+
+      let nextTasks: Types.ObjectId[] | null = null;
+      if (Array.isArray(payload.routes)) {
+        const { routes, metrics, taskIds } = await buildRoutesFromInput(
+          payload.routes,
+        );
+        plan.routes = routes;
+        plan.metrics = metrics;
+        nextTasks = taskIds;
+      }
+
+      if (payload.tasks !== undefined) {
+        const normalizedTasks = normalizeTaskIds(payload.tasks);
+        nextTasks = normalizeTaskIds([
+          ...(nextTasks ?? plan.tasks ?? []),
+          ...normalizedTasks,
+        ]);
+      }
+
+      if (nextTasks) {
+        plan.tasks = nextTasks;
+        plan.metrics = {
+          ...plan.metrics,
+          totalTasks: nextTasks.length,
+        };
+      }
+
+      await plan.save({ session });
+
+      if (nextTasks) {
+        await Task.updateMany(
+          { routePlanId: plan._id, _id: { $nin: nextTasks } },
+          { $set: { routePlanId: null } },
+          { session },
+        );
+        if (nextTasks.length) {
+          await Task.updateMany(
+            { _id: { $in: nextTasks } },
+            { $set: { routePlanId: plan._id } },
+            { session },
+          );
+        }
+      }
+      resultPlan = serializePlan(plan);
+    });
+  } catch (error) {
+    if (session.inTransaction()) {
+      await session.abortTransaction();
     }
+    throw error;
+  } finally {
+    await session.endSession();
   }
 
-  if (payload.notes === null || typeof payload.notes === 'string') {
-    plan.notes = normalizeString(payload.notes, NOTES_MAX_LENGTH) ?? undefined;
+  if (resultPlan) {
+    notifyRoutePlanUpdated(resultPlan, 'updated');
   }
-
-  if (payload.creatorId === null || payload.creatorId !== undefined) {
-    plan.creatorId = parseNumeric(payload.creatorId);
-  }
-
-  if (payload.executorId === null || payload.executorId !== undefined) {
-    plan.executorId = parseNumeric(payload.executorId);
-  }
-
-  if (payload.transportId === null || payload.transportId !== undefined) {
-    plan.transportId = parseObjectId(payload.transportId);
-  }
-
-  if (payload.transportName === null || payload.transportName !== undefined) {
-    if (payload.transportName === null) {
-      plan.transportName = null;
-    } else {
-      plan.transportName = normalizeString(
-        payload.transportName,
-        VEHICLE_NAME_MAX_LENGTH,
-      );
-    }
-  }
-
-  if (payload.companyPointIds !== undefined) {
-    plan.companyPointIds = normalizeObjectIds(payload.companyPointIds);
-  }
-
-  let nextTasks: Types.ObjectId[] | null = null;
-  if (Array.isArray(payload.routes)) {
-    const { routes, metrics, taskIds } = await buildRoutesFromInput(
-      payload.routes,
-    );
-    plan.routes = routes;
-    plan.metrics = metrics;
-    nextTasks = taskIds;
-  }
-
-  if (payload.tasks !== undefined) {
-    const normalizedTasks = normalizeTaskIds(payload.tasks);
-    nextTasks = normalizeTaskIds([
-      ...(nextTasks ?? plan.tasks ?? []),
-      ...normalizedTasks,
-    ]);
-  }
-
-  if (nextTasks) {
-    plan.tasks = nextTasks;
-    plan.metrics = {
-      ...plan.metrics,
-      totalTasks: nextTasks.length,
-    };
-  }
-
-  await plan.save();
-  if (nextTasks) {
-    await Task.updateMany(
-      { routePlanId: plan._id, _id: { $nin: nextTasks } },
-      { $set: { routePlanId: null } },
-    );
-    if (nextTasks.length) {
-      await Task.updateMany(
-        { _id: { $in: nextTasks } },
-        { $set: { routePlanId: plan._id } },
-      );
-    }
-  }
-  const serialized = serializePlan(plan);
-  notifyRoutePlanUpdated(serialized, 'updated');
-  return serialized;
+  return resultPlan;
 }
 
 const updateTasksForStatus = async (

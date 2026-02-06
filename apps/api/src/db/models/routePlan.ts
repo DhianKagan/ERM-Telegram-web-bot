@@ -171,5 +171,35 @@ const routePlanSchema = new Schema<RoutePlanAttrs>(
 routePlanSchema.index({ status: 1, createdAt: -1 });
 routePlanSchema.index({ 'routes.tasks.taskId': 1 });
 routePlanSchema.index({ 'routes.stops.kind': 1 });
+// Additional relationship indexes per mongoDB.md recommendations
+routePlanSchema.index({ creatorId: 1 });
+routePlanSchema.index({ executorId: 1 });
+routePlanSchema.index({ tasks: 1 });  // Find plans containing specific task
+
+/**
+ * Referential Integrity:
+ * When a RoutePlan is deleted, unassign all associated Tasks (set routePlanId to null).
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function handleRoutePlanDeletion(doc: any) {
+  if (doc && doc.tasks && doc.tasks.length > 0) {
+    const taskModel = model('Task');
+    await taskModel.updateMany(
+      { _id: { $in: doc.tasks } },
+      { $set: { routePlanId: null } },
+    );
+  }
+}
+
+routePlanSchema.pre('deleteOne', { document: true, query: false }, async function () {
+  await handleRoutePlanDeletion(this);
+});
+
+routePlanSchema.pre('findOneAndDelete', async function () {
+  const doc = await (this as any).model.findOne((this as any).getQuery());
+  if (doc) {
+    await handleRoutePlanDeletion(doc);
+  }
+});
 
 export const RoutePlan = model<RoutePlanAttrs>('RoutePlan', routePlanSchema);

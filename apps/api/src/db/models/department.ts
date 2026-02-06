@@ -7,12 +7,14 @@ export interface DepartmentAttrs {
   name: string;
 }
 
-export interface DepartmentDocument extends DepartmentAttrs, Document {}
+export interface DepartmentDocument extends DepartmentAttrs, Document { }
 
 const departmentSchema = new Schema<DepartmentDocument>({
   fleetId: { type: Schema.Types.ObjectId, ref: 'Fleet', required: true },
   name: { type: String, required: true },
 });
+
+departmentSchema.index({ fleetId: 1 });
 
 export const Department = model<DepartmentDocument>(
   'Department',

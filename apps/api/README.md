@@ -52,3 +52,5 @@ docker run --env-file ../.env -p 3000:3000 task-bot
 ## Развёртывание
 
 Для Railway укажите рабочую директорию `bot` и переменные из `.env`.
+Если healthcheck падает из-за долгого старта MongoDB, увеличьте `HEALTHCHECK_GRACE_SECONDS`
+в секундах (например, `120`).

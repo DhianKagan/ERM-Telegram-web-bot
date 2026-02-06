@@ -20,6 +20,10 @@
    - `VITE_ROUTING_URL` — конечная точка маршрутов `https://router.project-osrm.org/route/v1/driving` для клиентской части.
 3. Railway автоматически использует `Procfile`, который собирает клиент и запускает pm2.
 4. Приложение должно слушать `process.env.PORT` на `0.0.0.0`. Railway завершает TLS на Edge и автоматически перенаправляет HTTP на HTTPS.
+5. Скрипты обновления запускаются только если явно включены в `Procfile`/`scripts/railway/start.sh`:
+   - `Procfile` выполняет `pnpm build` и затем `./scripts/railway/start.sh`.
+   - `scripts/railway/start.sh` вызывает `scripts/set_bot_commands.sh`, выполняет `dist/scripts/db/ensureDefaults.js` (если файл существует) и настраивает pm2‑logrotate.
+   - Остальные одноразовые утилиты (например, `scripts/apply-scripts.mjs`) запускаются вручную и не исполняются при деплое автоматически.
 
 ## 3. Добавление OSRM
 

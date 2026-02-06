@@ -156,7 +156,7 @@ export default async function registerRoutes(
   ];
   const csrfExcludePrefix = ['/api/tma'];
   app.get('/', (_req: Request, res: Response) => {
-    res.redirect(302, '/tasks');
+    res.status(200).json({ status: 'ok' });
   });
   app.post('/', (_req: Request, res: Response) => {
     res.status(404).send('Not found');

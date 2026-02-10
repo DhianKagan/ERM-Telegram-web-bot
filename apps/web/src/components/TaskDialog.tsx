@@ -705,6 +705,22 @@ const isManagedShortLink = (value: string): boolean => {
   }
 };
 
+const isGoogleMapsLink = (value: string): boolean => {
+  if (!value) return false;
+  try {
+    const parsed = new URL(value);
+    const host = parsed.hostname.toLowerCase();
+    return (
+      host.endsWith('goo.gl') ||
+      host === 'maps.app.goo.gl' ||
+      host === 'maps.google.com' ||
+      (host.startsWith('www.google.') && parsed.pathname.startsWith('/maps'))
+    );
+  } catch {
+    return false;
+  }
+};
+
 const resolveLocationLink = async (
   value: string,
 ): Promise<{
@@ -721,8 +737,8 @@ const resolveLocationLink = async (
   let resolved = sanitized;
   let coords = extractCoords(resolved);
   if (
-    /^https?:\/\/maps\.app\.goo\.gl\//i.test(sanitized) ||
-    isManagedShortLink(sanitized)
+    isManagedShortLink(sanitized) ||
+    (isGoogleMapsLink(sanitized) && !coords)
   ) {
     const data = await expandLink(sanitized);
     if (data?.url) {

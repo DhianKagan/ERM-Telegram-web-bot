@@ -27,6 +27,7 @@ const TaskKanban = lazy(() => import('./pages/TaskKanban'));
 const LogisticsPage = lazy(() => import('./pages/Logistics'));
 const SettingsPage = lazy(() => import('./pages/Settings'));
 const ThemeSettings = lazy(() => import('./pages/ThemeSettings'));
+const FrontendIndex = lazy(() => import('./pages/FrontendIndex'));
 const StoragePage = lazy(() => import('./pages/Storage'));
 const ArchivePage = lazy(() => import('./pages/Archive'));
 const ThemeProviderLazy = lazy(async () => {
@@ -60,6 +61,14 @@ function AppShell() {
         <main className="flex-1 p-4 pt-3 transition-all lg:pt-4">
           <Suspense fallback={<div>{t('loading')}</div>}>
             <Routes>
+              <Route
+                path="/index"
+                element={
+                  <ProtectedRoute>
+                    <FrontendIndex />
+                  </ProtectedRoute>
+                }
+              />
               <Route
                 path="/profile"
                 element={
@@ -180,7 +189,7 @@ function AppShell() {
                   </ProtectedRoute>
                 }
               />
-              <Route path="*" element={<Navigate to="/tasks" />} />
+              <Route path="*" element={<Navigate to="/index" />} />
             </Routes>
           </Suspense>
         </main>

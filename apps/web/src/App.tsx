@@ -64,6 +64,7 @@ function AppContent({
       '/cp',
       '/theme',
       '/profile',
+      '/index',
     ];
     const isKnownPath = allowedPrefixes.some(
       (prefix) =>
@@ -71,13 +72,13 @@ function AppContent({
         location.pathname.startsWith(`${prefix}/`),
     );
     if (!isKnownPath) {
-      navigate('/tasks', { replace: true });
+      navigate('/index', { replace: true });
       return;
     }
     if (!user && !isLogin) {
       navigate('/login', { replace: true });
     } else if (user && isLogin) {
-      navigate('/tasks', { replace: true });
+      navigate('/index', { replace: true });
     }
   }, [isAttachmentMenu, isLogin, loading, location.pathname, navigate, user]);
   const alert = (

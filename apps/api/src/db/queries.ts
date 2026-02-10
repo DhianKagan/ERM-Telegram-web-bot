@@ -1249,9 +1249,14 @@ export async function updateTaskStatus(
   const isActorLinked = isCreator || isExecutor || isController;
   const allowTerminalOverride =
     hasDeleteAccess && options.adminOverride !== false;
+  const isSameStatus = currentStatus === status;
 
   // If task already in terminal state, only adminOverride may change it
-  if (isTerminalStatus(currentStatus) && !allowTerminalOverride) {
+  if (
+    isTerminalStatus(currentStatus) &&
+    !allowTerminalOverride &&
+    !isSameStatus
+  ) {
     const err = new Error(
       'Нельзя менять статус задачи, которая уже завершена или отменена.',
     );
@@ -1274,7 +1279,10 @@ export async function updateTaskStatus(
         (err as Error & { code?: string }).code = 'TASK_STATUS_FORBIDDEN';
         throw err;
       }
-      if (!isUserStatusTransitionAllowed(currentStatus, status)) {
+      if (
+        !isSameStatus &&
+        !isUserStatusTransitionAllowed(currentStatus, status)
+      ) {
         const err = new Error(
           'Исполнителю доступны только статусы «В работе» и «Выполнена» из статуса «Новая».',
         );

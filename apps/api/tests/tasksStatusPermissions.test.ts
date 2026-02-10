@@ -64,15 +64,10 @@ describe('updateTaskStatus permissions', () => {
   });
 
   it('позволяет adminOverride менять статус', async () => {
-    const result = await queries.updateTaskStatus(
-      'task-1',
-      'В работе',
-      999,
-      {
-        adminOverride: true,
-        actorAccess: ACCESS_TASK_DELETE,
-      },
-    );
+    const result = await queries.updateTaskStatus('task-1', 'В работе', 999, {
+      adminOverride: true,
+      actorAccess: ACCESS_TASK_DELETE,
+    });
 
     expect(result?.status).toBe('В работе');
   });
@@ -96,17 +91,24 @@ describe('updateTaskStatus permissions', () => {
       status: 'Отменена',
     });
 
-    const result = await queries.updateTaskStatus(
-      'task-1',
-      'В работе',
-      999,
-      {
-        adminOverride: true,
-        actorAccess: ACCESS_TASK_DELETE,
-      },
-    );
+    const result = await queries.updateTaskStatus('task-1', 'В работе', 999, {
+      adminOverride: true,
+      actorAccess: ACCESS_TASK_DELETE,
+    });
 
     expect(result?.status).toBe('В работе');
+  });
+
+  it('разрешает повторно установить финальный статус без adminOverride', async () => {
+    (Task.findById as jest.Mock).mockResolvedValue({
+      ...baseTask,
+      status: 'Выполнена',
+    });
+
+    const result = await queries.updateTaskStatus('task-1', 'Выполнена', 20);
+
+    expect(result?.status).toBe('Выполнена');
+    expect(Task.findOneAndUpdate).toHaveBeenCalled();
   });
 
   it('блокирует финальный статус для менеджера без уровня удаления', async () => {

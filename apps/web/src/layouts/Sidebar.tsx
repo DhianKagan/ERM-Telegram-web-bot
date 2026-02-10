@@ -13,6 +13,7 @@ import {
   UserCircleIcon,
   XMarkIcon,
   BookmarkSquareIcon,
+  HomeIcon,
 } from '@heroicons/react/24/outline';
 import { cn } from '@/lib/utils';
 
@@ -52,6 +53,7 @@ export default function Sidebar() {
 
   const baseItems = React.useMemo<SidebarItem[]>(
     () => [
+      { to: '/index', label: 'Индекс', icon: HomeIcon },
       { to: '/tasks', label: t('nav.tasks'), icon: ClipboardDocumentListIcon },
       {
         to: '/requests',

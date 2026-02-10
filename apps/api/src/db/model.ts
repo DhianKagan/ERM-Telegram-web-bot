@@ -538,10 +538,18 @@ taskSchema.pre(
   { document: false, query: true },
   async function () {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const doc = await (this as any).model.findOne((this as any).getQuery());
-    if (doc) {
-      await handleTaskDeletion(doc);
-    }
+    const query = this as any;
+    const options = query.getOptions();
+    const deleteOptions: Record<string, unknown> = {};
+
+    if (options.session) deleteOptions.session = options.session;
+    if (options.sort) deleteOptions.sort = options.sort;
+    if (options.collation) deleteOptions.collation = options.collation;
+    if (options.hint) deleteOptions.hint = options.hint;
+
+    await query.model.findOneAndDelete(query.getQuery(), deleteOptions);
+
+    query.setQuery({ _id: { $exists: false } });
   },
 );
 

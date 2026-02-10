@@ -113,7 +113,7 @@ export async function buildApp(): Promise<express.Express> {
   } catch {
     needBuild = true;
   }
-  if (needBuild) {
+  if (needBuild && process.env.NODE_ENV !== 'test') {
     console.log('Сборка интерфейса...');
     await execAsync('pnpm run build-client', { cwd: root });
   }

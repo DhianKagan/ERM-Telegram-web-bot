@@ -209,7 +209,7 @@ export interface TaskHistoryArchiveEntry {
 
 export interface TaskHistoryArchiveDocument
   extends TaskHistoryArchiveEntry,
-  Document { }
+    Document {}
 
 const taskHistoryArchiveSchema = new Schema<TaskHistoryArchiveDocument>(
   {
@@ -245,12 +245,12 @@ export interface TaskAttrs {
   slug?: string;
   task_description?: string;
   task_type?:
-  | 'Доставить'
-  | 'Купить'
-  | 'Выполнить'
-  | 'Построить'
-  | 'Починить'
-  | 'Заявка';
+    | 'Доставить'
+    | 'Купить'
+    | 'Выполнить'
+    | 'Построить'
+    | 'Починить'
+    | 'Заявка';
   task_type_id?: number;
   start_date?: Date;
   due_date?: Date;
@@ -335,7 +335,7 @@ export interface TaskAttrs {
   archived_by?: number;
 }
 
-export interface TaskDocument extends TaskAttrs, Document { }
+export interface TaskDocument extends TaskAttrs, Document {}
 
 const taskSchema = new Schema<TaskDocument>(
   {
@@ -494,11 +494,11 @@ const taskSchema = new Schema<TaskDocument>(
 
 /* ---------- Task Indexes ---------- */
 // Relationship indexes for efficient queries per mongoDB.md recommendations
-taskSchema.index({ routePlanId: 1 });            // Find tasks by route plan
-taskSchema.index({ assigned_user_id: 1 });       // Find tasks by assignee
-taskSchema.index({ created_by: 1 });             // Find tasks by creator
-taskSchema.index({ status: 1, createdAt: -1 });  // Common list query
-taskSchema.index({ kind: 1, status: 1 });        // Filter by task type and status
+taskSchema.index({ routePlanId: 1 }); // Find tasks by route plan
+taskSchema.index({ assigned_user_id: 1 }); // Find tasks by assignee
+taskSchema.index({ created_by: 1 }); // Find tasks by creator
+taskSchema.index({ status: 1, createdAt: -1 }); // Common list query
+taskSchema.index({ kind: 1, status: 1 }); // Filter by task type and status
 
 /* пред- и пост-хуки — оставляем как есть и корректно работаем с объектами */
 taskSchema.pre('init', (doc: Record<string, unknown>) => {
@@ -525,11 +525,28 @@ async function handleTaskDeletion(doc: any) {
   }
 }
 
-taskSchema.pre('deleteOne', { document: true, query: false }, async function () {
-  await handleTaskDeletion(this);
-});
+taskSchema.pre(
+  'deleteOne',
+  { document: true, query: false },
+  async function () {
+    await handleTaskDeletion(this);
+  },
+);
+
+taskSchema.pre(
+  'deleteOne',
+  { document: false, query: true },
+  async function () {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const doc = await (this as any).model.findOne((this as any).getQuery());
+    if (doc) {
+      await handleTaskDeletion(doc);
+    }
+  },
+);
 
 taskSchema.pre('findOneAndDelete', async function () {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const doc = await (this as any).model.findOne((this as any).getQuery());
   if (doc) {
     await handleTaskDeletion(doc);
@@ -620,7 +637,7 @@ export interface RoleAttrs {
   name?: string;
   permissions?: (string | number)[];
 }
-export interface RoleDocument extends RoleAttrs, Document { }
+export interface RoleDocument extends RoleAttrs, Document {}
 const roleSchema = new Schema<RoleDocument>({
   name: String,
   permissions: [String],
@@ -644,7 +661,7 @@ export interface UserAttrs {
   positionId?: Types.ObjectId;
   is_bot?: boolean;
 }
-export interface UserDocument extends UserAttrs, Document { }
+export interface UserDocument extends UserAttrs, Document {}
 
 const userSchema = new Schema<UserDocument>({
   telegram_id: Number,
@@ -684,7 +701,7 @@ export interface FileAttrs {
   uploadedAt: Date;
   draftId?: Types.ObjectId | null;
 }
-export interface FileDocument extends FileAttrs, Document { }
+export interface FileDocument extends FileAttrs, Document {}
 
 export type FileScope = 'task' | 'draft' | 'user' | 'telegram' | 'global';
 
@@ -722,7 +739,7 @@ export interface TaskDraftAttrs {
   payload: Record<string, unknown>;
   attachments?: Attachment[];
 }
-export interface TaskDraftDocument extends TaskDraftAttrs, Document { }
+export interface TaskDraftDocument extends TaskDraftAttrs, Document {}
 
 const taskDraftSchema = new Schema<TaskDraftDocument>(
   {
@@ -744,7 +761,7 @@ export interface TaskTemplateAttrs {
   name: string;
   data: Record<string, unknown>;
 }
-export interface TaskTemplateDocument extends TaskTemplateAttrs, Document { }
+export interface TaskTemplateDocument extends TaskTemplateAttrs, Document {}
 
 const taskTemplateSchema = new Schema<TaskTemplateDocument>(
   {
@@ -810,7 +827,7 @@ export interface ShortLinkAttrs {
   created_at?: Date;
   updated_at?: Date;
 }
-export interface ShortLinkDocument extends ShortLinkAttrs, Document { }
+export interface ShortLinkDocument extends ShortLinkAttrs, Document {}
 
 const shortLinkSchema = new Schema<ShortLinkDocument>(
   {

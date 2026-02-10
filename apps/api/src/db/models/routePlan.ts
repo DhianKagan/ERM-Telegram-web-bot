@@ -174,7 +174,7 @@ routePlanSchema.index({ 'routes.stops.kind': 1 });
 // Additional relationship indexes per mongoDB.md recommendations
 routePlanSchema.index({ creatorId: 1 });
 routePlanSchema.index({ executorId: 1 });
-routePlanSchema.index({ tasks: 1 });  // Find plans containing specific task
+routePlanSchema.index({ tasks: 1 }); // Find plans containing specific task
 
 /**
  * Referential Integrity:
@@ -191,11 +191,28 @@ async function handleRoutePlanDeletion(doc: any) {
   }
 }
 
-routePlanSchema.pre('deleteOne', { document: true, query: false }, async function () {
-  await handleRoutePlanDeletion(this);
-});
+routePlanSchema.pre(
+  'deleteOne',
+  { document: true, query: false },
+  async function () {
+    await handleRoutePlanDeletion(this);
+  },
+);
+
+routePlanSchema.pre(
+  'deleteOne',
+  { document: false, query: true },
+  async function () {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const doc = await (this as any).model.findOne((this as any).getQuery());
+    if (doc) {
+      await handleRoutePlanDeletion(doc);
+    }
+  },
+);
 
 routePlanSchema.pre('findOneAndDelete', async function () {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const doc = await (this as any).model.findOne((this as any).getQuery());
   if (doc) {
     await handleRoutePlanDeletion(doc);

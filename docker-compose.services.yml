@@ -1,0 +1,123 @@
+# Назначение файла: локальный запуск API, бота и воркера в отдельных контейнерах из монорепозитория.
+# Используется единый образ из Dockerfile и разные команды запуска.
+services:
+  release:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      - MONGO_DATABASE_URL=mongodb://admin:admin@mongo_db:27017/ermdb?authSource=admin
+      - QUEUE_REDIS_URL=redis://redis:6379
+    command: ['node', 'dist/scripts/db/ensureDefaults.js']
+    depends_on:
+      mongo_db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: 'no'
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      - MONGO_DATABASE_URL=mongodb://admin:admin@mongo_db:27017/ermdb?authSource=admin
+      - QUEUE_REDIS_URL=redis://redis:6379
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST_PORT=3000
+    command: ['node', 'apps/api/dist/server.js']
+    depends_on:
+      release:
+        condition: service_completed_successfully
+      mongo_db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    ports:
+      - '${HOST_PORT:-3000}:3000'
+    restart: unless-stopped
+
+  bot:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      - MONGO_DATABASE_URL=mongodb://admin:admin@mongo_db:27017/ermdb?authSource=admin
+      - QUEUE_REDIS_URL=redis://redis:6379
+      - NODE_ENV=production
+    command: ['node', 'apps/api/dist/bot/runtime.js']
+    depends_on:
+      api:
+        condition: service_started
+      mongo_db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env
+    environment:
+      - MONGO_DATABASE_URL=mongodb://admin:admin@mongo_db:27017/ermdb?authSource=admin
+      - QUEUE_REDIS_URL=redis://redis:6379
+      - NODE_ENV=production
+    command: ['node', 'apps/worker/dist/index.js']
+    depends_on:
+      api:
+        condition: service_started
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  mongo_db:
+    image: mongo:7
+    container_name: erm-mongo
+    restart: unless-stopped
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=admin
+      - MONGO_INITDB_ROOT_PASSWORD=admin
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo_db_services:/data/db
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'mongosh',
+          '-u',
+          'admin',
+          '-p',
+          'admin',
+          '--authenticationDatabase',
+          'admin',
+          '--eval',
+          "db.adminCommand('ping')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 8
+
+  redis:
+    image: redis:7-alpine
+    container_name: erm-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_services:/data
+
+volumes:
+  mongo_db_services:
+  redis_services:

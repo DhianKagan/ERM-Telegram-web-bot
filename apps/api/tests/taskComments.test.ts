@@ -29,12 +29,12 @@ describe('taskComments', () => {
       '../src/tasks/taskComments'
     );
 
-    const html = '<p>Комментарий <strong>сохранён</strong></p>';
+    const html = '<p>Комментарий [сохранён]_v2-1.0</p>';
 
     expect(ensureCommentHtml(html)).toBe(html);
-    expect(buildCommentTelegramMessage(html)).toMatchObject({
+    expect(buildCommentTelegramMessage(html)).toEqual({
       parseMode: 'MarkdownV2',
-      text: expect.stringMatching(/Комментарий\s+сохранён/),
+      text: '💬 *Комментарий*\nКомментарий \\[сохранён\\]\\_v2\\-1\\.0',
     });
   });
 });

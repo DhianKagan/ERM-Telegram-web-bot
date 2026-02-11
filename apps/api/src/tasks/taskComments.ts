@@ -4,6 +4,7 @@ import type { Context, Telegraf } from 'telegraf';
 import { PROJECT_TIMEZONE, PROJECT_TIMEZONE_LABEL } from 'shared';
 import type { Comment } from '../db/model';
 import { convertHtmlToMarkdown } from '../utils/formatTask';
+import { escapeMarkdownV2 } from '../utils/mdEscape';
 
 const DEFAULT_TIMEZONE = PROJECT_TIMEZONE || 'UTC';
 const DEFAULT_TIMEZONE_LABEL = PROJECT_TIMEZONE_LABEL || DEFAULT_TIMEZONE;
@@ -41,14 +42,17 @@ const normalizeDate = (value: unknown): Date | null => {
 
 const stripHtml = (value: string): string => value.replace(/<[^>]+>/g, ' ');
 
+const stripHtmlToMarkdownV2Text = (value: string): string =>
+  escapeMarkdownV2(stripHtml(value));
+
 const convertHtmlToMarkdownSafe = (value: string): string => {
   if (typeof convertHtmlToMarkdown !== 'function') {
-    return stripHtml(value);
+    return stripHtmlToMarkdownV2Text(value);
   }
   try {
     return convertHtmlToMarkdown(value);
   } catch {
-    return stripHtml(value);
+    return stripHtmlToMarkdownV2Text(value);
   }
 };
 

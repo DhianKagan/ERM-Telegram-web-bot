@@ -515,8 +515,8 @@ Middleware `checkRole` и `checkTaskAccess` записывают отказ до
 
 Сервис `apps/api/src/services/wgLogEngine.ts` использует Pino и оперативный кольцевой буфер на `LOG_BUFFER_SIZE` записей. По умолчанию сообщения пишутся одновременно в STDOUT (если `LOG_STDOUT != 'false'`) и в файл `logs/api.log` (директория задаётся через `LOG_DIR`, имя — `LOG_FILE_NAME`). Для предупреждений и ошибок предусмотрены side-каналы: вебхук `LOG_ERROR_WEBHOOK_URL` и Telegram (`LOG_TELEGRAM_TOKEN`, `LOG_TELEGRAM_CHAT`). Дополнительное поле `traceId` добавляется автоматически из middleware `trace.ts`, что помогает восстановить цепочку запросов.
 
-Тест `routeCsrf.test.js` использует secure cookie и проверяет CSRF,
-`taskFields.test.js` помогает контролировать валидность полей формы.
+Тест `routeCsrf.test.ts` использует secure cookie и проверяет CSRF,
+`taskFields.test.ts` помогает контролировать валидность полей формы.
 
 ## Получение и обновление токенов
 
@@ -585,12 +585,12 @@ Middleware `checkRole` и `checkTaskAccess` записывают отказ до
 - Локальная разработка начинается с создания `.env` через `./scripts/create_env_from_exports.sh`.
 - Корневые, серверные и клиентские зависимости устанавливаются скриптом `./scripts/install_bot_deps.sh`.
 - Тесты и статический анализ запускаются `./scripts/setup_and_test.sh`.
-- Типовые проверки выполняются `pnpm --dir bot test:types` через `tsd`.
+- Типовые проверки выполняются `pnpm --filter apps/api test:types` через `tsd`.
 - Стресс-тест запускается скриптом `./scripts/stress_test.sh` (см. `docs/stress_plan.md`).
 - Перед коммитом Husky запускает `lint-staged`, используйте файл `.husky/_/husky.sh`.
-- В тесты входит сценарий `loginFlow.test.js`, эмулирующий полный цикл логина и запрос к защищённому маршруту.
-- Тест `loginRouteFlow.test.js` проверяет получение CSRF-токена и вызов `/api/v1/route`.
-- Тесты `authService.test.js` и `tasksService.test.js` покрывают логику модулей авторизации и задач.
+- В тесты входит сценарий `loginFlow.test.ts`, эмулирующий полный цикл логина и запрос к защищённому маршруту.
+- Тест `loginRouteFlow.test.ts` проверяет получение CSRF-токена и вызов `/api/v1/route`.
+- Тесты `authService.test.ts` и `tasksService.test.ts` покрывают логику модулей авторизации и задач.
 - Для проверки зависимостей выполните `./scripts/audit_deps.sh`; `pre_pr_check.sh` вызывает его автоматически.
 - Обход ложных срабатываний описан в `docs/security/audit_ci_false_positives.md`.
 
@@ -599,7 +599,7 @@ Middleware `checkRole` и `checkTaskAccess` записывают отказ до
 ```bash
 ./scripts/create_env_from_exports.sh
 ./scripts/install_bot_deps.sh # устанавливает корневые, серверные и клиентские зависимости
-pnpm --dir bot dev # запуск api и web
+pnpm -w dev # запуск api и web
 ./scripts/start_api_with_memdb.sh # только api с MongoDB в памяти
 ```
 

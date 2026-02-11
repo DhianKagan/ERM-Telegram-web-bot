@@ -41,8 +41,11 @@ test('inline-клавиатура завершения содержит prompt �
   request,
 }) => {
   const status = await request.get(`${baseUrl}/tasks/77/status-keyboard`);
-  expect(status.ok()).toBeTruthy();
+  expect(status.status()).toBe(200);
   const statusMarkup = await status.json();
+  expect(statusMarkup).toMatchObject({
+    inline_keyboard: expect.any(Array),
+  });
   expect(statusMarkup.inline_keyboard).toEqual(
     expect.arrayContaining([
       expect.arrayContaining([
@@ -59,8 +62,11 @@ test('inline-клавиатура завершения содержит prompt �
   );
 
   const confirm = await request.get(`${baseUrl}/tasks/77/done-confirm`);
-  expect(confirm.ok()).toBeTruthy();
+  expect(confirm.status()).toBe(200);
   const confirmMarkup = await confirm.json();
+  expect(confirmMarkup).toMatchObject({
+    inline_keyboard: expect.any(Array),
+  });
   expect(confirmMarkup.inline_keyboard).toEqual([
     [
       expect.objectContaining({ callback_data: 'task_done_confirm:77' }),

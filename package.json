@@ -24,7 +24,10 @@
     "format:check": "prettier --check .",
     "format": "prettier --write .",
     "test:api": "pnpm --filter ./apps/api test --",
-    "prepare": "node scripts/run_husky_install.mjs"
+    "prepare": "node scripts/run_husky_install.mjs",
+    "railway:start:api": "node apps/api/dist/server.js",
+    "railway:start:bot": "./scripts/set_bot_commands.sh && node apps/api/dist/bot/runtime.js",
+    "railway:start:worker": "node apps/worker/dist/index.js"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [

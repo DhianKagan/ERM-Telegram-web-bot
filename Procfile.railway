@@ -1,5 +1,5 @@
-# Назначение файла: запуск API и бота на Railway отдельными процессами.
+# Назначение файла: запуск API, бота и worker как отдельных Railway service commands.
 release: pnpm build && node dist/scripts/cleanup/cleanupDetachedFiles.js
-web: node apps/api/dist/server.js
-bot: ./scripts/set_bot_commands.sh && node apps/api/dist/bot/runtime.js
-worker: node apps/worker/dist/index.js
+web: pnpm run railway:start:api
+bot: pnpm run railway:start:bot
+worker: pnpm run railway:start:worker

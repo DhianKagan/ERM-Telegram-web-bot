@@ -14,5 +14,7 @@ async function migrate() {
 }
 
 if (require.main === module) {
-  migrate().finally(() => process.exit());
+  migrate().catch(() => {
+    process.exitCode = 1;
+  });
 }

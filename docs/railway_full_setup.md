@@ -80,3 +80,7 @@ Railway помечает деплой как «Failed», если контейн
 - `COOKIE_DOMAIN=<домен приложения>`
 
 Подробности о переменной `COOKIE_DOMAIN` смотрите в разделе [«Защита от CSRF»](./technical_manual.md#защита-от-csrf).
+
+## 9. Разделение на отдельные Railway-сервисы
+
+Если хотите запускать API, бота и воркер как независимые сервисы (разные деплои и рестарты), используйте отдельный runbook: [railway_split_services.md](./railway_split_services.md).

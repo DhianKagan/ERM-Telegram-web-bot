@@ -63,7 +63,7 @@
 ### API и эксплуатация
 
 - API-документация: [`api/`](api)
-- Логи и деплой в Railway: [`railway_logs.md`](railway_logs.md), [`railway_full_setup.md`](railway_full_setup.md)
+- Логи и деплой в Railway: [`railway_logs.md`](railway_logs.md), [`railway_full_setup.md`](railway_full_setup.md), [`railway_split_services.md`](railway_split_services.md)
 - Планы надёжности/восстановления: [`logistics_recovery_plan.md`](logistics_recovery_plan.md)
 
 ### Безопасность и процессы

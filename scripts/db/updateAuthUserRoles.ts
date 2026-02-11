@@ -6,13 +6,19 @@ import config from '../../apps/api/src/config';
 
 async function migrate() {
   await mongoose.connect(config.mongoUrl);
-  await AuthUserModel.updateMany(
-    { role: { $nin: ['user', 'admin', 'manager'] } },
-    { $set: { role: 'user' } },
-  );
-  await mongoose.disconnect();
+
+  try {
+    await AuthUserModel.updateMany(
+      { role: { $nin: ['user', 'admin', 'manager'] } },
+      { $set: { role: 'user' } },
+    );
+  } finally {
+    await mongoose.disconnect();
+  }
 }
 
 if (require.main === module) {
-  migrate().finally(() => process.exit());
+  migrate().catch(() => {
+    process.exitCode = 1;
+  });
 }

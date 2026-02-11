@@ -81,8 +81,14 @@ test.describe('Инлайн-загрузка файла через коммен�
       data: { commentHtml, taskId },
     });
 
-    expect(firstResponse.ok()).toBeTruthy();
+    expect(firstResponse.status()).toBe(200);
     const firstBody = await firstResponse.json();
+    expect(firstBody).toMatchObject({
+      ok: true,
+      attachments: expect.any(Array),
+      assigned: expect.any(Array),
+      files: expect.any(Array),
+    });
     expect(firstBody.attachments).toEqual([{ url: `/api/v1/files/${fileId}` }]);
     expect(firstBody.assigned).toContain(fileId);
     const stored = firstBody.files.find(
@@ -94,8 +100,14 @@ test.describe('Инлайн-загрузка файла через коммен�
       data: { commentHtml, taskId },
     });
 
-    expect(secondResponse.ok()).toBeTruthy();
+    expect(secondResponse.status()).toBe(200);
     const secondBody = await secondResponse.json();
+    expect(secondBody).toMatchObject({
+      ok: true,
+      attachments: expect.any(Array),
+      assigned: expect.any(Array),
+      files: expect.any(Array),
+    });
     expect(secondBody.attachments).toEqual([
       { url: `/api/v1/files/${fileId}` },
     ]);

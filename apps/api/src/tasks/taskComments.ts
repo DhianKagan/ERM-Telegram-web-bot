@@ -39,11 +39,24 @@ const normalizeDate = (value: unknown): Date | null => {
   return null;
 };
 
+const stripHtml = (value: string): string => value.replace(/<[^>]+>/g, ' ');
+
+const convertHtmlToMarkdownSafe = (value: string): string => {
+  if (typeof convertHtmlToMarkdown !== 'function') {
+    return stripHtml(value);
+  }
+  try {
+    return convertHtmlToMarkdown(value);
+  } catch {
+    return stripHtml(value);
+  }
+};
+
 const hasRenderableComment = (value: unknown): value is string => {
   if (typeof value !== 'string') {
     return false;
   }
-  const markdown = convertHtmlToMarkdown(value);
+  const markdown = convertHtmlToMarkdownSafe(value);
   const normalized = markdown.replace(/\u200b/gi, '').trim();
   return normalized.length > 0;
 };
@@ -114,7 +127,7 @@ export const buildCommentTelegramMessage = (
   if (!source) {
     return null;
   }
-  const markdown = convertHtmlToMarkdown(source).trim();
+  const markdown = convertHtmlToMarkdownSafe(source).trim();
   if (!markdown) {
     return null;
   }

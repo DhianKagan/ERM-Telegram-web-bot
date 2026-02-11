@@ -10,6 +10,7 @@ import {
   CookieOptions,
 } from 'express';
 import config from '../config';
+import { buildTokenCookieOptions } from '../utils/setTokenCookie';
 import type { RequestWithUser } from '../types/request';
 import shouldLog from '../utils/shouldLog';
 
@@ -131,16 +132,7 @@ export function verifyToken(
         return;
       }
       req.user = decoded as RequestWithUser['user'];
-      const cookieOpts: CookieOptions = {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        maxAge: 7 * 24 * 60 * 60 * 1000,
-      };
-      if (cookieOpts.secure) {
-        cookieOpts.domain =
-          config.cookieDomain || new URL(config.appUrl).hostname;
-      }
+      const cookieOpts: CookieOptions = buildTokenCookieOptions(config);
       if (!fromHeader) {
         res.cookie('token', token, cookieOpts);
       }

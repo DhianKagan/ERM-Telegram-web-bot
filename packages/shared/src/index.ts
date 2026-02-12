@@ -48,4 +48,18 @@ export type {
   LogisticsTaskChangeAction,
   RoutePlanAnalyticsSummary,
 } from './types';
+export {
+  DEFAULT_MAX_SEGMENT_M,
+  DEFAULT_PRECISION_DECIMALS,
+  haversineDistanceMeters,
+  isValidLat,
+  isValidLon,
+  latLngToLonLat,
+  normalizePointsString,
+  parsePointInput,
+  precheckLocations,
+  roundCoord,
+  type LatLng,
+  type LonLatPair,
+} from './geo';
 export { default as taskFormSchema } from './taskForm.schema.json';

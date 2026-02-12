@@ -3,9 +3,12 @@
  * Основные модули: fs, os, path.
  */
 
+import dns from 'node:dns';
 import { mkdirSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+
+dns.setDefaultResultOrder('ipv4first');
 
 if (!process.env.MONGOMS_DOWNLOAD_DIR) {
   const baseDir = path.join(os.tmpdir(), 'mongodb-memory-server');

@@ -18,6 +18,8 @@ const config: Config = {
     '^@/(.*)$': '<rootDir>/apps/web/src/$1',
     '^shared$': '<rootDir>/packages/shared/src',
     '^shared/(.*)$': '<rootDir>/packages/shared/src/$1',
+    '^@erm/utils$': '<rootDir>/packages/utils/src',
+    '^@erm/utils/(.*)$': '<rootDir>/packages/utils/src/$1',
   },
   setupFiles: [
     '<rootDir>/tests/setupMongoMemoryServer.ts',

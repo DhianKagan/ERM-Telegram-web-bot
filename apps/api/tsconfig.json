@@ -5,6 +5,10 @@
   "compilerOptions": {
     "target": "es2019",
     "module": "commonjs",
+    "baseUrl": ".",
+    "paths": {
+      "@erm/utils": ["../../packages/utils/src"]
+    },
     "rootDir": "./src",
     "outDir": "dist",
     "useUnknownInCatchVariables": false,
@@ -19,12 +23,13 @@
     ],
     "composite": true
   },
-  "include": [
-    "src"
-  ],
+  "include": ["src"],
   "references": [
     {
       "path": "../../packages/shared"
+    },
+    {
+      "path": "../../packages/utils"
     }
   ]
 }

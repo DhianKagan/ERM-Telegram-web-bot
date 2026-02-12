@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "target": "ES2019",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "baseUrl": ".",
+    "paths": {
+      "shared": ["../shared/src"]
+    },
+    "rootDir": "src",
+    "outDir": "dist",
+    "declaration": true,
+    "composite": true,
+    "types": ["node"]
+  },
+  "include": ["src/**/*"],
+  "references": [{ "path": "../shared" }]
+}

@@ -41,6 +41,8 @@ COPY --from=build /app/apps/worker/package.json /app/apps/worker/package.json
 COPY --from=build /app/apps/worker/node_modules /app/apps/worker/node_modules
 COPY --from=build /app/packages/shared/dist /app/packages/shared/dist
 COPY --from=build /app/packages/shared/package.json /app/packages/shared/package.json
+COPY --from=build /app/packages/utils/dist /app/packages/utils/dist
+COPY --from=build /app/packages/utils/package.json /app/packages/utils/package.json
 COPY --from=build /app/dist/scripts/db /app/dist/scripts/db
 COPY --from=build /app/package.json /app/package.json
 # Ensure root workspace node_modules (hoisted by pnpm) are available in final image.

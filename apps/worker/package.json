@@ -14,11 +14,12 @@
     "ci:full": "pnpm run ci:fast"
   },
   "dependencies": {
+    "@erm/utils": "workspace:*",
     "bullmq": "^5.31.1",
     "dotenv": "^16.6.1",
     "ioredis": "^5.4.1",
+    "mongodb": "^5.7.0",
     "pino": "^9.9.4",
-    "shared": "workspace:*",
-    "mongodb": "^5.7.0"
+    "shared": "workspace:*"
   }
 }

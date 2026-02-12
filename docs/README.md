@@ -5,6 +5,7 @@
 Базовый индекс документации: [index.md](index.md).
 Отчёт шага A1 по унификации монорепозитория: [workspace-audit-a1.md](workspace-audit-a1.md).
 Отчёт шага A5 (baseline проверок): [test_reports/2026-02-12_monorepo-a5-baseline.md](test_reports/2026-02-12_monorepo-a5-baseline.md).
+Отчёт шага B1 (консолидация внутренних пакетов): [monorepo-unification-b1.md](monorepo-unification-b1.md).
 
 Все технические инструкции сведены в файл [technical_manual.md](technical_manual.md).
 Разделы API и карта запросов перенесены в него,

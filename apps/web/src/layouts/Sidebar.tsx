@@ -53,7 +53,7 @@ export default function Sidebar() {
 
   const baseItems = React.useMemo<SidebarItem[]>(
     () => [
-      { to: '/index', label: 'Индекс', icon: HomeIcon },
+      { to: '/index', label: 'Рабочая область', icon: HomeIcon },
       { to: '/tasks', label: t('nav.tasks'), icon: ClipboardDocumentListIcon },
       {
         to: '/requests',

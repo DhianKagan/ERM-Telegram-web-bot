@@ -16,7 +16,7 @@
 
 - `QUEUE_REDIS_URL` — обязательная строка подключения к Redis.
 - `QUEUE_PREFIX` — общий префикс ключей BullMQ.
-- `QUEUE_ATTEMPTS`, `QUEUE_BACKOFF_MS`, `QUEUE_CONCURRENCY` — параметры повторов и параллелизма воркеров.
+- `QUEUE_ATTEMPTS`, `QUEUE_BACKOFF_MS`, `QUEUE_CONCURRENCY` — параметры повторов и параллелизма воркеров (по умолчанию `QUEUE_CONCURRENCY=2`, верхняя безопасная граница — `8`).
 - `GEOCODER_ENABLED`, `GEOCODER_URL`, `GEOCODER_USER_AGENT`, `GEOCODER_EMAIL`, `GEOCODER_API_KEY`, `GEOCODER_PROXY_TOKEN` — управление вызовами геокодера (поддерживаются Nominatim и OpenRouteService `/geocode/search`, в том числе через наш прокси с токеном).
 - `ROUTING_URL`, `OSRM_ALGORITHM` — настройки OSRM для расчёта расстояний.
 - `LOG_LEVEL` — уровень логирования Pino.

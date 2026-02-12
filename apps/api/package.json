@@ -27,6 +27,7 @@
   "description": "Бот задач с REST API, работающий под управлением pm2",
   "dependencies": {
     "@aws-sdk/client-secrets-manager": "^3.864.0",
+    "@erm/utils": "workspace:*",
     "@tma.js/init-data-node": "^2.0.3",
     "bullmq": "^5.31.1",
     "clamdjs": "^1.0.2",

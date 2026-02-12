@@ -67,6 +67,7 @@
 - Планы надёжности/восстановления: [`logistics_recovery_plan.md`](logistics_recovery_plan.md)
 - Монорепо (аудит A1): [`workspace-audit-a1.md`](workspace-audit-a1.md)
 - Монорепо (baseline A5): [`test_reports/2026-02-12_monorepo-a5-baseline.md`](test_reports/2026-02-12_monorepo-a5-baseline.md)
+- Монорепо (консолидация B1): [`monorepo-unification-b1.md`](monorepo-unification-b1.md)
 
 ### Безопасность и процессы
 

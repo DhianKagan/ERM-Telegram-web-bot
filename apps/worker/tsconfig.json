@@ -5,6 +5,10 @@
   "compilerOptions": {
     "target": "es2019",
     "module": "commonjs",
+    "baseUrl": ".",
+    "paths": {
+      "@erm/utils": ["../../packages/utils/src"]
+    },
     "rootDir": "./src",
     "outDir": "dist",
     "resolveJsonModule": true,
@@ -13,5 +17,8 @@
     "typeRoots": ["./node_modules/@types", "../../node_modules/@types"]
   },
   "include": ["src"],
-  "references": [{ "path": "../../packages/shared" }]
+  "references": [
+    { "path": "../../packages/shared" },
+    { "path": "../../packages/utils" }
+  ]
 }

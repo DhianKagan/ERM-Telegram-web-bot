@@ -122,6 +122,9 @@ importers:
       '@aws-sdk/client-secrets-manager':
         specifier: ^3.864.0
         version: 3.928.0
+      '@erm/utils':
+        specifier: workspace:*
+        version: link:../../packages/utils
       '@tma.js/init-data-node':
         specifier: ^2.0.3
         version: 2.0.3(typescript@5.9.3)
@@ -511,6 +514,9 @@ importers:
 
   apps/worker:
     dependencies:
+      '@erm/utils':
+        specifier: workspace:*
+        version: link:../../packages/utils
       bullmq:
         specifier: ^5.31.1
         version: 5.65.1
@@ -531,6 +537,12 @@ importers:
         version: link:../../packages/shared
 
   packages/shared: {}
+
+  packages/utils:
+    dependencies:
+      shared:
+        specifier: workspace:*
+        version: link:../shared
 
   scripts:
     devDependencies:
@@ -10697,8 +10709,6 @@ snapshots:
       blurhash: 2.0.5
       ckeditor5: 46.0.3
       lodash-es: 4.17.21
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-ckbox@46.0.3':
     dependencies:
@@ -10837,8 +10847,6 @@ snapshots:
       '@ckeditor/ckeditor5-utils': 46.0.3
       ckeditor5: 46.0.3
       es-toolkit: 1.39.5
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-editor-multi-root@46.0.3':
     dependencies:
@@ -11049,6 +11057,8 @@ snapshots:
       '@ckeditor/ckeditor5-ui': 41.4.2
       ckeditor5: 46.0.3
       lodash-es: 4.17.21
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-link@46.0.3':
     dependencies:
@@ -11205,8 +11215,6 @@ snapshots:
       '@ckeditor/ckeditor5-ui': 46.0.3
       '@ckeditor/ckeditor5-utils': 46.0.3
       ckeditor5: 46.0.3
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-restricted-editing@46.0.3':
     dependencies:

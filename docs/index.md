@@ -58,7 +58,7 @@
 - Главный обзор: [`../README.md`](../README.md)
 - Техническое руководство: [`technical_manual.md`](technical_manual.md)
 - Архитектура: [`architecture.md`](architecture.md)
-- Интеграция Codex: [`codex_integration.md`](codex_integration.md)
+- Инструкции для ассистентов/Codex: [`../AGENTS.md`](../AGENTS.md), [`../.openai/assistant_instructions.json`](../.openai/assistant_instructions.json)
 
 ### API и эксплуатация
 
@@ -94,6 +94,7 @@
 2. Для каждого нового крупного модуля добавляйте ссылку на исходный документ.
 3. Проблемные URL и редиректы фиксируйте в таблице из раздела 5.
 4. При переносе/удалении документов обновляйте ссылки здесь в первую очередь.
+5. Для правил работы ассистентов не дублируйте инструкции в docs: используйте только AGENTS.md и JSON.
 
 ---
 

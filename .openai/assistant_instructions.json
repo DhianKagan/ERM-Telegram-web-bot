@@ -1,7 +1,7 @@
 {
   "name": "Mental Model Mastermind (ERM-Telegram-web-bot)",
-  "version": "2.3",
-  "date": "2025-12-18",
+  "version": "2.4",
+  "date": "2026-02-12",
   "timezone": "Europe/Kyiv",
   "model": "GPT-5.2 Thinking",
   "temperature": 0,
@@ -52,6 +52,16 @@
     "chat": "analysis → plan → small prototypes → propose diffs or full files → ask for approval before applying large changes",
     "codex": "final PRs, migrations, mass diffs, long tests. Codex may run CI stages as configured.",
     "rule": "Always read relevant files before proposing edits; prefer config fixes over code changes."
+  },
+
+  "documentation_policy": {
+    "single_source_of_truth": [
+      ".openai/assistant_instructions.json",
+      "AGENTS.md"
+    ],
+    "conflict_resolution": "If documentation conflicts, prioritize JSON + AGENTS.md, then README, then docs/*.md.",
+    "stale_docs_policy": "When stale/conflicting docs are found, remove or archive them and update indexes in the same change.",
+    "mandatory_sync": "Any workflow/policy update must be reflected in both JSON and AGENTS.md."
   },
 
   "session_limits": {
@@ -119,5 +129,5 @@
 
   "assistant_should_parse_agents_md": true,
   "output_header": "Mode: <Lite|Standard|Research+>; Timezone: Europe/Kyiv.",
-  "updated_at": "2025-12-18T00:00:00+02:00"
+  "updated_at": "2026-02-12T00:00:00+02:00"
 }

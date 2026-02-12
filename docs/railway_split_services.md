@@ -84,10 +84,27 @@ pnpm build && node dist/scripts/cleanup/cleanupDetachedFiles.js
 Для локальной проверки split-подхода используйте готовый файл:
 
 ```bash
-docker compose -f docker-compose.services.yml up --build
+make split-up
 ```
 
-В нём `api`, `bot` и `worker` запускаются как отдельные контейнеры из одного монорепозитория.
+По умолчанию используется `Railway/.env` (`ENV_FILE` можно переопределить), а `api`, `bot` и `worker` стартуют как отдельные контейнеры из одного монорепозитория.
+
+Полезные команды:
+
+```bash
+make split-config              # проверить валидность compose-конфига
+make split-up                  # поднять split-стек в фоне
+make split-down                # остановить стек
+make split-up ENV_FILE=.env    # использовать кастомный env-файл
+```
+
+### Рекомендуемые runtime-лимиты Node.js (снижение пиков RAM)
+
+- `API_NODE_OPTIONS=--max-old-space-size=384`
+- `BOT_NODE_OPTIONS=--max-old-space-size=256`
+- `WORKER_NODE_OPTIONS=--max-old-space-size=256`
+
+Эти переменные поддерживаются в `docker-compose.services.yml` и помогают ограничить верхнюю границу heap для каждого процесса.
 
 ## 6) Частые ошибки
 

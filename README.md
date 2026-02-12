@@ -1,4 +1,4 @@
-# ERM Telegram Web Bot (v2.2)  ![Quality checks](https://img.shields.io/badge/Codex-Quality%20Gate-blue)
+# ERM Telegram Web Bot (v2.2) ![Quality checks](https://img.shields.io/badge/Codex-Quality%20Gate-blue)
 
 Этот монорепозиторий содержит модульную систему управления ресурсами предприятия, объединяющую телеграм-бота, REST API и веб-дашборд.
 
@@ -9,10 +9,9 @@
 Проект структурирован как рабочее пространство PNPM и состоит из нескольких пакетов:
 
 - **`apps/api`** – API на базе Node.js/Express, написанное на TypeScript. Реализует REST-эндпоинты для задач, заявок, пользователей, ролей, логов, коллекций, журнала событий, аналитики, оптимизации маршрутов и пр. Взаимодействует с MongoDB (Mongoose). Фоновые воркеры (BullMQ) обрабатывают геокодинг, маршрутизацию и уведомления.
-- **`apps/bot`** – Telegram-бот на базе Telegraf. Обрабатывает команды пользователей: создание задач/заявок, загрузку вложений, просмотр назначений, отправку уведомлений.
+- **Telegram-бот** – runtime бота находится в `apps/api/src/bot`, а в продакшене запускается отдельной командой (`railway:start:bot`) как самостоятельный процесс.
 - **`apps/web`** – веб-приложение на React (Vite + Tailwind). Содержит интерфейсы: задачи, заявки, архив, журнал событий, менеджер файлов (Storage), коллекции, аналитика и настройки. Для таблиц используется TanStack React Table; встроены экспорт в CSV/XLSX/PDF.
-- **`packages/shared`** – общие TypeScript-типы и утилиты, используемые в API, боте и вебе.
-- **`packages/logging`**, **`packages/monitoring`** – middleware для логирования и метрик (Prometheus).
+- **`packages/shared`**, **`packages/utils`** – общие TypeScript-типы и утилиты, используемые в API, боте и вебе.
 
 API модульное: для каждой области (auth, tasks, requests, users, roles, logs, events, analytics, storage, collections) есть контроллеры, DTO, сервисы и guards. Контроль доступа — RBAC с набором прав/масок (пример: `ACCESS_USER`, `ACCESS_MANAGER`, `ACCESS_ADMIN`). Безопасность: JWT в HTTP-only cookie, CSRF-токены, валидация DTO, rate limiting.
 
@@ -80,4 +79,4 @@ CRUD, поиск, фильтры и импорт/экспорт; формы по
 2. **Установка зависимостей:**
    ```bash
    pnpm install
-
+   ```

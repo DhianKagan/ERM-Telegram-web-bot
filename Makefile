@@ -5,7 +5,9 @@ SHELL := /bin/bash
 export DOCKER_BUILDKIT := 1
 export BUILDKIT_PROGRESS := plain
 
-.PHONY: clean fetch install prebuild shared build-rest compile copy-static docker-build docker-image ci-local lpt lpt-local
+.PHONY: clean fetch install prebuild shared build-rest compile copy-static docker-build docker-image ci-local lpt lpt-local split-config split-up split-down
+
+ENV_FILE ?= Railway/.env
 
 # ---- Utility ----
 clean:
@@ -69,6 +71,15 @@ lpt:
 lpt-local:
 	# полный локальный прогон через pre_pr_check.sh
 	./scripts/pre_pr_check.sh
+
+split-config:
+	docker compose --env-file $(ENV_FILE) -f docker-compose.services.yml config
+
+split-up:
+	docker compose --env-file $(ENV_FILE) -f docker-compose.services.yml up --build -d
+
+split-down:
+	docker compose --env-file $(ENV_FILE) -f docker-compose.services.yml down
 
 
 .PHONY: lpt-fix

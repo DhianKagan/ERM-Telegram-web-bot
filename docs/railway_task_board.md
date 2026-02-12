@@ -22,7 +22,7 @@
 
 ## Этап 2 — первичные лимиты и переменные рантайма
 
-- [ ] **T2.1** Ввести per-service `NODE_OPTIONS` (api/bot/worker).
+- [x] **T2.1** Ввести per-service `NODE_OPTIONS` (api/bot/worker) в `docker-compose.services.yml` и runbook.
 - [ ] **T2.2** Разделить `QUEUE_CONCURRENCY` и связанные параметры по сервисам.
 - [ ] **T2.3** Зафиксировать рекомендуемые стартовые лимиты RAM/CPU в docs + runbook.
 

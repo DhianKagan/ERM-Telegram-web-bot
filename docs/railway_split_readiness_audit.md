@@ -2,7 +2,7 @@
 
 # Аудит готовности к split-деплою в Railway
 
-Дата проверки: 11 Feb 2026 (Europe/Kyiv)
+Дата проверки: 12 Feb 2026 (Europe/Kyiv)
 
 ## Вывод
 
@@ -11,7 +11,7 @@
 При этом остаются два практических условия запуска:
 
 1. В Railway нужно вручную создать **три отдельных сервиса** (`erm-api`, `erm-bot`, `erm-worker`) и задать каждому свой Start Command.
-2. Для локальной проверки через `docker-compose.services.yml` нужен файл `.env` в корне (в репозитории есть пример `Railway/.env`).
+2. Для локальной проверки через `docker-compose.services.yml` нужен заполненный env-файл (по умолчанию используется `Railway/.env`, можно переопределить через `ENV_FILE`).
 
 ## Что проверено
 
@@ -37,8 +37,9 @@
 
 ### 3) Локальная проверка split-контейнеров
 
-- `docker compose -f docker-compose.services.yml config` без `.env` падает (ожидаемо).
-- После временного подстановочного `.env` (из `Railway/.env`) compose-конфиг валиден.
+- `make split-config` валидирует compose-конфиг через `docker compose --env-file`.
+- `make split-up`/`make split-down` автоматизируют подъем и остановку split-стека.
+- `api` теперь имеет healthcheck `/health`; `bot` и `worker` ждут готовность API (`service_healthy`).
 
 ## Рекомендованный preflight перед релизом
 
@@ -50,6 +51,7 @@
 3. Убедиться, что `QUEUE_PREFIX` одинаковый у `api` и `worker`.
 4. Для `api` не фиксировать `PORT` вручную (Railway подставляет порт сам).
 5. Проверить health endpoints после деплоя: `/` и `/health`.
+6. Задать per-service лимиты RAM через `API_NODE_OPTIONS`, `BOT_NODE_OPTIONS`, `WORKER_NODE_OPTIONS`.
 
 ## Статус готовности
 

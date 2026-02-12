@@ -132,6 +132,7 @@ describe('fleets router', () => {
   });
 
   it('фильтрует список по поиску', async () => {
+    if (skipSuite || !app) return;
     await FleetVehicle.deleteMany({});
     await FleetVehicle.create({
       ...payload,

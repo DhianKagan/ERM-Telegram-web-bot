@@ -7,5 +7,13 @@
   "license": "UNLICENSED",
   "devDependencies": {
     "ttf2woff2": "^8.0.0"
+  },
+  "scripts": {
+    "build": "node -e \"console.log('@erm/tools: build not required')\"",
+    "lint": "node -e \"console.log('@erm/tools: lint not required')\"",
+    "typecheck": "node -e \"console.log('@erm/tools: typecheck not required')\"",
+    "test": "node -e \"console.log('@erm/tools: test not required')\"",
+    "ci:fast": "pnpm run build && pnpm run typecheck && pnpm run lint && pnpm run test",
+    "ci:full": "pnpm run ci:fast"
   }
 }

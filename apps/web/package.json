@@ -9,14 +9,18 @@
     "prebuild": "node ../../scripts/ensure-fonts.mjs",
     "dev": "vite",
     "build": "pnpm exec cross-env vite build",
+    "typecheck": "pnpm exec tsc --noEmit",
     "build:dist": "pnpm run prebuild && pnpm exec vite build --outDir dist && node ../../scripts/prepare_size_artifacts.mjs",
     "lint": "pnpm exec eslint .",
+    "test": "node -e \"console.log('web: test command is not standardized yet')\"",
     "preview": "vite preview",
     "format": "pnpm exec prettier --config ../../prettier.config.cjs \"src/**/*.{js,jsx,ts,tsx}\"",
     "shadcn": "shadcn",
     "bundle-report": "ANALYZE=true vite build",
     "test:types": "pnpm exec tsc --noEmit --lib ESNext,DOM --types node src/types/task.test.ts",
-    "lint:lpt": "pnpm exec eslint -c ../../eslint.lpt.config.ts --ignore-pattern postcss.config.cjs --rule \"@typescript-eslint/no-unused-expressions: off\" --rule \"react-refresh/only-export-components: off\" ."
+    "lint:lpt": "pnpm exec eslint -c ../../eslint.lpt.config.ts --ignore-pattern postcss.config.cjs --rule \"@typescript-eslint/no-unused-expressions: off\" --rule \"react-refresh/only-export-components: off\" .",
+    "ci:fast": "pnpm run build && pnpm run typecheck && pnpm run lint && pnpm run test",
+    "ci:full": "pnpm run ci:fast"
   },
   "dependencies": {
     "@ckeditor/ckeditor5-build-classic": "^41.4.2",

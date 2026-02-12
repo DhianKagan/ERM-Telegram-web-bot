@@ -51,6 +51,23 @@ const parsePositiveInt = (
   return normalized;
 };
 
+const parseBoundedPositiveInt = (
+  value: string | undefined,
+  fallback: number,
+  max: number,
+  fieldName: string,
+): number => {
+  const parsed = parsePositiveInt(value, fallback);
+  if (parsed > max) {
+    logger.warn(
+      { fieldName, parsed, max },
+      'Значение превышает безопасный предел; используется ограничение',
+    );
+    return max;
+  }
+  return parsed;
+};
+
 const redisUrlRaw = normalizeEnvValue(process.env.QUEUE_REDIS_URL);
 if (!redisUrlRaw) {
   throw new Error('QUEUE_REDIS_URL обязателен для запуска воркера BullMQ');
@@ -150,7 +167,12 @@ export const workerConfig = {
   prefix: normalizeEnvValue(process.env.QUEUE_PREFIX) || 'erm',
   attempts: parsePositiveInt(process.env.QUEUE_ATTEMPTS, 3),
   backoffMs: parsePositiveInt(process.env.QUEUE_BACKOFF_MS, 5000),
-  concurrency: parsePositiveInt(process.env.QUEUE_CONCURRENCY, 4),
+  concurrency: parseBoundedPositiveInt(
+    process.env.QUEUE_CONCURRENCY,
+    2,
+    8,
+    'QUEUE_CONCURRENCY',
+  ),
   geocoder: {
     enabled:
       geocoderEnabledFlag &&

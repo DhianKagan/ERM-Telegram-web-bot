@@ -30,7 +30,20 @@ function bootstrap() {
   const params = new URLSearchParams(window.location.search);
   const forceBrowser = params.get('browser') === '1';
 
-  const webApp = (window as any).Telegram?.WebApp;
+  type TelegramWebAppLike = {
+    platform: string;
+    version: string;
+  };
+
+  type WindowWithTelegram = Window & {
+    Telegram?: {
+      WebApp?: TelegramWebAppLike;
+    };
+    __ALERT_MESSAGE__?: string;
+  };
+
+  const windowWithTelegram = window as WindowWithTelegram;
+  const webApp = windowWithTelegram.Telegram?.WebApp;
   const supportedPlatforms = ['android', 'ios', 'web', 'macos', 'tdesktop'];
   const minVersion = '6.0';
 
@@ -52,7 +65,7 @@ function bootstrap() {
       supportedPlatforms.includes(webApp.platform) &&
       versionAtLeast(webApp.version, minVersion);
     if (!isTelegram) {
-      (window as any).__ALERT_MESSAGE__ =
+      windowWithTelegram.__ALERT_MESSAGE__ =
         'Требуется обновление Telegram. Загружается браузерная версия.';
     }
   }

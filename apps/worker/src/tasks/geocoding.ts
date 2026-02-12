@@ -27,6 +27,70 @@ interface DbLike {
   collection(name: string): TasksCollectionLike;
 }
 
+type MongoModuleLike = {
+  MongoClient: new (
+    uri: string,
+    options?: unknown,
+  ) => {
+    connect: () => Promise<unknown>;
+    db: (name?: string) => unknown;
+    close?: () => Promise<unknown>;
+  };
+  ObjectId?: new (s?: string) => unknown;
+};
+
+let mongoModulePromise: Promise<MongoModuleLike> | null = null;
+let mongoClient: {
+  connect: () => Promise<unknown>;
+  db: (name?: string) => unknown;
+  close?: () => Promise<unknown>;
+} | null = null;
+let mongoDb: DbLike | null = null;
+
+const getMongoModule = async (): Promise<MongoModuleLike> => {
+  if (!mongoModulePromise) {
+    mongoModulePromise = import('mongodb') as Promise<MongoModuleLike>;
+  }
+  return mongoModulePromise;
+};
+
+const resetMongoConnection = async (): Promise<void> => {
+  if (!mongoClient || typeof mongoClient.close !== 'function') {
+    mongoClient = null;
+    mongoDb = null;
+    return;
+  }
+  try {
+    await mongoClient.close();
+  } catch (error) {
+    logger.debug({ error }, 'geocodeAddress: failed to close mongo client');
+  } finally {
+    mongoClient = null;
+    mongoDb = null;
+  }
+};
+
+const getMongoDb = async (mongoUrl: string): Promise<DbLike | null> => {
+  if (mongoDb) {
+    return mongoDb;
+  }
+  try {
+    const mod = await getMongoModule();
+    const client = new mod.MongoClient(mongoUrl, { connectTimeoutMS: 10000 });
+    await client.connect();
+    mongoClient = client;
+    mongoDb = client.db() as DbLike;
+    return mongoDb;
+  } catch (error) {
+    logger.warn(
+      { error },
+      'geocodeAddress: failed to establish MongoDB connection',
+    );
+    await resetMongoConnection();
+    return null;
+  }
+};
+
 /** Normalize parse result to LatLng or null */
 function normalizeToLatLng(value: unknown): LatLng | null {
   const parsed = parsePointInput(value);
@@ -44,7 +108,10 @@ function tryExtractFromString(s: string | undefined): LatLng | null {
     }
   } catch (e) {
     // ignore extractor errors — fallback to parsePointInput
-    logger.debug({ err: e }, 'shared.extractCoords threw, fallback to parsePointInput');
+    logger.debug(
+      { err: e },
+      'shared.extractCoords threw, fallback to parsePointInput',
+    );
   }
   // fallback: parse raw as coordinate string
   return normalizeToLatLng(s);
@@ -77,10 +144,8 @@ async function persistCoords(
   // Build filter: prefer ObjectId(taskId) when mongodb available
   let filter: unknown = { _id: taskId };
   try {
-    // dynamic import mongodb to construct ObjectId if available at runtime
-    // We purposely do runtime import to avoid compile-time dependency on types.
-    const mod = await import('mongodb');
-    const ObjectIdCtor = (mod as unknown as { ObjectId?: new (s?: string) => unknown }).ObjectId;
+    const mod = await getMongoModule();
+    const ObjectIdCtor = mod.ObjectId;
     if (typeof ObjectIdCtor === 'function') {
       try {
         const oid = new ObjectIdCtor(taskId);
@@ -104,7 +169,9 @@ async function persistCoords(
  * Accepts: Job or address string or undefined.
  * Returns: GeocodingJobResult (Coordinates | null)
  */
-export async function geocodeAddress(jobOrAddress: Job | string | undefined): Promise<GeocodingJobResult> {
+export async function geocodeAddress(
+  jobOrAddress: Job | string | undefined,
+): Promise<GeocodingJobResult> {
   let addressFromJob: string | undefined;
   let taskIdFromJob: string | undefined;
 
@@ -117,10 +184,10 @@ export async function geocodeAddress(jobOrAddress: Job | string | undefined): Pr
       typeof d.taskId === 'string'
         ? d.taskId
         : typeof d.id === 'string'
-        ? d.id
-        : typeof d._id === 'string'
-        ? d._id
-        : undefined;
+          ? d.id
+          : typeof d._id === 'string'
+            ? d._id
+            : undefined;
     addressFromJob = typeof d.address === 'string' ? d.address : undefined;
   }
 
@@ -130,25 +197,20 @@ export async function geocodeAddress(jobOrAddress: Job | string | undefined): Pr
   }
 
   const mongoUrl = process.env.MONGO_DATABASE_URL;
-  let client: unknown = null;
   let db: unknown = null;
   let taskDoc: unknown | null = null;
 
   try {
     if (mongoUrl && taskIdFromJob) {
-      // dynamic import mongodb at runtime only when we need to access DB
-      const mod = await import('mongodb');
-      const MongoClientCtor = (mod as unknown as { MongoClient: new (uri: string, options?: unknown) => unknown }).MongoClient;
-      client = new MongoClientCtor(mongoUrl, { connectTimeoutMS: 10000 });
-      await (client as { connect: () => Promise<unknown> }).connect();
-      db = (client as { db: (name?: string) => unknown }).db();
+      db = await getMongoDb(mongoUrl);
       // fetch task doc if present
-      if (taskIdFromJob) {
+      if (taskIdFromJob && db) {
         const tasksColl = (db as DbLike).collection('tasks');
         // Try to query by ObjectId if available
         let filter: unknown = { _id: taskIdFromJob };
         try {
-          const ObjectIdCtor = (mod as unknown as { ObjectId?: new (s?: string) => unknown }).ObjectId;
+          const mod = await getMongoModule();
+          const ObjectIdCtor = mod.ObjectId;
           if (typeof ObjectIdCtor === 'function') {
             try {
               filter = { _id: new ObjectIdCtor(String(taskIdFromJob)) };
@@ -161,7 +223,10 @@ export async function geocodeAddress(jobOrAddress: Job | string | undefined): Pr
         }
         taskDoc = (await tasksColl.findOne(filter)) ?? null;
         if (!taskDoc) {
-          logger.info({ taskId: taskIdFromJob }, 'geocodeAddress: task not found — will proceed without persisting');
+          logger.info(
+            { taskId: taskIdFromJob },
+            'geocodeAddress: task not found — will proceed without persisting',
+          );
           taskDoc = null;
         }
       }
@@ -193,11 +258,19 @@ export async function geocodeAddress(jobOrAddress: Job | string | undefined): Pr
     // 3) check fields on task doc (start_location/end_location strings)
     if (taskDoc && typeof taskDoc === 'object' && taskDoc !== null) {
       const td = taskDoc as Record<string, unknown>;
-      if (!start && typeof td.start_location === 'string' && td.start_location.trim().length > 0) {
+      if (
+        !start &&
+        typeof td.start_location === 'string' &&
+        td.start_location.trim().length > 0
+      ) {
         const sc = tryExtractFromString(td.start_location);
         if (sc) start = sc;
       }
-      if (!finish && typeof td.end_location === 'string' && td.end_location.trim().length > 0) {
+      if (
+        !finish &&
+        typeof td.end_location === 'string' &&
+        td.end_location.trim().length > 0
+      ) {
         const sc = tryExtractFromString(td.end_location);
         if (sc) finish = sc;
       }
@@ -210,14 +283,28 @@ export async function geocodeAddress(jobOrAddress: Job | string | undefined): Pr
     // Persist if we have DB and a taskId
     if ((start || finish) && db && typeof taskIdFromJob === 'string') {
       try {
-        const ok = await persistCoords(db, String(taskIdFromJob), start, finish);
+        const ok = await persistCoords(
+          db,
+          String(taskIdFromJob),
+          start,
+          finish,
+        );
         if (ok) {
-          logger.info({ taskId: taskIdFromJob, start, finish }, 'geocodeAddress: persisted coords (informational)');
+          logger.info(
+            { taskId: taskIdFromJob, start, finish },
+            'geocodeAddress: persisted coords (informational)',
+          );
         } else {
-          logger.info({ taskId: taskIdFromJob }, 'geocodeAddress: nothing to persist');
+          logger.info(
+            { taskId: taskIdFromJob },
+            'geocodeAddress: nothing to persist',
+          );
         }
       } catch (e) {
-        logger.warn({ err: e, taskId: taskIdFromJob }, 'geocodeAddress: failed to persist coords');
+        logger.warn(
+          { err: e, taskId: taskIdFromJob },
+          'geocodeAddress: failed to persist coords',
+        );
       }
     }
 
@@ -225,16 +312,10 @@ export async function geocodeAddress(jobOrAddress: Job | string | undefined): Pr
     return (start ?? finish ?? null) as GeocodingJobResult;
   } catch (e) {
     logger.error({ err: e }, 'geocodeAddress: unexpected error');
+    if (mongoUrl) {
+      await resetMongoConnection();
+    }
     // On error — fail gracefully and return null (task should not depend on coords)
     return null;
-  } finally {
-    // close client if opened
-    try {
-      if (client && typeof (client as { close?: () => Promise<unknown> }).close === 'function') {
-        await (client as { close: () => Promise<unknown> }).close();
-      }
-    } catch {
-      // ignore
-    }
   }
 }

@@ -64,7 +64,7 @@
 ### API и эксплуатация
 
 - API-документация: [`api/`](api)
-- Логи и деплой в Railway: [`railway_logs.md`](railway_logs.md), [`railway_full_setup.md`](railway_full_setup.md), [`railway_split_services.md`](railway_split_services.md)
+- Логи и деплой в Railway: [`railway_logs.md`](railway_logs.md), [`railway_full_setup.md`](railway_full_setup.md), [`railway_split_services.md`](railway_split_services.md), [`railway_s3_setup.md`](railway_s3_setup.md)
 - Планы надёжности/восстановления: [`logistics_recovery_plan.md`](logistics_recovery_plan.md)
 - Монорепо (аудит A1): [`workspace-audit-a1.md`](workspace-audit-a1.md)
 - Монорепо (baseline A5): [`test_reports/2026-02-12_monorepo-a5-baseline.md`](test_reports/2026-02-12_monorepo-a5-baseline.md)

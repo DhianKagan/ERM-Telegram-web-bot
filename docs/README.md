@@ -7,6 +7,8 @@
 Отчёт шага A5 (baseline проверок): [test_reports/2026-02-12_monorepo-a5-baseline.md](test_reports/2026-02-12_monorepo-a5-baseline.md).
 Отчёт шага B1 (консолидация внутренних пакетов): [monorepo-unification-b1.md](monorepo-unification-b1.md).
 
+Runbook по объектному хранилищу в Railway: [railway_s3_setup.md](railway_s3_setup.md).
+
 Все технические инструкции сведены в файл [technical_manual.md](technical_manual.md).
 Разделы API и карта запросов перенесены в него,
 отдельные файлы `api_reference.md` и `db_request_map.md` удалены.

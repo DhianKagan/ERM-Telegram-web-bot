@@ -1,0 +1,119 @@
+<!-- Назначение файла: практический runbook по запуску S3-совместимого хранилища для файлов в Railway и подключению к ERM. -->
+
+# Railway: как поднять отдельный S3 для хранения файлов
+
+Документ описывает 2 рабочих варианта:
+
+1. **Минимальный (быстрый):** поднять S3-совместимый сервис `minio` внутри Railway project.
+2. **Рекомендуемый для production:** использовать внешний managed S3 (AWS S3 / Cloudflare R2 / Backblaze B2) и подключить его в Railway через переменные окружения.
+
+> Почему так: Railway volumes удобны для локальных файлов, но для split-архитектуры (`erm-api`, `erm-bot`, `erm-worker`) объектное хранилище проще масштабируется и не привязано к одному контейнеру.
+
+---
+
+## 1) Вариант A (low-risk): отдельный MinIO сервис в Railway
+
+### 1.1 Создание сервиса
+
+1. В Railway откройте проект и создайте новый сервис `erm-s3`.
+2. Source: `Deploy from Docker Image`.
+3. Image: `minio/minio:latest`.
+4. Start Command:
+
+```bash
+minio server /data --console-address :9001
+```
+
+### 1.2 Переменные окружения `erm-s3`
+
+Задайте в `erm-s3`:
+
+- `MINIO_ROOT_USER=<ваш access key>`
+- `MINIO_ROOT_PASSWORD=<ваш secret key>`
+- `MINIO_BROWSER_REDIRECT_URL=https://<домен-console-сервиса>` (опционально)
+
+### 1.3 Том для MinIO
+
+Добавьте Volume к `erm-s3`:
+
+- Mount Path: `/data`
+- Размер: по фактической потребности + запас.
+
+### 1.4 Создание bucket
+
+После старта откройте MinIO Console (`:9001`) и создайте bucket, например `erm-files`.
+
+### 1.5 Подключение к `erm-api`
+
+В сервисе `erm-api` добавьте переменные:
+
+- `S3_ENDPOINT=http://erm-s3.railway.internal:9000`
+- `S3_REGION=us-east-1`
+- `S3_BUCKET=erm-files`
+- `S3_ACCESS_KEY_ID=<MINIO_ROOT_USER>`
+- `S3_SECRET_ACCESS_KEY=<MINIO_ROOT_PASSWORD>`
+- `S3_FORCE_PATH_STYLE=true`
+
+> Для приватной сети Railway используйте internal hostname `*.railway.internal`.
+
+---
+
+## 2) Вариант B (recommended): managed S3 вне Railway
+
+### 2.1 Что выбрать
+
+- **AWS S3** — стандартный вариант, высокая совместимость.
+- **Cloudflare R2** — нет платы за egress из R2, часто дешевле для отдачи файлов.
+- **Backblaze B2 (S3 API)** — бюджетный вариант с S3-совместимым API.
+
+### 2.2 Что сделать
+
+1. Создайте bucket у провайдера.
+2. Создайте ключи доступа с минимальными правами (только нужный bucket).
+3. В `erm-api` добавьте:
+   - `S3_ENDPOINT` (для AWS можно не задавать, для R2/B2 нужен)
+   - `S3_REGION`
+   - `S3_BUCKET`
+   - `S3_ACCESS_KEY_ID`
+   - `S3_SECRET_ACCESS_KEY`
+   - `S3_FORCE_PATH_STYLE` (`true` для некоторых S3-совместимых провайдеров)
+4. Проверьте upload/download на тестовом файле.
+
+---
+
+## 3) Что оставить в текущем split-деплое
+
+Для схемы `erm-api / erm-bot / erm-worker`:
+
+- Redis volume — **только** у Redis.
+- Mongo volume — **только** у MongoDB.
+- S3-хранилище файлов — через отдельный `erm-s3` сервис (MinIO) **или** внешний managed S3.
+- `STORAGE_DIR` оставляйте только как fallback/временный локальный путь, пока идёт миграция.
+
+---
+
+## 4) Мини-чеклист после запуска
+
+1. Upload файла через API проходит без ошибок.
+2. Скачивание/превью файла работает по ссылке.
+3. После рестарта `erm-api` файл доступен.
+4. У бота и воркера нет зависимости от локального `/storage`.
+5. В логах нет ошибок авторизации S3 (`AccessDenied`, `InvalidAccessKeyId`, `SignatureDoesNotMatch`).
+
+---
+
+## 5) Риски и как снизить
+
+- **Риск:** хранение секретов S3 в репозитории.
+  - **Решение:** ключи только в Railway Variables.
+- **Риск:** открытый публичный bucket.
+  - **Решение:** приватный bucket + выдача URL через API.
+- **Риск:** медленная миграция со старого `STORAGE_DIR`.
+  - **Решение:** поэтапный dual-write/dual-read (сначала чтение из обоих источников, потом отключение локального).
+
+---
+
+## 6) Быстрый выбор
+
+- Нужно "поднять сегодня" внутри Railway: берите **MinIO (Вариант A)**.
+- Нужен production без операционного долга: берите **managed S3 (Вариант B)**.

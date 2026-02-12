@@ -6,6 +6,7 @@
   "scripts": {
     "pretest": "pnpm --filter shared build",
     "test": "pnpm exec cross-env NODE_ENV=test dotenv -e .env.test -- pnpm exec jest --config ../../jest.config.ts --runInBand --coverage",
+    "typecheck": "pnpm exec tsc -b --pretty false",
     "start": "node dist/server.js",
     "start:pm2": "pnpm exec pm2-runtime start ecosystem.config.cjs",
     "dev": "pnpm exec ts-node src/server.ts",
@@ -17,7 +18,9 @@
     "test:types": "tsd --cwd apps/api --project tsconfig.json --files tests/requestWithUser.test-d.ts --files src/types/request.ts",
     "stress": "locust -f ../loadtest/locustfile.py --host http://localhost:3000 --users 300 --spawn-rate 30",
     "lint": "pnpm exec eslint -c ../../eslint.config.ts src",
-    "lint:lpt": "pnpm exec eslint -c ../../eslint.lpt.config.ts src"
+    "lint:lpt": "pnpm exec eslint -c ../../eslint.lpt.config.ts src",
+    "ci:fast": "pnpm run build && pnpm run typecheck && pnpm run lint && pnpm run test",
+    "ci:full": "pnpm run ci:fast"
   },
   "author": "",
   "license": "ISC",

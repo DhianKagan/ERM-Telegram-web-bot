@@ -11,6 +11,7 @@ import { stopDiskMonitor } from './services/diskSpace';
 import { stopQueue } from './services/messageQueue';
 import { closeCacheClient } from './utils/cache';
 import { markHealthcheckGraceStart } from './api/healthcheck';
+import { logS3Preflight } from './services/s3Health';
 
 const shutdownTimeoutMs = Number(process.env.SHUTDOWN_TIMEOUT_MS || 30000);
 
@@ -26,6 +27,7 @@ buildApp()
       console.log(
         `Окружение: ${process.env.NODE_ENV || 'development'}, Node ${process.version}`,
       );
+      void logS3Preflight();
     });
 
     const closeServer = async (): Promise<void> =>

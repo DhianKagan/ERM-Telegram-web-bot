@@ -10,6 +10,7 @@ import container from '../di';
 import { TOKENS } from '../di/tokens';
 import type StackOrchestratorController from '../system/stackOrchestrator.controller';
 import type StackHealthController from '../system/stackHealth.controller';
+import { runS3Healthcheck } from '../services/s3Health';
 
 const router: Router = Router();
 
@@ -50,6 +51,17 @@ router.get(
   Roles(ACCESS_ADMIN) as unknown as RequestHandler,
   rolesGuard as unknown as RequestHandler,
   asyncHandler(orchestrator.codexBrief),
+);
+
+router.get(
+  '/health/storage',
+  authMiddleware(),
+  Roles(ACCESS_ADMIN) as unknown as RequestHandler,
+  rolesGuard as unknown as RequestHandler,
+  asyncHandler(async (_req, res) => {
+    const report = await runS3Healthcheck();
+    res.status(200).json(report);
+  }),
 );
 
 router.post(

@@ -29,12 +29,11 @@ const rawOrphanAction =
   typeof process.env.ORPHAN_ACTION === 'string'
     ? process.env.ORPHAN_ACTION.trim().toLowerCase()
     : '';
-const orphanAction: OrphanAction =
-  rawOrphanAction === 'delete' || rawOrphanAction === 'mark'
+const orphanAction: OrphanAction = cleanupOrphans
+  ? rawOrphanAction === 'delete' || rawOrphanAction === 'mark'
     ? rawOrphanAction
-    : cleanupOrphans
-      ? 'mark'
-      : 'none';
+    : 'mark'
+  : 'none';
 
 if (dryRun === apply) {
   console.error('Укажите ровно один режим: DRY_RUN=true или APPLY=true');

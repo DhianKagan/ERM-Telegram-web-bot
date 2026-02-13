@@ -55,6 +55,15 @@ minio server /data --console-address :9001
 - `S3_FORCE_PATH_STYLE=true`
 
 > Для приватной сети Railway используйте internal hostname `*.railway.internal`.
+>
+> Если подключаетесь через публичный домен (`https://...up.railway.app`) вместо internal hostname, оставляйте `https` endpoint и используйте те же ключи MinIO.
+
+### 1.6 FAQ: какой `S3_REGION` ставить, если Railway в EU West?
+
+- Для **MinIO/S3-совместимого** сервиса регион Railway (например, EU West) не определяет значение `S3_REGION`.
+- Практически безопасный дефолт для MinIO: `S3_REGION=us-east-1`.
+- Критично, чтобы значение региона в клиенте совпадало с ожиданиями S3-сервера. Для MinIO обычно используется `us-east-1`, даже если инфраструктура физически в Европе.
+- Для **AWS S3 managed** указывайте реальный регион bucket (например, `eu-west-1`), а не регион Railway.
 
 ---
 
@@ -99,6 +108,14 @@ minio server /data --console-address :9001
 3. После рестарта `erm-api` файл доступен.
 4. У бота и воркера нет зависимости от локального `/storage`.
 5. В логах нет ошибок авторизации S3 (`AccessDenied`, `InvalidAccessKeyId`, `SignatureDoesNotMatch`).
+
+### 4.1 Cutover-чеклист перед отказом от `-erm-volume`
+
+1. В `erm-api` заполнены S3-переменные (`S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_FORCE_PATH_STYLE`).
+2. `S3_ENDPOINT` использует правильную схему (`https://` для публичного Railway endpoint, `http://` для private `*.railway.internal`).
+3. Доступен хотя бы один тестовый upload/download без использования локального пути `/storage`.
+4. `STORAGE_DIR` оставлен только как временный fallback и не является обязательной зависимостью для рантайма.
+5. Только после успешной проверки можно отключать volume для приложения (`erm-api`), оставляя volume только у самого S3-сервиса (MinIO), если он self-hosted.
 
 ---
 

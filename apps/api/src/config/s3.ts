@@ -8,10 +8,11 @@ const requiredVars = [
   'S3_ACCESS_KEY_ID',
   'S3_SECRET_ACCESS_KEY',
   'S3_FORCE_PATH_STYLE',
-  'S3_USE_SSL',
 ] as const;
 
 type RequiredS3Var = (typeof requiredVars)[number];
+type OptionalS3Var = 'S3_USE_SSL';
+type InvalidS3Var = RequiredS3Var | OptionalS3Var;
 
 export type S3RuntimeConfig = {
   endpoint: string;
@@ -27,7 +28,7 @@ export type S3ConfigValidation = {
   ok: boolean;
   config: S3RuntimeConfig | null;
   missing: RequiredS3Var[];
-  invalid: RequiredS3Var[];
+  invalid: InvalidS3Var[];
 };
 
 const normalize = (value: string | undefined): string => {
@@ -50,7 +51,7 @@ const parseBooleanEnv = (value: string): boolean | null => {
 
 export function readS3Config(): S3ConfigValidation {
   const missing: RequiredS3Var[] = [];
-  const invalid: RequiredS3Var[] = [];
+  const invalid: InvalidS3Var[] = [];
 
   const values = requiredVars.reduce<Record<RequiredS3Var, string>>(
     (acc, key) => {
@@ -65,21 +66,20 @@ export function readS3Config(): S3ConfigValidation {
   );
 
   const forcePathStyle = parseBooleanEnv(values.S3_FORCE_PATH_STYLE);
-  const useSsl = parseBooleanEnv(values.S3_USE_SSL);
+  const useSslRaw = normalize(process.env.S3_USE_SSL);
+  const parsedUseSsl = useSslRaw ? parseBooleanEnv(useSslRaw) : null;
+  const inferredUseSsl =
+    values.S3_ENDPOINT.toLowerCase().startsWith('https://');
+  const useSsl = parsedUseSsl ?? inferredUseSsl;
 
   if (forcePathStyle === null && values.S3_FORCE_PATH_STYLE) {
     invalid.push('S3_FORCE_PATH_STYLE');
   }
-  if (useSsl === null && values.S3_USE_SSL) {
+  if (parsedUseSsl === null && useSslRaw) {
     invalid.push('S3_USE_SSL');
   }
 
-  if (
-    missing.length ||
-    invalid.length ||
-    forcePathStyle === null ||
-    useSsl === null
-  ) {
+  if (missing.length || invalid.length || forcePathStyle === null) {
     return {
       ok: false,
       config: null,

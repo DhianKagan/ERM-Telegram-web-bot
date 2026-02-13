@@ -25,6 +25,22 @@ describe('s3 config', () => {
     expect(result.missing).toContain('S3_ENDPOINT');
     expect(result.invalid).toContain('S3_FORCE_PATH_STYLE');
   });
+
+  test('S3_USE_SSL опционален и берётся из схемы endpoint', () => {
+    process.env.S3_ENDPOINT = 'http://localhost:9000';
+    process.env.S3_REGION = 'eu-central-1';
+    process.env.S3_BUCKET = 'bucket';
+    process.env.S3_ACCESS_KEY_ID = 'key';
+    process.env.S3_SECRET_ACCESS_KEY = 'secret';
+    process.env.S3_FORCE_PATH_STYLE = 'true';
+    delete process.env.S3_USE_SSL;
+
+    const result = readS3Config();
+
+    expect(result.ok).toBe(true);
+    expect(result.config?.useSsl).toBe(false);
+    expect(result.invalid).toEqual([]);
+  });
 });
 
 describe('s3 health', () => {

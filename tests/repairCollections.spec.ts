@@ -11,11 +11,41 @@ jest.setTimeout(300000);
 const getModel = (name: string) => mongoose.model(name);
 
 describe('repairCollections', () => {
+  const initialMongoUrl = process.env.MONGO_DATABASE_URL;
+  const shouldTryExternalMongo = (() => {
+    if (!initialMongoUrl) return false;
+    try {
+      const parsedUrl = new URL(initialMongoUrl);
+      if (!['mongodb:', 'mongodb+srv:'].includes(parsedUrl.protocol)) {
+        return false;
+      }
+      return !['localhost', '127.0.0.1', '::1', 'http'].includes(
+        parsedUrl.hostname,
+      );
+    } catch {
+      return false;
+    }
+  })();
   let server: MongoMemoryServer | null = null;
   let uri = '';
   let skipSuite = false;
 
   beforeAll(async () => {
+    if (shouldTryExternalMongo && initialMongoUrl) {
+      try {
+        uri = initialMongoUrl;
+        await mongoose.connect(uri);
+        return;
+      } catch (error) {
+        console.warn(
+          'Внешняя тестовая MongoDB недоступна, используем MongoMemoryServer',
+          {
+            error,
+          },
+        );
+      }
+    }
+
     try {
       server = await MongoMemoryServer.create();
       uri = server.getUri();
@@ -46,7 +76,11 @@ describe('repairCollections', () => {
     if (server) {
       await server.stop();
     }
-    delete process.env.MONGO_DATABASE_URL;
+    if (shouldTryExternalMongo && initialMongoUrl) {
+      process.env.MONGO_DATABASE_URL = initialMongoUrl;
+    } else {
+      delete process.env.MONGO_DATABASE_URL;
+    }
   });
 
   test('восстанавливает отсутствующие элементы и нормализует значения', async () => {

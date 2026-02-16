@@ -60,6 +60,7 @@
 - Техническое руководство: [`technical_manual.md`](technical_manual.md)
 - Архитектура: [`architecture.md`](architecture.md)
 - Инструкции для ассистентов/Codex: [`../AGENTS.md`](../AGENTS.md), [`../.openai/assistant_instructions.json`](../.openai/assistant_instructions.json)
+- Шаблон системного промпта (не источник истины): [`codex_system_prompt.md`](codex_system_prompt.md)
 
 ### API и эксплуатация
 

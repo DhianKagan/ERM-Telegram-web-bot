@@ -198,7 +198,10 @@ export default class StackHealthService {
     const tempPath = path.join(root, tempName);
 
     try {
-      await fs.mkdir(root, { recursive: true });
+      const rootStat = await fs.stat(root);
+      if (!rootStat.isDirectory()) {
+        throw new Error('STORAGE_DIR существует, но не является директорией');
+      }
       await fs.access(root, fs.constants.R_OK | fs.constants.W_OK);
       await fs.writeFile(tempPath, 'ok', { encoding: 'utf8' });
       const readBack = await fs.readFile(tempPath, 'utf8');

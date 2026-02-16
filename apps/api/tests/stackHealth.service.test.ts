@@ -1,5 +1,6 @@
 process.env.NODE_ENV = 'test';
 
+import fs from 'node:fs/promises';
 import StackHealthService, {
   type StackCheckResult,
 } from '../src/system/stackHealth.service';
@@ -84,5 +85,26 @@ describe('StackHealthService', () => {
     const report = await service.run({});
 
     expect(report.ok).toBe(false);
+  });
+
+  test('checkStorage возвращает error если STORAGE_DIR отсутствует и не создаёт его', async () => {
+    const service = new StackHealthService();
+
+    const statSpy = jest
+      .spyOn(fs, 'stat')
+      .mockRejectedValue(new Error('ENOENT: no such file or directory'));
+    const accessSpy = jest.spyOn(fs, 'access');
+    const writeSpy = jest.spyOn(fs, 'writeFile');
+    const mkdirSpy = jest.spyOn(fs, 'mkdir');
+
+    const result = await service.checkStorage();
+
+    expect(result.name).toBe('storage');
+    expect(result.status).toBe('error');
+    expect(result.message).toContain('ENOENT');
+    expect(statSpy).toHaveBeenCalledTimes(1);
+    expect(accessSpy).not.toHaveBeenCalled();
+    expect(writeSpy).not.toHaveBeenCalled();
+    expect(mkdirSpy).not.toHaveBeenCalled();
   });
 });

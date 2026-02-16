@@ -4,7 +4,7 @@
   "main": "src/bot/bot.js",
   "types": "bot.d.ts",
   "scripts": {
-    "pretest": "pnpm --filter shared build && node ../../scripts/ensure-mongodb-binary.mjs",
+    "pretest": "pnpm --filter shared build && pnpm exec dotenv -e .env.test -- node ../../scripts/ensure-mongodb-binary.mjs",
     "test": "pnpm exec cross-env NODE_ENV=test dotenv -e .env.test -- pnpm exec jest --config ../../jest.config.ts --runInBand --coverage",
     "typecheck": "pnpm exec tsc -b --pretty false",
     "start": "node dist/server.js",

@@ -1,6 +1,5 @@
 // Финализация временных загрузок задач.
 // Основные модули: node:path, node:fs/promises, mongoose, utils/requestUploads, db/model.
-import path from 'node:path';
 import fs from 'node:fs/promises';
 import { Types } from 'mongoose';
 import type { Request } from 'express';
@@ -10,16 +9,15 @@ import {
   clearPendingUploads,
 } from '../utils/requestUploads';
 import { clearUploadContext } from './uploadContext';
-import { uploadsDir } from '../config/storage';
 import { Task } from '../db/model';
 import { extractFileIdFromUrl } from '../utils/attachments';
 import { buildFileUrl, buildThumbnailUrl } from '../utils/fileUrls';
 import { writeLog } from '../services/wgLogEngine';
-import { moveFile } from '../utils/moveFile';
 import { createFileRecord } from '../services/fileService';
+import { getStorageBackend } from '../services/storage';
 
-const uploadsDirAbs = path.resolve(uploadsDir);
 const TEMP_URL_PREFIX = 'temp://';
+const storageBackend = getStorageBackend();
 
 type AttachmentLike = {
   fileId?: string;
@@ -83,32 +81,6 @@ const normalizeAttachmentList = (
   return result;
 };
 
-const ensureWithin = (base: string, target: string): string => {
-  const normalizedBase = path.resolve(base);
-  const resolved = path.resolve(target);
-  if (!resolved.startsWith(normalizedBase + path.sep)) {
-    throw new Error('INVALID_PATH');
-  }
-  return resolved;
-};
-
-const relativeToUploads = (target: string): string | undefined => {
-  const absolute = path.resolve(target);
-  const relative = path.relative(uploadsDirAbs, absolute);
-  if (
-    relative.startsWith('..') ||
-    path.isAbsolute(relative) ||
-    relative.length === 0
-  ) {
-    return undefined;
-  }
-  return relative.split(path.sep).join('/');
-};
-
-const cleanupMovedFiles = async (paths: string[]): Promise<void> => {
-  await Promise.all(paths.map((p) => fs.unlink(p).catch(() => undefined)));
-};
-
 const cleanupDirectories = async (dirs: Iterable<string>): Promise<void> => {
   const unique = Array.from(new Set(Array.from(dirs).filter(Boolean)));
   await Promise.all(
@@ -150,8 +122,7 @@ export const finalizePendingUploads = async (
   const replacements = new Map<string, AttachmentLike>();
   const createdIds: string[] = [];
   const createdAttachments: AttachmentLike[] = [];
-  const movedPaths: string[] = [];
-  const movedThumbnails: string[] = [];
+  const storedPaths: string[] = [];
   const normalizedTaskId = toObjectId(options.taskId);
   const normalizedDraftId = toObjectId(options.draftId);
   let normalizedAttachments: AttachmentLike[] = [];
@@ -168,24 +139,34 @@ export const finalizePendingUploads = async (
   try {
     for (const entry of pending) {
       directories.add(entry.tempDir);
-      const userDir = path.resolve(uploadsDirAbs, String(entry.userId));
-      await fs.mkdir(userDir, { recursive: true });
-      const finalPath = ensureWithin(
-        userDir,
-        path.join(userDir, path.basename(entry.tempPath)),
-      );
-      await moveFile(entry.tempPath, finalPath);
-      movedPaths.push(finalPath);
-      let thumbnailRelative: string | undefined;
+      const fileId = new Types.ObjectId();
+      const fileBuffer = await fs.readFile(entry.tempPath);
+      const stored = await storageBackend.save({
+        fileId: fileId.toHexString(),
+        userId: entry.userId,
+        fileName: entry.originalName,
+        body: fileBuffer,
+        mimeType: entry.mimeType,
+        taskId: normalizedTaskId?.toHexString(),
+      });
+      storedPaths.push(stored.path);
+      await fs.unlink(entry.tempPath).catch(() => undefined);
+      let thumbnailPath: string | undefined;
       if (entry.tempThumbnailPath) {
-        const thumbTarget = ensureWithin(
-          userDir,
-          path.join(userDir, path.basename(entry.tempThumbnailPath)),
-        );
         try {
-          await moveFile(entry.tempThumbnailPath, thumbTarget);
-          movedThumbnails.push(thumbTarget);
-          thumbnailRelative = relativeToUploads(thumbTarget);
+          const thumbBuffer = await fs.readFile(entry.tempThumbnailPath);
+          const storedThumb = await storageBackend.save({
+            fileId: fileId.toHexString(),
+            userId: entry.userId,
+            fileName: `thumb-${entry.originalName}`,
+            body: thumbBuffer,
+            mimeType: 'image/jpeg',
+            taskId: normalizedTaskId?.toHexString(),
+            variant: 'thumbnail',
+          });
+          thumbnailPath = storedThumb.path;
+          storedPaths.push(storedThumb.path);
+          await fs.unlink(entry.tempThumbnailPath).catch(() => undefined);
         } catch (error) {
           const err = error as NodeJS.ErrnoException;
           if (err.code !== 'ENOENT') {
@@ -193,15 +174,12 @@ export const finalizePendingUploads = async (
           }
         }
       }
-      const relative = relativeToUploads(finalPath);
-      if (!relative) {
-        throw new Error('INVALID_PATH');
-      }
       const doc = await createFileRecord({
+        id: fileId,
         userId: entry.userId,
         name: entry.originalName,
-        path: relative,
-        thumbnailPath: thumbnailRelative,
+        path: stored.path,
+        thumbnailPath,
         type: entry.mimeType,
         size: entry.size,
         taskId: normalizedTaskId ?? undefined,
@@ -212,9 +190,7 @@ export const finalizePendingUploads = async (
         fileId: String(doc._id),
         name: entry.originalName,
         url: buildFileUrl(doc._id),
-        thumbnailUrl: thumbnailRelative
-          ? buildThumbnailUrl(doc._id)
-          : undefined,
+        thumbnailUrl: thumbnailPath ? buildThumbnailUrl(doc._id) : undefined,
         uploadedBy: entry.userId,
         uploadedAt: new Date(),
         type: entry.mimeType,
@@ -228,8 +204,11 @@ export const finalizePendingUploads = async (
       });
     }
   } catch (error) {
-    await cleanupMovedFiles(movedPaths);
-    await cleanupMovedFiles(movedThumbnails);
+    await Promise.all(
+      storedPaths.map((storedPath) =>
+        storageBackend.delete(storedPath).catch(() => undefined),
+      ),
+    );
     await cleanupDirectories(directories);
     clearPendingUploads(req);
     clearUploadContext(req);

@@ -1,15 +1,14 @@
 // Роут скачивания файлов с проверкой прав
 // Модули: express, middleware/auth, utils/accessMask, db/model, config/storage, wgLogEngine
 import { Router, RequestHandler, NextFunction } from 'express';
-import fs from 'node:fs';
 import path from 'node:path';
+import { pipeline } from 'node:stream/promises';
 import multer from 'multer';
 import { body, param, query } from 'express-validator';
 import authMiddleware from '../middleware/auth';
 import { hasAccess, ACCESS_ADMIN } from '../utils/accessMask';
 import { Task, type Attachment, type FileScope } from '../db/model';
 import type { RequestWithUser } from '../types/request';
-import { uploadsDir } from '../config/storage';
 import { sendProblem } from '../utils/problem';
 import { writeLog } from '../services/wgLogEngine';
 import {
@@ -30,6 +29,8 @@ import { TOKENS } from '../di/tokens';
 import TaskSyncController from '../controllers/taskSync.controller';
 import { checkFile } from '../utils/fileCheck';
 import { normalizeFilename } from '../utils/filename';
+import { getStorageBackend } from '../services/storage';
+import { Types } from 'mongoose';
 
 const router: Router = Router();
 
@@ -38,43 +39,15 @@ const taskSyncController = container.resolve<TaskSyncController>(
 );
 
 const maxUploadSize = 10 * 1024 * 1024;
+const storageBackend = getStorageBackend();
 
 const resolveUserId = (req: RequestWithUser): number | null => {
   const uid = Number(req.user?.id);
   return Number.isFinite(uid) ? uid : null;
 };
 
-const ensureRelativePath = (absolute: string, baseDir: string): string => {
-  const relative = path.relative(baseDir, absolute);
-  if (
-    relative.startsWith('..') ||
-    path.isAbsolute(relative) ||
-    relative.length === 0
-  ) {
-    throw new Error('INVALID_PATH');
-  }
-  return relative.split(path.sep).join('/');
-};
-
-const storage = multer.diskStorage({
-  destination: (req, _file, cb) => {
-    const userId = resolveUserId(req as RequestWithUser);
-    if (!userId) {
-      cb(new Error('UPLOAD_USER_RESOLVE_FAILED'), '');
-      return;
-    }
-    const userDir = path.resolve(uploadsDir, String(userId));
-    fs.mkdirSync(userDir, { recursive: true });
-    cb(null, userDir);
-  },
-  filename: (_req, file, cb) => {
-    const original = normalizeFilename(path.basename(file.originalname));
-    cb(null, `${Date.now()}_${original}`);
-  },
-});
-
 const upload = multer({
-  storage,
+  storage: multer.memoryStorage(),
   fileFilter: (_req, file, cb) => {
     if (checkFile(file)) {
       cb(null, true);
@@ -108,10 +81,10 @@ const hasTaskLinks = (file: {
   return file.relatedTaskIds.length > 0;
 };
 
-const buildAttachmentPayload = (
+const buildAttachmentPayload = async (
   file: NonNullable<Awaited<ReturnType<typeof getFileRecord>>>,
   fallbackUserId?: number,
-): Attachment => {
+): Promise<Attachment> => {
   const now = new Date();
   const uploadedAtSource =
     file.uploadedAt instanceof Date
@@ -137,7 +110,7 @@ const buildAttachmentPayload = (
   const thumbnailUrl =
     typeof file.thumbnailPath === 'string' &&
     file.thumbnailPath.trim().length > 0
-      ? `/uploads/${file.thumbnailPath.trim()}`
+      ? file.thumbnailPath
       : undefined;
   const payload: Attachment = {
     name: typeof file.name === 'string' ? normalizeFilename(file.name) : 'Файл',
@@ -156,7 +129,7 @@ const buildAttachmentPayload = (
         : 0,
   };
   if (thumbnailUrl) {
-    payload.thumbnailUrl = thumbnailUrl;
+    payload.thumbnailUrl = await storageBackend.getSignedUrl(thumbnailUrl);
   }
   return payload;
 };
@@ -187,7 +160,7 @@ const attachFileToTask = async (
   const existingAttachments = Array.isArray(task.attachments)
     ? [...(task.attachments as Attachment[])]
     : [];
-  const payload = buildAttachmentPayload(file, normalizedUserId);
+  const payload = await buildAttachmentPayload(file, normalizedUserId);
   const nextAttachments: Attachment[] = existingAttachments.filter(
     (attachment) => extractFileIdFromUrl(attachment?.url) !== fileId,
   );
@@ -336,21 +309,33 @@ router.post(
         res.status(400).json({ error: 'Файл не получен' });
         return;
       }
-      const uploadsAbs = path.resolve(uploadsDir);
-      const storedPath = path.resolve(file.destination, file.filename);
-      const relative = ensureRelativePath(storedPath, uploadsAbs);
       const normalizedName = normalizeFilename(
         path.basename(file.originalname),
       );
-      const record = await createFileRecord({
+      const fileId = new Types.ObjectId();
+      const saved = await storageBackend.save({
+        fileId: fileId.toHexString(),
         userId,
-        name: normalizedName,
-        path: relative,
-        type: file.mimetype,
-        size: file.size,
-        scope: 'user',
-        detached: true,
+        fileName: normalizedName,
+        body: file.buffer,
+        mimeType: file.mimetype,
       });
+      let record;
+      try {
+        record = await createFileRecord({
+          id: fileId,
+          userId,
+          name: normalizedName,
+          path: saved.path,
+          type: file.mimetype,
+          size: file.size,
+          scope: 'user',
+          detached: true,
+        });
+      } catch (dbError) {
+        await storageBackend.delete(saved.path).catch(() => undefined);
+        throw dbError;
+      }
       res.status(201).json({
         fileId: String(record._id),
         name: record.name,
@@ -413,7 +398,6 @@ router.get(
           return;
         }
       }
-      const uploadsAbs = path.resolve(uploadsDir);
       const variant =
         typeof req.query.variant === 'string' ? req.query.variant : undefined;
       const useThumbnail = variant === 'thumbnail';
@@ -426,21 +410,13 @@ router.get(
         });
         return;
       }
-      const relativePath = useThumbnail
-        ? (file.thumbnailPath ?? '')
-        : file.path;
-      const uploadsTarget = path.resolve(uploadsAbs, relativePath);
-      const relative = path.relative(uploadsAbs, uploadsTarget);
-      if (
-        relative.startsWith('..') ||
-        path.isAbsolute(relative) ||
-        relative.length === 0
-      ) {
+      const storagePath = useThumbnail ? file.thumbnailPath : file.path;
+      if (!storagePath) {
         sendProblem(req, res, {
           type: 'about:blank',
-          title: 'Недопустимое имя файла',
-          status: 400,
-          detail: 'Bad Request',
+          title: 'Файл не найден',
+          status: 404,
+          detail: 'Not Found',
         });
         return;
       }
@@ -448,22 +424,32 @@ router.get(
       const inlineMode = req.query.mode === 'inline';
       const logMessage = inlineMode ? 'Просмотрен файл' : 'Скачан файл';
       void writeLog(logMessage, 'info', { userId: uid, name: file.name });
+      const result = await storageBackend.read(storagePath);
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      const mime = useThumbnail
+        ? 'image/jpeg'
+        : file.type || 'application/octet-stream';
+      res.type(mime);
       if (inlineMode) {
-        const mime = useThumbnail
-          ? 'image/jpeg'
-          : file.type || 'application/octet-stream';
-        res.type(mime);
-        res.setHeader('X-Content-Type-Options', 'nosniff');
         res.setHeader('Content-Disposition', 'inline');
-        res.sendFile(uploadsTarget, (error) => {
-          if (error) next(error);
+      } else {
+        res.setHeader(
+          'Content-Disposition',
+          `attachment; filename="${encodeURIComponent(safeName)}"`,
+        );
+      }
+      await pipeline(result.stream, res);
+    } catch (err) {
+      const error = err as NodeJS.ErrnoException;
+      if (error.code === 'ENOENT') {
+        sendProblem(req, res, {
+          type: 'about:blank',
+          title: 'Файл не найден',
+          status: 404,
+          detail: 'Not Found',
         });
         return;
       }
-      res.download(uploadsTarget, safeName, (error) => {
-        if (error) next(error);
-      });
-    } catch (err) {
       next(err);
     }
   },

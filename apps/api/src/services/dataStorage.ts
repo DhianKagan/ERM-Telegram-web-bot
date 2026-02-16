@@ -1,11 +1,8 @@
 // Сервис управления файлами в локальном хранилище
 // Модули: fs, path, mongoose
-import fs from 'fs';
-import path from 'path';
 import type { FilterQuery } from 'mongoose';
 import { Types } from 'mongoose';
 
-import { uploadsDir } from '../config/storage';
 import {
   File,
   Task,
@@ -22,23 +19,13 @@ import {
   buildInlineFileUrl,
   buildThumbnailUrl,
 } from '../utils/fileUrls';
+import { getStorageBackend } from './storage';
 
-const uploadsDirAbs = path.resolve(uploadsDir);
-
-const resolveWithinUploads = (relative: string): string => {
-  const targetPath = path.resolve(uploadsDirAbs, relative);
-  if (!targetPath.startsWith(uploadsDirAbs + path.sep)) {
-    throw new Error('Недопустимое имя файла');
-  }
-  return targetPath;
-};
+const storageBackend = getStorageBackend();
 
 const unlinkWithinUploads = async (relative?: string | null): Promise<void> => {
   if (!relative) return;
-  const target = resolveWithinUploads(relative);
-  await fs.promises.unlink(target).catch((error: NodeJS.ErrnoException) => {
-    if (error.code !== 'ENOENT') throw error;
-  });
+  await storageBackend.delete(relative);
 };
 
 export interface StoredFile {

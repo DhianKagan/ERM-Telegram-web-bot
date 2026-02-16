@@ -53,7 +53,9 @@ import {
   deleteFilesByIds,
   findStaleUserFiles,
   getUserFileStats,
+  getFileRecord,
 } from '../services/fileService';
+import { getStorageBackend } from '../services/storage';
 
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 if (ffmpegPath) ffmpeg.setFfmpegPath(ffmpegPath);
@@ -92,6 +94,7 @@ function readAttachmentsField(value: unknown): AttachmentItem[] {
 }
 
 const uploadsDirAbs = path.resolve(uploadsDir);
+const storageBackend = getStorageBackend();
 
 async function createThumbnail(
   file: Express.Multer.File,
@@ -274,10 +277,9 @@ export const processUploads: RequestHandler = async (req, res, next) => {
                 (v): v is string => Boolean(v && v.length > 0),
               );
               for (const relative of targets) {
-                const fullPath = path.join(uploadsDir, relative);
-                await fs.promises.unlink(fullPath).catch(async (err) => {
+                await storageBackend.delete(relative).catch(async (err) => {
                   await writeLog('Не удалось удалить файл', 'error', {
-                    path: fullPath,
+                    path: relative,
                     error: (err as Error).message,
                   });
                 });
@@ -738,18 +740,6 @@ export const handleChunks: RequestHandler = async (req, res) => {
       }
       bodyWithAttachments.attachments =
         finalizeResult.attachments as AttachmentItem[];
-      const finalAbsolutePath = path.resolve(
-        uploadsDirAbs,
-        path.join(String(userId), storedName),
-      );
-      try {
-        await scanFile(finalAbsolutePath);
-      } catch (scanError) {
-        await writeLog('Повторная проверка файла не выполнена', 'error', {
-          path: finalAbsolutePath,
-          error: (scanError as Error).message,
-        }).catch(() => undefined);
-      }
       if (res.headersSent) return;
       const attachment = bodyWithAttachments.attachments?.[0];
       if (!attachment) {
@@ -764,6 +754,20 @@ export const handleChunks: RequestHandler = async (req, res) => {
       if (!resolvedFileId) {
         res.sendStatus(500);
         return;
+      }
+      if (resolvedFileId) {
+        const persisted = await getFileRecord(resolvedFileId);
+        if (persisted?.path && persisted.path.startsWith(`${userId}/`)) {
+          const finalAbsolutePath = path.resolve(uploadsDirAbs, persisted.path);
+          try {
+            await scanFile(finalAbsolutePath);
+          } catch (scanError) {
+            await writeLog('Повторная проверка файла не выполнена', 'error', {
+              path: finalAbsolutePath,
+              error: (scanError as Error).message,
+            }).catch(() => undefined);
+          }
+        }
       }
       res.json({
         fileId: resolvedFileId,

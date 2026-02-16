@@ -191,6 +191,15 @@ const writeCheckpoint = async (lastProcessedId: string): Promise<void> => {
   );
 };
 
+const persistCheckpoint = async (
+  lastProcessedId: string | null,
+): Promise<void> => {
+  if (!apply || !lastProcessedId) {
+    return;
+  }
+  await writeCheckpoint(lastProcessedId);
+};
+
 const isStringArray = (value: unknown): value is string[] =>
   Array.isArray(value) && value.every((entry) => typeof entry === 'string');
 
@@ -243,6 +252,8 @@ async function main(): Promise<void> {
       .select(['_id', 'attachments', 'files'])
       .lean()
       .cursor({ batchSize: BATCH_SIZE });
+
+    let lastCompletedTaskId: string | null = null;
 
     for await (const task of cursor) {
       const taskId = normalizeObjectId(task._id);
@@ -338,7 +349,7 @@ async function main(): Promise<void> {
           console.warn(
             `Достигнут лимит MAX_UPDATES=${MAX_UPDATES}, остановка на taskId=${taskId}`,
           );
-          await writeCheckpoint(taskId);
+          await persistCheckpoint(lastCompletedTaskId);
           break;
         }
         await Task.updateOne(
@@ -349,11 +360,13 @@ async function main(): Promise<void> {
         stats.updates_applied += 1;
       }
 
+      lastCompletedTaskId = taskId;
+
       if (stats.tasks_scanned % BATCH_SIZE === 0) {
         console.log(
           `progress: scanned=${stats.tasks_scanned}, changed=${stats.tasks_changed}, applied=${stats.updates_applied}, last_id=${taskId}`,
         );
-        await writeCheckpoint(taskId);
+        await persistCheckpoint(lastCompletedTaskId);
       }
     }
 
@@ -377,9 +390,7 @@ async function main(): Promise<void> {
       stats.file_docs_normalized = fileDocPathUpdates.length;
     }
 
-    if (stats.checkpoint_last_id) {
-      await writeCheckpoint(stats.checkpoint_last_id);
-    }
+    await persistCheckpoint(lastCompletedTaskId);
 
     console.log(
       JSON.stringify(

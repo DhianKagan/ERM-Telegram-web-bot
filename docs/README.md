@@ -9,6 +9,8 @@
 
 Runbook по объектному хранилищу в Railway: [railway_s3_setup.md](railway_s3_setup.md).
 
+Runbook по восстановлению очередей geocoding/DLQ: [queue_recovery_runbook.md](queue_recovery_runbook.md).
+
 Все технические инструкции сведены в файл [technical_manual.md](technical_manual.md).
 Разделы API и карта запросов перенесены в него,
 отдельные файлы `api_reference.md` и `db_request_map.md` удалены.

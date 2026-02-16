@@ -100,6 +100,16 @@ const STATUS_TO_METRIC: Record<StackCheckStatus, number> = {
   error: 2,
 };
 
+const getAggregateStatus = (results: StackCheckResult[]): StackCheckStatus => {
+  if (results.some((item) => item.status === 'error')) {
+    return 'error';
+  }
+  if (results.some((item) => item.status === 'warn')) {
+    return 'warn';
+  }
+  return 'ok';
+};
+
 const countKeys = async <
   M extends RedisModules,
   F extends RedisFunctions,
@@ -354,7 +364,8 @@ export default class StackHealthService {
     const mongoResult = await this.checkMongo();
 
     const results = [s3Result, storageResult, redisResult, mongoResult];
-    const ok = results.every((item) => item.status !== 'error');
+    const aggregateStatus = getAggregateStatus(results);
+    const ok = aggregateStatus !== 'error';
 
     for (const item of results) {
       stackHealthCheckStatusGauge
@@ -364,7 +375,7 @@ export default class StackHealthService {
         stackHealthCheckDurationGauge.labels(item.name).set(item.durationMs);
       }
     }
-    stackHealthStatusGauge.set(ok ? 0 : 2);
+    stackHealthStatusGauge.set(STATUS_TO_METRIC[aggregateStatus]);
 
     return {
       ok,

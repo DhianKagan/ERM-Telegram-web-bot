@@ -3,6 +3,7 @@ process.env.NODE_ENV = 'test';
 import StackHealthService, {
   type StackCheckResult,
 } from '../src/system/stackHealth.service';
+import { register } from '../src/metrics';
 
 describe('StackHealthService', () => {
   afterEach(() => {
@@ -47,6 +48,12 @@ describe('StackHealthService', () => {
       'mongo',
     ]);
     expect(report.results.every((item) => item.name !== 'proxy')).toBe(true);
+
+    const aggregateMetric = register.getSingleMetric('stack_health_status');
+    expect(aggregateMetric).toBeDefined();
+    const snapshot = await aggregateMetric?.get();
+    const metricValue = snapshot?.values?.[0]?.value;
+    expect(metricValue).toBe(1);
   });
 
   test('run выставляет ok=false если есть error', async () => {

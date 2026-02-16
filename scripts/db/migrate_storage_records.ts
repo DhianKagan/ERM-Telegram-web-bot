@@ -130,7 +130,7 @@ const decideReference = (
   }
 
   if (!normalizedId) {
-    return { action: 'drop', reason: 'missing_file_doc' };
+    return { action: 'keep', value: trimmed };
   }
   if (!existingFileIds.has(normalizedId)) {
     return { action: 'drop', reason: 'broken_ref' };

@@ -43,7 +43,11 @@ describe('storage backend', () => {
         throw new Error('unexpected command');
       }),
     };
-    const backend = new S3StorageBackend('bucket', s3);
+    const signUrl = jest.fn(
+      async ({ key }: { key: string }) =>
+        `https://cdn.example.test/${encodeURIComponent(key)}?sig=test`,
+    );
+    const backend = new S3StorageBackend('bucket', s3, signUrl);
 
     const saved = await backend.save({
       fileId: '64d000000000000000000001',
@@ -60,7 +64,17 @@ describe('storage backend', () => {
     }
     expect(Buffer.concat(chunks).toString()).toBe('hello-s3');
     await backend.delete(saved.path);
+    const signedUrl = await backend.getSignedUrl(saved.path);
 
+    expect(signedUrl).toBe(
+      `https://cdn.example.test/${encodeURIComponent(saved.path)}?sig=test`,
+    );
+    expect(signUrl).toHaveBeenCalledWith(
+      expect.objectContaining({
+        bucket: 'bucket',
+        key: saved.path,
+      }),
+    );
     expect(sent.some((c) => c instanceof PutObjectCommand)).toBe(true);
     expect(sent.some((c) => c instanceof GetObjectCommand)).toBe(true);
     expect(deleted.length).toBe(1);

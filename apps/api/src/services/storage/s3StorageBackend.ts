@@ -5,6 +5,7 @@ import {
   PutObjectCommand,
   S3Client,
 } from '@aws-sdk/client-s3';
+import { getSignedUrl as awsGetSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { readS3Config } from '../../config/s3';
 import { buildStorageKey } from './keyBuilder';
 import type {
@@ -14,10 +15,37 @@ import type {
   StorageBackend,
 } from './types';
 
+const DEFAULT_SIGNED_URL_TTL_SECONDS = 60 * 60;
+
+type SignUrlDeps = {
+  client: S3Client;
+  bucket: string;
+  key: string;
+  expiresIn: number;
+};
+
+type SignUrlFn = (deps: SignUrlDeps) => Promise<string>;
+
+const signS3GetObjectUrl: SignUrlFn = async ({
+  client,
+  bucket,
+  key,
+  expiresIn,
+}) =>
+  awsGetSignedUrl(
+    client,
+    new GetObjectCommand({
+      Bucket: bucket,
+      Key: key,
+    }),
+    { expiresIn },
+  );
+
 export class S3StorageBackend implements StorageBackend {
   constructor(
     private readonly bucket: string,
     private readonly client: Pick<S3Client, 'send'>,
+    private readonly signUrl: SignUrlFn = signS3GetObjectUrl,
   ) {}
 
   async save(input: SaveObjectInput): Promise<SaveObjectResult> {
@@ -70,7 +98,12 @@ export class S3StorageBackend implements StorageBackend {
   }
 
   async getSignedUrl(key: string): Promise<string> {
-    return `s3://${this.bucket}/${key}`;
+    return this.signUrl({
+      client: this.client as S3Client,
+      bucket: this.bucket,
+      key,
+      expiresIn: DEFAULT_SIGNED_URL_TTL_SECONDS,
+    });
   }
 }
 

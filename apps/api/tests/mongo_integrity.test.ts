@@ -15,6 +15,8 @@ jest.setTimeout(60_000);
 
 describe('MongoDB Integrity & Transactions', () => {
   let taskIds: Types.ObjectId[] = [];
+  let createdTaskIds: Types.ObjectId[] = [];
+  let createdRoutePlanIds: Types.ObjectId[] = [];
   let mongod: MongoMemoryServer | null = null;
   let skipSuite = false;
   let usingExternalMongo = false;
@@ -78,16 +80,13 @@ describe('MongoDB Integrity & Transactions', () => {
   afterAll(async () => {
     if (skipSuite) return;
 
-    await Task.deleteMany({
-      title: {
-        $in: ['Task 1', 'Task 2', 'Task To Delete', 'Transaction Task'],
-      },
-    });
-    await RoutePlan.deleteMany({
-      title: {
-        $in: ['Test Plan', 'Plan For Task Deletion', 'Transaction Plan'],
-      },
-    });
+    if (createdTaskIds.length > 0) {
+      await Task.deleteMany({ _id: { $in: createdTaskIds } });
+    }
+
+    if (createdRoutePlanIds.length > 0) {
+      await RoutePlan.deleteMany({ _id: { $in: createdRoutePlanIds } });
+    }
 
     await mongoose.disconnect();
     if (mongod) {
@@ -102,12 +101,14 @@ describe('MongoDB Integrity & Transactions', () => {
       { title: 'Task 2', status: 'Новая' },
     ]);
     taskIds = tasks.map((t) => (t as { _id: Types.ObjectId })._id);
+    createdTaskIds.push(...taskIds);
 
     const plan = await RoutePlan.create({
       title: 'Test Plan',
       status: 'draft',
       tasks: taskIds,
     });
+    createdRoutePlanIds.push((plan as { _id: Types.ObjectId })._id);
 
     await Task.updateMany({ _id: { $in: taskIds } }, { routePlanId: plan._id });
 
@@ -128,12 +129,14 @@ describe('MongoDB Integrity & Transactions', () => {
       title: 'Task To Delete',
       status: 'Новая',
     });
+    createdTaskIds.push((task as { _id: Types.ObjectId })._id);
 
     const plan = await RoutePlan.create({
       title: 'Plan For Task Deletion',
       status: 'draft',
       tasks: [(task as { _id: Types.ObjectId })._id],
     });
+    createdRoutePlanIds.push((plan as { _id: Types.ObjectId })._id);
     await Task.updateOne(
       { _id: (task as { _id: Types.ObjectId })._id },
       { routePlanId: plan._id },
@@ -157,6 +160,7 @@ describe('MongoDB Integrity & Transactions', () => {
         title: 'Transaction Task',
         status: 'Новая',
       });
+      createdTaskIds.push((task as { _id: Types.ObjectId })._id);
 
       const result = await createDraftFromInputs(
         [
@@ -170,6 +174,7 @@ describe('MongoDB Integrity & Transactions', () => {
 
       expect(result).toBeDefined();
       expect(result.id).toBeDefined();
+      createdRoutePlanIds.push(new Types.ObjectId(result.id));
 
       const updatedTask = await Task.findById(
         (task as { _id: Types.ObjectId })._id,

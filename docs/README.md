@@ -15,3 +15,4 @@ Runbook по объектному хранилищу в Railway: [railway_s3_set
 Устаревшие материалы перемещены в каталог [archive](archive) для справки.
 
 Инструкции для ассистентов и Codex поддерживаются только в [`../AGENTS.md`](../AGENTS.md) и [`../.openai/assistant_instructions.json`](../.openai/assistant_instructions.json). Устаревший `codex_integration.md` удалён, чтобы исключить конфликтующие правила.
+Актуальный шаблон системного промпта для запуска сессий: [codex_system_prompt.md](codex_system_prompt.md) (используется как удобный старт, но не заменяет правила из AGENTS/JSON).

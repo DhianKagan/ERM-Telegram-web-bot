@@ -2,6 +2,7 @@
 
 import dns from 'node:dns';
 import { createRequire } from 'node:module';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -11,7 +12,45 @@ const NETWORK_ERROR_CODES = new Set(['ENETUNREACH', 'ERR_INVALID_IP_ADDRESS']);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const repoRoot = path.resolve(__dirname, '..');
 const requireFromApi = createRequire(path.join(__dirname, '../apps/api/package.json'));
+
+const tryLoadMongoUrlFromEnvFiles = () => {
+  if (process.env.MONGO_DATABASE_URL) {
+    return;
+  }
+
+  const candidates = [
+    path.resolve(process.cwd(), '.env.test'),
+    path.resolve(process.cwd(), '.env'),
+    path.join(repoRoot, 'apps/api/.env.test'),
+    path.join(repoRoot, 'apps/api/.env'),
+  ];
+
+  for (const envPath of candidates) {
+    if (!existsSync(envPath)) {
+      continue;
+    }
+
+    const content = readFileSync(envPath, 'utf8');
+    const line = content
+      .split(/\r?\n/)
+      .find((rawLine) => rawLine.startsWith('MONGO_DATABASE_URL='));
+
+    if (!line) {
+      continue;
+    }
+
+    const value = line.slice('MONGO_DATABASE_URL='.length).trim();
+    if (!value) {
+      continue;
+    }
+
+    process.env.MONGO_DATABASE_URL = value;
+    console.log(`[ensure-mongodb-binary] loaded MONGO_DATABASE_URL from ${path.relative(repoRoot, envPath)}`);
+    return;
+  }
+};
 
 const getErrorCode = (error) => {
   if (!error || typeof error !== 'object') {
@@ -28,6 +67,8 @@ const warmupMongoBinary = async () => {
 };
 
 const run = async () => {
+  tryLoadMongoUrlFromEnvFiles();
+
   if (process.env.MONGO_DATABASE_URL) {
     console.log('[ensure-mongodb-binary] skip warmup: external MONGO_DATABASE_URL is configured');
     return;

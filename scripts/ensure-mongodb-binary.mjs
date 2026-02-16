@@ -28,6 +28,11 @@ const warmupMongoBinary = async () => {
 };
 
 const run = async () => {
+  if (process.env.MONGO_DATABASE_URL) {
+    console.log('[ensure-mongodb-binary] skip warmup: external MONGO_DATABASE_URL is configured');
+    return;
+  }
+
   try {
     await warmupMongoBinary();
     console.log('[ensure-mongodb-binary] MongoDB binary is ready');

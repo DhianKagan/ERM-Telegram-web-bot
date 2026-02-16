@@ -2,10 +2,8 @@ process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 'token';
 process.env.CHAT_ID = '1';
 process.env.JWT_SECRET = 'secret';
-process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
+process.env.MONGO_DATABASE_URL ||= 'mongodb://localhost/db';
 process.env.APP_URL = 'https://localhost';
-
-import '../../../tests/setupMongoMemoryServer';
 
 import mongoose, { Types } from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
@@ -17,14 +15,58 @@ jest.setTimeout(60_000);
 
 describe('MongoDB Integrity & Transactions', () => {
   let taskIds: Types.ObjectId[] = [];
+  let createdTaskIds: Types.ObjectId[] = [];
+  let createdRoutePlanIds: Types.ObjectId[] = [];
   let mongod: MongoMemoryServer | null = null;
   let skipSuite = false;
+  let usingExternalMongo = false;
+
+  const shouldUseExternalMongo = (): boolean => {
+    const mongoUrl = process.env.MONGO_DATABASE_URL;
+    if (!mongoUrl) return false;
+    if (mongoUrl === 'mongodb://localhost/db') return false;
+    if (mongoUrl.includes('localhost:27017/ermdb')) return false;
+    return true;
+  };
 
   beforeAll(async () => {
     try {
+      if (shouldUseExternalMongo()) {
+        usingExternalMongo = true;
+        await mongoose.connect(process.env.MONGO_DATABASE_URL as string);
+        return;
+      }
+
+      await import('../../../tests/setupMongoMemoryServer');
       mongod = await MongoMemoryServer.create();
       await mongoose.connect(mongod.getUri());
     } catch (error) {
+      if (usingExternalMongo) {
+        usingExternalMongo = false;
+        try {
+          await import('../../../tests/setupMongoMemoryServer');
+          mongod = await MongoMemoryServer.create();
+          await mongoose.connect(mongod.getUri());
+          console.warn(
+            'Внешняя MongoDB недоступна, выполнен fallback на MongoMemoryServer',
+            {
+              error,
+            },
+          );
+          return;
+        } catch (fallbackError) {
+          skipSuite = true;
+          console.warn(
+            'MongoMemoryServer недоступен, пропускаем mongo_integrity.test',
+            {
+              error,
+              fallbackError,
+            },
+          );
+          return;
+        }
+      }
+
       skipSuite = true;
       console.warn(
         'MongoMemoryServer недоступен, пропускаем mongo_integrity.test',
@@ -36,9 +78,20 @@ describe('MongoDB Integrity & Transactions', () => {
   });
 
   afterAll(async () => {
-    if (skipSuite || !mongod) return;
+    if (skipSuite) return;
+
+    if (createdTaskIds.length > 0) {
+      await Task.deleteMany({ _id: { $in: createdTaskIds } });
+    }
+
+    if (createdRoutePlanIds.length > 0) {
+      await RoutePlan.deleteMany({ _id: { $in: createdRoutePlanIds } });
+    }
+
     await mongoose.disconnect();
-    await mongod.stop();
+    if (mongod) {
+      await mongod.stop();
+    }
   });
 
   it('should unassign tasks when RoutePlan is deleted', async () => {
@@ -48,12 +101,14 @@ describe('MongoDB Integrity & Transactions', () => {
       { title: 'Task 2', status: 'Новая' },
     ]);
     taskIds = tasks.map((t) => (t as { _id: Types.ObjectId })._id);
+    createdTaskIds.push(...taskIds);
 
     const plan = await RoutePlan.create({
       title: 'Test Plan',
       status: 'draft',
       tasks: taskIds,
     });
+    createdRoutePlanIds.push((plan as { _id: Types.ObjectId })._id);
 
     await Task.updateMany({ _id: { $in: taskIds } }, { routePlanId: plan._id });
 
@@ -74,12 +129,14 @@ describe('MongoDB Integrity & Transactions', () => {
       title: 'Task To Delete',
       status: 'Новая',
     });
+    createdTaskIds.push((task as { _id: Types.ObjectId })._id);
 
     const plan = await RoutePlan.create({
       title: 'Plan For Task Deletion',
       status: 'draft',
       tasks: [(task as { _id: Types.ObjectId })._id],
     });
+    createdRoutePlanIds.push((plan as { _id: Types.ObjectId })._id);
     await Task.updateOne(
       { _id: (task as { _id: Types.ObjectId })._id },
       { routePlanId: plan._id },
@@ -103,6 +160,7 @@ describe('MongoDB Integrity & Transactions', () => {
         title: 'Transaction Task',
         status: 'Новая',
       });
+      createdTaskIds.push((task as { _id: Types.ObjectId })._id);
 
       const result = await createDraftFromInputs(
         [
@@ -116,6 +174,7 @@ describe('MongoDB Integrity & Transactions', () => {
 
       expect(result).toBeDefined();
       expect(result.id).toBeDefined();
+      createdRoutePlanIds.push(new Types.ObjectId(result.id));
 
       const updatedTask = await Task.findById(
         (task as { _id: Types.ObjectId })._id,

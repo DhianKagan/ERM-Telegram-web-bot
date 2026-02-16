@@ -2,10 +2,8 @@ process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 'token';
 process.env.CHAT_ID = '1';
 process.env.JWT_SECRET = 'secret';
-process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
+process.env.MONGO_DATABASE_URL ||= 'mongodb://localhost/db';
 process.env.APP_URL = 'https://localhost';
-
-import '../../../tests/setupMongoMemoryServer';
 
 import mongoose, { Types } from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
@@ -19,12 +17,54 @@ describe('MongoDB Integrity & Transactions', () => {
   let taskIds: Types.ObjectId[] = [];
   let mongod: MongoMemoryServer | null = null;
   let skipSuite = false;
+  let usingExternalMongo = false;
+
+  const shouldUseExternalMongo = (): boolean => {
+    const mongoUrl = process.env.MONGO_DATABASE_URL;
+    if (!mongoUrl) return false;
+    if (mongoUrl === 'mongodb://localhost/db') return false;
+    if (mongoUrl.includes('localhost:27017/ermdb')) return false;
+    return true;
+  };
 
   beforeAll(async () => {
     try {
+      if (shouldUseExternalMongo()) {
+        usingExternalMongo = true;
+        await mongoose.connect(process.env.MONGO_DATABASE_URL as string);
+        return;
+      }
+
+      await import('../../../tests/setupMongoMemoryServer');
       mongod = await MongoMemoryServer.create();
       await mongoose.connect(mongod.getUri());
     } catch (error) {
+      if (usingExternalMongo) {
+        usingExternalMongo = false;
+        try {
+          await import('../../../tests/setupMongoMemoryServer');
+          mongod = await MongoMemoryServer.create();
+          await mongoose.connect(mongod.getUri());
+          console.warn(
+            'Внешняя MongoDB недоступна, выполнен fallback на MongoMemoryServer',
+            {
+              error,
+            },
+          );
+          return;
+        } catch (fallbackError) {
+          skipSuite = true;
+          console.warn(
+            'MongoMemoryServer недоступен, пропускаем mongo_integrity.test',
+            {
+              error,
+              fallbackError,
+            },
+          );
+          return;
+        }
+      }
+
       skipSuite = true;
       console.warn(
         'MongoMemoryServer недоступен, пропускаем mongo_integrity.test',
@@ -36,9 +76,23 @@ describe('MongoDB Integrity & Transactions', () => {
   });
 
   afterAll(async () => {
-    if (skipSuite || !mongod) return;
+    if (skipSuite) return;
+
+    await Task.deleteMany({
+      title: {
+        $in: ['Task 1', 'Task 2', 'Task To Delete', 'Transaction Task'],
+      },
+    });
+    await RoutePlan.deleteMany({
+      title: {
+        $in: ['Test Plan', 'Plan For Task Deletion', 'Transaction Plan'],
+      },
+    });
+
     await mongoose.disconnect();
-    await mongod.stop();
+    if (mongod) {
+      await mongod.stop();
+    }
   });
 
   it('should unassign tasks when RoutePlan is deleted', async () => {

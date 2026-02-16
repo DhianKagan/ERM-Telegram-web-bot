@@ -65,7 +65,6 @@ minio server /data --console-address :9001
 - Критично, чтобы значение региона в клиенте совпадало с ожиданиями S3-сервера. Для MinIO обычно используется `us-east-1`, даже если инфраструктура физически в Европе.
 - Для **AWS S3 managed** указывайте реальный регион bucket (например, `eu-west-1`), а не регион Railway.
 
-
 ### 1.7 Как проверить текущий single-container режим перед отказом от `-erm-volume`
 
 Важно: в текущей версии `apps/api` файловый сервис пишет в локальный `STORAGE_DIR` (через `fs`), а переменные `S3_*` из runbook пока не используются кодом напрямую.
@@ -80,7 +79,6 @@ minio server /data --console-address :9001
 4. Проверьте в логах/диагностике, что путь файла формируется из `STORAGE_DIR`, а не из `S3_ENDPOINT`.
 
 Вывод: пока не внедрён S3-adapter в API, проверить «реальную запись в S3 вместо volume» на уровне приложения нельзя — можно проверить только готовность инфраструктуры (доступность MinIO endpoint и ключей).
-
 
 ---
 
@@ -151,3 +149,59 @@ minio server /data --console-address :9001
 
 - Нужно "поднять сегодня" внутри Railway: берите **MinIO (Вариант A)**.
 - Нужен production без операционного долга: берите **managed S3 (Вариант B)**.
+
+---
+
+## 7) Runbook миграции storage-records (audit → dry-run → apply → smoke-check API)
+
+Ниже порядок, который безопасно запускать на Railway shell/console для `erm-api`.
+
+### 7.1 Audit (только чтение)
+
+```bash
+pnpm exec tsx scripts/db/audit_storage_records.ts
+```
+
+Ожидаемый результат: JSON-отчёт с категориями `valid_s3`, `legacy_local`, `broken_ref`, `missing_file_doc` и `sample_id`.
+
+### 7.2 Migrate в DRY_RUN
+
+```bash
+DRY_RUN=true APPLY=false \
+BATCH_SIZE=200 MAX_UPDATES=1000 \
+CHECKPOINT_FILE=scripts/db/.migrate_storage_records.checkpoint.json \
+pnpm exec tsx scripts/db/migrate_storage_records.ts
+```
+
+Ожидаемый результат: без изменений в БД, только отчёт `stats` + `sample_id` + путь к checkpoint.
+
+### 7.3 Migrate в APPLY
+
+```bash
+DRY_RUN=false APPLY=true \
+BATCH_SIZE=200 MAX_UPDATES=1000 \
+CHECKPOINT_FILE=scripts/db/.migrate_storage_records.checkpoint.json \
+pnpm exec tsx scripts/db/migrate_storage_records.ts
+```
+
+Что делает APPLY:
+
+- удаляет/чистит legacy/broken/missing ссылки в `tasks.attachments` и `tasks.files`;
+- нормализует ссылки к каноничному виду `/api/v1/files/<id>`;
+- нормализует `files.path` из legacy local пути (`/uploads/...`) в storage-key формат;
+- пишет checkpoint и позволяет продолжить миграцию с последнего `_id`.
+
+Для ручного resume:
+
+```bash
+DRY_RUN=false APPLY=true START_AFTER_ID=<last_id_from_checkpoint> \
+pnpm exec tsx scripts/db/migrate_storage_records.ts
+```
+
+### 7.4 Smoke-check API после APPLY
+
+Минимальные проверки:
+
+1. `GET /api/v1/storage/files` возвращает список без 500.
+2. `GET /api/v1/files/:id` по нескольким `sample_id` отдаёт файл/корректную ошибку 404.
+3. Открытие задач с вложениями в UI не ломается, ссылки ведут на `/api/v1/files/<id>`.

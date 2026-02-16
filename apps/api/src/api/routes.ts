@@ -739,6 +739,27 @@ export default async function registerRoutes(
       res.status(404).end();
       return;
     }
+
+    const allowedSpaPrefixes = [
+      '/login',
+      '/menu',
+      '/tasks',
+      '/requests',
+      '/events',
+      '/mg',
+      '/cp',
+      '/theme',
+      '/profile',
+      '/index',
+    ];
+    const isKnownSpaPath = allowedSpaPrefixes.some(
+      (prefix) => req.path === prefix || req.path.startsWith(`${prefix}/`),
+    );
+    if (!isKnownSpaPath) {
+      res.redirect(302, '/index');
+      return;
+    }
+
     try {
       const template = await loadIndexTemplate(pub);
       const nonce = String(res.locals.cspNonce ?? '');

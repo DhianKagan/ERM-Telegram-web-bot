@@ -26,7 +26,26 @@ describe('MongoDB Integrity & Transactions', () => {
     if (!mongoUrl) return false;
     if (mongoUrl === 'mongodb://localhost/db') return false;
     if (mongoUrl.includes('localhost:27017/ermdb')) return false;
-    return true;
+    try {
+      const parsed = new URL(mongoUrl);
+      if (!['mongodb:', 'mongodb+srv:'].includes(parsed.protocol)) return false;
+      if (['localhost', '127.0.0.1', '::1', 'http'].includes(parsed.hostname)) {
+        return false;
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  };
+
+  const getMongoHost = (): string | null => {
+    const mongoUrl = process.env.MONGO_DATABASE_URL;
+    if (!mongoUrl) return null;
+    try {
+      return new URL(mongoUrl).host;
+    } catch {
+      return null;
+    }
   };
 
   beforeAll(async () => {
@@ -34,6 +53,12 @@ describe('MongoDB Integrity & Transactions', () => {
       if (shouldUseExternalMongo()) {
         usingExternalMongo = true;
         await mongoose.connect(process.env.MONGO_DATABASE_URL as string);
+        const host = getMongoHost();
+        if (host) {
+          console.info(
+            `mongo_integrity.test: подтверждена внешняя MongoDB по ссылке ${host}`,
+          );
+        }
         return;
       }
 
@@ -121,6 +146,17 @@ describe('MongoDB Integrity & Transactions', () => {
 
     const tasksAfter = await Task.find({ _id: { $in: taskIds } });
     tasksAfter.forEach((t) => expect(t.routePlanId).toBeNull());
+  });
+
+  it('should confirm that public Mongo link is read when provided', async () => {
+    if (skipSuite) return;
+    if (!shouldUseExternalMongo() || !usingExternalMongo) return;
+    const host = getMongoHost();
+    expect(host).not.toBeNull();
+    expect(host).not.toContain('localhost');
+    expect(host).not.toContain('127.0.0.1');
+
+    await mongoose.connection.db?.admin().ping();
   });
 
   it('should remove task from RoutePlan when Task is deleted', async () => {

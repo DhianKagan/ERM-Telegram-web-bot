@@ -221,21 +221,47 @@ async function main(): Promise<void> {
 
   try {
     const fileIds = new Set<string>();
-    const fileDocs = await File.find().select(['_id', 'path']).lean();
-    const fileDocPathUpdates: Array<{ _id: Types.ObjectId; path: string }> = [];
+    const fileDocs = await File.find()
+      .select(['_id', 'path', 'thumbnailPath'])
+      .lean();
+    const fileDocPathUpdates: Array<{
+      _id: Types.ObjectId;
+      path?: string;
+      thumbnailPath?: string;
+    }> = [];
     fileDocs.forEach((file) => {
       const id = normalizeObjectId(file._id);
       if (id) {
         fileIds.add(id);
       }
+      const nextFileDocUpdate: {
+        _id: Types.ObjectId;
+        path?: string;
+        thumbnailPath?: string;
+      } = { _id: file._id };
+
       if (typeof file.path === 'string') {
         const nextPath = normalizePathToStorageKey(file.path);
         if (nextPath && nextPath !== file.path) {
           if (!sampleIds.file_doc_path) {
             sampleIds.file_doc_path = id ?? file.path;
           }
-          fileDocPathUpdates.push({ _id: file._id, path: nextPath });
+          nextFileDocUpdate.path = nextPath;
         }
+      }
+
+      if (typeof file.thumbnailPath === 'string') {
+        const nextThumbnailPath = normalizePathToStorageKey(file.thumbnailPath);
+        if (nextThumbnailPath && nextThumbnailPath !== file.thumbnailPath) {
+          if (!sampleIds.file_doc_thumbnail_path) {
+            sampleIds.file_doc_thumbnail_path = id ?? file.thumbnailPath;
+          }
+          nextFileDocUpdate.thumbnailPath = nextThumbnailPath;
+        }
+      }
+
+      if (nextFileDocUpdate.path || nextFileDocUpdate.thumbnailPath) {
+        fileDocPathUpdates.push(nextFileDocUpdate);
       }
     });
 
@@ -374,14 +400,21 @@ async function main(): Promise<void> {
       for (const update of fileDocPathUpdates) {
         if (remainingUpdates <= 0) {
           console.warn(
-            `Достигнут лимит MAX_UPDATES=${MAX_UPDATES} при нормализации File.path`,
+            `Достигнут лимит MAX_UPDATES=${MAX_UPDATES} при нормализации File.path/File.thumbnailPath`,
           );
           break;
         }
-        await File.updateOne(
-          { _id: update._id },
-          { $set: { path: update.path } },
-        ).exec();
+        const updateSet: Record<string, string> = {};
+        if (typeof update.path === 'string') {
+          updateSet.path = update.path;
+        }
+        if (typeof update.thumbnailPath === 'string') {
+          updateSet.thumbnailPath = update.thumbnailPath;
+        }
+        if (!Object.keys(updateSet).length) {
+          continue;
+        }
+        await File.updateOne({ _id: update._id }, { $set: updateSet }).exec();
         stats.file_docs_normalized += 1;
         stats.updates_applied += 1;
         remainingUpdates -= 1;

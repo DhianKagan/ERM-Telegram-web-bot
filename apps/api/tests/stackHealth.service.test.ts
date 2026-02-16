@@ -11,7 +11,7 @@ describe('StackHealthService', () => {
     jest.restoreAllMocks();
   });
 
-  test('run возвращает проверки s3/storage/redis/mongo без proxy', async () => {
+  test('run возвращает проверки s3/storage/redis/mongo/bullmq без proxy', async () => {
     const service = new StackHealthService();
 
     jest.spyOn(service, 'checkS3').mockResolvedValue({
@@ -39,6 +39,12 @@ describe('StackHealthService', () => {
       durationMs: 9,
     } satisfies StackCheckResult);
 
+    jest.spyOn(service, 'checkBullmq').mockResolvedValue({
+      name: 'bullmq',
+      status: 'ok',
+      durationMs: 6,
+    } satisfies StackCheckResult);
+
     const report = await service.run({});
 
     expect(report.ok).toBe(true);
@@ -47,6 +53,7 @@ describe('StackHealthService', () => {
       'storage',
       'redis',
       'mongo',
+      'bullmq',
     ]);
     expect(report.results.every((item) => item.name !== 'proxy')).toBe(true);
 
@@ -78,6 +85,11 @@ describe('StackHealthService', () => {
     } satisfies StackCheckResult);
     jest.spyOn(service, 'checkMongo').mockResolvedValue({
       name: 'mongo',
+      status: 'ok',
+      durationMs: 2,
+    } satisfies StackCheckResult);
+    jest.spyOn(service, 'checkBullmq').mockResolvedValue({
+      name: 'bullmq',
       status: 'ok',
       durationMs: 2,
     } satisfies StackCheckResult);

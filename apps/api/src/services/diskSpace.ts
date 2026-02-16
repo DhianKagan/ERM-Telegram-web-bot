@@ -17,6 +17,12 @@ const diskFreeGauge = new Gauge({
   registers: [register],
 });
 
+const diskTotalGauge = new Gauge({
+  name: 'disk_total_bytes',
+  help: 'Общий объём диска в байтах',
+  registers: [register],
+});
+
 const THRESHOLD = Number(process.env.DISK_FREE_WARN || 1073741824);
 let warned = false;
 let monitor: NodeJS.Timeout | null = null;
@@ -25,7 +31,9 @@ export async function checkDiskSpace(): Promise<void> {
   try {
     const st = await fs.promises.statfs(uploadsDir);
     const free = st.bfree * st.bsize;
+    const total = st.blocks * st.bsize;
     diskFreeGauge.set(free);
+    diskTotalGauge.set(total);
     if (free < THRESHOLD && !warned) {
       warned = true;
       const groupChatId = resolveChatId();

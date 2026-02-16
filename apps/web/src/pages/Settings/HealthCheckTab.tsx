@@ -96,7 +96,7 @@ export default function HealthCheckTab(): JSX.Element {
     <div className="flex flex-col gap-4">
       <SettingsSectionHeader
         title="Мониторинг"
-        description="Проверка прокси, Redis и MongoDB"
+        description="Проверка S3, /storage, Redis и MongoDB"
         icon={ShieldCheckIcon}
         controls={
           <div className="grid gap-2">
@@ -136,6 +136,14 @@ export default function HealthCheckTab(): JSX.Element {
             <span className="text-sm text-slate-600 dark:text-slate-300">
               Последний запуск: {formatDateTime(lastRun)}
             </span>
+            <a
+              href="/metrics"
+              target="_blank"
+              rel="noreferrer"
+              className="text-sm font-medium text-emerald-700 hover:underline dark:text-emerald-300"
+            >
+              Открыть Prometheus-метрики (/metrics)
+            </a>
           </div>
         }
       />

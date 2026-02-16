@@ -32,6 +32,7 @@ export type FileRecord = FileDocument & {
 };
 
 export type CreateFilePayload = {
+  id?: Types.ObjectId;
   userId: number;
   name: string;
   path: string;
@@ -94,6 +95,7 @@ export const createFileRecord = async (
   );
   const detached = payload.detached ?? (!payload.taskId && !payload.draftId);
   const doc = await File.create({
+    _id: payload.id,
     userId: payload.userId,
     name: payload.name,
     path: payload.path,

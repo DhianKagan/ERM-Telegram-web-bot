@@ -16,6 +16,7 @@ import connect from '../db/connection';
 import { queueConfig } from '../config/queue';
 import { uploadsDir } from '../config/storage';
 import { runS3Healthcheck } from '../services/s3Health';
+import { getQueueBundle } from '../queues/taskQueue';
 import { register } from '../metrics';
 import client from 'prom-client';
 
@@ -79,6 +80,29 @@ const stackHealthCheckDurationGauge = getOrCreateMetric(
     new client.Gauge({
       name: 'stack_health_check_duration_ms',
       help: 'Длительность проверки компонента в миллисекундах',
+      labelNames: ['component'],
+      registers: [register],
+    }),
+);
+
+const dependencyCheckDuration = getOrCreateMetric(
+  'stack_dependency_check_duration_seconds',
+  () =>
+    new client.Histogram({
+      name: 'stack_dependency_check_duration_seconds',
+      help: 'Длительность проверок зависимостей в секундах',
+      labelNames: ['component', 'status'],
+      buckets: [0.005, 0.01, 0.05, 0.1, 0.3, 1, 3, 5],
+      registers: [register],
+    }),
+);
+
+const dependencyErrorsTotal = getOrCreateMetric(
+  'stack_dependency_errors_total',
+  () =>
+    new client.Counter({
+      name: 'stack_dependency_errors_total',
+      help: 'Количество ошибок проверок зависимостей',
       labelNames: ['component'],
       registers: [register],
     }),
@@ -206,6 +230,9 @@ export default class StackHealthService {
       await fs.writeFile(tempPath, 'ok', { encoding: 'utf8' });
       const readBack = await fs.readFile(tempPath, 'utf8');
       await fs.unlink(tempPath);
+      const fsStats = await fs.statfs(root);
+      const freeBytes = fsStats.bfree * fsStats.bsize;
+      const totalBytes = fsStats.blocks * fsStats.bsize;
 
       if (readBack !== 'ok') {
         throw new Error('Контрольная запись /storage не совпала');
@@ -217,6 +244,8 @@ export default class StackHealthService {
         durationMs: Math.round(performance.now() - startedAt),
         meta: {
           directory: root,
+          freeBytes,
+          totalBytes,
           hint: 'Локальное хранилище доступно для чтения и записи.',
         },
       } satisfies StackCheckResult;
@@ -271,6 +300,11 @@ export default class StackHealthService {
 
       const memoryInfo = await client.info('memory');
       const keyspaceInfo = await client.info('keyspace');
+      const clientsInfo = await client.info('clients');
+      const usedMemoryMatch = memoryInfo.match(/^used_memory:(\d+)$/m);
+      const connectedClientsMatch = clientsInfo.match(
+        /^connected_clients:(\d+)$/m,
+      );
       const cacheCount = await countKeys(client, 'cache:*');
       const lockCount = await countKeys(client, 'lock:*');
 
@@ -292,6 +326,10 @@ export default class StackHealthService {
         meta: {
           cacheCount,
           lockCount,
+          usedMemoryBytes: usedMemoryMatch ? Number(usedMemoryMatch[1]) : null,
+          connectedClients: connectedClientsMatch
+            ? Number(connectedClientsMatch[1])
+            : null,
           queues,
           memoryInfo: memoryInfo.slice(0, 400),
           keyspaceInfo,
@@ -310,6 +348,63 @@ export default class StackHealthService {
       } catch {
         // игнорируем ошибки отключения
       }
+    }
+  }
+
+  async checkBullmq(options: {
+    queueNames: QueueName[];
+  }): Promise<StackCheckResult> {
+    const startedAt = performance.now();
+    const queueSummaries: Record<string, unknown> = {};
+
+    try {
+      for (const queueName of options.queueNames) {
+        const bundle = getQueueBundle(queueName);
+        if (!bundle) {
+          queueSummaries[queueName] = { enabled: false };
+          continue;
+        }
+
+        const counts = await bundle.queue.getJobCounts(
+          'waiting',
+          'active',
+          'delayed',
+          'failed',
+          'completed',
+        );
+        queueSummaries[queueName] = {
+          waiting: counts.waiting ?? 0,
+          active: counts.active ?? 0,
+          delayed: counts.delayed ?? 0,
+          failed: counts.failed ?? 0,
+          completed: counts.completed ?? 0,
+        };
+      }
+
+      const hasFailedJobs = Object.values(queueSummaries).some((item) => {
+        if (!item || typeof item !== 'object') {
+          return false;
+        }
+        const maybeFailed = (item as { failed?: unknown }).failed;
+        return typeof maybeFailed === 'number' && maybeFailed > 0;
+      });
+
+      return {
+        name: 'bullmq',
+        status: hasFailedJobs ? 'warn' : 'ok',
+        durationMs: Math.round(performance.now() - startedAt),
+        meta: {
+          queues: queueSummaries,
+          enabled: queueConfig.enabled,
+        },
+      } satisfies StackCheckResult;
+    } catch (error: unknown) {
+      return {
+        name: 'bullmq',
+        status: 'error',
+        durationMs: Math.round(performance.now() - startedAt),
+        message: pickMessage(error),
+      } satisfies StackCheckResult;
     }
   }
 
@@ -355,18 +450,30 @@ export default class StackHealthService {
     const s3Result = await this.checkS3();
     const storageResult = await this.checkStorage();
 
+    const selectedQueueNames = options.queueNames ?? [
+      QueueName.LogisticsGeocoding,
+      QueueName.LogisticsRouting,
+      QueueName.DeadLetter,
+    ];
+
     const redisResult = await this.checkRedis({
       redisUrl: options.redisUrl,
       queuePrefix: options.queuePrefix ?? queueConfig.prefix,
-      queueNames: options.queueNames ?? [
-        QueueName.LogisticsGeocoding,
-        QueueName.LogisticsRouting,
-      ],
+      queueNames: selectedQueueNames,
     });
 
     const mongoResult = await this.checkMongo();
+    const bullmqResult = await this.checkBullmq({
+      queueNames: selectedQueueNames,
+    });
 
-    const results = [s3Result, storageResult, redisResult, mongoResult];
+    const results = [
+      s3Result,
+      storageResult,
+      redisResult,
+      mongoResult,
+      bullmqResult,
+    ];
     const aggregateStatus = getAggregateStatus(results);
     const ok = aggregateStatus !== 'error';
 
@@ -376,6 +483,12 @@ export default class StackHealthService {
         .set(STATUS_TO_METRIC[item.status]);
       if (typeof item.durationMs === 'number') {
         stackHealthCheckDurationGauge.labels(item.name).set(item.durationMs);
+        dependencyCheckDuration
+          .labels(item.name, item.status)
+          .observe(item.durationMs / 1000);
+      }
+      if (item.status === 'error') {
+        dependencyErrorsTotal.labels(item.name).inc();
       }
     }
     stackHealthStatusGauge.set(STATUS_TO_METRIC[aggregateStatus]);

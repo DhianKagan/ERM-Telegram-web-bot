@@ -61,6 +61,7 @@ import {
 import container from '../di';
 import { TOKENS } from '../di/tokens';
 import authService from '../auth/auth.service';
+import StackHealthService from '../system/stackHealth.service';
 import {
   telegramWebhookPath,
   telegramWebhookSecret,
@@ -361,6 +362,19 @@ export default async function registerRoutes(
   });
 
   const tmaAuthGuard = container.resolve<RequestHandler>(TOKENS.TmaAuthGuard);
+  const stackHealthService = container.resolve<StackHealthService>(
+    TOKENS.StackHealthService,
+  );
+
+  const pickEnv = (keys: string[]): string | undefined => {
+    for (const key of keys) {
+      const value = process.env[key];
+      if (value && value.trim()) {
+        return value.trim();
+      }
+    }
+    return undefined;
+  };
 
   /**
    * @openapi
@@ -384,6 +398,37 @@ export default async function registerRoutes(
   );
 
   app.get('/health', asyncHandler(healthcheck));
+  app.get(
+    '/api/monitor/health',
+    asyncHandler(async (_req: Request, res: Response) => {
+      const redisUrl = pickEnv(['QUEUE_REDIS_URL', 'REDIS_URL']);
+      const queuePrefix = pickEnv(['QUEUE_PREFIX']);
+      const report = await stackHealthService.run({
+        redisUrl,
+        queuePrefix,
+      });
+      const statusCode = report.results.some((item) => item.status === 'error')
+        ? 503
+        : 200;
+      const checks = report.results.reduce<Record<string, unknown>>(
+        (acc, item) => {
+          acc[item.name] = {
+            status: item.status,
+            durationMs: item.durationMs,
+            message: item.message,
+            meta: item.meta,
+          };
+          return acc;
+        },
+        {},
+      );
+      res.status(statusCode).json({
+        status: report.ok ? 'ok' : 'error',
+        timestamp: report.timestamp,
+        checks,
+      });
+    }),
+  );
   app.get('/metrics', async (_req: Request, res: Response) => {
     res.set('Content-Type', register.contentType);
     res.end(await register.metrics());

@@ -47,16 +47,21 @@ minio server /data --console-address :9001
 
 В сервисе `erm-api` добавьте переменные:
 
+- `STORAGE_BACKEND=s3`
+- `STORAGE_DIR=/tmp/erm-storage`
 - `S3_ENDPOINT=http://erm-s3.railway.internal:9000`
 - `S3_REGION=us-east-1`
 - `S3_BUCKET=erm-files`
 - `S3_ACCESS_KEY_ID=<MINIO_ROOT_USER>`
 - `S3_SECRET_ACCESS_KEY=<MINIO_ROOT_PASSWORD>`
 - `S3_FORCE_PATH_STYLE=true`
+- `S3_USE_SSL` (опционально; обычно не нужен, схема берётся из `S3_ENDPOINT`)
 
 > Для приватной сети Railway используйте internal hostname `*.railway.internal`.
 >
 > Если подключаетесь через публичный домен (`https://...up.railway.app`) вместо internal hostname, оставляйте `https` endpoint и используйте те же ключи MinIO.
+
+Важно про `STORAGE_DIR`: даже при `STORAGE_BACKEND=s3` API продолжает использовать локальную директорию для совместимости и служебных путей (`/uploads`), поэтому оставляйте существующий путь (например, `/tmp/erm-storage`).
 
 ### 1.6 FAQ: какой `S3_REGION` ставить, если Railway в EU West?
 
@@ -65,20 +70,15 @@ minio server /data --console-address :9001
 - Критично, чтобы значение региона в клиенте совпадало с ожиданиями S3-сервера. Для MinIO обычно используется `us-east-1`, даже если инфраструктура физически в Европе.
 - Для **AWS S3 managed** указывайте реальный регион bucket (например, `eu-west-1`), а не регион Railway.
 
-### 1.7 Как проверить текущий single-container режим перед отказом от `-erm-volume`
+### 1.7 Важный нюанс: private endpoint и внешние ссылки
 
-Важно: в текущей версии `apps/api` файловый сервис пишет в локальный `STORAGE_DIR` (через `fs`), а переменные `S3_*` из runbook пока не используются кодом напрямую.
+`erm-api` может читать файл через backend и стримить его через собственные маршруты (`/api/v1/files/:id`), но presigned URL для превью формируются на основе `S3_ENDPOINT`.
 
-Быстрая проверка текущего состояния:
+Это означает:
 
-1. Убедитесь по коду, что используется локальный диск:
-   - `apps/api/src/config/storage.ts` читает `STORAGE_DIR`.
-   - `apps/api/src/services/dataStorage.ts` выполняет запись/чтение через `fs` в `uploadsDir`.
-2. В Railway временно установите `STORAGE_DIR=/tmp/erm-storage-check` для `erm-api` и перезапустите сервис.
-3. Загрузите тестовый файл через UI/API и убедитесь, что операции upload/download проходят.
-4. Проверьте в логах/диагностике, что путь файла формируется из `STORAGE_DIR`, а не из `S3_ENDPOINT`.
-
-Вывод: пока не внедрён S3-adapter в API, проверить «реальную запись в S3 вместо volume» на уровне приложения нельзя — можно проверить только готовность инфраструктуры (доступность MinIO endpoint и ключей).
+1. Если `S3_ENDPOINT` указывает на `*.railway.internal`, presigned URL будут внутренними и не откроются в браузере клиента.
+2. Для внешнего доступа используйте публичный `https://...up.railway.app` endpoint MinIO (bucket при этом можно оставить приватным).
+3. Если хотите полностью приватный MinIO, отдавайте файлы/thumbnail через API-ручки и не полагайтесь на прямые presigned URL во внешнем клиенте.
 
 ---
 
@@ -124,13 +124,26 @@ minio server /data --console-address :9001
 4. У бота и воркера нет зависимости от локального `/storage`.
 5. В логах нет ошибок авторизации S3 (`AccessDenied`, `InvalidAccessKeyId`, `SignatureDoesNotMatch`).
 
+Быстрые health-проверки после деплоя:
+
+```bash
+curl -sS https://<api-domain>/api/monitor/health | jq .
+
+curl -sS -H "Authorization: Bearer <ADMIN_TOKEN>" \
+  https://<api-domain>/api/v1/system/health/storage | jq .
+
+curl -sS -X POST -H "Authorization: Bearer <ADMIN_TOKEN>" \
+  https://<api-domain>/api/v1/system/health/run | jq .
+```
+
 ### 4.1 Cutover-чеклист перед отказом от `-erm-volume`
 
 1. В `erm-api` заполнены S3-переменные (`S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_FORCE_PATH_STYLE`).
-2. `S3_ENDPOINT` использует правильную схему (`https://` для публичного Railway endpoint, `http://` для private `*.railway.internal`).
-3. Доступен хотя бы один тестовый upload/download без использования локального пути `/storage`.
-4. `STORAGE_DIR` оставлен только как временный fallback и не является обязательной зависимостью для рантайма.
-5. Только после успешной проверки можно отключать volume для приложения (`erm-api`), оставляя volume только у самого S3-сервиса (MinIO), если он self-hosted.
+2. Установлен `STORAGE_BACKEND=s3`.
+3. `STORAGE_DIR` указывает на существующую директорию (например, `/tmp/erm-storage`) для служебной совместимости.
+4. `S3_ENDPOINT` использует правильную схему (`https://` для публичного Railway endpoint, `http://` для private `*.railway.internal`).
+5. Доступен хотя бы один тестовый upload/download через API (`/api/v1/files/:id`) после включения `STORAGE_BACKEND=s3`.
+6. Только после успешной проверки можно отключать volume для приложения (`erm-api`), оставляя volume только у самого S3-сервиса (MinIO), если он self-hosted.
 
 ---
 

@@ -12,6 +12,13 @@ import {
 import { geocodeAddress } from '../geo/geocoder';
 import { getOsrmDistance } from '../geo/osrm';
 import { queueConfig } from '../config/queue';
+import {
+  bullmqJobProcessingDurationSeconds,
+  bullmqJobsProcessedTotal,
+  bullmqJobWaitDurationSeconds,
+  normalizeBullMqErrorClass,
+  type BullMqJobStatus,
+} from '../metrics';
 
 type QueueBundle = {
   queue: Queue;
@@ -125,18 +132,72 @@ export const closeQueueBundles = async (): Promise<void> => {
 };
 
 const waitForResult = async <T>(
+  queueName: QueueName,
+  jobName: QueueJobName,
+  queue: Queue,
   job: Job,
   events: QueueEvents,
   fallback: () => Promise<T>,
 ): Promise<T> => {
+  const waitStartedAt = Date.now();
+
+  const observeWait = (status: BullMqJobStatus): void => {
+    bullmqJobWaitDurationSeconds.observe(
+      { queue: queueName, job: jobName, status },
+      (Date.now() - waitStartedAt) / 1000,
+    );
+  };
+
+  const observeProcessing = async (status: BullMqJobStatus): Promise<void> => {
+    try {
+      if (!job.id) {
+        return;
+      }
+      const freshJob = await queue.getJob(job.id);
+      if (!freshJob?.processedOn || !freshJob?.finishedOn) {
+        return;
+      }
+      const durationSeconds = Math.max(
+        0,
+        (freshJob.finishedOn - freshJob.processedOn) / 1000,
+      );
+      bullmqJobProcessingDurationSeconds.observe(
+        { queue: queueName, job: jobName, status },
+        durationSeconds,
+      );
+    } catch {
+      // игнорируем ошибки получения job-метаданных
+    }
+  };
+
   try {
     const result = await job.waitUntilFinished(
       events,
       queueConfig.jobTimeoutMs,
     );
+    observeWait('completed');
+    bullmqJobsProcessedTotal.inc({
+      queue: queueName,
+      job: jobName,
+      status: 'completed',
+      error_class: 'unknown',
+    });
+    await observeProcessing('completed');
     return result as T;
   } catch (error) {
     console.error('Не удалось дождаться результата задачи BullMQ', error);
+    const isTimeout =
+      error instanceof Error &&
+      error.message.toLowerCase().includes('timed out');
+    const status: BullMqJobStatus = isTimeout ? 'timeout' : 'failed';
+    observeWait(status);
+    bullmqJobsProcessedTotal.inc({
+      queue: queueName,
+      job: jobName,
+      status,
+      error_class: normalizeBullMqErrorClass(error),
+    });
+    await observeProcessing(status);
     return fallback();
   }
 };
@@ -146,6 +207,12 @@ export const requestGeocodingJob = async (
 ): Promise<GeocodingJobResult> => {
   const bundle = getQueueBundle(QueueName.LogisticsGeocoding);
   if (!bundle) {
+    bullmqJobsProcessedTotal.inc({
+      queue: QueueName.LogisticsGeocoding,
+      job: QueueJobName.GeocodeAddress,
+      status: 'failed',
+      error_class: 'unknown',
+    });
     return geocodeAddress(address);
   }
 
@@ -155,8 +222,13 @@ export const requestGeocodingJob = async (
       ...buildJobOptions(),
       jobId: buildJobId('geocode', payload),
     });
-    return waitForResult<GeocodingJobResult>(job, bundle.events, () =>
-      geocodeAddress(address),
+    return waitForResult<GeocodingJobResult>(
+      QueueName.LogisticsGeocoding,
+      QueueJobName.GeocodeAddress,
+      bundle.queue,
+      job,
+      bundle.events,
+      () => geocodeAddress(address),
     );
   } catch (error) {
     console.error(
@@ -182,6 +254,12 @@ export const requestRouteDistanceJob = async (
 ): Promise<RouteDistanceJobResult> => {
   const bundle = getQueueBundle(QueueName.LogisticsRouting);
   if (!bundle) {
+    bullmqJobsProcessedTotal.inc({
+      queue: QueueName.LogisticsRouting,
+      job: QueueJobName.RouteDistance,
+      status: 'failed',
+      error_class: 'unknown',
+    });
     // synchronous fallback to local OSRM/ORS call
     const distanceKm = await getOsrmDistance(params);
     return { distanceKm } satisfies RouteDistanceJobResult;
@@ -198,6 +276,9 @@ export const requestRouteDistanceJob = async (
       jobId: buildJobId('route', jobPayload),
     });
     return waitForResult<RouteDistanceJobResult>(
+      QueueName.LogisticsRouting,
+      QueueJobName.RouteDistance,
+      bundle.queue,
       job,
       bundle.events,
       async () => {

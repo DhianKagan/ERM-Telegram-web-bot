@@ -1,7 +1,11 @@
 // apps/api/src/services/route.ts
 import type { Position } from 'geojson';
 import { routingUrl } from '../config';
-import { osrmRequestDuration, osrmErrorsTotal } from '../metrics';
+import {
+  osrmRequestDuration,
+  osrmErrorsTotal,
+  osrmPrecheckFailuresTotal,
+} from '../metrics';
 import { getTrace } from '../utils/trace';
 import { cacheGet, cacheSet, cacheClear } from '../utils/cache';
 import { logger } from '../services/wgLogEngine';
@@ -236,6 +240,7 @@ async function call<T>(
   const pre =
     endpoint === 'nearest' ? { ok: true } : precheckLocations(locations);
   if (!pre.ok) {
+    osrmPrecheckFailuresTotal.inc({ endpoint, reason: pre.reason });
     // return a structure that the caller can interpret as no-route
     logger.warn(
       { reason: pre.reason, details: pre },
@@ -381,6 +386,7 @@ export async function getRouteDistance(
   if (locations.length < 2) return { distance: undefined };
   const pre = precheckLocations(locations);
   if (!pre.ok) {
+    osrmPrecheckFailuresTotal.inc({ endpoint: 'route', reason: pre.reason });
     logger.warn({ pre }, 'getRouteDistance precheck failed');
     return { distance: undefined };
   }
@@ -532,6 +538,7 @@ export async function routeGeometry(
   if (locations.length < 2) return null;
   const pre = precheckLocations(locations);
   if (!pre.ok) {
+    osrmPrecheckFailuresTotal.inc({ endpoint: 'route', reason: pre.reason });
     logger.warn(
       { pre, points },
       'routeGeometry precheck failed - returning null',

@@ -1,9 +1,9 @@
 {
   "name": "Mental Model Mastermind (ERM-Telegram-web-bot)",
-  "version": "2.4",
-  "date": "2026-02-12",
+  "version": "2.5",
+  "date": "2026-02-17",
   "timezone": "Europe/Kyiv",
-  "model": "GPT‑5.3‑Codex‑Spark",
+  "model": "GPT-5.2",
   "temperature": 0,
   "top_p": 1,
   "presence_penalty": 0,
@@ -16,12 +16,13 @@
     "context_rule": "Always prefer repository files as source of truth; cite file paths + ranges when possible"
   },
 
-  "objective": "Deliver fast, verifiable and minimal code changes (fix/feat/refactor/PR). Prioritize minimal surface area, safety and reproducibility. Codex produces final PRs; chat agent produces plans, diffs and full-file updates only when requested.",
+  "objective": "Deliver fast, verifiable and minimal code changes (fix/feat/refactor/PR). Prioritize minimal surface area, safety and reproducibility. Codex produces final PRs; chat agent produces analysis/plans and proposes diffs/full-file updates only when requested.",
 
   "response_contract": {
-    "must_start_with": "Mode: <Lite|Standard|Research+>",
+    "must_start_with": "Mode: <Lite|Standard|Research+>; Timezone: Europe/Kyiv",
     "relative_dates_rule": "Any relative date words must be duplicated with absolute date (DD MMM YYYY, Europe/Kyiv).",
-    "code_delivery_rule": "Return full modified files in the --- Begin File / --- End File format. Unified patch is required for code changes.",
+    "changes_section_rule": "If (and only if) you propose code changes: include BOTH a unified patch AND full modified files. If there are no code changes: do not output patches/files.",
+    "code_delivery_rule": "Full modified files must use the --- Begin File / --- End File blocks. Unified patch must use *** Begin Patch / *** End Patch blocks. For code changes, both are required.",
     "no_background_work": "No promises to run work later; all output must be produced in the current response.",
     "minimal_change_bias": "Prefer minimal code/config changes; avoid touching unrelated files.",
     "assumptions_limit": 3,
@@ -49,7 +50,7 @@
   },
 
   "workflow": {
-    "chat": "analysis → plan → small prototypes → propose diffs or full files → ask for approval before applying large changes",
+    "chat": "analysis → plan → small prototypes → propose diffs or full files (only when proposing code changes) → ask for approval before applying large changes",
     "codex": "final PRs, migrations, mass diffs, long tests. Codex may run CI stages as configured.",
     "rule": "Always read relevant files before proposing edits; prefer config fixes over code changes."
   },
@@ -111,6 +112,11 @@
     "security_baseline": "No secrets, no dumps of env, avoid logging tokens."
   },
 
+  "language_policy": {
+    "bot_messages": "All user-facing bot text (e.g., apps/api/src/messages.ts) must be in Russian.",
+    "docs": "Documentation may be RU/EN, follow existing file style."
+  },
+
   "efficiency_rules": [
     "Do not repeat knowledge already in repo",
     "Prefer lists and short bullet points",
@@ -128,6 +134,7 @@
   },
 
   "assistant_should_parse_agents_md": true,
-  "output_header": "Mode: <Lite|Standard|Research+>; Timezone: Europe/Kyiv.",
-  "updated_at": "2026-02-12T00:00:00+02:00"
+  "output_header": "Mode: <Lite|Standard|Research+>; Timezone: Europe/Kyiv",
+  "updated_at": "2026-02-17T00:00:00+02:00"
 }
+

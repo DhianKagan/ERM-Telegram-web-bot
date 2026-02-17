@@ -118,6 +118,16 @@ const pickMessage = (error: unknown): string => {
   return 'Неизвестная ошибка';
 };
 
+const measureDurationMs = (startedAt: number): number =>
+  Math.max(1, Math.round(performance.now() - startedAt));
+
+const normalizeDurationMs = (value: unknown, fallback: number): number => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return fallback;
+  }
+  return Math.max(1, Math.round(value));
+};
+
 const STATUS_TO_METRIC: Record<StackCheckStatus, number> = {
   ok: 0,
   warn: 1,
@@ -193,7 +203,10 @@ export default class StackHealthService {
       return {
         name: 's3',
         status,
-        durationMs: Math.round(performance.now() - startedAt),
+        durationMs: normalizeDurationMs(
+          report.latencyMs,
+          measureDurationMs(startedAt),
+        ),
         meta: {
           ...report.metadata,
           checkedAt: report.checkedAt,
@@ -209,7 +222,7 @@ export default class StackHealthService {
       return {
         name: 's3',
         status: 'error',
-        durationMs: Math.round(performance.now() - startedAt),
+        durationMs: measureDurationMs(startedAt),
         message: pickMessage(error),
       } satisfies StackCheckResult;
     }
@@ -241,7 +254,7 @@ export default class StackHealthService {
       return {
         name: 'storage',
         status: 'ok',
-        durationMs: Math.round(performance.now() - startedAt),
+        durationMs: measureDurationMs(startedAt),
         meta: {
           directory: root,
           freeBytes,
@@ -259,7 +272,7 @@ export default class StackHealthService {
       return {
         name: 'storage',
         status: 'error',
-        durationMs: Math.round(performance.now() - startedAt),
+        durationMs: measureDurationMs(startedAt),
         message: pickMessage(error),
         meta: {
           directory: root,
@@ -293,7 +306,7 @@ export default class StackHealthService {
         return {
           name: 'redis',
           status: 'error',
-          durationMs: Math.round(performance.now() - startedAt),
+          durationMs: measureDurationMs(startedAt),
           message: `Неожиданный ответ PING: ${ping}`,
         } satisfies StackCheckResult;
       }
@@ -322,7 +335,7 @@ export default class StackHealthService {
       return {
         name: 'redis',
         status: 'ok',
-        durationMs: Math.round(performance.now() - startedAt),
+        durationMs: measureDurationMs(startedAt),
         meta: {
           cacheCount,
           lockCount,
@@ -339,7 +352,7 @@ export default class StackHealthService {
       return {
         name: 'redis',
         status: 'error',
-        durationMs: Math.round(performance.now() - startedAt),
+        durationMs: measureDurationMs(startedAt),
         message: pickMessage(error),
       } satisfies StackCheckResult;
     } finally {
@@ -356,6 +369,7 @@ export default class StackHealthService {
   }): Promise<StackCheckResult> {
     const startedAt = performance.now();
     const queueSummaries: Record<string, unknown> = {};
+    const problematicQueues: string[] = [];
 
     try {
       for (const queueName of options.queueNames) {
@@ -379,30 +393,38 @@ export default class StackHealthService {
           failed: counts.failed ?? 0,
           completed: counts.completed ?? 0,
         };
-      }
 
-      const hasFailedJobs = Object.values(queueSummaries).some((item) => {
-        if (!item || typeof item !== 'object') {
-          return false;
+        const failed = counts.failed ?? 0;
+        const waiting = counts.waiting ?? 0;
+        if (failed > 0) {
+          problematicQueues.push(`${queueName}:failed=${failed}`);
         }
-        const maybeFailed = (item as { failed?: unknown }).failed;
-        return typeof maybeFailed === 'number' && maybeFailed > 0;
-      });
+        if (queueName === QueueName.DeadLetter && waiting > 0) {
+          problematicQueues.push(`${queueName}:waiting=${waiting}`);
+        }
+      }
+      const hasIssues = problematicQueues.length > 0;
 
       return {
         name: 'bullmq',
-        status: hasFailedJobs ? 'warn' : 'ok',
-        durationMs: Math.round(performance.now() - startedAt),
+        status: hasIssues ? 'warn' : 'ok',
+        durationMs: measureDurationMs(startedAt),
+        message: hasIssues
+          ? `Очереди требуют разбора: ${problematicQueues.join(', ')}`
+          : undefined,
         meta: {
           queues: queueSummaries,
           enabled: queueConfig.enabled,
+          hint: hasIssues
+            ? 'Проверьте /api/v1/system/queues/diagnostics и выполните /api/v1/system/queues/recover (dryRun=true) перед replay/remove.'
+            : undefined,
         },
       } satisfies StackCheckResult;
     } catch (error: unknown) {
       return {
         name: 'bullmq',
         status: 'error',
-        durationMs: Math.round(performance.now() - startedAt),
+        durationMs: measureDurationMs(startedAt),
         message: pickMessage(error),
       } satisfies StackCheckResult;
     }
@@ -417,7 +439,7 @@ export default class StackHealthService {
         return {
           name: 'mongo',
           status: 'error',
-          durationMs: Math.round(performance.now() - startedAt),
+          durationMs: measureDurationMs(startedAt),
           message: 'Соединение с MongoDB не готово',
         } satisfies StackCheckResult;
       }
@@ -429,7 +451,7 @@ export default class StackHealthService {
       return {
         name: 'mongo',
         status: 'ok',
-        durationMs: Math.round(performance.now() - startedAt),
+        durationMs: measureDurationMs(startedAt),
         meta: {
           collections: stats.collections,
           dataSize: stats.dataSize,
@@ -440,7 +462,7 @@ export default class StackHealthService {
       return {
         name: 'mongo',
         status: 'error',
-        durationMs: Math.round(performance.now() - startedAt),
+        durationMs: measureDurationMs(startedAt),
         message: pickMessage(error),
       } satisfies StackCheckResult;
     }

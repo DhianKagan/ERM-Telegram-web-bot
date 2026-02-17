@@ -4,6 +4,9 @@ import fs from 'node:fs/promises';
 import StackHealthService, {
   type StackCheckResult,
 } from '../src/system/stackHealth.service';
+import * as s3Health from '../src/services/s3Health';
+import * as taskQueue from '../src/queues/taskQueue';
+import { QueueName } from 'shared';
 import { register } from '../src/metrics';
 
 describe('StackHealthService', () => {
@@ -118,5 +121,76 @@ describe('StackHealthService', () => {
     expect(accessSpy).not.toHaveBeenCalled();
     expect(writeSpy).not.toHaveBeenCalled();
     expect(mkdirSpy).not.toHaveBeenCalled();
+  });
+
+  test('checkS3 нормализует durationMs, если healthcheck вернул latencyMs=0', async () => {
+    const service = new StackHealthService();
+    jest.spyOn(s3Health, 'runS3Healthcheck').mockResolvedValue({
+      status: 'degraded',
+      checkedAt: new Date().toISOString(),
+      latencyMs: 0,
+      metadata: {
+        configured: false,
+        missing: ['S3_ENDPOINT'],
+        invalid: [],
+      },
+      error: {
+        kind: 'config',
+        message: 'S3 конфиг не задан',
+      },
+    });
+
+    const result = await service.checkS3();
+
+    expect(result.status).toBe('warn');
+    expect(result.durationMs).toBeGreaterThanOrEqual(1);
+  });
+
+  test('checkBullmq возвращает warn с подсказкой для failed/dlq waiting задач', async () => {
+    const service = new StackHealthService();
+    const getJobCounts = jest
+      .fn()
+      .mockResolvedValueOnce({
+        waiting: 0,
+        active: 0,
+        delayed: 0,
+        failed: 2,
+        completed: 10,
+      })
+      .mockResolvedValueOnce({
+        waiting: 0,
+        active: 0,
+        delayed: 0,
+        failed: 0,
+        completed: 10,
+      })
+      .mockResolvedValueOnce({
+        waiting: 6,
+        active: 0,
+        delayed: 0,
+        failed: 0,
+        completed: 0,
+      });
+
+    jest.spyOn(taskQueue, 'getQueueBundle').mockImplementation(() => {
+      return {
+        queue: {
+          getJobCounts,
+        },
+      } as unknown as ReturnType<typeof taskQueue.getQueueBundle>;
+    });
+
+    const result = await service.checkBullmq({
+      queueNames: [
+        QueueName.LogisticsGeocoding,
+        QueueName.LogisticsRouting,
+        QueueName.DeadLetter,
+      ],
+    });
+
+    expect(result.status).toBe('warn');
+    expect(result.message).toContain('logistics-geocoding:failed=2');
+    expect(result.message).toContain('logistics-dead-letter:waiting=6');
+    expect(result.meta?.hint).toContain('/api/v1/system/queues/recover');
   });
 });

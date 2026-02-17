@@ -10,6 +10,15 @@
 - `bullmq_jobs_total{queue="logistics-geocoding",state="failed"} > 0`
 - `bullmq_jobs_total{queue="logistics-dead-letter",state="waiting"} > 0`
 
+- `bullmq_queue_oldest_wait_seconds{queue="logistics-geocoding"} > 0`
+
+Новые метрики для диагностики:
+
+- `bullmq_jobs_processed_total{queue,job,status,error_class}`
+- `bullmq_job_wait_duration_seconds{queue,job,status}`
+- `bullmq_job_processing_duration_seconds{queue,job,status}`
+- `bullmq_queue_oldest_wait_seconds{queue}`
+
 ## 1) Диагностика
 
 Админ-роут (API):
@@ -103,3 +112,17 @@ groups:
 ```
 
 > Изменения production-alerting в `prometheus/` выполняются через SRE-процесс.
+
+## 5) Готовые PromQL-запросы
+
+```promql
+histogram_quantile(0.95, sum by (le, queue, job) (rate(bullmq_job_wait_duration_seconds_bucket[10m])))
+```
+
+```promql
+histogram_quantile(0.95, sum by (le, queue, job) (rate(bullmq_job_processing_duration_seconds_bucket[10m])))
+```
+
+```promql
+max by (queue) (bullmq_queue_oldest_wait_seconds)
+```

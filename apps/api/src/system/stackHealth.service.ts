@@ -231,7 +231,7 @@ export default class StackHealthService {
       const readBack = await fs.readFile(tempPath, 'utf8');
       await fs.unlink(tempPath);
       const fsStats = await fs.statfs(root);
-      const freeBytes = fsStats.bfree * fsStats.bsize;
+      const freeBytes = fsStats.bavail * fsStats.bsize;
       const totalBytes = fsStats.blocks * fsStats.bsize;
 
       if (readBack !== 'ok') {

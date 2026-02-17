@@ -13,6 +13,13 @@ const queueJobsGauge = new Gauge({
   registers: [register],
 });
 
+const queueOldestWaitGauge = new Gauge({
+  name: 'bullmq_queue_oldest_wait_seconds',
+  help: 'Возраст самой старой задачи в состоянии waiting',
+  labelNames: ['queue'],
+  registers: [register],
+});
+
 const monitoredQueues: QueueName[] = [
   QueueName.LogisticsGeocoding,
   QueueName.LogisticsRouting,
@@ -47,6 +54,15 @@ const collectQueueCounts = async (queueName: QueueName): Promise<void> => {
     { queue: queueName, state: 'completed' },
     counts.completed ?? 0,
   );
+
+  const oldestWaiting = await bundle.queue.getJobs(['waiting'], 0, 0, true);
+  const oldest = oldestWaiting[0];
+  if (!oldest || !oldest.timestamp) {
+    queueOldestWaitGauge.set({ queue: queueName }, 0);
+    return;
+  }
+  const ageSeconds = Math.max(0, (Date.now() - oldest.timestamp) / 1000);
+  queueOldestWaitGauge.set({ queue: queueName }, ageSeconds);
 };
 
 let poller: NodeJS.Timeout | null = null;

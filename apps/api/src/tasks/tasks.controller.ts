@@ -77,6 +77,7 @@ import {
   TaskPointsValidationError,
 } from '../utils/taskPointsInput';
 import ReportGeneratorService from '../services/reportGenerator';
+import { taskPointsValidationFailuresTotal } from '../metrics';
 
 type TelegramMessageCleanupMeta = {
   chat_id: string | number;
@@ -422,6 +423,8 @@ export default class TasksController {
     res: Response,
   ): void {
     const title = 'Маршрут недопустим';
+    taskPointsValidationFailuresTotal.inc({ code: error.code });
+
     if (error.code === 'points_limit_exceeded') {
       sendProblem(req, res, {
         type: 'about:blank',

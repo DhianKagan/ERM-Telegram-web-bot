@@ -10,15 +10,16 @@ services:
       - .env
     environment:
       - BOT_API_URL=${BOT_API_URL}
-      - MONGO_DATABASE_URL=mongodb://admin:admin@mongo_db:27017/ermdb?authSource=admin
+      - MONGO_DATABASE_URL=${MONGO_DATABASE_URL:-mongodb://admin:admin@mongo_db:27017/ermdb?authSource=admin}
     restart: always
     depends_on:
       - mongo_db
     ports:
       - '${HOST_PORT:-3000}:${PORT:-3000}'
+
   mongo_db:
     container_name: task-bot-mongo
-    image: mongo
+    image: mongo:7
     restart: always
     environment:
       - MONGO_INITDB_ROOT_USERNAME=admin
@@ -44,5 +45,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
 volumes:
   mongo_db_example_app:

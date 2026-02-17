@@ -222,8 +222,8 @@ if [ -n "${MONGO_DATABASE_URL:-}" ] && [ -d "apps/api" ] && command -v pnpm >/de
     warn "AUTO_INSTALL_API_PROD отключён (CODEX_AUTO_INSTALL_API_PROD=0)"
   fi
 
-  set +e
-  pnpm --filter apps/api exec node - <<'NODE'
+  rc=0
+  pnpm --filter apps/api exec node - <<'NODE' || rc=$?
 const net = require('net');
 const uri = process.env.MONGO_DATABASE_URL;
 if (!uri) process.exit(0);
@@ -255,8 +255,6 @@ try { mongoose = require('mongoose'); } catch { mongoose = null; }
   }
 })();
 NODE
-  rc=$?
-  set -e
 
   if [ "$rc" -eq 0 ]; then
     ok "Mongo healthcheck: OK"

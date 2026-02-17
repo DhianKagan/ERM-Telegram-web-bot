@@ -80,3 +80,24 @@ CRUD, поиск, фильтры и импорт/экспорт; формы по
    ```bash
    pnpm install
    ```
+
+### Ручная настройка окружения (окно Manual setup)
+
+Если нужно вернуть ручной bootstrap в Codex/CI, указывайте такой скрипт:
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Не падаем на недоступной Mongo в контейнере
+export CODEX_STRICT_MONGO_TEST=0
+
+# Запуск через обёртку в .openai
+bash ./.openai/codex_environment_setup.sh
+```
+
+Короткий вариант (если переменные уже заданы):
+
+```bash
+bash ./.openai/codex_environment_setup.sh
+```

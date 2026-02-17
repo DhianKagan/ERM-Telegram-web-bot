@@ -83,17 +83,23 @@ CRUD, поиск, фильтры и импорт/экспорт; формы по
 
 ### Ручная настройка окружения (окно Manual setup)
 
-Если нужно вернуть ручной bootstrap в Codex/CI, указывайте такой скрипт:
+Если нужно вернуть ручной bootstrap в Codex/CI, используйте готовый скрипт из репозитория:
+
+```bash
+bash ./scripts/manual_codex_bootstrap.sh
+```
+
+Содержимое `scripts/manual_codex_bootstrap.sh` (если нужно вставить вручную):
 
 ```bash
 #!/usr/bin/env bash
 set -euo pipefail
 
 # Не падаем на недоступной Mongo в контейнере
-export CODEX_STRICT_MONGO_TEST=0
+export CODEX_STRICT_MONGO_TEST="${CODEX_STRICT_MONGO_TEST:-0}"
 
 # Запуск через обёртку в .openai
-bash ./.openai/codex_environment_setup.sh
+bash ./.openai/codex_environment_setup.sh "$@"
 ```
 
 Короткий вариант (если переменные уже заданы):

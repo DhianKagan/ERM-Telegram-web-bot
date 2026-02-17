@@ -179,7 +179,16 @@ export const normalizeBullMqErrorClass = (error: unknown): BullMqErrorClass => {
   return 'unknown';
 };
 
+const enumValues = (value: unknown): string[] => {
+  if (!value || typeof value !== 'object') {
+    return [];
+  }
+  return Object.values(value).filter(
+    (item): item is string => typeof item === 'string',
+  );
+};
+
 export const BULLMQ_LABELS = {
-  queues: Object.values(QueueName),
-  jobs: Object.values(QueueJobName),
+  queues: enumValues(QueueName),
+  jobs: enumValues(QueueJobName),
 } as const;

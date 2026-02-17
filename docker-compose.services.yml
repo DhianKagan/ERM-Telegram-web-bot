@@ -8,7 +8,7 @@ services:
     env_file:
       - ${ENV_FILE:-Railway/.env}
     environment:
-      - MONGO_DATABASE_URL=mongodb://admin:admin@mongo_db:27017/ermdb?authSource=admin
+      - MONGO_DATABASE_URL=${MONGO_DATABASE_URL:-mongodb://admin:admin@mongo_db:27017/ermdb?authSource=admin}
       - QUEUE_REDIS_URL=redis://redis:6379
     command: ['node', 'dist/scripts/db/ensureDefaults.js']
     depends_on:
@@ -25,7 +25,7 @@ services:
     env_file:
       - ${ENV_FILE:-Railway/.env}
     environment:
-      - MONGO_DATABASE_URL=mongodb://admin:admin@mongo_db:27017/ermdb?authSource=admin
+      - MONGO_DATABASE_URL=${MONGO_DATABASE_URL:-mongodb://admin:admin@mongo_db:27017/ermdb?authSource=admin}
       - QUEUE_REDIS_URL=redis://redis:6379
       - NODE_ENV=production
       - NODE_OPTIONS=${API_NODE_OPTIONS:---max-old-space-size=384}
@@ -63,7 +63,7 @@ services:
     env_file:
       - ${ENV_FILE:-Railway/.env}
     environment:
-      - MONGO_DATABASE_URL=mongodb://admin:admin@mongo_db:27017/ermdb?authSource=admin
+      - MONGO_DATABASE_URL=${MONGO_DATABASE_URL:-mongodb://admin:admin@mongo_db:27017/ermdb?authSource=admin}
       - QUEUE_REDIS_URL=redis://redis:6379
       - NODE_ENV=production
       - NODE_OPTIONS=${BOT_NODE_OPTIONS:---max-old-space-size=256}
@@ -84,7 +84,7 @@ services:
     env_file:
       - ${ENV_FILE:-Railway/.env}
     environment:
-      - MONGO_DATABASE_URL=mongodb://admin:admin@mongo_db:27017/ermdb?authSource=admin
+      - MONGO_DATABASE_URL=${MONGO_DATABASE_URL:-mongodb://admin:admin@mongo_db:27017/ermdb?authSource=admin}
       - QUEUE_REDIS_URL=redis://redis:6379
       - NODE_ENV=production
       - NODE_OPTIONS=${WORKER_NODE_OPTIONS:---max-old-space-size=256}

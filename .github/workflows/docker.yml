@@ -1,4 +1,3 @@
---- File: .github/workflows/docker.yml
 # Назначение файла: CI для проверки Docker и сборки образов
 # Модули: создание .env из Repository secrets, docker compose config и build
 name: 'Docker'
@@ -88,4 +87,3 @@ jobs:
         run: docker compose build
       - name: Удаление .env
         run: rm .env
---- End File

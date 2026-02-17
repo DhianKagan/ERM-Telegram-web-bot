@@ -1,3 +1,4 @@
+--- File: .github/workflows/docker.yml
 # Назначение файла: CI для проверки Docker и сборки образов
 # Модули: создание .env из Repository secrets, docker compose config и build
 name: 'Docker'
@@ -12,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     services:
       mongo:
-        image: mongo:6.0
+        image: mongo:7
         env:
           MONGO_INITDB_ROOT_USERNAME: admin
           MONGO_INITDB_ROOT_PASSWORD: admin
@@ -87,3 +88,4 @@ jobs:
         run: docker compose build
       - name: Удаление .env
         run: rm .env
+--- End File

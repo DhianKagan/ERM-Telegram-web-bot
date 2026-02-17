@@ -216,14 +216,21 @@ fi
 
 progress 100 "Mongo healthcheck" "без записи файлов в репозиторий"
 if [ -n "${MONGO_DATABASE_URL:-}" ] && [ -d "apps/api" ] && command -v pnpm >/dev/null 2>&1; then
+  can_run_api_healthcheck=1
+
   if [ "$CODEX_AUTO_INSTALL_API_PROD" = "1" ]; then
     pnpm --filter apps/api... -s install --frozen-lockfile --prod || pnpm --filter apps/api... -s install --prod || true
   else
     warn "AUTO_INSTALL_API_PROD отключён (CODEX_AUTO_INSTALL_API_PROD=0)"
+    if ! pnpm --filter apps/api exec node -e "require.resolve('mongoose')" >/dev/null 2>&1; then
+      can_run_api_healthcheck=0
+      warn "Mongo healthcheck: пропущен (apps/api зависимости не установлены; включи CODEX_AUTO_INSTALL_API_PROD=1)"
+    fi
   fi
 
   rc=0
-  pnpm --filter apps/api exec node - <<'NODE' || rc=$?
+  if [ "$can_run_api_healthcheck" = "1" ]; then
+    pnpm --filter apps/api exec node - <<'NODE' || rc=$?
 const net = require('net');
 const uri = process.env.MONGO_DATABASE_URL;
 if (!uri) process.exit(0);
@@ -255,8 +262,11 @@ try { mongoose = require('mongoose'); } catch { mongoose = null; }
   }
 })();
 NODE
+  fi
 
-  if [ "$rc" -eq 0 ]; then
+  if [ "$can_run_api_healthcheck" != "1" ]; then
+    :
+  elif [ "$rc" -eq 0 ]; then
     ok "Mongo healthcheck: OK"
   elif [ "$rc" -eq 2 ]; then
     warn "Mongo healthcheck: SKIPPED/UNSUPPORTED"

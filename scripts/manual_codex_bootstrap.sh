@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+if [ -z "${BASH_VERSION:-}" ]; then
+  exec bash "$0" "$@"
+fi
+
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -32,6 +36,10 @@ REPO_ROOT="$(resolve_repo_root)"
 
 # Не падаем на недоступной Mongo в контейнере
 export CODEX_STRICT_MONGO_TEST="${CODEX_STRICT_MONGO_TEST:-0}"
+
+# По умолчанию не доустанавливаем прод-зависимости apps/api во время healthcheck.
+# Можно включить при необходимости: CODEX_AUTO_INSTALL_API_PROD=1
+export CODEX_AUTO_INSTALL_API_PROD="${CODEX_AUTO_INSTALL_API_PROD:-0}"
 
 # Запуск через обёртку в .openai независимо от текущей директории
 cd "$REPO_ROOT"

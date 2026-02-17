@@ -15,7 +15,7 @@
 ## Скрипты зависимостей
 
 Для контроля `postinstall`‑скриптов используется `pnpm approve-builds`.
-Разрешены сборки `esbuild`, `ffmpeg-static`, `mongodb-memory-server`, `sharp`.
+Разрешены сборки `esbuild`, `ffmpeg-static`, `sharp`.
 Скрипты `@scarf/scarf`, `@tailwindcss/oxide`, `chromedriver`, `core-js`, `unrs-resolver` блокируются.
 
 ## Danger CI
@@ -596,13 +596,13 @@ Middleware `checkRole` и `checkTaskAccess` записывают отказ до
 ./scripts/create_env_from_exports.sh
 ./scripts/install_bot_deps.sh # устанавливает корневые, серверные и клиентские зависимости
 pnpm -w dev # запуск api и web
-./scripts/start_api_with_memdb.sh # только api с MongoDB в памяти
+pnpm --filter apps/api dev # только api (требуется реальная MongoDB по MONGO_DATABASE_URL)
 ```
 
 Пошаговое развертывание на Railway:
 
 1. Создайте проект и подключите плагин **MongoDB**.
-2. Задайте переменные `BOT_TOKEN`, `MONGO_DATABASE_URL`, `APP_URL`, `ROUTING_URL` и `VITE_ROUTING_URL`. Переменная `MONGO_DATABASE_URL` определяет строку подключения к MongoDB: скрипт `scripts/pre_pr_check.sh` поднимает MongoDB в памяти и задаёт её автоматически, а `scripts/check_mongo.mjs` пропускает проверку при `CI=true`. Конфигурация API проверяет, что строка содержит имя базы (например `/ermdb`) и параметр `authSource` для корневого пользователя Railway; без них сервер не запустится. При необходимости можно отдельно задать `MONGO_DATABASE_NAME` и `MONGO_AUTH_SOURCE` — приложение дополнит URL, что удобно для публичных ссылок Railway. Переменные `LOG_LEVEL`, `LOG_TELEGRAM_TOKEN` и `LOG_TELEGRAM_CHAT` можно не задавать. Значения `GATEWAY_API_KEY` и `GATEWAY_SENDER` более не требуются.
+2. Задайте переменные `BOT_TOKEN`, `MONGO_DATABASE_URL`, `APP_URL`, `ROUTING_URL` и `VITE_ROUTING_URL`. Переменная `MONGO_DATABASE_URL` определяет строку подключения к MongoDB: тесты и локальный запуск используют только реальную MongoDB (localhost/docker compose/Railway) по `MONGO_DATABASE_URL`, а `scripts/check_mongo.mjs` пропускает проверку при `CI=true`. Конфигурация API проверяет, что строка содержит имя базы (например `/ermdb`) и параметр `authSource` для корневого пользователя Railway; без них сервер не запустится. При необходимости можно отдельно задать `MONGO_DATABASE_NAME` и `MONGO_AUTH_SOURCE` — приложение дополнит URL, что удобно для публичных ссылок Railway. Переменные `LOG_LEVEL`, `LOG_TELEGRAM_TOKEN` и `LOG_TELEGRAM_CHAT` можно не задавать. Значения `GATEWAY_API_KEY` и `GATEWAY_SENDER` более не требуются.
 3. Railway использует `Procfile`, который собирает клиент и запускает pm2.
 4. Убедитесь, что приложение слушает `process.env.PORT` на адресе `0.0.0.0`.
 5. Задайте `ROUTING_URL` и `VITE_ROUTING_URL` на адрес вашего сервиса маршрутизации (например, OSRM или публичный OpenRouteService).

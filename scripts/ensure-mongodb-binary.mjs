@@ -8,6 +8,11 @@ import { fileURLToPath } from 'node:url';
 
 dns.setDefaultResultOrder('ipv4first');
 
+if (process.env.USE_REAL_MONGO === 'true') {
+  console.log('[ensure-mongodb-binary] USE_REAL_MONGO=true — skipping mongodb binary download');
+  process.exit(0);
+}
+
 const NETWORK_ERROR_CODES = new Set(['ENETUNREACH', 'ERR_INVALID_IP_ADDRESS']);
 
 const __filename = fileURLToPath(import.meta.url);

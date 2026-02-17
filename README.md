@@ -71,6 +71,24 @@ CRUD, поиск, фильтры и импорт/экспорт; формы по
 - Логирование операций с идентификаторами пользователей; упор на покрытие тестами и соблюдение RBAC/валидации DTO.
 - CI: Danger/GitHub Actions — правила защиты веток, шаблоны сообщений коммитов и проверка покрытия.
 
+### Локальный modern monitoring stack (Prometheus + Grafana + Loki)
+
+Для быстрого внедрения готового стека наблюдаемости добавлен отдельный compose-файл:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
+```
+
+После запуска:
+
+- Grafana: `http://localhost:3001` (`admin` / `admin`)
+- Prometheus: `http://localhost:9090`
+- Loki API: `http://localhost:3100`
+
+Готовый дашборд автоматически провижинится из `prometheus/dashboard.json`.
+
+Подробная инструкция: `docs/modern_monitoring_stack.md`.
+
 ---
 
 ## Быстрый старт

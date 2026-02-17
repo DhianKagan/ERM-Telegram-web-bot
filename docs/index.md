@@ -36,6 +36,8 @@
 ### Инфраструктура и эксплуатация
 
 - `prometheus/` — мониторинг и метрики.
+- `docker-compose.monitoring.yml` + `grafana/` + `promtail/` — готовый локальный стек мониторинга (Prometheus/Grafana/Loki).
+- `docs/modern_monitoring_stack.md` — пошаговый запуск и проверка современного стека мониторинга.
 - `profiling/` — профилирование и эксплуатационные настройки.
 - `scripts/` — служебные/CI-скрипты, проверки и утилиты.
 

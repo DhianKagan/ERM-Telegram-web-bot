@@ -2,6 +2,7 @@
 
 # История изменений
 
+- Проведена ревизия документации: синхронизированы `README.md`, `docs/README.md`, `docs/index.md`, `CONTRIBUTING.md`, `SECURITY.md`, `ROADMAP.md` и `apps/api/README.md`; устаревший дублирующий файл `docs/codex_system_prompt.md` перенесён в `docs/archive/codex_system_prompt.md`.
 - Добавлен статический анализ `pnpm security:scan`, использующий `eslint-plugin-security`,
   скрипты `setup_and_test.sh` и `pre_pr_check.sh` выполняют проверку перед пулл-реквестом.
 - Каталог пользовательских вложений выделен в `apps/api/uploads`, значение `STORAGE_DIR` по умолчанию указывает на него, а статические ассеты остаются в `apps/api/public`.

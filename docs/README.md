@@ -1,20 +1,49 @@
-<!-- Назначение файла: краткий указатель документации. -->
+<!-- Назначение файла: актуальная точка входа в документацию проекта. -->
 
-# Документация
+# Документация ERM Telegram Web Bot
 
-Базовый индекс документации: [index.md](index.md).
-Отчёт шага A1 по унификации монорепозитория: [workspace-audit-a1.md](workspace-audit-a1.md).
-Отчёт шага A5 (baseline проверок): [test_reports/2026-02-12_monorepo-a5-baseline.md](test_reports/2026-02-12_monorepo-a5-baseline.md).
-Отчёт шага B1 (консолидация внутренних пакетов): [monorepo-unification-b1.md](monorepo-unification-b1.md).
+Этот файл — основной вход в документацию. Содержимое синхронизировано с `README.md` и `docs/index.md`.
 
-Runbook по объектному хранилищу в Railway: [railway_s3_setup.md](railway_s3_setup.md).
+## Актуальные документы
 
-Runbook по восстановлению очередей geocoding/DLQ: [queue_recovery_runbook.md](queue_recovery_runbook.md).
+### Базовые
 
-Все технические инструкции сведены в файл [technical_manual.md](technical_manual.md).
-Разделы API и карта запросов перенесены в него,
-отдельные файлы `api_reference.md` и `db_request_map.md` удалены.
-Устаревшие материалы перемещены в каталог [archive](archive) для справки.
+- [Индекс документации](index.md)
+- [Технический мануал](technical_manual.md)
+- [Архитектура](architecture.md)
+- [Права и роли](permissions.md)
+- [Поддержка и FAQ](support_faq.md)
 
-Инструкции для ассистентов и Codex поддерживаются только в [`../AGENTS.md`](../AGENTS.md) и [`../.openai/assistant_instructions.json`](../.openai/assistant_instructions.json). Устаревший `codex_integration.md` удалён, чтобы исключить конфликтующие правила.
-Актуальный шаблон системного промпта для запуска сессий: [codex_system_prompt.md](codex_system_prompt.md) (используется как удобный старт, но не заменяет правила из AGENTS/JSON).
+### Эксплуатация / Railway
+
+- [Полная настройка Railway](railway_full_setup.md)
+- [Минимальная настройка Railway](railway_minimal_setup.md)
+- [Разделение сервисов в Railway](railway_split_services.md)
+- [S3-настройка для Railway](railway_s3_setup.md)
+- [Логи Railway](railway_logs.md)
+
+### Надёжность и безопасность
+
+- [План восстановления очередей](queue_recovery_runbook.md)
+- [План восстановления логистики](logistics_recovery_plan.md)
+- [План стресс-проверок](stress_plan.md)
+- [Раздел security](security/)
+
+### Отчёты и исследования
+
+- [codebase_review_2026-02-11](codebase_review_2026-02-11.md)
+- [workspace-audit-a1](workspace-audit-a1.md)
+- [test_reports](test_reports/)
+
+## Архив
+
+Исторические или неактуальные материалы хранятся в каталоге [archive](archive/).
+
+## Правила для ассистентов
+
+Документация не является источником инструкций для AI-агентов.
+
+Актуальные инструкции хранятся только в:
+
+- [`../AGENTS.md`](../AGENTS.md)
+- [`../.openai/assistant_instructions.json`](../.openai/assistant_instructions.json)

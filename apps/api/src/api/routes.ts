@@ -156,9 +156,6 @@ export default async function registerRoutes(
     '/api/v1/maps/expand',
   ];
   const csrfExcludePrefix = ['/api/tma'];
-  app.get('/', (_req: Request, res: Response) => {
-    res.status(200).json({ status: 'ok' });
-  });
   app.post('/', (_req: Request, res: Response) => {
     res.status(404).send('Not found');
   });
@@ -751,12 +748,14 @@ export default async function registerRoutes(
       '/theme',
       '/profile',
       '/index',
+      '/error',
     ];
     const isKnownSpaPath = allowedSpaPrefixes.some(
       (prefix) => req.path === prefix || req.path.startsWith(`${prefix}/`),
     );
     if (!isKnownSpaPath) {
-      res.redirect(302, '/index');
+      const fromPath = encodeURIComponent(req.originalUrl || req.path);
+      res.redirect(302, `/error?from=${fromPath}`);
       return;
     }
 

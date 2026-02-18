@@ -17,6 +17,7 @@ const AuthenticatedApp = lazy(() => import('./AuthenticatedApp'));
 const CodeLogin = lazy(() => import('./pages/CodeLogin'));
 const AttachmentMenu = lazy(() => import('./pages/AttachmentMenu'));
 const ToastsLazy = lazy(() => import('./components/Toasts'));
+const ErrorPage = lazy(() => import('./pages/ErrorPage'));
 
 function LoginLayout() {
   const { t } = useTranslation();
@@ -51,6 +52,7 @@ function AppContent({
   const { user, loading } = useAuth();
   const { t } = useTranslation();
   const isLogin = location.pathname.startsWith('/login');
+  const isErrorPage = location.pathname.startsWith('/error');
   const isAttachmentMenu = location.pathname.startsWith('/menu');
   useEffect(() => {
     if (loading || isAttachmentMenu) return;
@@ -65,6 +67,7 @@ function AppContent({
       '/theme',
       '/profile',
       '/index',
+      '/error',
     ];
     const isKnownPath = allowedPrefixes.some(
       (prefix) =>
@@ -72,15 +75,25 @@ function AppContent({
         location.pathname.startsWith(`${prefix}/`),
     );
     if (!isKnownPath) {
-      navigate('/index', { replace: true });
+      navigate(`/error?from=${encodeURIComponent(location.pathname)}`, {
+        replace: true,
+      });
       return;
     }
-    if (!user && !isLogin) {
+    if (!user && !isLogin && !isErrorPage) {
       navigate('/login', { replace: true });
     } else if (user && isLogin) {
       navigate('/index', { replace: true });
     }
-  }, [isAttachmentMenu, isLogin, loading, location.pathname, navigate, user]);
+  }, [
+    isAttachmentMenu,
+    isErrorPage,
+    isLogin,
+    loading,
+    location.pathname,
+    navigate,
+    user,
+  ]);
   const alert = (
     <AlertDialog
       open={!!initialAlert}
@@ -98,6 +111,21 @@ function AppContent({
         >
           <Suspense fallback={<div>{t('loading')}</div>}>
             <AttachmentMenu />
+          </Suspense>
+        </ErrorBoundary>
+        {alert}
+      </>
+    );
+  }
+  if (isErrorPage) {
+    return (
+      <>
+        <ErrorBoundary
+          fallback={<div>Произошла ошибка</div>}
+          resetKeys={[location.pathname]}
+        >
+          <Suspense fallback={<div>{t('loading')}</div>}>
+            <ErrorPage />
           </Suspense>
         </ErrorBoundary>
         {alert}

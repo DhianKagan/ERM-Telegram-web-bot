@@ -22,6 +22,13 @@ if [ ! -d "node_modules/.pnpm" ] \
   pnpm --filter apps/api... -s install --frozen-lockfile --prod
 fi
 
+# Preflight: MongoDB must be reachable in Railway runtime.
+# NOTE: scripts/check_mongo.mjs skips when CI is set, so we run it with CI unset.
+if [ "${RUN_MONGO_CHECK_ON_START:-1}" = "1" ]; then
+  echo ">>> [preflight] MongoDB ping..."
+  CI= node scripts/check_mongo.mjs
+fi
+
 if [ -x "./scripts/set_bot_commands.sh" ]; then
   ./scripts/set_bot_commands.sh
 fi

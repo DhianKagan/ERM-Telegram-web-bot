@@ -189,7 +189,7 @@ function AppShell() {
                   </ProtectedRoute>
                 }
               />
-              <Route path="*" element={<Navigate to="/index" />} />
+              <Route path="*" element={<Navigate to="/error" replace />} />
             </Routes>
           </Suspense>
         </main>

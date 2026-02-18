@@ -10,7 +10,9 @@ import {
   LatLng,
 } from '../utils/geo';
 
-const REQUEST_TIMEOUT_MS = Number(process.env.WORKER_ROUTE_TIMEOUT_MS || '30000'); // 30s default
+const REQUEST_TIMEOUT_MS = Number(
+  process.env.WORKER_ROUTE_TIMEOUT_MS || '10000',
+); // 10s default
 
 type OsrmResponse = {
   code?: string;
@@ -33,15 +35,17 @@ const buildRouteUrl = (
   const normalizedPath = base.pathname.replace(/\/+$/, '');
   base.pathname = `${normalizedPath}/${coordsStr}`;
   base.searchParams.set('overview', 'false');
-  base.searchParams.set('annotations', 'distance');
   base.searchParams.set('steps', 'false');
+  base.searchParams.set('alternatives', 'false');
   if (config.algorithm) {
     base.searchParams.set('algorithm', config.algorithm);
   }
   return base;
 };
 
-function normalizeWorkerPoint(input: Coordinates | string | undefined): LatLng | null {
+function normalizeWorkerPoint(
+  input: Coordinates | string | undefined,
+): LatLng | null {
   // Accept Coordinates object or string
   if (!input) return null;
   // If already object with lat/lng
@@ -66,10 +70,15 @@ export const calculateRouteDistance = async (
 
   // Normalize inputs
   const startParsed = normalizeWorkerPoint(startRaw as unknown as Coordinates);
-  const finishParsed = normalizeWorkerPoint(finishRaw as unknown as Coordinates);
+  const finishParsed = normalizeWorkerPoint(
+    finishRaw as unknown as Coordinates,
+  );
 
   if (!startParsed || !finishParsed) {
-    logger.warn({ startRaw, finishRaw }, 'calculateRouteDistance: invalid raw coordinates after parse');
+    logger.warn(
+      { startRaw, finishRaw },
+      'calculateRouteDistance: invalid raw coordinates after parse',
+    );
     return { distanceKm: null };
   }
 
@@ -78,12 +87,18 @@ export const calculateRouteDistance = async (
 
   const locations = normalizePointsString(rawPoints);
   if (locations.length < 2) {
-    logger.warn({ startParsed, finishParsed }, 'calculateRouteDistance: normalized to fewer than 2 points');
+    logger.warn(
+      { startParsed, finishParsed },
+      'calculateRouteDistance: normalized to fewer than 2 points',
+    );
     return { distanceKm: null };
   }
   const pre = precheckLocations(locations);
   if (!pre.ok) {
-    logger.warn({ pre, startParsed, finishParsed }, 'calculateRouteDistance precheck failed');
+    logger.warn(
+      { pre, startParsed, finishParsed },
+      'calculateRouteDistance precheck failed',
+    );
     return { distanceKm: null };
   }
 
@@ -94,7 +109,10 @@ export const calculateRouteDistance = async (
   try {
     url = buildRouteUrl(config, normalizedCoords);
   } catch (err) {
-    logger.warn({ err, config }, 'calculateRouteDistance: routing baseUrl missing or invalid');
+    logger.warn(
+      { err, config },
+      'calculateRouteDistance: routing baseUrl missing or invalid',
+    );
     return { distanceKm: null };
   }
 
@@ -108,7 +126,8 @@ export const calculateRouteDistance = async (
     // optional tracing
     try {
       const mod = await import('../utils/trace');
-      const trace = typeof mod.getTrace === 'function' ? mod.getTrace() : undefined;
+      const trace =
+        typeof mod.getTrace === 'function' ? mod.getTrace() : undefined;
       if (trace && typeof trace === 'object' && 'traceparent' in trace) {
         const traceparent = (trace as { traceparent?: unknown }).traceparent;
         if (typeof traceparent === 'string') {
@@ -120,24 +139,37 @@ export const calculateRouteDistance = async (
     }
 
     const startTime = Date.now();
-    const response = await fetch(url.toString(), { signal: controller.signal, headers });
+    const response = await fetch(url.toString(), {
+      signal: controller.signal,
+      headers,
+    });
     const raw = await response.text();
     let payload: OsrmResponse | null = null;
     try {
       payload = raw ? (JSON.parse(raw) as OsrmResponse) : null;
     } catch {
       logger.warn(
-        { url: url.toString(), status: response.status, raw: raw && raw.slice(0, 2000) + '...[truncated]' },
+        {
+          url: url.toString(),
+          status: response.status,
+          raw: raw && raw.slice(0, 2000) + '...[truncated]',
+        },
         'Worker: non-json response from routing service',
       );
       return { distanceKm: null };
     }
 
     const durationMs = Date.now() - startTime;
-    logger.info({ url: url.toString(), durationMs, status: response.status }, 'Worker: route call');
+    logger.info(
+      { url: url.toString(), durationMs, status: response.status },
+      'Worker: route call',
+    );
 
     if (!response.ok || payload?.code !== 'Ok') {
-      logger.warn({ status: response.status, payload }, 'OSRM returned error in worker');
+      logger.warn(
+        { status: response.status, payload },
+        'OSRM returned error in worker',
+      );
       return { distanceKm: null };
     }
 
@@ -145,13 +177,16 @@ export const calculateRouteDistance = async (
     if (typeof distanceMeters !== 'number') {
       return { distanceKm: null };
     }
-    const distanceKm = Number((distanceMeters / 1000).toFixed(1));
+    const distanceKm = distanceMeters / 1000;
     return { distanceKm } as RouteDistanceJobResult;
   } catch (error) {
     const name = (error as { name?: unknown }).name;
     const isAbort = typeof name === 'string' && name === 'AbortError';
     const level = isAbort ? 'warn' : 'error';
-    logger[level]({ start: startParsed, finish: finishParsed, error }, 'Unable to fetch route (worker)');
+    logger[level](
+      { start: startParsed, finish: finishParsed, error },
+      'Unable to fetch route (worker)',
+    );
     return { distanceKm: null };
   } finally {
     clearTimeout(timeout);

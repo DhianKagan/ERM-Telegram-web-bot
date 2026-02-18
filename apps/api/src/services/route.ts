@@ -11,6 +11,9 @@ import { cacheGet, cacheSet, cacheClear } from '../utils/cache';
 import { logger } from '../services/wgLogEngine';
 
 const tableGuard = process.env.ROUTE_TABLE_GUARD !== '0';
+const ROUTE_REQUEST_TIMEOUT_MS = Number(
+  process.env.ROUTE_REQUEST_TIMEOUT_MS || '10000',
+);
 const defaultTableMaxPoints = 100;
 let tableMaxPoints = Number(
   process.env.ROUTE_TABLE_MAX_POINTS || defaultTableMaxPoints,
@@ -280,7 +283,10 @@ async function call<T>(
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30_000);
+  const timeout = setTimeout(
+    () => controller.abort(),
+    ROUTE_REQUEST_TIMEOUT_MS,
+  );
   const timer = osrmRequestDuration.startTimer({ endpoint });
   try {
     const res = await fetch(url.toString(), {
@@ -398,8 +404,8 @@ export async function getRouteDistance(
 
   const routeUrl = buildEndpointUrl('route', normalizedCoordsStr);
   routeUrl.searchParams.set('overview', 'false');
-  routeUrl.searchParams.set('annotations', 'distance');
   routeUrl.searchParams.set('steps', 'false');
+  routeUrl.searchParams.set('alternatives', 'false');
 
   const trace = getTrace();
   const headers: Record<string, string> = {};
@@ -420,7 +426,10 @@ export async function getRouteDistance(
   }
 
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 30_000);
+  const timeout = setTimeout(
+    () => controller.abort(),
+    ROUTE_REQUEST_TIMEOUT_MS,
+  );
   const timer = osrmRequestDuration.startTimer({ endpoint: 'route' });
   try {
     const res = await fetch(routeUrl.toString(), {

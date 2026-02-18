@@ -22,7 +22,8 @@ describe('маршруты OSRM', () => {
     global.fetch = jest.fn(async () => ({
       ok: true,
       status: 200,
-      text: async () => JSON.stringify({ code: 'Ok', routes: [{ geometry: null }] }),
+      text: async () =>
+        JSON.stringify({ code: 'Ok', routes: [{ geometry: null }] }),
       json: async () => ({ code: 'Ok', routes: [{ geometry: null }] }),
     })) as unknown as typeof fetch;
   });
@@ -35,9 +36,7 @@ describe('маршруты OSRM', () => {
     const { table } = await import('../src/services/route');
     await table('1,1;2,2', {});
 
-    const calledUrl = new URL(
-      (fetch as jest.Mock).mock.calls[0][0] as string,
-    );
+    const calledUrl = new URL((fetch as jest.Mock).mock.calls[0][0] as string);
     expect(calledUrl.pathname).toBe('/table/v1/driving/1,1;2,2');
     expect(calledUrl.searchParams.get('points')).toBeNull();
   });
@@ -59,9 +58,7 @@ describe('маршруты OSRM', () => {
     });
 
     const result = await routeGeometry('1,1;2,2');
-    const calledUrl = new URL(
-      (fetch as jest.Mock).mock.calls[0][0] as string,
-    );
+    const calledUrl = new URL((fetch as jest.Mock).mock.calls[0][0] as string);
     expect(calledUrl.pathname).toBe('/route/v1/driving/1,1;2,2');
     expect(result).toEqual([[1, 2]]);
   });
@@ -88,10 +85,12 @@ describe('маршруты OSRM', () => {
       { lat: 1, lng: 2 },
       { lat: 1.5, lng: 2.5 },
     );
-    const calledUrl = new URL(
-      (fetch as jest.Mock).mock.calls[0][0] as string,
-    );
+    const calledUrl = new URL((fetch as jest.Mock).mock.calls[0][0] as string);
     expect(calledUrl.pathname).toBe('/route/v1/driving/2,1;2.5,1.5');
+    expect(calledUrl.searchParams.get('overview')).toBe('false');
+    expect(calledUrl.searchParams.get('steps')).toBe('false');
+    expect(calledUrl.searchParams.get('alternatives')).toBe('false');
+    expect(calledUrl.searchParams.get('annotations')).toBeNull();
     expect(result.distance).toBe(1234);
   });
 });

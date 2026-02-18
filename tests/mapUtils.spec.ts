@@ -33,6 +33,20 @@ describe('extractCoords', () => {
     expect(result).toEqual({ lat: 50.4501, lng: 30.5234 });
   });
 
+  it('возвращает null для координат вне диапазона широты', () => {
+    const result = extractCoords(
+      'https://www.google.com/maps/@123.456,24.654321,17z',
+    );
+    expect(result).toBeNull();
+  });
+
+  it('возвращает null для координат вне диапазона долготы', () => {
+    const result = extractCoords(
+      'https://www.google.com/maps/search/?api=1&query=50.4501,222.5234',
+    );
+    expect(result).toBeNull();
+  });
+
   it('возвращает null при отсутствии координат', () => {
     expect(extractCoords('https://www.google.com/maps')).toBeNull();
   });

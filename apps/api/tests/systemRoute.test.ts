@@ -43,6 +43,7 @@ const mockQueueRecoveryService = {
     enabled: true,
     generatedAt: '2024-01-01T00:00:00.000Z',
     geocodingFailed: [],
+    routingFailed: [],
     deadLetterWaiting: [],
     deadLetterFailed: [],
   })),
@@ -51,6 +52,8 @@ const mockQueueRecoveryService = {
     dryRun: true,
     geocodingFailedScanned: 0,
     geocodingRetried: 0,
+    routingFailedScanned: 0,
+    routingRetried: 0,
     deadLetterScanned: 0,
     deadLetterReplayed: 0,
     deadLetterRemoved: 0,
@@ -139,6 +142,7 @@ describe('system routes', () => {
       .send({
         dryRun: false,
         geocodingFailedLimit: 10,
+        routingFailedLimit: 8,
         deadLetterLimit: 12,
         removeReplayedDeadLetter: true,
         removeSkippedDeadLetter: true,
@@ -148,6 +152,7 @@ describe('system routes', () => {
     expect(mockQueueRecoveryService.recover).toHaveBeenCalledWith({
       dryRun: false,
       geocodingFailedLimit: 10,
+      routingFailedLimit: 8,
       deadLetterLimit: 12,
       removeReplayedDeadLetter: true,
       removeSkippedDeadLetter: true,

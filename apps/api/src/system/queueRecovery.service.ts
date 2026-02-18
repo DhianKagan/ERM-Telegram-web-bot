@@ -23,12 +23,14 @@ export type QueueRecoveryDiagnostics = {
   enabled: boolean;
   generatedAt: string;
   geocodingFailed: QueueJobSnapshot[];
+  routingFailed: QueueJobSnapshot[];
   deadLetterWaiting: QueueJobSnapshot[];
   deadLetterFailed: QueueJobSnapshot[];
 };
 
 export type QueueRecoveryOptions = {
   geocodingFailedLimit: number;
+  routingFailedLimit: number;
   deadLetterLimit: number;
   dryRun: boolean;
   removeReplayedDeadLetter: boolean;
@@ -40,6 +42,8 @@ export type QueueRecoveryResult = {
   dryRun: boolean;
   geocodingFailedScanned: number;
   geocodingRetried: number;
+  routingFailedScanned: number;
+  routingRetried: number;
   deadLetterScanned: number;
   deadLetterReplayed: number;
   deadLetterRemoved: number;
@@ -138,16 +142,24 @@ export default class QueueRecoveryService {
         enabled: false,
         generatedAt: new Date().toISOString(),
         geocodingFailed: [],
+        routingFailed: [],
         deadLetterWaiting: [],
         deadLetterFailed: [],
       } satisfies QueueRecoveryDiagnostics;
     }
 
     const geocodingQueue = createQueue(QueueName.LogisticsGeocoding);
+    const routingQueue = createQueue(QueueName.LogisticsRouting);
     const deadLetterQueue = createQueue(QueueName.DeadLetter);
 
     try {
       const geocodingFailed = await geocodingQueue.getJobs(
+        ['failed'],
+        0,
+        safeLimit - 1,
+        true,
+      );
+      const routingFailed = await routingQueue.getJobs(
         ['failed'],
         0,
         safeLimit - 1,
@@ -170,12 +182,14 @@ export default class QueueRecoveryService {
         enabled: true,
         generatedAt: new Date().toISOString(),
         geocodingFailed: geocodingFailed.map(toSnapshot),
+        routingFailed: routingFailed.map(toSnapshot),
         deadLetterWaiting: deadLetterWaiting.map(toSnapshot),
         deadLetterFailed: deadLetterFailed.map(toSnapshot),
       } satisfies QueueRecoveryDiagnostics;
     } finally {
       await Promise.all([
         closeQueue(geocodingQueue),
+        closeQueue(routingQueue),
         closeQueue(deadLetterQueue),
       ]);
     }
@@ -190,6 +204,8 @@ export default class QueueRecoveryService {
         dryRun: true,
         geocodingFailedScanned: 0,
         geocodingRetried: 0,
+        routingFailedScanned: 0,
+        routingRetried: 0,
         deadLetterScanned: 0,
         deadLetterReplayed: 0,
         deadLetterRemoved: 0,
@@ -203,11 +219,13 @@ export default class QueueRecoveryService {
 
     const dryRun = options.dryRun !== false;
     const geocodingLimit = clampLimit(options.geocodingFailedLimit, 20);
+    const routingLimit = clampLimit(options.routingFailedLimit, geocodingLimit);
     const deadLetterLimit = clampLimit(options.deadLetterLimit, 20);
     const removeReplayedDeadLetter = options.removeReplayedDeadLetter === true;
     const removeSkippedDeadLetter = options.removeSkippedDeadLetter === true;
 
     const geocodingQueue = createQueue(QueueName.LogisticsGeocoding);
+    const routingQueue = createQueue(QueueName.LogisticsRouting);
     const deadLetterQueue = createQueue(QueueName.DeadLetter);
     const queueCache = new Map<QueueName, Queue>();
     const errors: string[] = [];
@@ -223,6 +241,7 @@ export default class QueueRecoveryService {
     };
 
     let geocodingRetried = 0;
+    let routingRetried = 0;
     let deadLetterReplayed = 0;
     let deadLetterRemoved = 0;
     let deadLetterSkipped = 0;
@@ -248,6 +267,29 @@ export default class QueueRecoveryService {
           const reason = error instanceof Error ? error.message : String(error);
           errors.push(
             `Не удалось повторить geocoding job ${String(failedJob.id)}: ${reason}`,
+          );
+        }
+      }
+
+      const routingFailedJobs = await routingQueue.getJobs(
+        ['failed'],
+        0,
+        routingLimit - 1,
+        true,
+      );
+
+      for (const failedJob of routingFailedJobs) {
+        if (dryRun) {
+          routingRetried += 1;
+          continue;
+        }
+        try {
+          await failedJob.retry();
+          routingRetried += 1;
+        } catch (error) {
+          const reason = error instanceof Error ? error.message : String(error);
+          errors.push(
+            `Не удалось повторить routing job ${String(failedJob.id)}: ${reason}`,
           );
         }
       }
@@ -312,6 +354,8 @@ export default class QueueRecoveryService {
         dryRun,
         geocodingFailedScanned: geocodingFailedJobs.length,
         geocodingRetried,
+        routingFailedScanned: routingFailedJobs.length,
+        routingRetried,
         deadLetterScanned: deadLetterJobs.length,
         deadLetterReplayed,
         deadLetterRemoved,
@@ -322,6 +366,7 @@ export default class QueueRecoveryService {
     } finally {
       const closers = [
         closeQueue(geocodingQueue),
+        closeQueue(routingQueue),
         closeQueue(deadLetterQueue),
         ...Array.from(queueCache.values()).map((queue) => closeQueue(queue)),
       ];

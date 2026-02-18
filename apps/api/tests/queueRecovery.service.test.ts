@@ -50,6 +50,10 @@ describe('QueueRecoveryService', () => {
       getJobs: jest.fn(async () => []),
       close: jest.fn(async () => undefined),
     });
+    queueMocks.set(QueueName.LogisticsRouting, {
+      getJobs: jest.fn(async () => []),
+      close: jest.fn(async () => undefined),
+    });
     queueMocks.set(QueueName.DeadLetter, {
       getJobs: jest
         .fn()
@@ -64,6 +68,7 @@ describe('QueueRecoveryService', () => {
       dryRun: false,
       deadLetterLimit: 20,
       geocodingFailedLimit: 20,
+      routingFailedLimit: 20,
       removeReplayedDeadLetter: false,
       removeSkippedDeadLetter: true,
     });

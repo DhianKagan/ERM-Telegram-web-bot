@@ -105,6 +105,7 @@ router.post(
     const body = req.body as Partial<{
       dryRun: boolean;
       geocodingFailedLimit: number;
+      routingFailedLimit: number;
       deadLetterLimit: number;
       removeReplayedDeadLetter: boolean;
       removeSkippedDeadLetter: boolean;
@@ -113,6 +114,7 @@ router.post(
     const result = await queueRecovery.recover({
       dryRun: body.dryRun,
       geocodingFailedLimit: parseLimit(body.geocodingFailedLimit, 20),
+      routingFailedLimit: parseLimit(body.routingFailedLimit, 20),
       deadLetterLimit: parseLimit(body.deadLetterLimit, 20),
       removeReplayedDeadLetter: body.removeReplayedDeadLetter === true,
       removeSkippedDeadLetter: body.removeSkippedDeadLetter === true,

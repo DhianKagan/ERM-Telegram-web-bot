@@ -16,6 +16,7 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
+    "noCheck": true,
     "jsx": "react-jsx",
     "allowImportingTsExtensions": true,
     "baseUrl": ".",
@@ -24,7 +25,7 @@
       "shared": ["../../packages/shared/src"],
       "shared/*": ["../../packages/shared/src/*"]
     },
-    "composite": true
+    "composite": false
   },
   "include": ["src"],
   "references": [{ "path": "../../packages/shared" }]

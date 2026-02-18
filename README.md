@@ -1,177 +1,61 @@
-# ERM Telegram Web Bot (v2.2) ![Quality checks](https://img.shields.io/badge/Codex-Quality%20Gate-blue)
+# ERM Telegram Web Bot
 
-Этот монорепозиторий содержит модульную систему управления ресурсами предприятия, объединяющую телеграм-бота, REST API и веб-дашборд.
+Монорепозиторий системы управления задачами и ресурсами предприятия:
 
----
-
-## Архитектура
-
-Проект структурирован как рабочее пространство PNPM и состоит из нескольких пакетов:
-
-- **`apps/api`** – API на базе Node.js/Express, написанное на TypeScript. Реализует REST-эндпоинты для задач, заявок, пользователей, ролей, логов, коллекций, журнала событий, аналитики, оптимизации маршрутов и пр. Взаимодействует с MongoDB (Mongoose). Фоновые воркеры (BullMQ) обрабатывают геокодинг, маршрутизацию и уведомления.
-- **Telegram-бот** – runtime бота находится в `apps/api/src/bot`, а в продакшене запускается отдельной командой (`railway:start:bot`) как самостоятельный процесс.
-- **`apps/web`** – веб-приложение на React (Vite + Tailwind). Содержит интерфейсы: задачи, заявки, архив, журнал событий, менеджер файлов (Storage), коллекции, аналитика и настройки. Для таблиц используется TanStack React Table; встроены экспорт в CSV/XLSX/PDF.
-- **`packages/shared`**, **`packages/utils`** – общие TypeScript-типы и утилиты, используемые в API, боте и вебе.
-
-API модульное: для каждой области (auth, tasks, requests, users, roles, logs, events, analytics, storage, collections) есть контроллеры, DTO, сервисы и guards. Контроль доступа — RBAC с набором прав/масок (пример: `ACCESS_USER`, `ACCESS_MANAGER`, `ACCESS_ADMIN`). Безопасность: JWT в HTTP-only cookie, CSRF-токены, валидация DTO, rate limiting.
-
-Файлы могут храниться на диске или в S3-совместимом хранилище; загрузки реализованы чанками и проверяются антивирусом (ClamAV и др.).
-
----
-
-## Возможности
-
-### Задачи и заявки (Tasks & Requests)
-
-- Создание, редактирование и удаление задач и заявок. Поля: статус, приоритет, тип, исполнители, дедлайны, вложения.
-- Фильтры и поиск: по статусу, приоритету, типу, исполнителям и диапазону дат; полнотекстовый поиск по заголовкам и описаниям. Для привилегированных пользователей — переключение «мои / все».
-- Вложения: загрузка через drag-and-drop или селектор файлов; файловая проверка антивирусом.
-- Предпросмотр и экспорт: отображение в таблицах/карточках; экспорт в CSV/XLSX/PDF через тулбар.
-- Архив: архивирование выполненных сущностей и возможность полного удаления (при наличии права `TASK_DELETE`).
-- Интеграция с Telegram: создание задач/заявок из чата, загрузка вложений, уведомления о назначениях.
-
-### Коллекции и настройки (Collections & Settings)
-
-Секция **Collections** для администраторов:
-
-- Подразделения, отделы, должности.
-- Объекты (локации), сотрудники, автопарк, основные средства.
-- Пользователи и шаблоны задач.
-
-CRUD, поиск, фильтры и импорт/экспорт; формы поддерживают вложенные связи (например, привязка сотрудника к отделу). В разделе настроек также находятся **Analytics**, **Archive**, **Logs**, **Storage**, **Health**.
-
-### Менеджер файлов (Storage Manager)
-
-- Загрузка и предпросмотр файлов: изображения, видео, PDF, текст.
-- Фильтры и сортировка: поиск по имени, сортировка по размеру/дате, фильтр по типу файла и статусу привязки (все/связанные/несвязанные).
-- Диагностика: анализ использования хранилища и обнаружение «осиротевших» файлов.
-- Скачивание и удаление: возможность загрузки или окончательного удаления файлов; предпросмотр внутри интерфейса.
-
-### Журнал событий (Event Log)
-
-- Фиксация операций с активами: заправка, обслуживание, ремонт, перемещение и др. Для основных средств и автопарка.
-- Создание и редактирование событий через модальное окно с валидацией и динамическими полями (выбор объекта из коллекций). Для перемещений запрашивается место отправления/назначения.
-- Фильтры и экспорт: фильтрация по типу события, активу, локации и дате; экспорт через таблицу.
-
-### Аналитика (Analytics)
-
-- Встроенные панели отображают метрики по планам маршрутов и задачам. Страницы `/mg/analytics` и `/cp/analytics` показывают графики и таблицы для менеджеров и администраторов.
-- Фильтрация аналитики по датам, объектам и исполнителям; агрегирование данных из задач и журнала событий.
-
-### Оптимизация маршрутов (экспериментально)
-
-- Опциональная интеграция решения VRP (Vehicle Routing Problem) c использованием **OR-Tools** и GraphHopper/OSRM. При включении (`ENABLE_VRP_SOLVER=true`) API принимает JSON-план (список задач с координатами, требованиями, временными окнами и т.д.) и возвращает оптимизированные маршруты.
-- Конфигурация внешнего сервиса задаётся `GRAPH_HOPPER_API_KEY` и `GRAPH_HOPPER_BASE_URL`. Имеется прототип Python-скрипта для тестирования планирования маршрутов.
-
----
-
-## Фоновые очереди и наблюдаемость
-
-- Асинхронная обработка геокодинга и маршрутизации — BullMQ. Метрики (количество, длительности) экспортируются в Prometheus.
-- Логирование операций с идентификаторами пользователей; упор на покрытие тестами и соблюдение RBAC/валидации DTO.
-- CI: Danger/GitHub Actions — правила защиты веток, шаблоны сообщений коммитов и проверка покрытия.
-
-### Локальный modern monitoring stack (Prometheus + Grafana + Loki)
-
-Для быстрого внедрения готового стека наблюдаемости добавлен отдельный compose-файл:
-
-```bash
-docker compose -f docker-compose.yml -f docker-compose.monitoring.yml up -d
-```
-
-После запуска:
-
-- Grafana: `http://localhost:3001` (`admin` / `admin`)
-- Prometheus: `http://localhost:9090`
-- Loki API: `http://localhost:3100`
-
-Готовый дашборд автоматически провижинится из `prometheus/dashboard.json`.
-
-Подробная инструкция: `docs/modern_monitoring_stack.md`.
-
----
+- `apps/api` — REST API, Telegram runtime, RBAC, обработка файлов.
+- `apps/web` — веб-интерфейс (Vite + React).
+- `apps/worker` — фоновые очереди BullMQ (геокодинг/маршруты/сервисные jobs).
+- `packages/shared`, `packages/utils` — общие типы и утилиты.
 
 ## Быстрый старт
 
-1. **Требования:** Node.js ≥ 18, PNPM (или Yarn), MongoDB, Redis. Для VRP: GraphHopper/OSRM при включении `ENABLE_VRP_SOLVER=true`.
-2. **Установка зависимостей:**
-   ```bash
-   pnpm install
-   ```
+### Требования
 
-### Ручная настройка окружения (окно Manual setup)
+- Node.js 20+
+- pnpm 10+
+- MongoDB
+- Redis (для фоновых очередей)
 
-Если нужно вернуть ручной bootstrap в Codex/CI, используйте готовый скрипт из репозитория:
-
-```bash
-bash ./scripts/manual_codex_bootstrap.sh
-```
-
-Содержимое `scripts/manual_codex_bootstrap.sh` (если нужно вставить вручную):
+### Установка
 
 ```bash
-#!/usr/bin/env bash
-if [ -z "${BASH_VERSION:-}" ]; then
-  exec bash "$0" "$@"
-fi
-
-set -euo pipefail
-
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-resolve_repo_root() {
-  local candidate=""
-
-  if candidate="$(git -C "${PWD}" rev-parse --show-toplevel 2>/dev/null)"; then
-    if [ -f "$candidate/.openai/codex_environment_setup.sh" ]; then
-      printf '%s\n' "$candidate"
-      return 0
-    fi
-  fi
-
-  candidate="$(cd "$SCRIPT_DIR/.." && pwd)"
-  if [ -f "$candidate/.openai/codex_environment_setup.sh" ]; then
-    printf '%s\n' "$candidate"
-    return 0
-  fi
-
-  if [ -f "$PWD/.openai/codex_environment_setup.sh" ]; then
-    printf '%s\n' "$PWD"
-    return 0
-  fi
-
-  echo "Не удалось определить корень репозитория с .openai/codex_environment_setup.sh" >&2
-  return 1
-}
-
-REPO_ROOT="$(resolve_repo_root)"
-
-# Не падаем на недоступной Mongo в контейнере
-export CODEX_STRICT_MONGO_TEST="${CODEX_STRICT_MONGO_TEST:-0}"
-
-# По умолчанию Codex работает в DB-free режиме.
-# Для явной проверки внешней Mongo включать только при необходимости: USE_REAL_MONGO=true
-export USE_REAL_MONGO="${USE_REAL_MONGO:-false}"
-
-# По умолчанию не доустанавливаем прод-зависимости apps/api во время healthcheck.
-# Можно включить при необходимости: CODEX_AUTO_INSTALL_API_PROD=1
-export CODEX_AUTO_INSTALL_API_PROD="${CODEX_AUTO_INSTALL_API_PROD:-0}"
-
-# Запуск через обёртку в .openai независимо от текущей директории
-cd "$REPO_ROOT"
-exec bash "$REPO_ROOT/.openai/codex_environment_setup.sh" "$@"
+pnpm install
+cp .env.example .env
 ```
 
-Важно: при ручной вставке комментарии должны оставаться с `#` в начале строки. Строки вида `Не падаем ...` без `#` воспринимаются bash как команда и ломают setup.
-
-Если вставляете команду в Manual setup одной строкой (без переносов и без символов `\n`), используйте:
+Заполните переменные в `.env`, затем:
 
 ```bash
-export CODEX_STRICT_MONGO_TEST="${CODEX_STRICT_MONGO_TEST:-0}"; export USE_REAL_MONGO="${USE_REAL_MONGO:-false}"; bash ./.openai/codex_environment_setup.sh
+pnpm dev
 ```
 
-Короткий вариант (если переменные уже заданы):
+Команда запускает приложения монорепозитория через Turbo.
+
+## Основные команды
 
 ```bash
-bash ./.openai/codex_environment_setup.sh
+pnpm build        # сборка всех пакетов и приложений
+pnpm lint         # линтинг
+pnpm typecheck    # проверка TypeScript
+pnpm test         # тесты
+pnpm check        # быстрый CI-набор
+pnpm check:full   # полный CI-набор
 ```
+
+## Документация
+
+- Точка входа: [`docs/README.md`](docs/README.md)
+- Единый индекс: [`docs/index.md`](docs/index.md)
+- Техническое руководство: [`docs/technical_manual.md`](docs/technical_manual.md)
+- Архитектура: [`docs/architecture.md`](docs/architecture.md)
+- Права и роли: [`docs/permissions.md`](docs/permissions.md)
+- Безопасность: [`SECURITY.md`](SECURITY.md), [`INCIDENT_RESPONSE.md`](INCIDENT_RESPONSE.md)
+
+## Правила для ассистентов
+
+Единственные источники правил для AI-ассистентов:
+
+- [`AGENTS.md`](AGENTS.md)
+- [`.openai/assistant_instructions.json`](.openai/assistant_instructions.json)
+
+Остальная документация не должна дублировать или переопределять эти правила.

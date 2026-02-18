@@ -1,56 +1,45 @@
-<!-- Назначение файла: описание Telegram-бота и инструкции по запуску. -->
+<!-- Назначение файла: актуальное описание API-приложения и runtime Telegram-бота. -->
 
-# Бот управления задачами
+# apps/api
 
-Данный модуль представляет Telegram-бота с мини‑приложением для учёта задач. Все сервисы собираются через Docker.
+`apps/api` — серверное приложение монорепозитория.
 
-## Структура
+Содержит:
 
-- `src/bot` — логика бота
-- `src/services` — операции с задачами
-- `src/db` — модели MongoDB
-- `src/api` — REST API
-- `src/auth` — аутентификация
-- `web` — исходники мини‑приложения React
+- REST API;
+- аутентификацию и RBAC;
+- runtime Telegram-бота (`src/bot/runtime.ts`);
+- интеграции с MongoDB/Redis и файловым хранилищем.
 
-## Требования
+## Локальный запуск
 
-- Node.js
-- npm
-- Docker
-
-## Установка
+Из корня репозитория:
 
 ```bash
-git clone <URL репозитория>
-cd ERM-Telegram-web-bot/bot
-npm install # устанавливает зависимости и собирает мини‑приложение
+pnpm --filter apps/api dev
 ```
 
-Создайте `.env` на основе файла `../.env.example` и задайте `CHAT_ID` через бот @userinfobot.
-Если файл `.env` отсутствует, запустите `../scripts/create_env_from_exports.sh` из корня,
-чтобы автоматически заполнить переменные из окружения или `../.env.example`.
-Скрипт корректно обрабатывает специальные символы в значениях.
-При изменении исходников фронтенда выполните `pnpm run build-client`.
-Vite собирает интерфейс напрямую в каталог `public`, дополнительное копирование не требуется.
-
-## Запуск
+Для production-сборки:
 
 ```bash
-pnpm run dev # запуск в режиме разработки
-# или
-npm start
+pnpm --filter apps/api build
+pnpm railway:start:api
 ```
 
-## Docker
+## Переменные окружения
 
-```bash
-docker build -t task-bot .
-docker run --env-file ../.env -p 3000:3000 task-bot
-```
+Базовые переменные берутся из корневого `.env` (см. `.env.example`).
 
-## Развёртывание
+Критичные блоки:
 
-Для Railway укажите рабочую директорию `bot` и переменные из `.env`.
-Если healthcheck падает из-за долгого старта MongoDB, увеличьте `HEALTHCHECK_GRACE_SECONDS`
-в секундах (например, `120`).
+- MongoDB (`MONGO_*`, `MONGODB_*`)
+- JWT/авторизация
+- Redis/BullMQ (`QUEUE_*`)
+- Telegram (`BOT_TOKEN`, связанные настройки)
+
+## Связанные документы
+
+- Общий проект: [`../../README.md`](../../README.md)
+- Техмануал: [`../../docs/technical_manual.md`](../../docs/technical_manual.md)
+- Права и роли: [`../../docs/permissions.md`](../../docs/permissions.md)
+- Railway: [`../../docs/railway_full_setup.md`](../../docs/railway_full_setup.md)

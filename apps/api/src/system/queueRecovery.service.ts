@@ -32,6 +32,7 @@ export type QueueRecoveryOptions = {
   deadLetterLimit: number;
   dryRun: boolean;
   removeReplayedDeadLetter: boolean;
+  removeSkippedDeadLetter: boolean;
 };
 
 export type QueueRecoveryResult = {
@@ -43,6 +44,7 @@ export type QueueRecoveryResult = {
   deadLetterReplayed: number;
   deadLetterRemoved: number;
   deadLetterSkipped: number;
+  deadLetterSkippedRemoved: number;
   errors: string[];
 };
 
@@ -192,6 +194,7 @@ export default class QueueRecoveryService {
         deadLetterReplayed: 0,
         deadLetterRemoved: 0,
         deadLetterSkipped: 0,
+        deadLetterSkippedRemoved: 0,
         errors: [
           'Очереди BullMQ отключены или отсутствует подключение к Redis.',
         ],
@@ -202,6 +205,7 @@ export default class QueueRecoveryService {
     const geocodingLimit = clampLimit(options.geocodingFailedLimit, 20);
     const deadLetterLimit = clampLimit(options.deadLetterLimit, 20);
     const removeReplayedDeadLetter = options.removeReplayedDeadLetter === true;
+    const removeSkippedDeadLetter = options.removeSkippedDeadLetter === true;
 
     const geocodingQueue = createQueue(QueueName.LogisticsGeocoding);
     const deadLetterQueue = createQueue(QueueName.DeadLetter);
@@ -222,6 +226,7 @@ export default class QueueRecoveryService {
     let deadLetterReplayed = 0;
     let deadLetterRemoved = 0;
     let deadLetterSkipped = 0;
+    let deadLetterSkippedRemoved = 0;
 
     try {
       const geocodingFailedJobs = await geocodingQueue.getJobs(
@@ -258,6 +263,18 @@ export default class QueueRecoveryService {
         const parsedData = parseDeadLetterData(deadLetterJob.data);
         if (!parsedData || parsedData.queue === QueueName.DeadLetter) {
           deadLetterSkipped += 1;
+          if (!dryRun && removeSkippedDeadLetter) {
+            try {
+              await deadLetterJob.remove();
+              deadLetterSkippedRemoved += 1;
+            } catch (error) {
+              const reason =
+                error instanceof Error ? error.message : String(error);
+              errors.push(
+                `Не удалось удалить пропущенную DLQ job ${String(deadLetterJob.id)}: ${reason}`,
+              );
+            }
+          }
           errors.push(
             `Пропущена DLQ job ${String(deadLetterJob.id)}: некорректный payload или целевая очередь logistics-dead-letter.`,
           );
@@ -299,6 +316,7 @@ export default class QueueRecoveryService {
         deadLetterReplayed,
         deadLetterRemoved,
         deadLetterSkipped,
+        deadLetterSkippedRemoved,
         errors,
       } satisfies QueueRecoveryResult;
     } finally {

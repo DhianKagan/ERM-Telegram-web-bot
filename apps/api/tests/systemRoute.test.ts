@@ -55,6 +55,7 @@ const mockQueueRecoveryService = {
     deadLetterReplayed: 0,
     deadLetterRemoved: 0,
     deadLetterSkipped: 0,
+    deadLetterSkippedRemoved: 0,
     errors: [],
   })),
 };
@@ -140,6 +141,7 @@ describe('system routes', () => {
         geocodingFailedLimit: 10,
         deadLetterLimit: 12,
         removeReplayedDeadLetter: true,
+        removeSkippedDeadLetter: true,
       })
       .expect(200);
 
@@ -148,6 +150,7 @@ describe('system routes', () => {
       geocodingFailedLimit: 10,
       deadLetterLimit: 12,
       removeReplayedDeadLetter: true,
+      removeSkippedDeadLetter: true,
     });
   });
 });

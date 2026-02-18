@@ -107,6 +107,7 @@ router.post(
       geocodingFailedLimit: number;
       deadLetterLimit: number;
       removeReplayedDeadLetter: boolean;
+      removeSkippedDeadLetter: boolean;
     }>;
 
     const result = await queueRecovery.recover({
@@ -114,6 +115,7 @@ router.post(
       geocodingFailedLimit: parseLimit(body.geocodingFailedLimit, 20),
       deadLetterLimit: parseLimit(body.deadLetterLimit, 20),
       removeReplayedDeadLetter: body.removeReplayedDeadLetter === true,
+      removeSkippedDeadLetter: body.removeSkippedDeadLetter === true,
     });
 
     res.status(result.enabled ? 200 : 503).json(result);

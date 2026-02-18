@@ -104,12 +104,21 @@ router.post(
   asyncHandler(async (req, res) => {
     const body = req.body as Partial<{
       dryRun: boolean;
+      confirmReplayRemove: boolean;
       geocodingFailedLimit: number;
       routingFailedLimit: number;
       deadLetterLimit: number;
       removeReplayedDeadLetter: boolean;
       removeSkippedDeadLetter: boolean;
     }>;
+
+    if (body.dryRun === false && body.confirmReplayRemove !== true) {
+      res.status(400).json({
+        message:
+          'Перед replay/remove сначала проверьте /api/v1/system/queues/diagnostics и выполните /api/v1/system/queues/recover с dryRun=true. Для выполнения изменений повторите запрос с confirmReplayRemove=true.',
+      });
+      return;
+    }
 
     const result = await queueRecovery.recover({
       dryRun: body.dryRun,

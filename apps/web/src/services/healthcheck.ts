@@ -18,6 +18,30 @@ export type StackHealthResponse = {
   results: StackCheckResult[];
 };
 
+export type QueueRecoveryDiagnosticsResponse = {
+  enabled: boolean;
+  generatedAt: string;
+  geocodingFailed: unknown[];
+  routingFailed: unknown[];
+  deadLetterWaiting: unknown[];
+  deadLetterFailed: unknown[];
+};
+
+export type QueueRecoveryRunResponse = {
+  enabled: boolean;
+  dryRun: boolean;
+  geocodingFailedScanned: number;
+  geocodingRetried: number;
+  routingFailedScanned: number;
+  routingRetried: number;
+  deadLetterScanned: number;
+  deadLetterReplayed: number;
+  deadLetterRemoved: number;
+  deadLetterSkipped: number;
+  deadLetterSkippedRemoved: number;
+  errors: string[];
+};
+
 const isStackCheckResult = (value: unknown): value is StackCheckResult => {
   if (!value || typeof value !== 'object') return false;
   const candidate = value as { name?: unknown; status?: unknown };
@@ -59,4 +83,38 @@ export async function runStackHealthCheck(): Promise<StackHealthResponse> {
     timestamp,
     results: parsedResults,
   } satisfies StackHealthResponse;
+}
+
+export async function fetchQueueDiagnostics(
+  limit = 20,
+): Promise<QueueRecoveryDiagnosticsResponse> {
+  const response = await authFetch(
+    `/api/v1/system/queues/diagnostics?limit=${Math.max(1, Math.trunc(limit))}`,
+  );
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(
+      `Диагностика очередей недоступна: ${response.status} ${text}`,
+    );
+  }
+
+  return (await response.json()) as QueueRecoveryDiagnosticsResponse;
+}
+
+export async function runQueueRecoveryDryRun(): Promise<QueueRecoveryRunResponse> {
+  const response = await authFetch('/api/v1/system/queues/recover', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dryRun: true }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(
+      `Dry-run восстановления недоступен: ${response.status} ${text}`,
+    );
+  }
+
+  return (await response.json()) as QueueRecoveryRunResponse;
 }

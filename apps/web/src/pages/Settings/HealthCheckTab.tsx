@@ -16,6 +16,8 @@ import {
 import { Button } from '../../components/ui/button';
 import SettingsSectionHeader from './SettingsSectionHeader';
 import {
+  fetchQueueDiagnostics,
+  runQueueRecoveryDryRun,
   runStackHealthCheck,
   type StackCheckResult,
   type StackCheckStatus,
@@ -54,7 +56,11 @@ export default function HealthCheckTab(): JSX.Element {
   const [lastRun, setLastRun] = useState<string | null>(null);
   const [auto, setAuto] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [queueActionLoading, setQueueActionLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [queueActionResult, setQueueActionResult] = useState<string | null>(
+    null,
+  );
   const timerRef = useRef<number | null>(null);
 
   const sortedResults = useMemo(
@@ -74,6 +80,40 @@ export default function HealthCheckTab(): JSX.Element {
       setError(message);
     } finally {
       setLoading(false);
+    }
+  }, []);
+
+  const handleQueueDiagnostics = useCallback(async () => {
+    setQueueActionLoading(true);
+    setError(null);
+    setQueueActionResult(null);
+    try {
+      const diagnostics = await fetchQueueDiagnostics(20);
+      setQueueActionResult(
+        `Диагностика: failed geocoding=${diagnostics.geocodingFailed.length}, failed routing=${diagnostics.routingFailed.length}, dead-letter waiting=${diagnostics.deadLetterWaiting.length}.`,
+      );
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Неизвестная ошибка';
+      setError(message);
+    } finally {
+      setQueueActionLoading(false);
+    }
+  }, []);
+
+  const handleQueueRecoverDryRun = useCallback(async () => {
+    setQueueActionLoading(true);
+    setError(null);
+    setQueueActionResult(null);
+    try {
+      const result = await runQueueRecoveryDryRun();
+      setQueueActionResult(
+        `Dry-run: scanned DLQ=${result.deadLetterScanned}, replay=${result.deadLetterReplayed}, skipped=${result.deadLetterSkipped}, errors=${result.errors.length}.`,
+      );
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Неизвестная ошибка';
+      setError(message);
+    } finally {
+      setQueueActionLoading(false);
     }
   }, []);
 
@@ -154,6 +194,12 @@ export default function HealthCheckTab(): JSX.Element {
         </div>
       ) : null}
 
+      {queueActionResult ? (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-100">
+          {queueActionResult}
+        </div>
+      ) : null}
+
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
         <div className="grid grid-cols-[1fr_auto_auto_2fr] items-center gap-2 bg-slate-50 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
           <span>Компонент</span>
@@ -194,6 +240,28 @@ export default function HealthCheckTab(): JSX.Element {
                   {extractHint(item.meta) ? (
                     <div className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 font-medium text-amber-800 dark:border-amber-600 dark:bg-amber-900/40 dark:text-amber-100">
                       Что делать: {extractHint(item.meta)}
+                    </div>
+                  ) : null}
+                  {item.name === 'bullmq' && item.status !== 'ok' ? (
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={queueActionLoading}
+                        onClick={() => void handleQueueDiagnostics()}
+                      >
+                        Проверить очереди
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        disabled={queueActionLoading}
+                        onClick={() => void handleQueueRecoverDryRun()}
+                      >
+                        Recover dry-run
+                      </Button>
                     </div>
                   ) : null}
                   {item.meta ? (

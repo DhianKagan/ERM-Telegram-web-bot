@@ -141,6 +141,7 @@ describe('system routes', () => {
       .post('/queues/recover')
       .send({
         dryRun: false,
+        confirmReplayRemove: true,
         geocodingFailedLimit: 10,
         routingFailedLimit: 8,
         deadLetterLimit: 12,
@@ -157,5 +158,18 @@ describe('system routes', () => {
       removeReplayedDeadLetter: true,
       removeSkippedDeadLetter: true,
     });
+  });
+
+  test('POST /queues/recover требует подтверждение перед replay/remove', async () => {
+    const response = await request(app)
+      .post('/queues/recover')
+      .send({ dryRun: false })
+      .expect(400);
+
+    expect(response.body).toEqual({
+      message:
+        'Перед replay/remove сначала проверьте /api/v1/system/queues/diagnostics и выполните /api/v1/system/queues/recover с dryRun=true. Для выполнения изменений повторите запрос с confirmReplayRemove=true.',
+    });
+    expect(mockQueueRecoveryService.recover).not.toHaveBeenCalled();
   });
 });

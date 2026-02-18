@@ -149,6 +149,10 @@ REPO_ROOT="$(resolve_repo_root)"
 # Не падаем на недоступной Mongo в контейнере
 export CODEX_STRICT_MONGO_TEST="${CODEX_STRICT_MONGO_TEST:-0}"
 
+# По умолчанию Codex работает в DB-free режиме.
+# Для явной проверки внешней Mongo включать только при необходимости: USE_REAL_MONGO=true
+export USE_REAL_MONGO="${USE_REAL_MONGO:-false}"
+
 # По умолчанию не доустанавливаем прод-зависимости apps/api во время healthcheck.
 # Можно включить при необходимости: CODEX_AUTO_INSTALL_API_PROD=1
 export CODEX_AUTO_INSTALL_API_PROD="${CODEX_AUTO_INSTALL_API_PROD:-0}"
@@ -163,7 +167,7 @@ exec bash "$REPO_ROOT/.openai/codex_environment_setup.sh" "$@"
 Если вставляете команду в Manual setup одной строкой (без переносов и без символов `\n`), используйте:
 
 ```bash
-export CODEX_STRICT_MONGO_TEST="${CODEX_STRICT_MONGO_TEST:-0}"; bash ./.openai/codex_environment_setup.sh
+export CODEX_STRICT_MONGO_TEST="${CODEX_STRICT_MONGO_TEST:-0}"; export USE_REAL_MONGO="${USE_REAL_MONGO:-false}"; bash ./.openai/codex_environment_setup.sh
 ```
 
 Короткий вариант (если переменные уже заданы):

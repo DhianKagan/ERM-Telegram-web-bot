@@ -37,6 +37,10 @@ REPO_ROOT="$(resolve_repo_root)"
 # Не падаем на недоступной Mongo в контейнере
 export CODEX_STRICT_MONGO_TEST="${CODEX_STRICT_MONGO_TEST:-0}"
 
+# По умолчанию Codex работает в DB-free режиме и не пытается ходить во внешнюю Mongo.
+# Включать только когда реально нужен внешний healthcheck: USE_REAL_MONGO=true
+export USE_REAL_MONGO="${USE_REAL_MONGO:-false}"
+
 # По умолчанию не доустанавливаем прод-зависимости apps/api во время healthcheck.
 # Можно включить при необходимости: CODEX_AUTO_INSTALL_API_PROD=1
 export CODEX_AUTO_INSTALL_API_PROD="${CODEX_AUTO_INSTALL_API_PROD:-0}"

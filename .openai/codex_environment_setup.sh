@@ -100,6 +100,8 @@ export CODEX_PATCH_ENSURE_BINARY="${CODEX_PATCH_ENSURE_BINARY:-0}"         # 1 =
 export CODEX_ALLOW_OVERRIDE_SANITIZE="${CODEX_ALLOW_OVERRIDE_SANITIZE:-0}" # 1 = разрешить санитарить overrides (модифицирует package.json; только если SAFE_MODE=0)
 export CODEX_SKIP_INSTALL="${CODEX_SKIP_INSTALL:-0}"                       # 1 = пропустить pnpm install
 export CODEX_STRICT_MONGO_TEST="${CODEX_STRICT_MONGO_TEST:-0}"             # 1 = healthcheck mongo станет фатальным
+export USE_REAL_MONGO="${USE_REAL_MONGO:-false}"                       # true = разрешить внешнюю Mongo для setup-проверки
+export CODEX_AUTO_INSTALL_API_PROD="${CODEX_AUTO_INSTALL_API_PROD:-0}"   # 1 = доустановить production-зависимости apps/api
 
 echo "==== codex_environment_setup.sh — start ===="
 
@@ -127,9 +129,10 @@ export https_proxy="${https_proxy:-${HTTPS_PROXY:-}}"
 ok "Прокси переменные готовы (HTTP_PROXY/HTTPS_PROXY + http_proxy/https_proxy)"
 
 # --- 25% Mongo URL normalize ---
-progress 25 "Mongo URL: проверка/нормализация" "включим USE_REAL_MONGO и поправим tls для Railway"
-if [ -n "${MONGO_DATABASE_URL:-}" ]; then
-  export USE_REAL_MONGO="true"
+progress 25 "Mongo URL: проверка/нормализация" "в DB-free режиме проверка Mongo отключена"
+if [ "${USE_REAL_MONGO,,}" != "true" ]; then
+  warn "USE_REAL_MONGO=${USE_REAL_MONGO} -> setup работает в DB-free режиме (без внешней Mongo)"
+elif [ -n "${MONGO_DATABASE_URL:-}" ]; then
   orig="$MONGO_DATABASE_URL"
   new="$orig"
 
@@ -165,7 +168,7 @@ if [ -n "${MONGO_DATABASE_URL:-}" ]; then
     log "after : $(redact_mongo_uri "$new")"
   fi
 else
-  warn "MONGO_DATABASE_URL не задан — внешний Mongo не настроен"
+  warn "USE_REAL_MONGO=true, но MONGO_DATABASE_URL не задан — внешний Mongo не настроен"
 fi
 
 # --- 40% Prevent mongodb-memory-server downloads ---
@@ -265,6 +268,12 @@ NODE
       fi
     fi
     ok "pnpm install завершён"
+
+    if [ "${CODEX_AUTO_INSTALL_API_PROD:-0}" = "1" ] && [ -d "apps/api" ]; then
+      progress 95 "apps/api prod dependencies" "доустановка по флагу CODEX_AUTO_INSTALL_API_PROD=1"
+      pnpm --filter apps/api... -s install --frozen-lockfile --prod || pnpm --filter apps/api... -s install --prod || true
+      ok "apps/api production-зависимости готовы"
+    fi
   else
     warn "pnpm не найден — fallback на npm (может не поддержать overrides в монорепо)"
     npm install --no-save --no-package-lock || true
@@ -273,7 +282,7 @@ fi
 
 # --- 100% Mongo healthcheck (не пишет файлы) ---
 progress 100 "Mongo healthcheck" "проверка соединения (masked), без записи файлов"
-if [ -n "${MONGO_DATABASE_URL:-}" ] && command -v pnpm >/dev/null 2>&1 && [ -d "apps/api" ]; then
+if [ "${USE_REAL_MONGO,,}" = "true" ] && [ -n "${MONGO_DATABASE_URL:-}" ] && command -v pnpm >/dev/null 2>&1 && [ -d "apps/api" ]; then
   trap - ERR
   set +e
   pnpm --dir apps/api exec node - <<'NODE'
@@ -340,7 +349,7 @@ NODE
     fi
   fi
 else
-  warn "Mongo healthcheck пропущен (нет MONGO_DATABASE_URL / pnpm / apps/api)"
+  warn "Mongo healthcheck пропущен (USE_REAL_MONGO!=true или нет MONGO_DATABASE_URL / pnpm / apps/api)"
 fi
 
 log "Summary:"
@@ -349,6 +358,7 @@ log "  SAFE_MODE=${CODEX_SETUP_SAFE_MODE}"
 log "  PATCH_ENSURE_BINARY=${CODEX_PATCH_ENSURE_BINARY}"
 log "  ALLOW_OVERRIDE_SANITIZE=${CODEX_ALLOW_OVERRIDE_SANITIZE}"
 log "  SKIP_INSTALL=${CODEX_SKIP_INSTALL}"
+log "  CODEX_AUTO_INSTALL_API_PROD=${CODEX_AUTO_INSTALL_API_PROD}"
 log "  USE_REAL_MONGO=${USE_REAL_MONGO:-false}"
 log "  MONGOMS_SKIP_DOWNLOAD=${MONGOMS_SKIP_DOWNLOAD:-}"
 if [ -n "${MONGO_DATABASE_URL:-}" ]; then

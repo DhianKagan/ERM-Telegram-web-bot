@@ -1,32 +1,32 @@
 // Назначение: проверка миграции точек маршрута задач.
-// Основные модули: mongodb-memory-server, mongoose, migrateTaskPoints
+// Основные модули: mongoose, migrateTaskPoints
 import mongoose from 'mongoose';
-import { MongoMemoryServer } from 'mongodb-memory-server';
 import { migrateCollection } from '../../../scripts/db/migrateTaskPoints';
 
 jest.setTimeout(30000);
 
 describe('migrateTaskPoints', () => {
-  let mongod: MongoMemoryServer | null = null;
   let skipSuite = false;
 
   beforeAll(async () => {
     try {
-      mongod = await MongoMemoryServer.create();
-      await mongoose.connect(mongod.getUri());
+      const mongoUrl = process.env.MONGO_DATABASE_URL;
+      if (!mongoUrl)
+        throw new Error(
+          'MONGO_DATABASE_URL не задан для migrateTaskPoints.test',
+        );
+      await mongoose.connect(mongoUrl, { serverSelectionTimeoutMS: 5000 });
     } catch (error) {
       skipSuite = true;
-      console.warn(
-        'MongoMemoryServer недоступен, пропускаем migrateTaskPoints.test',
-        { error },
-      );
+      console.warn('MongoDB недоступна, пропускаем migrateTaskPoints.test', {
+        error,
+      });
     }
   });
 
   afterAll(async () => {
-    if (skipSuite || !mongod) return;
+    if (skipSuite) return;
     await mongoose.disconnect();
-    await mongod.stop();
   });
 
   beforeEach(async () => {

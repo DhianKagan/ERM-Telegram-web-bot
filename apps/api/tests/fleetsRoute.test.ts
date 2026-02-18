@@ -1,19 +1,17 @@
 // Назначение: проверка CRUD-роутов автопарка
-// Основные модули: express, supertest, mongodb-memory-server
+// Основные модули: express, supertest
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
 process.env.JWT_SECRET = 'secret';
-process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
+process.env.MONGO_DATABASE_URL ||= 'mongodb://localhost/db';
 process.env.APP_URL = 'https://localhost';
 
-// MongoMemoryServer может скачивать бинарники дольше 30 секунд, поэтому увеличиваем таймаут.
 jest.setTimeout(120_000);
 
 import express from 'express';
 import request from 'supertest';
 import mongoose from 'mongoose';
-import { MongoMemoryServer } from 'mongodb-memory-server';
 import fleetsRouter from '../src/routes/fleets';
 import { FleetVehicle } from '../src/db/models/fleet';
 
@@ -33,28 +31,27 @@ jest.mock('../src/auth/roles.decorator', () => ({
   Roles: () => (_req: unknown, _res: unknown, next: () => void) => next(),
 }));
 
-let mongod: MongoMemoryServer | null = null;
 let app: express.Express | null = null;
 let skipSuite = false;
 
 beforeAll(async () => {
   try {
-    mongod = await MongoMemoryServer.create();
-    await mongoose.connect(mongod.getUri());
+    const mongoUrl = process.env.MONGO_DATABASE_URL;
+    if (!mongoUrl)
+      throw new Error('MONGO_DATABASE_URL не задан для fleetsRoute.test');
+    await mongoose.connect(mongoUrl, { serverSelectionTimeoutMS: 5000 });
     app = express();
     app.use('/api/v1/fleets', fleetsRouter);
   } catch (error) {
     skipSuite = true;
-    console.warn('MongoMemoryServer недоступен, пропускаем fleetsRoute.test', {
+    console.warn('MongoDB недоступна, пропускаем fleetsRoute.test', {
       error,
     });
   }
 });
 
 afterAll(async () => {
-  if (!mongod) return;
   await mongoose.disconnect();
-  await mongod.stop();
 });
 
 afterEach(async () => {

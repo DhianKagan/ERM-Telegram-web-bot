@@ -1,9 +1,8 @@
 /**
  * Назначение файла: проверки хуков модели Task (приоритет и окна доставки).
- * Основные модули: mongodb-memory-server, mongoose, Task.
+ * Основные модули: mongoose, Task.
  */
 import mongoose from 'mongoose';
-import { MongoMemoryServer } from 'mongodb-memory-server';
 import { strict as assert } from 'assert';
 
 declare const before: (
@@ -25,14 +24,15 @@ describe('Task model — хуки сохранения', function () {
   const suite = this as { timeout?: (ms: number) => void };
   suite.timeout?.(60000);
 
-  let mongod: MongoMemoryServer;
   let Task: typeof import('../../apps/api/src/db/model').Task;
 
   before(async function () {
     const hook = this as { timeout?: (ms: number) => void };
     hook.timeout?.(60000);
-    mongod = await MongoMemoryServer.create();
-    const uri = mongod.getUri();
+    const uri = process.env.MONGO_DATABASE_URL;
+    if (!uri) {
+      throw new Error('MONGO_DATABASE_URL не задан для task.model.spec');
+    }
     process.env.MONGO_DATABASE_URL = uri;
     await mongoose.connect(uri);
     ({ Task } = await import('../../apps/api/src/db/model'));
@@ -40,9 +40,6 @@ describe('Task model — хуки сохранения', function () {
 
   after(async () => {
     await mongoose.disconnect();
-    if (mongod) {
-      await mongod.stop();
-    }
   });
 
   it('нормализует приоритет и копирует логистику в окно доставки', async () => {

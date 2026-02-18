@@ -1,36 +1,32 @@
 // Назначение: проверка фильтрации и пагинации в collectionRepo
-// Модули: mongodb-memory-server, mongoose, collectionRepo, ensureIndexes
+// Модули: mongoose, collectionRepo, ensureIndexes
 import mongoose from 'mongoose';
-import { MongoMemoryServer } from 'mongodb-memory-server';
 import { create, list } from '../src/db/repos/collectionRepo';
 import { ensureCollectionItemIndexes } from '../../../scripts/db/ensureIndexes';
 
 jest.setTimeout(30000);
 
 describe('collectionRepo', () => {
-  let mongod: MongoMemoryServer | null = null;
   let skipSuite = false;
 
   beforeAll(async () => {
     try {
-      mongod = await MongoMemoryServer.create();
-      await mongoose.connect(mongod.getUri());
+      const mongoUrl = process.env.MONGO_DATABASE_URL;
+      if (!mongoUrl)
+        throw new Error('MONGO_DATABASE_URL не задан для collectionRepo.test');
+      await mongoose.connect(mongoUrl, { serverSelectionTimeoutMS: 5000 });
       await ensureCollectionItemIndexes(mongoose.connection);
     } catch (error) {
       skipSuite = true;
-      console.warn(
-        'MongoMemoryServer недоступен, пропускаем collectionRepo.test',
-        {
-          error,
-        },
-      );
+      console.warn('MongoDB недоступна, пропускаем collectionRepo.test', {
+        error,
+      });
     }
   });
 
   afterAll(async () => {
-    if (skipSuite || !mongod) return;
+    if (skipSuite) return;
     await mongoose.disconnect();
-    await mongod.stop();
   });
 
   test('фильтрация и пагинация', async () => {

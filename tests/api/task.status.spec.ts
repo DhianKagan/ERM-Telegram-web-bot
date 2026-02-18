@@ -1,9 +1,8 @@
 /**
  * Назначение файла: интеграционные тесты статуса задач.
- * Основные модули: mongodb-memory-server, mongoose, queries.updateTaskStatus.
+ * Основные модули: mongoose, queries.updateTaskStatus.
  */
 import mongoose, { Types } from 'mongoose';
-import { MongoMemoryServer } from 'mongodb-memory-server';
 import { strict as assert } from 'assert';
 
 declare const before: (
@@ -22,7 +21,6 @@ describe('updateTaskStatus', function () {
   const suite = this as { timeout?: (ms: number) => void };
   suite.timeout?.(60000);
 
-  let mongod: MongoMemoryServer;
   let Task: typeof import('../../apps/api/src/db/model').Task;
   let updateTaskStatus: typeof import('../../apps/api/src/db/queries').updateTaskStatus;
   let bulkUpdate: typeof import('../../apps/api/src/db/queries').bulkUpdate;
@@ -30,8 +28,10 @@ describe('updateTaskStatus', function () {
   before(async function () {
     const hook = this as { timeout?: (ms: number) => void };
     hook.timeout?.(60000);
-    mongod = await MongoMemoryServer.create();
-    const uri = mongod.getUri();
+    const uri = process.env.MONGO_DATABASE_URL;
+    if (!uri) {
+      throw new Error('MONGO_DATABASE_URL не задан для task.status.spec');
+    }
     process.env.MONGO_DATABASE_URL = uri;
     await mongoose.connect(uri);
 
@@ -44,9 +44,6 @@ describe('updateTaskStatus', function () {
 
   after(async () => {
     await mongoose.disconnect();
-    if (mongod) {
-      await mongod.stop();
-    }
   });
 
   it('устанавливает completed_at для финальных статусов и сбрасывает при откате', async () => {

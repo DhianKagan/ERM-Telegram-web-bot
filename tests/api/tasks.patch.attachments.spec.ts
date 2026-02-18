@@ -1,6 +1,6 @@
 /**
  * Назначение файла: интеграционный тест обновления задачи с вложениями.
- * Основные модули: express, supertest, mongodb-memory-server, mongoose.
+ * Основные модули: express, supertest, mongoose.
  */
 import express from 'express';
 import request from 'supertest';
@@ -20,7 +20,6 @@ declare const beforeEach: (
 ) => void;
 
 import mongoose, { Types } from 'mongoose';
-import { MongoMemoryServer } from 'mongodb-memory-server';
 import { strict as assert } from 'assert';
 import {
   ACCESS_ADMIN,
@@ -32,7 +31,6 @@ describe('PATCH /api/v1/tasks/:id с вложениями', function () {
   const suite = this as { timeout?: (ms: number) => void };
   suite.timeout?.(60000);
   let app: express.Express;
-  let mongod: MongoMemoryServer;
   let Task: typeof import('../../apps/api/src/db/model').Task;
   let File: typeof import('../../apps/api/src/db/model').File;
   let User: typeof import('../../apps/api/src/db/model').User;
@@ -41,8 +39,12 @@ describe('PATCH /api/v1/tasks/:id с вложениями', function () {
   before(async function () {
     const hook = this as { timeout?: (ms: number) => void };
     hook.timeout?.(60000);
-    mongod = await MongoMemoryServer.create();
-    const uri = mongod.getUri();
+    const uri = process.env.MONGO_DATABASE_URL;
+    if (!uri) {
+      throw new Error(
+        'MONGO_DATABASE_URL не задан для tasks.patch.attachments.spec',
+      );
+    }
     process.env.MONGO_DATABASE_URL = uri;
     delete process.env.MONGODB_URI;
     delete process.env.DATABASE_URL;
@@ -73,9 +75,6 @@ describe('PATCH /api/v1/tasks/:id с вложениями', function () {
 
   after(async () => {
     await mongoose.disconnect();
-    if (mongod) {
-      await mongod.stop();
-    }
   });
 
   beforeEach(async () => {

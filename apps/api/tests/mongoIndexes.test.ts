@@ -1,7 +1,6 @@
 // Назначение: проверка использования индексов MongoDB.
-// Модули: mongoose, mongodb-memory-server, ensureTaskIndexes.
+// Модули: mongoose, ensureTaskIndexes.
 import mongoose from 'mongoose';
-import { MongoMemoryServer } from 'mongodb-memory-server';
 import {
   ensureTaskIndexes,
   ensureUploadIndexes,
@@ -25,7 +24,6 @@ function planHasStage(plan: Plan | undefined, stage: string): boolean {
 }
 
 describe('индексы MongoDB', () => {
-  let mongod: MongoMemoryServer | null = null;
   let skipSuite = false;
 
   const cleanDatabase = async () => {
@@ -55,24 +53,22 @@ describe('индексы MongoDB', () => {
 
   beforeAll(async () => {
     try {
-      mongod = await MongoMemoryServer.create();
-      await mongoose.connect(mongod.getUri());
+      const mongoUrl = process.env.MONGO_DATABASE_URL;
+      if (!mongoUrl)
+        throw new Error('MONGO_DATABASE_URL не задан для mongoIndexes.test');
+      await mongoose.connect(mongoUrl, { serverSelectionTimeoutMS: 5000 });
     } catch (error) {
       skipSuite = true;
-      console.warn(
-        'MongoMemoryServer недоступен, пропускаем mongoIndexes.test',
-        {
-          error,
-        },
-      );
+      console.warn('MongoDB недоступна, пропускаем mongoIndexes.test', {
+        error,
+      });
     }
   });
 
   afterAll(async () => {
-    if (skipSuite || !mongod) return;
+    if (skipSuite) return;
     await cleanDatabase();
     await mongoose.disconnect();
-    await mongod.stop();
   });
 
   describe('индексы задач', () => {

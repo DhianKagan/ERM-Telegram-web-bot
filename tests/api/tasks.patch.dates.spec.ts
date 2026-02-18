@@ -1,11 +1,10 @@
 /**
  * Назначение файла: интеграционный тест обновления задачи без изменения дат.
- * Основные модули: express, supertest, mongodb-memory-server, mongoose.
+ * Основные модули: express, supertest, mongoose.
  */
 import express from 'express';
 import request from 'supertest';
 import mongoose, { Types } from 'mongoose';
-import { MongoMemoryServer } from 'mongodb-memory-server';
 import { strict as assert } from 'assert';
 
 declare const before: (
@@ -27,15 +26,16 @@ describe('PATCH /api/v1/tasks/:id без изменения дат', function ()
   const suite = this as { timeout?: (ms: number) => void };
   suite.timeout?.(60000);
   let app: express.Express;
-  let mongod: MongoMemoryServer;
   let Task: typeof import('../../apps/api/src/db/model').Task;
   let updateTask: typeof import('../../apps/api/src/db/queries').updateTask;
 
   before(async function () {
     const hook = this as { timeout?: (ms: number) => void };
     hook.timeout?.(60000);
-    mongod = await MongoMemoryServer.create();
-    const uri = mongod.getUri();
+    const uri = process.env.MONGO_DATABASE_URL;
+    if (!uri) {
+      throw new Error('MONGO_DATABASE_URL не задан для tasks.patch.dates.spec');
+    }
     process.env.MONGO_DATABASE_URL = uri;
     delete process.env.MONGODB_URI;
     delete process.env.DATABASE_URL;
@@ -63,9 +63,6 @@ describe('PATCH /api/v1/tasks/:id без изменения дат', function ()
 
   after(async () => {
     await mongoose.disconnect();
-    if (mongod) {
-      await mongod.stop();
-    }
   });
 
   beforeEach(async () => {

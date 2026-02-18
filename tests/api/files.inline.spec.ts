@@ -1,6 +1,6 @@
 /**
  * Назначение файла: тесты доступа к просмотру файлов в режиме inline.
- * Основные модули: express, supertest, mongodb-memory-server, mongoose, jsonwebtoken.
+ * Основные модули: express, supertest, mongoose, jsonwebtoken.
  */
 import path from 'path';
 import fs from 'fs/promises';
@@ -9,7 +9,6 @@ import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
 import { strict as assert } from 'assert';
-import { MongoMemoryServer } from 'mongodb-memory-server';
 
 declare const before: (
   handler: (this: unknown) => unknown | Promise<unknown>,
@@ -31,7 +30,6 @@ describe('GET /api/v1/files/:id?mode=inline', function () {
   suite.timeout?.(60000);
 
   let app: express.Express;
-  let mongod: MongoMemoryServer;
   let File: typeof import('../../apps/api/src/db/model').File;
   let uploadsDir: string;
 
@@ -40,8 +38,10 @@ describe('GET /api/v1/files/:id?mode=inline', function () {
     hook.timeout?.(60000);
     const tempUploads = path.resolve(__dirname, '../tmp/uploads-inline');
     process.env.STORAGE_DIR = tempUploads;
-    mongod = await MongoMemoryServer.create();
-    const uri = `${mongod.getUri()}ermdb`;
+    const uri = process.env.MONGO_DATABASE_URL;
+    if (!uri) {
+      throw new Error('MONGO_DATABASE_URL не задан для files.inline.spec');
+    }
     process.env.MONGO_DATABASE_URL = uri;
     delete process.env.MONGODB_URI;
     delete process.env.DATABASE_URL;
@@ -60,9 +60,6 @@ describe('GET /api/v1/files/:id?mode=inline', function () {
 
   after(async () => {
     await mongoose.disconnect();
-    if (mongod) {
-      await mongod.stop();
-    }
     if (uploadsDir) {
       await fs
         .rm(uploadsDir, { recursive: true, force: true })

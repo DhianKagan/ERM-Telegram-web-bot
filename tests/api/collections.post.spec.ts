@@ -1,12 +1,11 @@
 /**
  * Назначение файла: интеграционные тесты POST /api/v1/collections.
- * Основные модули: express, supertest, mongodb-memory-server, mongoose.
+ * Основные модули: express, supertest, mongoose.
  */
 import express from 'express';
 import request from 'supertest';
 import jwt from 'jsonwebtoken';
 import mongoose from 'mongoose';
-import { MongoMemoryServer } from 'mongodb-memory-server';
 import { strict as assert } from 'assert';
 
 declare const before: (
@@ -28,14 +27,15 @@ describe('POST /api/v1/collections', function () {
   const suite = this as { timeout?: (ms: number) => void };
   suite.timeout?.(60000);
   let app: express.Express;
-  let mongod: MongoMemoryServer;
   let authHeader: string;
 
   before(async function () {
     const hook = this as { timeout?: (ms: number) => void };
     hook.timeout?.(60000);
-    mongod = await MongoMemoryServer.create();
-    const uri = mongod.getUri();
+    const uri = process.env.MONGO_DATABASE_URL;
+    if (!uri) {
+      throw new Error('MONGO_DATABASE_URL не задан для collections.post.spec');
+    }
     process.env.MONGO_DATABASE_URL = uri;
     delete process.env.MONGODB_URI;
     delete process.env.DATABASE_URL;
@@ -63,9 +63,6 @@ describe('POST /api/v1/collections', function () {
 
   after(async () => {
     await mongoose.disconnect();
-    if (mongod) {
-      await mongod.stop();
-    }
   });
 
   beforeEach(async () => {

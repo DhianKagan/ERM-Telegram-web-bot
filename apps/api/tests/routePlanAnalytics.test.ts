@@ -1,21 +1,18 @@
 // Назначение: проверка агрегирующего эндпойнта аналитики маршрутных планов.
-// Основные модули: jest, supertest, mongodb-memory-server
+// Основные модули: jest, supertest
 
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 'token';
 process.env.CHAT_ID = '1';
 process.env.JWT_SECRET = 'secret';
-process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
+process.env.MONGO_DATABASE_URL ||= 'mongodb://localhost/db';
 process.env.APP_URL = 'https://localhost';
-
-import '../../../tests/setupMongoMemoryServer';
 
 jest.setTimeout(120_000);
 
 import express from 'express';
 import request from 'supertest';
 import mongoose from 'mongoose';
-import { MongoMemoryServer } from 'mongodb-memory-server';
 import analyticsRouter from '../src/routes/analytics';
 import { RoutePlan } from '../src/db/models/routePlan';
 
@@ -28,32 +25,31 @@ jest.mock(
   () => () => (_req: unknown, _res: unknown, next: () => void) => next(),
 );
 
-let mongod: MongoMemoryServer | null = null;
 let app: express.Express | null = null;
 let skipSuite = false;
 
 beforeAll(async () => {
   try {
-    mongod = await MongoMemoryServer.create();
-    await mongoose.connect(mongod.getUri());
+    const mongoUrl = process.env.MONGO_DATABASE_URL;
+    if (!mongoUrl)
+      throw new Error(
+        'MONGO_DATABASE_URL не задан для routePlanAnalytics.test',
+      );
+    await mongoose.connect(mongoUrl, { serverSelectionTimeoutMS: 5000 });
     app = express();
     app.use(express.json());
     app.use('/api/v1/analytics', analyticsRouter);
   } catch (error) {
     skipSuite = true;
-    console.warn(
-      'MongoMemoryServer недоступен, пропускаем routePlanAnalytics.test',
-      {
-        error,
-      },
-    );
+    console.warn('MongoDB недоступна, пропускаем routePlanAnalytics.test', {
+      error,
+    });
   }
 });
 
 afterAll(async () => {
-  if (skipSuite || !mongod) return;
+  if (skipSuite) return;
   await mongoose.disconnect();
-  await mongod.stop();
 });
 
 beforeEach(async () => {

@@ -1,10 +1,10 @@
 // Назначение: проверка агрегации коллекций с данными Department и Employee.
-// Основные модули: jest, supertest, express, mongodb-memory-server.
+// Основные модули: jest, supertest, express.
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
 process.env.JWT_SECRET = 's';
-process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
+process.env.MONGO_DATABASE_URL ||= 'mongodb://localhost/db';
 process.env.APP_URL = 'https://localhost';
 
 jest.setTimeout(30000);
@@ -12,7 +12,6 @@ jest.setTimeout(30000);
 import express from 'express';
 import request from 'supertest';
 import mongoose from 'mongoose';
-import { MongoMemoryServer } from 'mongodb-memory-server';
 import { Department } from '../src/db/models/department';
 import { Employee } from '../src/db/models/employee';
 import { CollectionItem } from '../src/db/models/CollectionItem';
@@ -32,13 +31,16 @@ jest.mock(
 );
 
 let app: express.Express | null = null;
-let mongod: MongoMemoryServer | null = null;
 let skipSuite = false;
 
 beforeAll(async () => {
   try {
-    mongod = await MongoMemoryServer.create();
-    await mongoose.connect(mongod.getUri());
+    const mongoUrl = process.env.MONGO_DATABASE_URL;
+    if (!mongoUrl)
+      throw new Error(
+        'MONGO_DATABASE_URL не задан для collectionsAggregator.test',
+      );
+    await mongoose.connect(mongoUrl, { serverSelectionTimeoutMS: 5000 });
 
     app = express();
     app.use(express.json());
@@ -71,17 +73,15 @@ beforeAll(async () => {
     });
   } catch (error) {
     skipSuite = true;
-    console.warn(
-      'MongoMemoryServer недоступен, пропускаем collectionsAggregator.test',
-      { error },
-    );
+    console.warn('MongoDB недоступна, пропускаем collectionsAggregator.test', {
+      error,
+    });
   }
 });
 
 afterAll(async () => {
-  if (skipSuite || !mongod) return;
+  if (skipSuite) return;
   await mongoose.disconnect();
-  await mongod.stop();
 });
 
 describe('Агрегация коллекций', () => {

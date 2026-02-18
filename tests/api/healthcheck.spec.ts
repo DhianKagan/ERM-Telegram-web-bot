@@ -1,11 +1,10 @@
 /**
  * Назначение файла: тестирование статуса здоровья API.
- * Основные модули: express, supertest, mongoose, mongodb-memory-server, collectHealthStatus.
+ * Основные модули: express, supertest, mongoose, collectHealthStatus.
  */
 import { strict as assert } from 'assert';
 import express from 'express';
 import mongoose from 'mongoose';
-import { MongoMemoryServer } from 'mongodb-memory-server';
 import request from 'supertest';
 import healthcheck, {
   collectHealthStatus,
@@ -26,14 +25,16 @@ declare const after: (
 describe('модуль healthcheck', function () {
   const suite = this as { timeout?: (ms: number) => void };
   suite.timeout?.(60000);
-  let mongod: MongoMemoryServer;
   let app: express.Express;
 
   before(async function () {
     const hook = this as { timeout?: (ms: number) => void };
     hook.timeout?.(60000);
-    mongod = await MongoMemoryServer.create();
-    await mongoose.connect(mongod.getUri());
+    const mongoUrl = process.env.MONGO_DATABASE_URL;
+    if (!mongoUrl) {
+      throw new Error('MONGO_DATABASE_URL не задан для healthcheck.spec');
+    }
+    await mongoose.connect(mongoUrl);
     app = express();
     app.get('/health', healthcheck);
   });
@@ -41,9 +42,6 @@ describe('модуль healthcheck', function () {
   after(async () => {
     if (mongoose.connection.readyState !== 0) {
       await mongoose.disconnect();
-    }
-    if (mongod) {
-      await mongod.stop();
     }
   });
 
@@ -64,7 +62,7 @@ describe('модуль healthcheck', function () {
       assert.equal(status.status, 'error');
       assert.equal(status.checks.mongo.status, 'down');
       assert.ok(status.checks.mongo.message);
-      await mongoose.connect(mongod.getUri());
+      await mongoose.connect(process.env.MONGO_DATABASE_URL as string);
     });
   });
 
@@ -84,7 +82,7 @@ describe('модуль healthcheck', function () {
       assert.equal(response.body.status, 'error');
       assert.equal(response.body.checks.mongo.status, 'down');
       assert.ok(response.body.checks.mongo.message);
-      await mongoose.connect(mongod.getUri());
+      await mongoose.connect(process.env.MONGO_DATABASE_URL as string);
     });
   });
 });

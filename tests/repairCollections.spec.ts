@@ -1,6 +1,5 @@
 // Назначение: проверяет восстановление и очистку ссылок коллекций.
-// Основные модули: mongoose, mongodb-memory-server, repairCollections.
-import { MongoMemoryServer } from 'mongodb-memory-server';
+// Основные модули: mongoose, repairCollections.
 
 import mongoose from 'mongoose';
 
@@ -11,54 +10,25 @@ jest.setTimeout(300000);
 const getModel = (name: string) => mongoose.model(name);
 
 describe('repairCollections', () => {
-  const initialMongoUrl = process.env.MONGO_DATABASE_URL;
-  const shouldTryExternalMongo = (() => {
-    if (!initialMongoUrl) return false;
-    try {
-      const parsedUrl = new URL(initialMongoUrl);
-      if (!['mongodb:', 'mongodb+srv:'].includes(parsedUrl.protocol)) {
-        return false;
-      }
-      return !['localhost', '127.0.0.1', '::1', 'http'].includes(
-        parsedUrl.hostname,
-      );
-    } catch {
-      return false;
-    }
-  })();
-  let server: MongoMemoryServer | null = null;
-  let uri = '';
   let skipSuite = false;
 
   beforeAll(async () => {
-    if (shouldTryExternalMongo && initialMongoUrl) {
-      try {
-        uri = initialMongoUrl;
-        await mongoose.connect(uri);
-        return;
-      } catch (error) {
-        console.warn(
-          'Внешняя тестовая MongoDB недоступна, используем MongoMemoryServer',
-          {
-            error,
-          },
-        );
-      }
+    const uri = process.env.MONGO_DATABASE_URL;
+    if (!uri) {
+      skipSuite = true;
+      console.warn(
+        'MONGO_DATABASE_URL не задан, пропускаем repairCollections.spec',
+      );
+      return;
     }
 
     try {
-      server = await MongoMemoryServer.create();
-      uri = server.getUri();
-      process.env.MONGO_DATABASE_URL = uri;
       await mongoose.connect(uri);
     } catch (error) {
       skipSuite = true;
-      console.warn(
-        'MongoMemoryServer недоступен, пропускаем repairCollections.spec',
-        {
-          error,
-        },
-      );
+      console.warn('MongoDB недоступна, пропускаем repairCollections.spec', {
+        error,
+      });
     }
   });
 
@@ -72,14 +42,6 @@ describe('repairCollections', () => {
   afterAll(async () => {
     if (mongoose.connection.readyState !== 0) {
       await mongoose.disconnect();
-    }
-    if (server) {
-      await server.stop();
-    }
-    if (shouldTryExternalMongo && initialMongoUrl) {
-      process.env.MONGO_DATABASE_URL = initialMongoUrl;
-    } else {
-      delete process.env.MONGO_DATABASE_URL;
     }
   });
 

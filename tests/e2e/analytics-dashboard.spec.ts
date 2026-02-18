@@ -1,13 +1,12 @@
 /**
  * Назначение файла: e2e-проверка агрегирующего эндпойнта аналитики маршрутных планов.
- * Основные модули: @playwright/test, express, mongodb-memory-server.
+ * Основные модули: @playwright/test, express.
  */
 import { test, expect } from '@playwright/test';
 import express from 'express';
 import type { Server } from 'http';
 import type { AddressInfo } from 'net';
 import mongoose from 'mongoose';
-import { MongoMemoryServer } from 'mongodb-memory-server';
 import { routePlanSummary } from '../../apps/api/src/controllers/analytics';
 import { RoutePlan } from '../../apps/api/src/db/models/routePlan';
 
@@ -15,7 +14,7 @@ process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 'token';
 process.env.CHAT_ID = '1';
 process.env.JWT_SECRET = 'secret';
-process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
+process.env.MONGO_DATABASE_URL ||= 'mongodb://localhost/db';
 process.env.APP_URL = 'https://localhost';
 
 const app = express();
@@ -26,7 +25,6 @@ app.get('/api/v1/analytics/route-plans/summary', (req, res) => {
   });
 });
 
-let mongod: MongoMemoryServer;
 let server: Server;
 let baseURL: string;
 
@@ -171,8 +169,11 @@ async function seedPlans(): Promise<void> {
 }
 
 test.beforeAll(async () => {
-  mongod = await MongoMemoryServer.create();
-  await mongoose.connect(mongod.getUri());
+  const mongoUrl = process.env.MONGO_DATABASE_URL;
+  if (!mongoUrl) {
+    throw new Error('MONGO_DATABASE_URL не задан для analytics-dashboard.spec');
+  }
+  await mongoose.connect(mongoUrl);
   server = app.listen(0);
   const { port } = server.address() as AddressInfo;
   baseURL = `http://127.0.0.1:${port}`;
@@ -180,7 +181,6 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   await mongoose.disconnect();
-  await mongod.stop();
   server.close();
 });
 

@@ -1,12 +1,11 @@
 /**
  * Назначение файла: e2e-тесты маршрута сотрудников с проверкой названий.
- * Основные модули: @playwright/test, express, mongoose, mongodb-memory-server.
+ * Основные модули: @playwright/test, express, mongoose.
  */
 import { test, expect } from '@playwright/test';
 import express from 'express';
 import request from 'supertest';
 import mongoose from 'mongoose';
-import { MongoMemoryServer } from 'mongodb-memory-server';
 import { Employee } from '../../apps/api/src/db/models/employee';
 import { Department } from '../../apps/api/src/db/models/department';
 import { CollectionItem } from '../../apps/api/src/db/models/CollectionItem';
@@ -14,11 +13,12 @@ import { Fleet } from '../../apps/api/src/db/models/fleet';
 
 const app = express();
 
-let mongod: MongoMemoryServer;
-
 test.beforeAll(async () => {
-  mongod = await MongoMemoryServer.create();
-  await mongoose.connect(mongod.getUri());
+  const mongoUrl = process.env.MONGO_DATABASE_URL;
+  if (!mongoUrl) {
+    throw new Error('MONGO_DATABASE_URL не задан для employees.spec');
+  }
+  await mongoose.connect(mongoUrl);
 
   app.get('/employees', async (req, res) => {
     const fields =
@@ -69,7 +69,6 @@ test.beforeAll(async () => {
 
 test.afterAll(async () => {
   await mongoose.disconnect();
-  await mongod.stop();
 });
 
 test('возвращает названия связанных сущностей', async () => {

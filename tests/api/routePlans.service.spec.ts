@@ -1,10 +1,9 @@
 /**
  * Назначение файла: интеграционные тесты сервиса маршрутных планов и метрик.
- * Основные модули: mongoose, MongoMemoryServer, services/routePlans.
+ * Основные модули: mongoose, services/routePlans.
  */
 
 import mongoose, { Types } from 'mongoose';
-import { MongoMemoryServer } from 'mongodb-memory-server';
 import { strict as assert } from 'assert';
 import type {
   LogisticsEvent,
@@ -35,7 +34,6 @@ describe('routePlans service analytics', function () {
   const suite = this as { timeout?: (ms: number) => void };
   suite.timeout?.(60000);
 
-  let mongod: MongoMemoryServer;
   let Task: typeof import('../../apps/api/src/db/model').Task;
   let RoutePlan: typeof import('../../apps/api/src/db/models/routePlan').RoutePlan;
   let createDraftFromInputs: typeof import('../../apps/api/src/services/routePlans').createDraftFromInputs;
@@ -49,8 +47,12 @@ describe('routePlans service analytics', function () {
   before(async function () {
     const hook = this as { timeout?: (ms: number) => void };
     hook.timeout?.(60000);
-    mongod = await MongoMemoryServer.create();
-    const uri = mongod.getUri();
+    const uri = process.env.MONGO_DATABASE_URL;
+    if (!uri) {
+      throw new Error(
+        'MONGO_DATABASE_URL не задан для routePlans.service.spec',
+      );
+    }
     const normalizedUri = uri.endsWith('/') ? uri : `${uri}/`;
     process.env.MONGO_DATABASE_URL = `${normalizedUri}ermdb`;
     await mongoose.connect(uri);
@@ -72,9 +74,6 @@ describe('routePlans service analytics', function () {
 
   after(async () => {
     await mongoose.disconnect();
-    if (mongod) {
-      await mongod.stop();
-    }
   });
 
   afterEach(async () => {

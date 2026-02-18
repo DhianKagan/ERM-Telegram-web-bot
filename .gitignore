@@ -42,3 +42,8 @@ pnpm-debug.log
 make-lpt.log
 apps/api/dist/
 apps/worker/dist/
+
+# build cache / local backups
+*.tsbuildinfo
+*.bak
+*.bak*

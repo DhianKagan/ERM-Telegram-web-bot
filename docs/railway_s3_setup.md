@@ -136,6 +136,12 @@ curl -sS -X POST -H "Authorization: Bearer <ADMIN_TOKEN>" \
   https://<api-domain>/api/v1/system/health/run | jq .
 ```
 
+Локальный CLI-чекап из `erm-api` (возвращает exit code `0`, если S3 доступен, иначе `1`):
+
+```bash
+pnpm --filter apps/api run check:s3
+```
+
 ### 4.1 Cutover-чеклист перед отказом от `-erm-volume`
 
 1. В `erm-api` заполнены S3-переменные (`S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_FORCE_PATH_STYLE`).

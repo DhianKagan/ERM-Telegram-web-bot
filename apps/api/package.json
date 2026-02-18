@@ -21,7 +21,8 @@
     "lint": "pnpm exec eslint -c ../../eslint.config.ts src",
     "lint:lpt": "pnpm exec eslint -c ../../eslint.lpt.config.ts src",
     "ci:fast": "pnpm run build && pnpm run typecheck && pnpm run lint && pnpm run test",
-    "ci:full": "pnpm run ci:fast"
+    "ci:full": "pnpm run ci:fast",
+    "check:s3": "pnpm exec ts-node src/scripts/s3Checkup.ts"
   },
   "author": "",
   "license": "ISC",

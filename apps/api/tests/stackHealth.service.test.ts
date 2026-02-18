@@ -144,6 +144,8 @@ describe('StackHealthService', () => {
 
     expect(result.status).toBe('warn');
     expect(result.durationMs).toBeGreaterThanOrEqual(1);
+    expect(result.meta?.hint).toContain('S3_REGION');
+    expect(result.meta?.hint).toContain('S3_FORCE_PATH_STYLE');
   });
 
   test('checkBullmq возвращает warn с подсказкой для failed/dlq waiting задач', async () => {

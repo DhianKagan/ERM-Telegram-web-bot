@@ -47,9 +47,9 @@ step "Проверяем lock: pnpm install --frozen-lockfile"
 pnpm install --frozen-lockfile || pnpm install --no-frozen-lockfile
 
 step "Быстрый Docker-билд только build-стейджа"
-docker build --target build --pull --no-cache -t local/agromarket-build:tmp .
+docker build --target build --pull --no-cache -t local/ermbot-build:tmp .
 
 step "Полный Docker-образ (опционально)"
-docker build --pull --no-cache -t local/agromarket:dev .
+docker build --pull --no-cache -t local/ermbot:dev .
 
 step "ГОТОВО ✅"

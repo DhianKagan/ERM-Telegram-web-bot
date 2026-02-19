@@ -5,8 +5,8 @@ import { parseTelegramTopicUrl } from '../src/utils/telegramTopics';
 
 describe('parseTelegramTopicUrl', () => {
   it('возвращает идентификаторы для корректной ссылки', () => {
-    const result = parseTelegramTopicUrl('https://t.me/c/2705661520/627');
-    expect(result).toEqual({ chatId: '-1002705661520', topicId: 627 });
+    const result = parseTelegramTopicUrl('https://t.me/c/1234567890/627');
+    expect(result).toEqual({ chatId: '-1001234567890', topicId: 627 });
   });
 
   it('игнорирует неизвестные домены', () => {

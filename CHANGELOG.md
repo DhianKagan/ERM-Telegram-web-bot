@@ -317,7 +317,7 @@
 - Добавлен `docs/railway_full_setup.md` с описанием полного развёртывания на Railway
 - Клиент переведён на React 18 ради совместимости с TelegramUI
 - Поддержан запуск в браузере через флаг `?browser=1`, telegram-apps-sdk не загружается
-- Кнопка «Браузер» ведёт на `https://agromarket.up.railway.app/?browser=1`
+- Кнопка «Браузер» ведёт на `https://<your-project>.up.railway.app/?browser=1`
 - Клиент автоматически выбирает режим браузера при отсутствии `Telegram.WebApp`
 - Завершение таймеров в `messageQueue` устранено
 - Код бота и клиента объединён в каталоге `bot`

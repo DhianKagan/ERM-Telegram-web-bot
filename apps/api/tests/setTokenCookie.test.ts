@@ -34,12 +34,12 @@ describe('setTokenCookie', () => {
     delete process.env.COOKIE_SECURE;
 
     const options = buildTokenCookieOptions({
-      appUrl: 'https://agromarket.up.railway.app',
+      appUrl: 'https://example.com',
       cookieDomain: undefined,
     } as typeof import('../src/config').default);
 
     expect(options.secure).toBe(true);
     expect(options.sameSite).toBe('none');
-    expect(options.domain).toBe('agromarket.up.railway.app');
+    expect(options.domain).toBe('example.com');
   });
 });

@@ -14,6 +14,7 @@ process.env.MONGO_DATABASE_URL =
 const mockDiagnosticsController = {
   diagnose: jest.fn((_req: Request, res: Response) => res.json({ ok: true })),
   remediate: jest.fn((_req: Request, res: Response) => res.json({ ok: true })),
+  syncAfterChange: jest.fn().mockResolvedValue(undefined),
 };
 
 jest.mock('../src/di', () => {
@@ -246,6 +247,48 @@ describe('storage routes', () => {
     expect(mockFileFindOneAndDelete).not.toHaveBeenCalled();
   });
 
+  test('delete file с ACCESS_TASK_DELETE удаляет даже привязанный файл', async () => {
+    const f = path.join(uploadsDir, 'linked-force-del.txt');
+    fs.mkdirSync(uploadsDir, { recursive: true });
+    fs.writeFileSync(f, 'd');
+
+    mockFileFindById.mockReturnValue({
+      lean: jest.fn().mockResolvedValue({
+        _id: '64d000000000000000000012',
+        userId: 1,
+        name: 'linked-force-del.txt',
+        path: 'linked-force-del.txt',
+        type: 'text/plain',
+        size: 1,
+        uploadedAt: new Date(),
+        taskId: '64d000000000000000000011',
+        relatedTaskIds: ['64d000000000000000000011'],
+      }),
+    });
+    mockFileFindOneAndDelete.mockReturnValue({
+      lean: jest.fn().mockResolvedValue({
+        path: 'linked-force-del.txt',
+        _id: '64d000000000000000000012',
+      }),
+    });
+
+    const privilegedApp = express();
+    privilegedApp.use(express.json());
+    privilegedApp.use((req: Request, _res: Response, next: NextFunction) => {
+      (req as Request & { user?: { id: number; access: number } }).user = {
+        id: 1,
+        access: 8,
+      };
+      next();
+    });
+    privilegedApp.use(router);
+
+    await request(privilegedApp)
+      .delete('/64d000000000000000000012')
+      .expect(200);
+    expect(mockFileFindOneAndDelete).toHaveBeenCalled();
+    expect(fs.existsSync(f)).toBe(false);
+  });
   test('diagnostics endpoint delegates to controller', async () => {
     await request(app).get('/diagnostics').expect(200);
     expect(mockDiagnosticsController.diagnose).toHaveBeenCalled();

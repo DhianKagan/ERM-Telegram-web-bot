@@ -4,7 +4,11 @@ import { Router, RequestHandler, NextFunction, Response } from 'express';
 import authMiddleware from '../middleware/auth';
 import { Roles } from '../auth/roles.decorator';
 import rolesGuard from '../auth/roles.guard';
-import { ACCESS_ADMIN } from '../utils/accessMask';
+import {
+  ACCESS_ADMIN,
+  ACCESS_TASK_DELETE,
+  hasAccess,
+} from '../utils/accessMask';
 import {
   deleteFile,
   getFile,
@@ -82,7 +86,11 @@ router.delete(
         Boolean(record.taskId) ||
         (Array.isArray(record.relatedTaskIds) &&
           record.relatedTaskIds.length > 0);
-      if (hasTaskLink) {
+      const canForceDeleteLinked = hasAccess(
+        req.user?.access ?? 0,
+        ACCESS_TASK_DELETE,
+      );
+      if (hasTaskLink && !canForceDeleteLinked) {
         res.status(409).json({ error: 'Файл привязан к задаче' });
         return;
       }

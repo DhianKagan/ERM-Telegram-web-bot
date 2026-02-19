@@ -368,6 +368,19 @@ export default class StackHealthService {
     queueNames: QueueName[];
   }): Promise<StackCheckResult> {
     const startedAt = performance.now();
+    if (!queueConfig.connection || !queueConfig.enabled) {
+      return {
+        name: 'bullmq',
+        status: 'warn',
+        durationMs: measureDurationMs(startedAt),
+        message: 'BullMQ отключен или не настроен',
+        meta: {
+          enabled: queueConfig.enabled,
+          hint: 'Проверьте QUEUE_REDIS_URL и QUEUE_ENABLED, затем перезапустите API/worker.',
+        },
+      } satisfies StackCheckResult;
+    }
+
     const queueSummaries: Record<string, unknown> = {};
     const problematicQueues: string[] = [];
 
@@ -376,6 +389,7 @@ export default class StackHealthService {
         const bundle = getQueueBundle(queueName);
         if (!bundle) {
           queueSummaries[queueName] = { enabled: false };
+          problematicQueues.push(`${queueName}:unavailable`);
           continue;
         }
 

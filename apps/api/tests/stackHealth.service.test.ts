@@ -8,6 +8,7 @@ import * as s3Health from '../src/services/s3Health';
 import * as taskQueue from '../src/queues/taskQueue';
 import { QueueName } from 'shared';
 import { register } from '../src/metrics';
+import { queueConfig } from '../src/config/queue';
 
 describe('StackHealthService', () => {
   afterEach(() => {
@@ -150,6 +151,13 @@ describe('StackHealthService', () => {
 
   test('checkBullmq возвращает warn с подсказкой для failed/dlq waiting задач', async () => {
     const service = new StackHealthService();
+    const previousEnabled = queueConfig.enabled;
+    const previousConnection = queueConfig.connection;
+    queueConfig.enabled = true;
+    queueConfig.connection = {
+      host: '127.0.0.1',
+      port: 6379,
+    };
     const getJobCounts = jest
       .fn()
       .mockResolvedValueOnce({
@@ -190,9 +198,73 @@ describe('StackHealthService', () => {
       ],
     });
 
+    queueConfig.enabled = previousEnabled;
+    queueConfig.connection = previousConnection;
+
     expect(result.status).toBe('warn');
     expect(result.message).toContain('logistics-geocoding:failed=2');
     expect(result.message).toContain('logistics-dead-letter:waiting=6');
     expect(result.meta?.hint).toContain('/api/v1/system/queues/recover');
+  });
+
+  test('checkBullmq возвращает warn, если очередь отключена конфигом', async () => {
+    const service = new StackHealthService();
+    const previousEnabled = queueConfig.enabled;
+    const previousConnection = queueConfig.connection;
+
+    queueConfig.enabled = false;
+    queueConfig.connection = null;
+
+    const result = await service.checkBullmq({
+      queueNames: [QueueName.LogisticsGeocoding],
+    });
+
+    queueConfig.enabled = previousEnabled;
+    queueConfig.connection = previousConnection;
+
+    expect(result.status).toBe('warn');
+    expect(result.message).toContain('BullMQ отключен или не настроен');
+    expect(result.meta?.hint).toContain('QUEUE_REDIS_URL');
+  });
+
+  test('checkBullmq возвращает warn, если часть очередей недоступна', async () => {
+    const service = new StackHealthService();
+    const previousEnabled = queueConfig.enabled;
+    const previousConnection = queueConfig.connection;
+    queueConfig.enabled = true;
+    queueConfig.connection = {
+      host: '127.0.0.1',
+      port: 6379,
+    };
+    const getQueueBundleSpy = jest
+      .spyOn(taskQueue, 'getQueueBundle')
+      .mockImplementation((queueName: QueueName) => {
+        if (queueName === QueueName.LogisticsRouting) {
+          return null;
+        }
+
+        return {
+          queue: {
+            getJobCounts: jest.fn().mockResolvedValue({
+              waiting: 0,
+              active: 0,
+              delayed: 0,
+              failed: 0,
+              completed: 1,
+            }),
+          },
+        } as unknown as ReturnType<typeof taskQueue.getQueueBundle>;
+      });
+
+    const result = await service.checkBullmq({
+      queueNames: [QueueName.LogisticsGeocoding, QueueName.LogisticsRouting],
+    });
+
+    queueConfig.enabled = previousEnabled;
+    queueConfig.connection = previousConnection;
+    getQueueBundleSpy.mockRestore();
+
+    expect(result.status).toBe('warn');
+    expect(result.message).toContain('logistics-routing:unavailable');
   });
 });

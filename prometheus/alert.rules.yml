@@ -27,3 +27,52 @@ groups:
         annotations:
           summary: 'Высокое p95 ответа'
           description: '95-й перцентиль HTTP выше 0.5с более двух минут'
+
+  - name: ermbot-queue-health
+    rules:
+      - alert: ERMStackHealthWarn
+        expr: stack_health_status > 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Stack health warn/error'
+          description: 'Общий health-статус стека сигнализирует о деградации более 5 минут'
+
+      - alert: ERMGeocodingFailedJobs
+        expr: bullmq_jobs_total{queue="logistics-geocoding",state="failed"} > 0
+        for: 10m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Geocoding queue has failed jobs'
+          description: 'В очереди logistics-geocoding есть failed-задачи более 10 минут'
+
+      - alert: ERMDeadLetterBacklog
+        expr: bullmq_jobs_total{queue="logistics-dead-letter",state="waiting"} > 0
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Dead-letter queue backlog detected'
+          description: 'В dead-letter очереди есть waiting-задачи более 10 минут'
+
+      - alert: ERMQueueOldestWaitTooHigh
+        expr: bullmq_queue_oldest_wait_seconds > 300
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Queue oldest wait too high'
+          description: 'Самая старая задача в очереди ожидает более 300 секунд'
+
+  - name: ermbot-osrm
+    rules:
+      - alert: ERMOsrmErrors
+        expr: increase(osrm_errors_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Ошибки OSRM'
+          description: 'За последние 5 минут зафиксированы ошибки запросов к OSRM'

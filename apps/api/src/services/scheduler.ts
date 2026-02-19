@@ -22,6 +22,14 @@ let cleanupTask: ScheduledTask | undefined;
 
 const REMINDER_INTERVAL_MS = 24 * 60 * 60 * 1000;
 
+const TERMINAL_TASK_STATUSES = [
+  'Выполнена',
+  'Отменена',
+  'done',
+  'cancelled',
+  'canceled',
+] as const;
+
 const deadlineFormatter = new Intl.DateTimeFormat('ru-RU', {
   day: '2-digit',
   month: '2-digit',
@@ -135,7 +143,11 @@ export function startScheduler(): void {
         const task = await Task.findOneAndUpdate(
           {
             due_date: { $exists: true, $ne: null },
-            status: { $nin: ['Выполнена', 'Отменена'] },
+            completed_at: { $in: [null, undefined] },
+            $or: [
+              { status: { $exists: false } },
+              { status: { $nin: TERMINAL_TASK_STATUSES } },
+            ],
             $and: [
               {
                 $or: [

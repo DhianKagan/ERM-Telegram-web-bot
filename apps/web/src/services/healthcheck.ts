@@ -118,3 +118,25 @@ export async function runQueueRecoveryDryRun(): Promise<QueueRecoveryRunResponse
 
   return (await response.json()) as QueueRecoveryRunResponse;
 }
+
+export async function runQueueRecoveryApply(): Promise<QueueRecoveryRunResponse> {
+  const response = await authFetch('/api/v1/system/queues/recover', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      dryRun: false,
+      confirmReplayRemove: true,
+      removeReplayedDeadLetter: true,
+      removeSkippedDeadLetter: false,
+    }),
+  });
+
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(
+      `Восстановление очередей недоступно: ${response.status} ${text}`,
+    );
+  }
+
+  return (await response.json()) as QueueRecoveryRunResponse;
+}

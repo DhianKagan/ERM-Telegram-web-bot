@@ -15,6 +15,7 @@
   - `railway:start:api`
   - `railway:start:bot`
   - `railway:start:worker`
+- В командах запуска проставляется `APP_ROLE` (`api`/`bot`/`worker`), чтобы каждый сервис проверял только нужные env-переменные.
 - Раздельные process-команды в `Procfile.railway`: `web`, `bot`, `worker`.
 - Резервный single-container запуск через `Dockerfile` + `apps/api/ecosystem.config.cjs` (pm2).
 
@@ -43,6 +44,8 @@
      - `erm-api`: `pnpm run railway:start:api`
      - `erm-bot`: `pnpm run railway:start:bot`
      - `erm-worker`: `pnpm run railway:start:worker`
+
+   > Не переопределяйте `APP_ROLE` вручную: он уже задан в скриптах `railway:start:*`.
 
 3. Отключите ненужные переменные (см. матрицу ниже), чтобы сервисы не тянули лишнюю конфигурацию.
 

@@ -124,6 +124,13 @@ minio server /data --console-address :9001
 4. У бота и воркера нет зависимости от локального `/storage`.
 5. В логах нет ошибок авторизации S3 (`AccessDenied`, `InvalidAccessKeyId`, `SignatureDoesNotMatch`).
 
+### 4.0 Как поднять отдельный `erm-api` после настройки S3
+
+1. В Railway для сервиса `erm-api` укажите Start Command: `pnpm run railway:start:api`.
+2. Скрипт старта автоматически выставляет `APP_ROLE=api`, поэтому `BOT_TOKEN`/`CHAT_ID` для API не обязательны.
+3. Убедитесь, что обязательные переменные API заданы: `MONGO_DATABASE_URL`, `JWT_SECRET`, `APP_URL`, `STORAGE_BACKEND=s3`, `S3_*`.
+4. После деплоя проверьте `GET /health` и storage health endpoint (`/api/v1/system/health/storage`).
+
 Быстрые health-проверки после деплоя:
 
 ```bash

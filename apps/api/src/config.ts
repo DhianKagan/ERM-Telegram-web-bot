@@ -22,6 +22,22 @@ export const isTestEnvironment =
   Boolean(process.env.JEST_WORKER_ID) ||
   isMochaRun;
 const strictEnvs = new Set(['production', 'production-build']);
+const normalizeAppRole = (
+  source: string | undefined,
+): 'all' | 'api' | 'bot' | 'worker' => {
+  const normalized = (source || '').trim().toLowerCase();
+  if (normalized === 'api') {
+    return 'api';
+  }
+  if (normalized === 'bot') {
+    return 'bot';
+  }
+  if (normalized === 'worker') {
+    return 'worker';
+  }
+  return 'all';
+};
+const appRole = normalizeAppRole(process.env.APP_ROLE);
 const parseBooleanFlag = (
   source: string | undefined,
   defaultValue = false,
@@ -150,13 +166,24 @@ const applyMongoAuthSourceFallback = (
   return undefined;
 };
 
-const required = ['BOT_TOKEN', 'CHAT_ID', 'JWT_SECRET', 'APP_URL'] as const;
-const fallback: Record<(typeof required)[number], string> = {
+const fallback = {
   BOT_TOKEN: 'test-bot-token',
   CHAT_ID: '0',
   JWT_SECRET: 'test-secret',
   APP_URL: 'https://localhost',
 };
+
+const requiredByRole: Record<
+  typeof appRole,
+  readonly (keyof typeof fallback)[]
+> = {
+  all: ['BOT_TOKEN', 'CHAT_ID', 'JWT_SECRET', 'APP_URL'],
+  api: ['JWT_SECRET', 'APP_URL'],
+  bot: ['BOT_TOKEN', 'CHAT_ID', 'APP_URL'],
+  worker: ['APP_URL'],
+};
+
+const required = requiredByRole[appRole];
 
 for (const key of required) {
   const current = normalizeEnvValue(process.env[key]);

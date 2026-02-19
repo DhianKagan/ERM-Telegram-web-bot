@@ -53,7 +53,7 @@ const messages = {
   fullMapLink: 'Полная ссылка',
   mapCoords: 'Координаты',
   mapLinkError: 'Не удалось получить ссылку',
-  ermLink: 'Ссылка на приложение: https://agromarket.up.railway.app',
+  ermLink: 'Ссылка на приложение: https://<your-project>.up.railway.app',
   help: `Доступные команды:\n/start - запуск бота\n/register - регистрация`,
   noVehicles: 'Транспорт отсутствует',
   vehiclesError: 'Не удалось загрузить транспорт',

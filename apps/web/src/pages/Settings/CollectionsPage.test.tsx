@@ -909,8 +909,8 @@ describe('CollectionsPage', () => {
         meta: {
           defaultLabel: 'Выполнить',
           order: 0,
-          tg_theme_url: 'https://t.me/c/2705661520/627',
-          tg_chat_id: '-1002705661520',
+          tg_theme_url: 'https://t.me/c/1234567890/627',
+          tg_chat_id: '-1001234567890',
           tg_topic_id: 627,
           virtual: false,
         },

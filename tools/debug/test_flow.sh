@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE="https://agromarket.up.railway.app"
-PROXY="https://open-route-service-proxy-production.up.railway.app"
+BASE="https://<your-project>.up.railway.app"
+PROXY="https://<your-proxy-service>.up.railway.app"
 TOKEN="${1:-}"  # optionally pass X-Proxy-Token as first arg
 
 echo "=== GET /api/v1/csrf ==="

@@ -12,12 +12,12 @@
 
 ## MongoDB
 
-- Используется внутренний адрес Railway "erm-mongodb.railway.internal" с указанием базы "test" и параметра "authSource=admin", что проходит валидацию конфигурации.
+- Используется внутренний адрес Railway "<mongodb-service>.railway.internal" с указанием базы "<db-name>" и параметра "authSource=admin", что проходит валидацию конфигурации.
 - Пароль хранится в Railway; при необходимости можно добавить параметр "directConnection=true", но текущая строка уже валидна для приватной сети Railway.
 
 ## URL-адреса и маршруты
 
-- APP_URL и COOKIE_DOMAIN указывают на "https://agromarket.up.railway.app", CORS_ORIGINS ограничен доменом клиента.
+- APP_URL и COOKIE_DOMAIN указывают на "https://<your-project>.up.railway.app", CORS_ORIGINS ограничен доменом клиента.
 - ROUTING_URL направлен на базовый хост OSRM, VITE_ROUTING_URL — на конечную точку `/route/v1/driving`.
 - CSP allowlist можно оставить пустым: внешние источники карты больше не используются.
 

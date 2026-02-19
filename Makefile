@@ -46,11 +46,11 @@ docker-build:
 	# Docker может быть недоступен локально (Windows без Docker Desktop).
 # Чтобы не рушить локальную проверку, допускаем graceful-degrade.
 # В CI этот шаг всё равно будет выполняться.
-docker build --target build --pull --no-cache -t local/agromarket-build:tmp . || true
+docker build --target build --pull --no-cache -t local/ermbot-build:tmp . || true
 
 docker-image:
 	# full image (optional)
-	docker build --pull --no-cache -t local/agromarket:dev .
+	docker build --pull --no-cache -t local/ermbot:dev .
 
 # ---- One-shot local CI reproduction ----
 ci-local: fetch install prebuild shared build-rest compile copy-static docker-build

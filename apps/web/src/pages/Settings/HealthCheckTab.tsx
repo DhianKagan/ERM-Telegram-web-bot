@@ -245,7 +245,7 @@ export default function HealthCheckTab(): JSX.Element {
       ) : null}
 
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-        <div className="grid grid-cols-[minmax(140px,1.2fr)_minmax(100px,auto)_72px_minmax(280px,2fr)] items-center gap-3 bg-slate-50 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+        <div className="grid grid-cols-[minmax(120px,170px)_minmax(78px,92px)_64px_minmax(320px,1fr)] items-center gap-3 bg-slate-50 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
           <span>Компонент</span>
           <span>Статус</span>
           <span>Время</span>
@@ -260,9 +260,14 @@ export default function HealthCheckTab(): JSX.Element {
             {sortedResults.map((item) => (
               <li
                 key={item.name}
-                className="grid grid-cols-[minmax(140px,1.2fr)_minmax(100px,auto)_72px_minmax(280px,2fr)] items-start gap-3 px-4 py-3 text-sm text-slate-800 dark:text-slate-100"
+                className="grid grid-cols-[minmax(120px,170px)_minmax(78px,92px)_64px_minmax(320px,1fr)] items-start gap-3 px-4 py-3 text-sm text-slate-800 dark:text-slate-100"
               >
-                <div className="font-semibold capitalize">{item.name}</div>
+                <div
+                  className="truncate font-semibold capitalize"
+                  title={item.name}
+                >
+                  {item.name}
+                </div>
                 <div>
                   <span
                     className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-semibold ${statusColors[item.status]}`}
@@ -270,7 +275,7 @@ export default function HealthCheckTab(): JSX.Element {
                     {statusLabels[item.status]}
                   </span>
                 </div>
-                <div className="text-xs text-slate-500 dark:text-slate-300">
+                <div className="text-xs tabular-nums text-slate-500 dark:text-slate-300">
                   {typeof item.durationMs === 'number'
                     ? `${item.durationMs} мс`
                     : '—'}

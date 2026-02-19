@@ -520,7 +520,24 @@
       "error": "Diagnostics failed.",
       "lastRun": "Latest report: {{date}}.",
       "snapshot": "Total: {{total}}, linked: {{linked}}, detached: {{detached}}.",
-      "placeholder": "Run the first check to see the report here."
+      "placeholder": "Run the first check to see the report here.",
+      "fix": {
+        "cta": "Run fix",
+        "progress": "Fixing...",
+        "success": "Remediation completed.",
+        "error": "Remediation failed.",
+        "result": "Result: status {{status}}, repaired {{repaired}}, errors {{errors}}."
+      }
+    },
+    "s3Health": {
+      "cta": "Run S3 check",
+      "progress": "Checking S3...",
+      "success": "S3 is reachable.",
+      "degraded": "S3 responded with errors.",
+      "error": "Failed to get S3 status.",
+      "lastRun": "S3 checked at: {{date}}.",
+      "summary": "Status: {{status}}, latency: {{latencyMs}} ms, bucket: {{bucket}}.",
+      "errorMessage": "Error: {{message}}"
     }
   },
   "googleMapsButton": "Google Maps",

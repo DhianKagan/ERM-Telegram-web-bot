@@ -74,6 +74,19 @@ export const removeFile = (id: string) =>
     method: 'DELETE',
   });
 
+export interface StorageRemediationReport {
+  generatedAt: string;
+  results: Array<{
+    action: string;
+    status: 'completed' | 'skipped' | 'failed';
+    details?: string;
+    attempted?: number;
+    repaired?: number;
+    errors?: number;
+  }>;
+  report: StorageDiagnosticsReport;
+}
+
 export const runDiagnostics = async (): Promise<StorageDiagnosticsReport> => {
   const response = await authFetch(`/api/v1/storage/diagnostics`);
   if (!response.ok) {
@@ -81,6 +94,17 @@ export const runDiagnostics = async (): Promise<StorageDiagnosticsReport> => {
   }
   return (await response.json()) as StorageDiagnosticsReport;
 };
+
+export const runDiagnosticsFix =
+  async (): Promise<StorageRemediationReport> => {
+    const response = await authFetch(`/api/v1/storage/diagnostics/fix`, {
+      method: 'POST',
+    });
+    if (!response.ok) {
+      throw new Error('diagnostics-fix');
+    }
+    return (await response.json()) as StorageRemediationReport;
+  };
 
 export default {
   fetchFiles,
@@ -90,4 +114,5 @@ export default {
   unlinkFileFromTask,
   removeFile,
   runDiagnostics,
+  runDiagnosticsFix,
 };

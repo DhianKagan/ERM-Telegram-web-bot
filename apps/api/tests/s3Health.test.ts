@@ -103,4 +103,22 @@ describe('s3 health', () => {
     ).toBe('auth');
     expect(classifyS3Error({ Code: 'NoSuchBucket' })).toBe('bucket-not-found');
   });
+
+  test('для bucket-not-found с Unknown добавляет понятную подсказку', async () => {
+    const client = {
+      send: jest.fn().mockRejectedValue({
+        Code: 'NoSuchBucket',
+        message: 'Unknown',
+      }),
+    };
+
+    const report = await runS3Healthcheck({
+      configValidation: validConfig,
+      client,
+    });
+
+    expect(report.status).toBe('degraded');
+    expect(report.error?.kind).toBe('bucket-not-found');
+    expect(report.error?.message).toContain('Bucket не найден');
+  });
 });

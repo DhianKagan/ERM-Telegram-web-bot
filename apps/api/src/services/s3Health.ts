@@ -117,7 +117,7 @@ export function classifyS3Error(error: unknown): S3HealthErrorKind {
   return 'unknown';
 }
 
-const getMessage = (error: unknown): string => {
+const getRawMessage = (error: unknown): string => {
   if (
     isRecord(error) &&
     typeof error.message === 'string' &&
@@ -125,6 +125,34 @@ const getMessage = (error: unknown): string => {
   ) {
     return error.message;
   }
+  return '';
+};
+
+const isUnknownMessage = (message: string): boolean => {
+  const normalized = message.trim().toLowerCase();
+  return (
+    normalized === '' ||
+    normalized === 'unknown' ||
+    normalized === 'unknownerror'
+  );
+};
+
+const buildHintedMessage = (
+  kind: S3HealthErrorKind,
+  rawMessage: string,
+): string => {
+  if (!isUnknownMessage(rawMessage)) {
+    return rawMessage;
+  }
+
+  if (kind === 'bucket-not-found') {
+    return 'Bucket не найден: проверьте имя bucket и создайте его в S3/MinIO.';
+  }
+
+  if (kind === 'auth') {
+    return 'Ошибка авторизации S3: проверьте S3_ACCESS_KEY_ID и S3_SECRET_ACCESS_KEY.';
+  }
+
   return 'Неизвестная ошибка S3';
 };
 
@@ -188,6 +216,9 @@ export async function runS3Healthcheck(options?: {
       },
     };
   } catch (error: unknown) {
+    const kind = classifyS3Error(error);
+    const message = buildHintedMessage(kind, getRawMessage(error));
+
     return {
       status: 'degraded',
       checkedAt,
@@ -197,8 +228,8 @@ export async function runS3Healthcheck(options?: {
         ...toS3SafeMetadata(cfg),
       },
       error: {
-        kind: classifyS3Error(error),
-        message: getMessage(error),
+        kind,
+        message,
       },
     };
   }

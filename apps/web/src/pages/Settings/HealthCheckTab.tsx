@@ -17,6 +17,7 @@ import { Button } from '../../components/ui/button';
 import SettingsSectionHeader from './SettingsSectionHeader';
 import {
   fetchQueueDiagnostics,
+  runQueueRecoveryApply,
   runQueueRecoveryDryRun,
   runStackHealthCheck,
   type StackCheckResult,
@@ -49,6 +50,31 @@ const extractHint = (meta?: Record<string, unknown>): string | null => {
   if (!meta) return null;
   const hint = meta.hint;
   return typeof hint === 'string' ? hint : null;
+};
+
+const getQueueCounters = (
+  meta?: Record<string, unknown>,
+): Record<string, number> | null => {
+  if (!meta || typeof meta.queues !== 'object' || !meta.queues) {
+    return null;
+  }
+
+  const source = meta.queues as Record<string, unknown>;
+  const counters: Record<string, number> = {};
+  for (const [queueName, value] of Object.entries(source)) {
+    if (!value || typeof value !== 'object') continue;
+    const metrics = value as Record<string, unknown>;
+    const failed =
+      typeof metrics.failed === 'number' && Number.isFinite(metrics.failed)
+        ? metrics.failed
+        : 0;
+    const waiting =
+      typeof metrics.waiting === 'number' && Number.isFinite(metrics.waiting)
+        ? metrics.waiting
+        : 0;
+    counters[queueName] = failed + waiting;
+  }
+  return counters;
 };
 
 export default function HealthCheckTab(): JSX.Element {
@@ -116,6 +142,24 @@ export default function HealthCheckTab(): JSX.Element {
       setQueueActionLoading(false);
     }
   }, []);
+
+  const handleQueueRecover = useCallback(async () => {
+    setQueueActionLoading(true);
+    setError(null);
+    setQueueActionResult(null);
+    try {
+      const result = await runQueueRecoveryApply();
+      setQueueActionResult(
+        `Восстановление выполнено: retry geocoding=${result.geocodingRetried}/${result.geocodingFailedScanned}, retry routing=${result.routingRetried}/${result.routingFailedScanned}, replay DLQ=${result.deadLetterReplayed}/${result.deadLetterScanned}, удалено DLQ=${result.deadLetterRemoved}, ошибок=${result.errors.length}.`,
+      );
+      await runCheck();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Неизвестная ошибка';
+      setError(message);
+    } finally {
+      setQueueActionLoading(false);
+    }
+  }, [runCheck]);
 
   useEffect(() => {
     if (auto) {
@@ -201,7 +245,7 @@ export default function HealthCheckTab(): JSX.Element {
       ) : null}
 
       <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
-        <div className="grid grid-cols-[1fr_auto_auto_2fr] items-center gap-2 bg-slate-50 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+        <div className="grid grid-cols-[minmax(140px,1.2fr)_minmax(100px,auto)_72px_minmax(280px,2fr)] items-center gap-3 bg-slate-50 px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-600 dark:bg-slate-800 dark:text-slate-300">
           <span>Компонент</span>
           <span>Статус</span>
           <span>Время</span>
@@ -216,7 +260,7 @@ export default function HealthCheckTab(): JSX.Element {
             {sortedResults.map((item) => (
               <li
                 key={item.name}
-                className="grid grid-cols-[1fr_auto_auto_2fr] items-start gap-2 px-4 py-3 text-sm text-slate-800 dark:text-slate-100"
+                className="grid grid-cols-[minmax(140px,1.2fr)_minmax(100px,auto)_72px_minmax(280px,2fr)] items-start gap-3 px-4 py-3 text-sm text-slate-800 dark:text-slate-100"
               >
                 <div className="font-semibold capitalize">{item.name}</div>
                 <div>
@@ -235,6 +279,25 @@ export default function HealthCheckTab(): JSX.Element {
                   {item.message ? (
                     <div className="font-medium text-rose-600 dark:text-rose-200">
                       {item.message}
+                    </div>
+                  ) : null}
+                  {item.name === 'bullmq' && getQueueCounters(item.meta) ? (
+                    <div className="grid grid-cols-1 gap-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-800/60">
+                      {Object.entries(getQueueCounters(item.meta) ?? {}).map(
+                        ([queue, value]) => (
+                          <div
+                            key={queue}
+                            className="flex items-center justify-between gap-3"
+                          >
+                            <span className="truncate font-medium text-slate-600 dark:text-slate-300">
+                              {queue}
+                            </span>
+                            <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-700 dark:bg-slate-700 dark:text-slate-100">
+                              {value}
+                            </span>
+                          </div>
+                        ),
+                      )}
                     </div>
                   ) : null}
                   {extractHint(item.meta) ? (
@@ -262,12 +325,26 @@ export default function HealthCheckTab(): JSX.Element {
                       >
                         Recover dry-run
                       </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="success"
+                        disabled={queueActionLoading}
+                        onClick={() => void handleQueueRecover()}
+                      >
+                        Recover now
+                      </Button>
                     </div>
                   ) : null}
                   {item.meta ? (
-                    <pre className="overflow-x-auto whitespace-pre-wrap rounded-xl bg-slate-50 p-3 text-[13px] leading-5 text-slate-800 ring-1 ring-slate-200 dark:bg-slate-800 dark:text-slate-100 dark:ring-slate-700">
-                      {JSON.stringify(item.meta, null, 2)}
-                    </pre>
+                    <details className="rounded-xl bg-slate-50 ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+                      <summary className="cursor-pointer select-none px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">
+                        Raw details
+                      </summary>
+                      <pre className="overflow-x-auto whitespace-pre-wrap border-t border-slate-200 p-3 text-[12px] leading-5 text-slate-800 dark:border-slate-700 dark:text-slate-100">
+                        {JSON.stringify(item.meta, null, 2)}
+                      </pre>
+                    </details>
                   ) : null}
                 </div>
               </li>

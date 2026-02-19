@@ -19,7 +19,6 @@ import { Button } from '../components/ui/button';
 import { FormGroup } from '@/components/ui/form-group';
 import FilterGrid from '@/components/FilterGrid';
 import PageHeader from '@/components/PageHeader';
-import { Input } from '../components/ui/input';
 import { Select } from '../components/ui/select';
 import UnifiedSearch from '@/components/UnifiedSearch';
 import { SimpleTable } from '@/components/ui/simple-table';
@@ -31,9 +30,15 @@ import {
   fetchFiles,
   removeFile,
   runDiagnostics,
+  runDiagnosticsFix,
   type StorageDiagnosticsReport,
+  type StorageRemediationReport,
   type StoredFile,
 } from '../services/storage';
+import {
+  fetchStorageHealth,
+  type StorageHealthReport,
+} from '../services/system';
 import { fetchUsers } from '../services/users';
 import type { User } from '../types/user';
 import authFetch from '../utils/authFetch';
@@ -136,6 +141,15 @@ export default function StoragePage() {
   const [diagnosticsError, setDiagnosticsError] = React.useState<string | null>(
     null,
   );
+  const [fixReport, setFixReport] =
+    React.useState<StorageRemediationReport | null>(null);
+  const [fixLoading, setFixLoading] = React.useState(false);
+  const [fixError, setFixError] = React.useState<string | null>(null);
+  const [s3Health, setS3Health] = React.useState<StorageHealthReport | null>(
+    null,
+  );
+  const [s3HealthLoading, setS3HealthLoading] = React.useState(false);
+  const [s3HealthError, setS3HealthError] = React.useState<string | null>(null);
 
   const loadFiles = React.useCallback(() => {
     setLoading(true);
@@ -171,6 +185,47 @@ export default function StoragePage() {
         setDiagnosticsLoading(false);
       });
   }, [loadFiles, t]);
+
+  const handleFixDetached = React.useCallback(() => {
+    setFixLoading(true);
+    setFixError(null);
+    return runDiagnosticsFix()
+      .then((report) => {
+        setFixReport(report);
+        setDiagnostics(report.report);
+        showToast(t('storage.diagnostics.fix.success'), 'success');
+        return loadFiles();
+      })
+      .catch(() => {
+        setFixError(t('storage.diagnostics.fix.error'));
+        showToast(t('storage.diagnostics.fix.error'), 'error');
+      })
+      .finally(() => {
+        setFixLoading(false);
+      });
+  }, [loadFiles, t]);
+
+  const handleS3Health = React.useCallback(() => {
+    setS3HealthLoading(true);
+    setS3HealthError(null);
+    return fetchStorageHealth()
+      .then((report) => {
+        setS3Health(report);
+        showToast(
+          report.status === 'ok'
+            ? t('storage.s3Health.success')
+            : t('storage.s3Health.degraded'),
+          report.status === 'ok' ? 'success' : 'error',
+        );
+      })
+      .catch(() => {
+        setS3HealthError(t('storage.s3Health.error'));
+        showToast(t('storage.s3Health.error'), 'error');
+      })
+      .finally(() => {
+        setS3HealthLoading(false);
+      });
+  }, [t]);
 
   const handleSearchSubmit = React.useCallback(() => {
     setSearch((value) => value.trim());
@@ -547,6 +602,10 @@ export default function StoragePage() {
     () => (diagnostics ? formatDate(diagnostics.generatedAt) : null),
     [diagnostics],
   );
+  const s3HealthTimestamp = React.useMemo(
+    () => (s3Health ? formatDate(s3Health.checkedAt) : null),
+    [s3Health],
+  );
 
   const toolbarChildren = isDesktop ? (
     <form
@@ -677,22 +736,56 @@ export default function StoragePage() {
                 : t('storage.sync.warning', { count: detachedCount })}
             </p>
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            className="self-start border-amber-400 text-amber-900 hover:bg-amber-100"
-            disabled={diagnosticsLoading}
-            onClick={() => {
-              void handleDiagnostics();
-            }}
-          >
-            {diagnosticsLoading
-              ? t('storage.diagnostics.progress')
-              : t('storage.diagnostics.cta')}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              className="self-start border-amber-400 text-amber-900 hover:bg-amber-100"
+              disabled={diagnosticsLoading}
+              onClick={() => {
+                void handleDiagnostics();
+              }}
+            >
+              {diagnosticsLoading
+                ? t('storage.diagnostics.progress')
+                : t('storage.diagnostics.cta')}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="self-start border-amber-400 text-amber-900 hover:bg-amber-100"
+              disabled={s3HealthLoading}
+              onClick={() => {
+                void handleS3Health();
+              }}
+            >
+              {s3HealthLoading
+                ? t('storage.s3Health.progress')
+                : t('storage.s3Health.cta')}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="self-start border-amber-400 text-amber-900 hover:bg-amber-100"
+              disabled={fixLoading}
+              onClick={() => {
+                void handleFixDetached();
+              }}
+            >
+              {fixLoading
+                ? t('storage.diagnostics.fix.progress')
+                : t('storage.diagnostics.fix.cta')}
+            </Button>
+          </div>
         </div>
         {diagnosticsError ? (
           <p className="mt-3 text-sm text-red-700">{diagnosticsError}</p>
+        ) : null}
+        {s3HealthError ? (
+          <p className="mt-2 text-sm text-red-700">{s3HealthError}</p>
+        ) : null}
+        {fixError ? (
+          <p className="mt-2 text-sm text-red-700">{fixError}</p>
         ) : null}
         {diagnostics ? (
           <div className="mt-3 space-y-1 text-sm text-amber-900">
@@ -714,6 +807,43 @@ export default function StoragePage() {
             {t('storage.diagnostics.placeholder')}
           </p>
         )}
+
+        {fixReport ? (
+          <div className="mt-3 space-y-1 text-sm text-amber-900">
+            {fixReport.results.map((result) => (
+              <p key={result.action}>
+                {t('storage.diagnostics.fix.result', {
+                  status: result.status,
+                  repaired: result.repaired ?? 0,
+                  errors: result.errors ?? 0,
+                })}
+              </p>
+            ))}
+          </div>
+        ) : null}
+        {s3Health ? (
+          <div className="mt-3 space-y-1 text-sm text-amber-900">
+            <p>
+              {t('storage.s3Health.lastRun', {
+                date: s3HealthTimestamp ?? '—',
+              })}
+            </p>
+            <p>
+              {t('storage.s3Health.summary', {
+                status: s3Health.status,
+                latencyMs: s3Health.latencyMs,
+                bucket: s3Health.metadata.bucket ?? '—',
+              })}
+            </p>
+            {s3Health.error?.message ? (
+              <p>
+                {t('storage.s3Health.errorMessage', {
+                  message: s3Health.error.message,
+                })}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
       </section>
       <section className="space-y-4">
         <PageHeader

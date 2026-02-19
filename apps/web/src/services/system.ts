@@ -55,6 +55,32 @@ export interface CodexMaintenanceBrief {
   logAnalysis: RailwayLogAnalysisSummary | null;
 }
 
+export interface StorageHealthReport {
+  status: 'ok' | 'degraded';
+  checkedAt: string;
+  latencyMs: number;
+  metadata: {
+    configured: boolean;
+    endpoint?: string;
+    region?: string;
+    bucket?: string;
+    forcePathStyle?: boolean;
+    useSsl?: boolean;
+    missing?: string[];
+    invalid?: string[];
+  };
+  error?: {
+    kind:
+      | 'auth'
+      | 'network'
+      | 'bucket-not-found'
+      | 'signature'
+      | 'config'
+      | 'unknown';
+    message: string;
+  };
+}
+
 export const fetchOverview = () =>
   authFetch('/api/v1/system/overview').then((res) =>
     res.ok ? (res.json() as Promise<StackOverview>) : Promise.reject(res),
@@ -81,9 +107,15 @@ export const fetchCodexBrief = () =>
       : Promise.reject(res),
   );
 
+export const fetchStorageHealth = () =>
+  authFetch('/api/v1/system/health/storage').then((res) =>
+    res.ok ? (res.json() as Promise<StorageHealthReport>) : Promise.reject(res),
+  );
+
 export default {
   fetchOverview,
   executePlan,
   fetchLatestLogAnalysis,
   fetchCodexBrief,
+  fetchStorageHealth,
 };

@@ -39,6 +39,7 @@ scripts
 !scripts/ensure-fonts.mjs
 !scripts/convert-fonts.mjs
 !scripts/package.json
+!scripts/railway/start-by-role.sh
 !scripts/db/ensureDefaults.ts
 !scripts/db/mongoUrl.ts
 

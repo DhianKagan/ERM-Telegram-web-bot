@@ -1,0 +1,37 @@
+# Назначение файла: автоматическое создание PR с обновлениями зависимостей (npm/pnpm + GitHub Actions).
+version: 2
+updates:
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '06:00'
+      timezone: 'Europe/Kyiv'
+    open-pull-requests-limit: 10
+    commit-message:
+      prefix: 'chore(deps)'
+    labels:
+      - 'dependencies'
+      - 'automerge:candidate'
+    groups:
+      patch-and-minor:
+        update-types:
+          - 'minor'
+          - 'patch'
+      dev-dependencies:
+        dependency-type: 'development'
+
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '06:30'
+      timezone: 'Europe/Kyiv'
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: 'chore(ci-deps)'
+    labels:
+      - 'dependencies'
+      - 'ci'

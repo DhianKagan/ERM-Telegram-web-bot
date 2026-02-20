@@ -30,7 +30,8 @@
     "railway:start:worker": "APP_ROLE=worker node apps/worker/dist/index.js",
     "db:cleanup-legacy-file-links": "pnpm --filter apps/api exec tsx ../../scripts/db/cleanup_legacy_file_links.ts",
     "ci:fast": "turbo run ci:fast",
-    "ci:full": "turbo run ci:full"
+    "ci:full": "turbo run ci:full",
+    "railway:quick-validate": "./scripts/railway/quick_stack_validation.sh"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [

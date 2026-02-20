@@ -64,6 +64,20 @@ API_BASE_URL=https://agromarket.up.railway.app ./scripts/railway/quick_stack_val
 
 Если хоть один компонент недоступен или метрика отсутствует, скрипт завершается с ненулевым кодом.
 
+Дополнительно скрипт проверяет именно связку `Redis ↔ worker` по метрикам очереди:
+
+- `bullmq_queue_oldest_wait_seconds` не превышает `QUEUE_LAG_LIMIT_SECONDS` (по умолчанию `180` секунд);
+- `bullmq_jobs_total{state="failed"}` не превышает `FAILED_JOBS_LIMIT` (по умолчанию `0`).
+
+Пример с кастомными порогами:
+
+```bash
+API_BASE_URL=https://agromarket.up.railway.app \
+QUEUE_LAG_LIMIT_SECONDS=300 \
+FAILED_JOBS_LIMIT=5 \
+./scripts/railway/quick_stack_validation.sh
+```
+
 ## 4. Передача материалов ассистенту
 
 1. Прикрепите файл отчёта из `Railway/analysis/*.md` и, при необходимости, исходный лог из `Railway/logs/`.

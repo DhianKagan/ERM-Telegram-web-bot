@@ -40,6 +40,13 @@ type StackHealthOptions = {
   redisUrl?: string;
   queuePrefix?: string;
   queueNames?: QueueName[];
+  remoteServices?: RemoteHealthTarget[];
+};
+
+export type RemoteHealthTarget = {
+  name: string;
+  url: string;
+  timeoutMs?: number;
 };
 
 const getOrCreateMetric = <T extends client.Metric<string>>(
@@ -259,7 +266,7 @@ export default class StackHealthService {
           directory: root,
           freeBytes,
           totalBytes,
-          hint: 'Локальное хранилище доступно для чтения и записи.',
+          hint: 'Локальное хранилище API доступно для чтения и записи.',
         },
       } satisfies StackCheckResult;
     } catch (error: unknown) {
@@ -276,10 +283,61 @@ export default class StackHealthService {
         message: pickMessage(error),
         meta: {
           directory: root,
-          hint: 'Проверьте монтирование STORAGE_DIR и права на запись для процесса API.',
+          hint: 'Проверьте STORAGE_DIR и права процесса API. Для разделённых сервисов убедитесь, что нужные volume смонтированы в каждом сервисе отдельно.',
         },
       } satisfies StackCheckResult;
     }
+  }
+
+  async checkRemoteServices(
+    targets: RemoteHealthTarget[],
+  ): Promise<StackCheckResult[]> {
+    const checks = targets.map(async (target) => {
+      const startedAt = performance.now();
+      const timeoutMs =
+        typeof target.timeoutMs === 'number' &&
+        Number.isFinite(target.timeoutMs)
+          ? Math.max(1_000, Math.round(target.timeoutMs))
+          : 5_000;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+      try {
+        const response = await fetch(target.url, {
+          method: 'GET',
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+
+        return {
+          name: `service:${target.name}`,
+          status: response.ok ? 'ok' : 'error',
+          durationMs: measureDurationMs(startedAt),
+          message: response.ok
+            ? undefined
+            : `HTTP ${response.status} ${response.statusText}`,
+          meta: {
+            url: target.url,
+            httpStatus: response.status,
+            timeoutMs,
+          },
+        } satisfies StackCheckResult;
+      } catch (error: unknown) {
+        clearTimeout(timeout);
+        return {
+          name: `service:${target.name}`,
+          status: 'error',
+          durationMs: measureDurationMs(startedAt),
+          message: pickMessage(error),
+          meta: {
+            url: target.url,
+            timeoutMs,
+            hint: 'Проверьте доступность сервиса, URL и сетевые правила между сервисами.',
+          },
+        } satisfies StackCheckResult;
+      }
+    });
+    return Promise.all(checks);
   }
 
   async checkRedis(options: {
@@ -502,6 +560,9 @@ export default class StackHealthService {
     const bullmqResult = await this.checkBullmq({
       queueNames: selectedQueueNames,
     });
+    const remoteServicesResults = await this.checkRemoteServices(
+      options.remoteServices ?? [],
+    );
 
     const results = [
       s3Result,
@@ -509,6 +570,7 @@ export default class StackHealthService {
       redisResult,
       mongoResult,
       bullmqResult,
+      ...remoteServicesResults,
     ];
     const aggregateStatus = getAggregateStatus(results);
     const ok = aggregateStatus !== 'error';

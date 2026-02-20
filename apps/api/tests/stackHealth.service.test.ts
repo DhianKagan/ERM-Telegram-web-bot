@@ -103,6 +103,67 @@ describe('StackHealthService', () => {
     expect(report.ok).toBe(false);
   });
 
+  test('run включает проверки удалённых сервисов для раздельной архитектуры', async () => {
+    const service = new StackHealthService();
+
+    jest.spyOn(service, 'checkS3').mockResolvedValue({
+      name: 's3',
+      status: 'ok',
+      durationMs: 3,
+    } satisfies StackCheckResult);
+    jest.spyOn(service, 'checkStorage').mockResolvedValue({
+      name: 'storage',
+      status: 'ok',
+      durationMs: 2,
+    } satisfies StackCheckResult);
+    jest.spyOn(service, 'checkRedis').mockResolvedValue({
+      name: 'redis',
+      status: 'ok',
+      durationMs: 2,
+    } satisfies StackCheckResult);
+    jest.spyOn(service, 'checkMongo').mockResolvedValue({
+      name: 'mongo',
+      status: 'ok',
+      durationMs: 2,
+    } satisfies StackCheckResult);
+    jest.spyOn(service, 'checkBullmq').mockResolvedValue({
+      name: 'bullmq',
+      status: 'ok',
+      durationMs: 2,
+    } satisfies StackCheckResult);
+    jest.spyOn(service, 'checkRemoteServices').mockResolvedValue([
+      {
+        name: 'service:worker',
+        status: 'ok',
+        durationMs: 4,
+      } satisfies StackCheckResult,
+      {
+        name: 'service:bot',
+        status: 'error',
+        durationMs: 5,
+        message: 'timeout',
+      } satisfies StackCheckResult,
+    ]);
+
+    const report = await service.run({
+      remoteServices: [
+        { name: 'worker', url: 'https://worker.example/health' },
+        { name: 'bot', url: 'https://bot.example/health' },
+      ],
+    });
+
+    expect(report.ok).toBe(false);
+    expect(report.results.map((item) => item.name)).toEqual([
+      's3',
+      'storage',
+      'redis',
+      'mongo',
+      'bullmq',
+      'service:worker',
+      'service:bot',
+    ]);
+  });
+
   test('checkStorage возвращает error если STORAGE_DIR отсутствует и не создаёт его', async () => {
     const service = new StackHealthService();
 

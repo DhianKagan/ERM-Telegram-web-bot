@@ -64,6 +64,7 @@ function AppContent({
       '/events',
       '/mg',
       '/cp',
+      '/browser',
       '/theme',
       '/profile',
       '/index',

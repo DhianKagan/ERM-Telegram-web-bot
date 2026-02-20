@@ -174,6 +174,14 @@ function AppShell() {
                 }
               />
               <Route
+                path="/browser/erm-files"
+                element={
+                  <AdminRoute>
+                    <StoragePage />
+                  </AdminRoute>
+                }
+              />
+              <Route
                 path="/cp/archive"
                 element={
                   <ArchiveRoute>

@@ -46,6 +46,24 @@
 ./scripts/railway_log_pipeline.sh --deploy latest --tail 600
 ```
 
+## 3.1 Быстрая валидация стека (health + метрики)
+
+Для оперативной проверки API/Redis/Mongo/S3/BullMQ и обязательных метрик выполните:
+
+```bash
+API_BASE_URL=https://agromarket.up.railway.app ./scripts/railway/quick_stack_validation.sh
+```
+
+Скрипт проверяет `GET /api/monitor/health` и `GET /metrics`, валидирует статусы `s3/storage/redis/mongo/bullmq=ok` и наличие метрик:
+
+- `bullmq_jobs_total`
+- `bullmq_queue_oldest_wait_seconds`
+- `bullmq_job_processing_duration_seconds`
+- `disk_used_bytes`
+- `osrm_precheck_failures_total`
+
+Если хоть один компонент недоступен или метрика отсутствует, скрипт завершается с ненулевым кодом.
+
 ## 4. Передача материалов ассистенту
 
 1. Прикрепите файл отчёта из `Railway/analysis/*.md` и, при необходимости, исходный лог из `Railway/logs/`.

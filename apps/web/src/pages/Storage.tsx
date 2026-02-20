@@ -2,11 +2,13 @@
 // Основные модули: React, SimpleTable, heroicons, storageService, react-router
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { useSearchParams } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import {
+  ArrowTopRightOnSquareIcon,
   ArrowDownTrayIcon,
   DocumentIcon,
   DocumentTextIcon,
+  MusicalNoteIcon,
   PhotoIcon,
   RectangleStackIcon,
   VideoCameraIcon,
@@ -59,7 +61,7 @@ const dateTimeFormatter = new Intl.DateTimeFormat('ru-RU', {
 
 type SortOption = 'uploaded_desc' | 'uploaded_asc' | 'size_desc' | 'size_asc';
 
-type PreviewMode = 'image' | 'video' | 'pdf' | 'text';
+type PreviewMode = 'image' | 'video' | 'pdf' | 'text' | 'audio' | 'embed';
 
 type PreviewState = {
   mode: PreviewMode;
@@ -78,6 +80,8 @@ const previewIcons: Record<
   video: VideoCameraIcon,
   pdf: DocumentIcon,
   text: DocumentTextIcon,
+  audio: MusicalNoteIcon,
+  embed: DocumentIcon,
 };
 
 function isTextLike(mime: string): boolean {
@@ -111,6 +115,7 @@ function formatDate(value?: string): string {
 
 export default function StoragePage() {
   const { t } = useTranslation();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [files, setFiles] = React.useState<StoredFile[]>([]);
   const [loading, setLoading] = React.useState(false);
@@ -325,6 +330,10 @@ export default function StoragePage() {
       setPreview({ mode: 'pdf', inlineUrl, mime });
       return;
     }
+    if (mime.startsWith('audio/')) {
+      setPreview({ mode: 'audio', inlineUrl, mime });
+      return;
+    }
     if (isTextLike(mime)) {
       let cancelled = false;
       setPreview({ mode: 'text', inlineUrl, mime, loading: true });
@@ -350,8 +359,7 @@ export default function StoragePage() {
         cancelled = true;
       };
     }
-    setPreview(null);
-    // неподдерживаемые типы доступны только для скачивания
+    setPreview({ mode: 'embed', inlineUrl, mime });
   }, [selectedFile, t]);
 
   const filteredFiles = React.useMemo(() => {
@@ -1008,6 +1016,24 @@ export default function StoragePage() {
                 <Button
                   type="button"
                   variant="outline"
+                  onClick={() => {
+                    if (location.pathname.startsWith('/browser/erm-files')) {
+                      return;
+                    }
+                    window.open(
+                      '/browser/erm-files',
+                      '_blank',
+                      'noopener,noreferrer',
+                    );
+                  }}
+                  disabled={location.pathname.startsWith('/browser/erm-files')}
+                >
+                  <ArrowTopRightOnSquareIcon className="mr-2 size-4" />
+                  {t('storage.openS3Browser')}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
                   onClick={() => handleDownload(selectedRow)}
                 >
                   <ArrowDownTrayIcon className="mr-2 size-4" />
@@ -1062,6 +1088,14 @@ export default function StoragePage() {
                       {preview.content}
                     </pre>
                   )
+                ) : preview.mode === 'audio' ? (
+                  <audio controls src={preview.inlineUrl} className="w-full" />
+                ) : preview.mode === 'embed' ? (
+                  <iframe
+                    title={selectedRow.name}
+                    src={preview.inlineUrl}
+                    className="w-full min-h-[18rem] max-h-[70vh] rounded-md"
+                  />
                 ) : null}
               </div>
             ) : null}

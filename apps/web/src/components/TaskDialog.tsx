@@ -988,7 +988,6 @@ const hasDimensionValues = (
   );
 
 const START_OFFSET_MS = 60 * 60 * 1000;
-const ACCESS_TASK_DELETE = 8;
 
 export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const [resolvedTaskId, setResolvedTaskId] = React.useState<string | null>(
@@ -1359,7 +1358,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const [previewAttachment, setPreviewAttachment] = React.useState<{
     name: string;
     url: string;
-    kind: 'image' | 'video';
+    kind: 'image' | 'video' | 'audio' | 'file';
     poster?: string;
   } | null>(null);
   const [draft, setDraft] = React.useState<TaskDraft | null>(null);
@@ -4776,17 +4775,22 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                 </button>
                               )}
                               {(kind === 'file' || kind === 'audio') && (
-                                <a
-                                  href={resolvedUrl}
-                                  target="_blank"
-                                  rel="noopener"
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setPreviewAttachment({
+                                      name: title,
+                                      url: inlineUrl,
+                                      kind,
+                                    })
+                                  }
                                   className="flex aspect-square w-full flex-col items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white text-center text-sm text-accentPrimary shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50 hover:shadow-md"
                                 >
                                   <DocumentTextIcon className="h-8 w-8 text-slate-400" />
                                   <span className="line-clamp-2 px-3 text-xs text-slate-600">
                                     {title}
                                   </span>
-                                </a>
+                                </button>
                               )}
                               <div className="space-y-1">
                                 <div className="flex items-start justify-between gap-2">
@@ -5094,6 +5098,18 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                 poster={previewAttachment.poster}
                 controls
                 className="max-h-[75vh] w-full rounded-xl bg-black object-contain shadow-2xl"
+              />
+            ) : previewAttachment.kind === 'audio' ? (
+              <audio
+                src={previewAttachment.url}
+                controls
+                className="w-full rounded-xl bg-white p-4 shadow-2xl"
+              />
+            ) : previewAttachment.kind === 'file' ? (
+              <iframe
+                title={previewAttachment.name}
+                src={previewAttachment.url}
+                className="h-[75vh] w-full rounded-xl bg-white shadow-2xl"
               />
             ) : (
               <img

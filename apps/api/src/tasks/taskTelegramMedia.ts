@@ -26,6 +26,14 @@ type LocalPhotoInfo = {
 type NormalizedAttachment =
   | { kind: 'image'; url: string; caption?: string }
   | {
+      kind: 'document';
+      url: string;
+      caption?: string;
+      mimeType?: string;
+      name?: string;
+      size?: number;
+    }
+  | {
       kind: 'unsupported-image';
       url: string;
       caption?: string;
@@ -330,7 +338,6 @@ export class TaskTelegramMedia {
           typeof attachment.type === 'string'
             ? attachment.type.trim().toLowerCase()
             : '';
-        if (!type.startsWith('image/')) return;
         const absolute = toAbsoluteAttachmentUrl(url, this.attachmentsBaseUrl);
         if (!absolute) return;
         const [mimeType] = type.split(';', 1);
@@ -343,6 +350,16 @@ export class TaskTelegramMedia {
           Number.isFinite(attachment.size)
             ? attachment.size
             : undefined;
+        if (!type.startsWith('image/')) {
+          registerExtra({
+            kind: 'document',
+            url: absolute,
+            mimeType: mimeType || undefined,
+            name,
+            ...(size !== undefined ? { size } : {}),
+          });
+          return;
+        }
         if (mimeType && SUPPORTED_PHOTO_MIME_TYPES.has(mimeType)) {
           if (size !== undefined && size > MAX_PHOTO_SIZE_BYTES) {
             const localId = this.extractLocalFileId(absolute);
@@ -890,6 +907,35 @@ export class TaskTelegramMedia {
         }
         continue;
       }
+      if (attachment.kind === 'document') {
+        try {
+          const options = documentOptionsBase();
+          if (attachment.caption) {
+            options.caption = escapeMarkdownV2(attachment.caption);
+            options.parse_mode = 'MarkdownV2';
+          }
+          const response = await this.bot.telegram.sendDocument(
+            chat,
+            await resolvePhotoInput(attachment.url),
+            options,
+          );
+          if (response?.message_id) {
+            sentMessageIds.push(response.message_id);
+          }
+          await this.persistTelegramFileId(
+            attachment.url,
+            this.extractTelegramDocumentId(response),
+          );
+        } catch (error) {
+          console.error(
+            'Не удалось отправить документ вложения задачи',
+            attachment.mimeType ?? 'unknown',
+            attachment.name ?? attachment.url,
+            error,
+          );
+        }
+        continue;
+      }
       if (attachment.kind === 'youtube') {
         const label = attachment.title ? attachment.title : 'YouTube';
         const text = `▶️ [${escapeMarkdownV2(label)}](${escapeMarkdownV2(
@@ -1013,8 +1059,7 @@ export class TaskTelegramMedia {
   }
 
   private extractTelegramDocumentId(response: unknown): string | null {
-    const document = (response as { document?: { file_id?: string } })
-      .document;
+    const document = (response as { document?: { file_id?: string } }).document;
     return typeof document?.file_id === 'string' ? document.file_id : null;
   }
 

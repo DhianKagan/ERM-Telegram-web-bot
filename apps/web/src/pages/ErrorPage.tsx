@@ -1,7 +1,7 @@
 import React from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
-const REDIRECT_SECONDS = 7;
+const REDIRECT_SECONDS = 3;
 
 export default function ErrorPage() {
   const navigate = useNavigate();

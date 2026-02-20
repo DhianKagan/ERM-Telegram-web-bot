@@ -458,6 +458,7 @@
     "previewError": "Не удалось загрузить предпросмотр.",
     "previewLoading": "Загрузка предпросмотра...",
     "openedInNewTab": "Файл открыт в новой вкладке.",
+    "openS3Browser": "Открыть S3 в браузере",
     "actions": "Действия",
     "download": "Скачать",
     "downloadHint": "Скачать файл",

@@ -150,28 +150,30 @@ export function requestLogger(
     return next();
   }
   const traceId = (req as unknown as Record<string, string>).traceId;
-  const { method, originalUrl, headers, cookies, ip } = req;
-  const tokenVal =
-    cookies && (cookies as Record<string, string>).token
-      ? (cookies as Record<string, string>).token.slice(0, 8)
-      : 'no-token';
-  const csrfVal = headers['x-xsrf-token']
-    ? String(headers['x-xsrf-token']).slice(0, 8)
-    : 'no-csrf';
-  const auth = headers.authorization;
-  let authVal = 'no-auth';
-  if (auth) {
-    authVal = auth.startsWith('Bearer ') ? auth.slice(7, 15) : auth.slice(0, 8);
-  }
-  const ua = headers['user-agent']
-    ? String(headers['user-agent']).slice(0, 40)
-    : 'unknown';
+  const { method, originalUrl, ip } = req;
+  const actorId = req.user?.telegram_id ?? req.user?.id ?? 'anonymous';
+  const role = req.user?.role ?? 'unknown';
+  const baseMetadata = {
+    source: 'user_action',
+    actorId,
+    role,
+    method,
+    endpoint: originalUrl,
+    ip,
+  };
   writeLog(
-    `API запрос ${method} ${originalUrl} trace:${traceId} token:${tokenVal} auth:${authVal} csrf:${csrfVal} ip:${ip} ua:${ua}`,
+    `Действие пользователя: ${method} ${originalUrl} trace:${traceId}`,
+    'info',
+    baseMetadata,
   ).catch(() => {});
   res.on('finish', () => {
     writeLog(
-      `API ответ ${method} ${originalUrl} ${res.statusCode} trace:${traceId} ip:${ip}`,
+      `Результат действия: ${method} ${originalUrl} ${res.statusCode} trace:${traceId}`,
+      res.statusCode >= 400 ? 'warn' : 'info',
+      {
+        ...baseMetadata,
+        statusCode: res.statusCode,
+      },
     ).catch(() => {});
   });
   next();

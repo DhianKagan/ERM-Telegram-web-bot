@@ -36,4 +36,20 @@ export default class LogsController {
       res.json({ status: 'ok' });
     },
   ];
+
+  clear = async (
+    req: Request<unknown, unknown, { target?: string }>,
+    res: Response,
+  ): Promise<void> => {
+    const target = typeof req.body?.target === 'string' ? req.body.target : '';
+
+    if (target === 'db') {
+      const result = await this.service.clearDatabaseLogs();
+      res.json({ status: 'ok', target: 'db', ...result });
+      return;
+    }
+
+    const removed = await this.service.clearRuntimeLogs();
+    res.json({ status: 'ok', target: 'runtime', removed });
+  };
 }

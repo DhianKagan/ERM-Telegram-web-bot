@@ -42,6 +42,14 @@ describe('APP_ROLE env requirements', () => {
     await expect(import('../../apps/api/src/config')).resolves.toBeDefined();
   });
 
+  test('api-роль корректно определяется даже с лишними токенами', async () => {
+    process.env.APP_ROLE = 'api node apps/api/dist/server.js';
+    delete process.env.BOT_TOKEN;
+    delete process.env.CHAT_ID;
+
+    await expect(import('../../apps/api/src/config')).resolves.toBeDefined();
+  });
+
   test('bot-роль требует BOT_TOKEN', async () => {
     process.env.APP_ROLE = 'bot';
     delete process.env.BOT_TOKEN;

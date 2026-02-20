@@ -8,6 +8,8 @@ import FiltersPanel from './FiltersPanel';
 import logColumns from '../columns/logColumns';
 import useLogsQuery, { LogFilters } from '../hooks/useLogsQuery';
 import { Button } from '@/components/ui/button';
+import { clearLogs } from '../services/logs';
+import { showToast } from '../utils/toast';
 import { Card } from '@/components/ui/card';
 import { SimpleTable } from '@/components/ui/simple-table';
 import Spinner from './Spinner';
@@ -28,6 +30,24 @@ export default function LogViewer() {
     void refetch();
   }, [refetch]);
 
+  const handleClearLogs = React.useCallback(async () => {
+    if (!window.confirm('Очистить пользовательские логи в БД?')) {
+      return;
+    }
+    try {
+      const response = await clearLogs('db');
+      if (!response.ok) {
+        throw new Error('Не удалось очистить логи');
+      }
+      showToast('Логи из БД очищены', 'success');
+      await refetch();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Не удалось очистить логи';
+      showToast(message, 'error');
+    }
+  }, [refetch]);
+
   React.useEffect(() => {
     setPage(0);
   }, [filters]);
@@ -38,7 +58,7 @@ export default function LogViewer() {
         breadcrumbs={<Breadcrumbs items={[{ label: 'Журнал событий' }]} />}
         icon={DocumentTextIcon}
         title="Журнал событий"
-        description="Технические логи приложения в едином формате."
+        description="Журнал действий пользователей. Системные события вынесены в мониторинг."
         filters={
           <form
             className="space-y-4"
@@ -82,6 +102,13 @@ export default function LogViewer() {
           <div className="flex flex-wrap items-center gap-2">
             <Button size="sm" variant="outline" onClick={refreshNow}>
               Обновить
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => void handleClearLogs()}
+            >
+              Очистить БД
             </Button>
           </div>
         }

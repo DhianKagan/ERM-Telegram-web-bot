@@ -18,6 +18,7 @@ export interface ListLogParams {
   sort?: string;
   page?: number;
   limit?: number;
+  scope?: 'user' | 'all';
 }
 
 export interface BufferedLogEntry {
@@ -66,6 +67,7 @@ class LogRingBuffer {
   }
 
   list(params: ListLogParams = {}): BufferedLogEntry[] {
+    const scope = params.scope === 'user' ? 'user' : 'all';
     const normalizedLevel =
       typeof params.level === 'string' &&
       allowedLevels.has(params.level as AllowedLevels)
@@ -89,6 +91,11 @@ class LogRingBuffer {
     );
 
     const filtered = this.entries.filter((entry) => {
+      const source =
+        typeof entry.metadata?.source === 'string' ? entry.metadata.source : '';
+      if (scope === 'user' && source !== 'user_action') {
+        return false;
+      }
       if (normalizedLevel && entry.level !== normalizedLevel) {
         return false;
       }
@@ -111,6 +118,12 @@ class LogRingBuffer {
     const sorted = sortEntries(filtered, params.sort);
     const offset = (page - 1) * limit;
     return sorted.slice(offset, offset + limit).map(stripSearchText);
+  }
+
+  clear(): number {
+    const removed = this.entries.length;
+    this.entries.length = 0;
+    return removed;
   }
 
   private buildSearchText(entry: BufferedLogEntry): string {
@@ -468,10 +481,12 @@ let writeLogFn: (
   metadata?: Record<string, unknown>,
 ) => Promise<void>;
 let listLogsFn: (params?: ListLogParams) => Promise<BufferedLogEntry[]>;
+let clearLogsFn: () => Promise<number>;
 
 if (loggingDisabled) {
   writeLogFn = async () => {};
   listLogsFn = async () => [];
+  clearLogsFn = async () => 0;
 } else {
   writeLogFn = async (
     message: string,
@@ -499,6 +514,12 @@ if (loggingDisabled) {
     });
   };
   listLogsFn = async (params: ListLogParams = {}) => buffer.list(params);
+  clearLogsFn = async () => buffer.clear();
 }
 
-export { logger, writeLogFn as writeLog, listLogsFn as listLogs };
+export {
+  logger,
+  writeLogFn as writeLog,
+  listLogsFn as listLogs,
+  clearLogsFn as clearLogs,
+};

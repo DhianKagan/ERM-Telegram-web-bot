@@ -39,4 +39,13 @@ router.post(
   ctrl.create as unknown as RequestHandler,
 );
 
+router.delete(
+  '/',
+  authMiddleware(),
+  limiter as unknown as RequestHandler,
+  Roles(ACCESS_ADMIN) as unknown as RequestHandler,
+  rolesGuard as unknown as RequestHandler,
+  ctrl.clear as unknown as RequestHandler,
+);
+
 export default router;

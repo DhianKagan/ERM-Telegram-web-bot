@@ -43,6 +43,8 @@ COPY --from=build /app/packages/shared/dist /app/packages/shared/dist
 COPY --from=build /app/packages/shared/package.json /app/packages/shared/package.json
 COPY --from=build /app/packages/utils/dist /app/packages/utils/dist
 COPY --from=build /app/packages/utils/package.json /app/packages/utils/package.json
+# Keep workspace link for utils -> shared runtime import resolution.
+COPY --from=build /app/packages/utils/node_modules /app/packages/utils/node_modules
 COPY --from=build /app/dist/scripts/db /app/dist/scripts/db
 COPY --from=build /app/package.json /app/package.json
 COPY --from=build /app/scripts/railway/start-by-role.sh /app/scripts/railway/start-by-role.sh

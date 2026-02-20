@@ -4,6 +4,7 @@ import { Request, Response } from 'express';
 import { inject, injectable } from 'tsyringe';
 import { QueueName } from 'shared';
 import StackHealthService, {
+  type RemoteHealthTarget,
   type StackHealthReport,
 } from './stackHealth.service';
 import { TOKENS } from '../di/tokens';
@@ -18,6 +19,48 @@ const pickEnv = (keys: string[]): string | undefined => {
   return undefined;
 };
 
+const parseRemoteServices = (
+  source: string | undefined,
+): RemoteHealthTarget[] => {
+  if (!source) return [];
+
+  const parsedTargets: RemoteHealthTarget[] = [];
+  for (const rawItem of source.split(',')) {
+    const item = rawItem.trim();
+    if (!item) continue;
+
+    const [nameRaw, urlRaw, timeoutRaw] = item
+      .split('|')
+      .map((part) => part.trim());
+    if (!nameRaw || !urlRaw) continue;
+
+    try {
+      const parsedUrl = new URL(urlRaw);
+      if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+        continue;
+      }
+
+      const timeoutCandidate = timeoutRaw
+        ? Number.parseInt(timeoutRaw, 10)
+        : undefined;
+      const timeoutMs =
+        typeof timeoutCandidate === 'number' &&
+        Number.isFinite(timeoutCandidate)
+          ? timeoutCandidate
+          : undefined;
+
+      parsedTargets.push({
+        name: nameRaw,
+        url: parsedUrl.toString(),
+        timeoutMs,
+      });
+    } catch {
+      continue;
+    }
+  }
+  return parsedTargets;
+};
+
 @injectable()
 export default class StackHealthController {
   constructor(
@@ -29,6 +72,7 @@ export default class StackHealthController {
     const redisUrl = pickEnv(['QUEUE_REDIS_URL', 'REDIS_URL']);
     const queuePrefix = pickEnv(['QUEUE_PREFIX']);
     const queueNamesRaw = pickEnv(['HEALTH_QUEUE_NAMES']);
+    const remoteServicesRaw = pickEnv(['HEALTH_REMOTE_SERVICES']);
     const knownQueueNames = new Set<string>(Object.values(QueueName));
 
     const report: StackHealthReport = await this.service.run({
@@ -40,6 +84,7 @@ export default class StackHealthController {
             .map((value) => value.trim())
             .filter((value) => knownQueueNames.has(value)) as QueueName[])
         : undefined,
+      remoteServices: parseRemoteServices(remoteServicesRaw),
     });
 
     res.json(report);

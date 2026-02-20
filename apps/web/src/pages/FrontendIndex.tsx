@@ -373,7 +373,7 @@ const faqCategories: FaqCategory[] = [
         id: 'settings-monitoring',
         question: 'Как работает мониторинг инфраструктуры?',
         answer:
-          'Вкладка мониторинга проверяет состояние S3, /storage, Redis и MongoDB, а также предоставляет ссылку на /metrics для Prometheus. Используйте «Запустить проверку» и опцию автоопроса для контроля стабильности.',
+          'Вкладка мониторинга проверяет состояние S3, storage API, Redis, MongoDB и внешних сервисов (например, worker/bot), а также предоставляет ссылку на /metrics для Prometheus. Используйте «Запустить проверку» и опцию автоопроса для контроля стабильности.',
         module: 'Мониторинг',
         tags: ['s3', 'redis', 'mongodb', 'prometheus'],
         route: '/cp/settings',

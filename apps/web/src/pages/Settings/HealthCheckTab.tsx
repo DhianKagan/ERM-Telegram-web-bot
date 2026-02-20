@@ -180,7 +180,7 @@ export default function HealthCheckTab(): JSX.Element {
     <div className="flex flex-col gap-4">
       <SettingsSectionHeader
         title="Мониторинг"
-        description="Проверка S3, /storage, Redis и MongoDB"
+        description="Проверка S3, storage API, Redis, MongoDB и внешних сервисов"
         icon={ShieldCheckIcon}
         controls={
           <div className="grid gap-2">

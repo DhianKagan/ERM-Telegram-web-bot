@@ -1055,10 +1055,51 @@ export default class TasksController {
         );
         consumedAlbumUrls.push(previewUrl);
       } catch (error) {
-        console.error(
-          'Не удалось отправить задачу с изображением превью',
-          error,
-        );
+        const photoErrorCode = this.extractPhotoErrorCode(error);
+        if (!photoErrorCode) {
+          console.error(
+            'Не удалось отправить задачу с изображением превью',
+            error,
+          );
+        } else {
+          console.warn(
+            `Telegram не смог обработать превью (код: ${photoErrorCode}), отправляем как документ`,
+            previewUrl,
+            error,
+          );
+          try {
+            const documentOptions: SendDocumentOptions = {
+              ...(typeof topicId === 'number'
+                ? { message_thread_id: topicId }
+                : {}),
+              ...mediaReplyParameters,
+              caption: albumCaption,
+              parse_mode: 'MarkdownV2',
+            };
+            const fallback = await this.resolveDocumentInputWithCache(
+              previewUrl,
+              cache,
+            );
+            const response = await bot.telegram.sendDocument(
+              chat,
+              fallback,
+              documentOptions,
+            );
+            if (response?.message_id) {
+              albumMessageIds.push(response.message_id);
+            }
+            await this.persistTelegramFileId(
+              previewUrl,
+              this.extractTelegramDocumentId(response),
+            );
+            consumedAlbumUrls.push(previewUrl);
+          } catch (documentError) {
+            console.error(
+              'Не удалось отправить превью как документ',
+              documentError,
+            );
+          }
+        }
       }
     }
 
@@ -1255,6 +1296,7 @@ export default class TasksController {
     /\bFILE_TOO_BIG\b/,
     /\bFILE_UPLOAD_[A-Z_]+\b/,
     /\bFILE_SIZE_[A-Z_]+\b/,
+    /wrong type of the web page content/i,
   ];
 
   private extractPhotoErrorCode(error: unknown): string | null {

@@ -95,6 +95,20 @@ test('expandMapsUrl строит ссылку по координатам из �
   expect(res).toBe('https://www.google.com/maps/@49.987650,36.123450,17z');
 });
 
+test('expandMapsUrl парсит экранированную ссылку из js-ответа', async () => {
+  const html =
+    '<script>var u="https:\\/\\/www.google.com\\/maps\\/place\\/Point\\/@48.123456,30.654321,17z?entry=ttu";</script>';
+  global.fetch = jest.fn().mockResolvedValue({
+    status: 200,
+    headers: new Headers(),
+    text: jest.fn().mockResolvedValue(html),
+  });
+  const res = await expandMapsUrl('https://maps.app.goo.gl/test');
+  expect(res).toBe(
+    'https://www.google.com/maps/place/Point/@48.123456,30.654321,17z?entry=ttu',
+  );
+});
+
 test('extractCoords извлекает широту и долготу', () => {
   const coords = extractCoords('https://maps.google.com/@10.1,20.2,15z');
   expect(coords).toEqual({ lat: 10.1, lng: 20.2 });

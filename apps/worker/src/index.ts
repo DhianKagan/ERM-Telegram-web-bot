@@ -96,8 +96,8 @@ const forwardToDlq = async (
 
   const taskId = resolveTaskId(payload.payload);
   const jobId = taskId
-    ? `task-remind:${taskId}`
-    : `dlq:${String(job.id ?? payload.failedAt)}`;
+    ? `task-remind-${taskId}`
+    : `dlq-${String(job.id ?? payload.failedAt)}`;
 
   await deadLetterQueue.add(QueueJobName.DeadLetter, payload, {
     ...buildJobOptions(),

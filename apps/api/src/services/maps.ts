@@ -28,6 +28,10 @@ const DEFAULT_ACCEPT_LANGUAGE = 'ru,en;q=0.9';
 const MAPS_URL_PATTERNS = [
   /https:\/\/(?:www\.)?google\.[^"'\s<>]+/gi,
   /https:\/\/maps\.google\.[^"'\s<>]+/gi,
+  /https:\\\/\\\/(?:www\.)?google\.[^"'\s<>]+/gi,
+  /https:\\\/\\\/maps\.google\.[^"'\s<>]+/gi,
+  /https:\\u002[fF]\\u002[fF](?:www\.)?google\.[^"'\s<>]+/gi,
+  /https:\\u002[fF]\\u002[fF]maps\.google\.[^"'\s<>]+/gi,
 ];
 
 const ALLOWED_MAPS_HOSTS = new Set([
@@ -81,6 +85,7 @@ const assertSafeMapsUrl = async (urlObj: URL): Promise<void> => {
 const decodeMapsUrlCandidate = (candidate: string): string | null => {
   if (!candidate) return null;
   let current = candidate.replace(/\\\//g, '/').replace(/\\u003d/gi, '=');
+  current = current.replace(/\\u003a/gi, ':').replace(/\\u002f/gi, '/');
   current = current.replace(/\\u0026amp;/gi, '&amp;');
   current = current.replace(/\\u0026(?=[\w%.-]+=)/gi, '&');
   current = current.replace(/&amp;(?=[\w%.-]+=)/gi, '&');

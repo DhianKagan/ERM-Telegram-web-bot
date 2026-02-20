@@ -287,6 +287,7 @@ export class TaskTelegramMedia {
     /\bFILE_TOO_BIG\b/,
     /\bFILE_UPLOAD_[A-Z_]+\b/,
     /\bFILE_SIZE_[A-Z_]+\b/,
+    /wrong type of the web page content/i,
   ];
 
   constructor(
@@ -641,10 +642,66 @@ export class TaskTelegramMedia {
           consumedAttachmentUrls: [previewUrl],
         };
       } catch (error) {
-        console.error(
-          'Не удалось отправить задачу с изображением превью',
-          error,
-        );
+        const photoErrorCode = this.extractPhotoErrorCode(error);
+        if (!photoErrorCode) {
+          console.error(
+            'Не удалось отправить задачу с изображением превью',
+            error,
+          );
+        } else {
+          console.warn(
+            `Telegram не смог обработать превью (код: ${photoErrorCode}), отправляем как документ`,
+            previewUrl,
+            error,
+          );
+          try {
+            const fallbackOptions = {
+              ...baseOptions(!leftoverChunks.length),
+              ...(caption
+                ? ({ caption, parse_mode: 'MarkdownV2' as const } as const)
+                : {}),
+            };
+            const fallback = await this.resolveDocumentInputWithCache(
+              previewUrl,
+              cache,
+            );
+            const response = await this.bot.telegram.sendDocument(
+              chat,
+              fallback,
+              fallbackOptions,
+            );
+            await this.persistTelegramFileId(
+              previewUrl,
+              this.extractTelegramDocumentId(response),
+            );
+            await dispatchChunks(
+              leftoverChunks,
+              Boolean(keyboardMarkup && leftoverChunks.length),
+            );
+            const combinedPreviewIds = response?.message_id
+              ? [response.message_id, ...textMessageIds]
+              : textMessageIds.slice();
+            const messageId =
+              lastTextMessageId !== undefined
+                ? lastTextMessageId
+                : response?.message_id;
+            return {
+              messageId,
+              usedPreview: true,
+              cache,
+              previewSourceUrls: [previewUrl],
+              previewMessageIds: combinedPreviewIds.length
+                ? combinedPreviewIds
+                : undefined,
+              consumedAttachmentUrls: [previewUrl],
+            };
+          } catch (documentError) {
+            console.error(
+              'Не удалось отправить превью как документ',
+              documentError,
+            );
+          }
+        }
       }
     }
 
@@ -1083,6 +1140,55 @@ export class TaskTelegramMedia {
     }
     info = await this.ensurePhotoWithinLimit(info);
     cache.set(url, info);
+    try {
+      const stream = createReadStream(info.absolutePath);
+      await new Promise<void>((resolve, reject) => {
+        const handleOpen = () => {
+          stream.off('error', handleError);
+          resolve();
+        };
+        const handleError = (streamError: NodeJS.ErrnoException) => {
+          stream.off('open', handleOpen);
+          reject(streamError);
+        };
+        stream.once('open', handleOpen);
+        stream.once('error', handleError);
+      });
+      const descriptor: InputFile = {
+        source: stream,
+        filename: info.filename,
+        ...(info.contentType ? { contentType: info.contentType } : {}),
+      };
+      return descriptor;
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException)?.code !== 'ENOENT') {
+        console.error(
+          `Не удалось открыть файл ${info.absolutePath} для отправки в Telegram`,
+          error,
+        );
+      }
+      cache.set(url, null);
+      return url;
+    }
+  }
+
+  private async resolveDocumentInputWithCache(
+    url: string,
+    cache: Map<string, LocalPhotoInfo | null>,
+  ): Promise<InputFile | string> {
+    if (!url) return url;
+    const telegramFileId = await this.resolveTelegramFileId(url);
+    if (telegramFileId) {
+      return telegramFileId;
+    }
+    if (!cache.has(url)) {
+      const info = await this.resolveLocalPhotoInfo(url);
+      cache.set(url, info ?? null);
+    }
+    const info = cache.get(url);
+    if (!info) {
+      return url;
+    }
     try {
       const stream = createReadStream(info.absolutePath);
       await new Promise<void>((resolve, reject) => {

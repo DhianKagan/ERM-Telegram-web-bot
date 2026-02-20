@@ -545,6 +545,60 @@ describe('notifyTaskCreated вложения', () => {
     });
   });
 
+  it('для ошибки wrong type of the web page content отправляет изображение как документ', async () => {
+    resolvePhotosTargetMock.mockResolvedValueOnce(null);
+
+    sendMessageMock.mockResolvedValueOnce({ message_id: 500 });
+    sendMessageMock.mockResolvedValueOnce({ message_id: 501 });
+    sendMessageMock.mockResolvedValueOnce({ message_id: 900 });
+
+    const telegramWrongTypeError = Object.assign(
+      new Error('Bad Request: wrong type of the web page content'),
+      {
+        response: {
+          error_code: 400,
+          description: 'Bad Request: wrong type of the web page content',
+        },
+      },
+    );
+
+    sendPhotoMock.mockRejectedValueOnce(telegramWrongTypeError);
+    sendDocumentMock.mockResolvedValueOnce({ message_id: 808 });
+
+    const plainTask = {
+      _id: '507f1f77bcf86cd799439099',
+      task_number: 'C-15',
+      title: 'Фото как документ',
+      attachments: [
+        {
+          url: 'https://cdn.example.com/photo-inline',
+          type: 'image/jpeg',
+          name: 'photo.jpg',
+        },
+      ],
+      telegram_topic_id: 111,
+      assignees: [42],
+      assigned_user_id: 42,
+      created_by: 10,
+      history: [],
+      status: 'Новая',
+      toObject() {
+        return this;
+      },
+    } as unknown as TaskDocument & { toObject(): unknown };
+
+    const controller = createController();
+    await (
+      controller as unknown as {
+        notifyTaskCreated(task: TaskDocument, userId: number): Promise<void>;
+      }
+    ).notifyTaskCreated(plainTask as TaskDocument, 99);
+
+    expect(sendPhotoMock).toHaveBeenCalled();
+    expect(sendDocumentMock).toHaveBeenCalled();
+    expect(sendDocumentMock.mock.calls[0]?.[0]).toBe('-100100');
+  });
+
   it('не отправляет личное уведомление ботам из справочника пользователей', async () => {
     const previousChatId = process.env.CHAT_ID;
     process.env.CHAT_ID = '';

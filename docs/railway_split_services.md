@@ -40,12 +40,20 @@
      pnpm install --frozen-lockfile && pnpm -r build
      ```
 
-   - **Start Command**:
+   - **Start Command** (выберите вариант под тип builder):
+
+     **Если service использует Nixpacks/Build Command и в runtime доступен `pnpm`:**
      - `erm-api`: `pnpm run railway:start:api`
      - `erm-bot`: `pnpm run railway:start:bot`
      - `erm-worker`: `pnpm run railway:start:worker`
 
-   > Не переопределяйте `APP_ROLE` вручную: он уже задан в скриптах `railway:start:*`.
+     **Если service использует Dockerfile runtime (частый случай) и `pnpm` в финальном слое недоступен:**
+     - `erm-api`: `APP_ROLE=api node apps/api/dist/server.js`
+     - `erm-bot`: `APP_ROLE=bot node apps/api/dist/bot/runtime.js`
+     - `erm-worker`: `APP_ROLE=worker node apps/worker/dist/index.js`
+
+   > Для split-режима не используйте в Start Command `./scripts/set_bot_commands.sh`: в Dockerfile runtime каталога `scripts/` может не быть.
+   > Для фронта/внутренних вызовов внутри Railway private network используйте актуальный internal hostname API: `erm-api.railway.internal` (вместо старого `agrmcs.railway.internal`).
 
 3. Отключите ненужные переменные (см. матрицу ниже), чтобы сервисы не тянули лишнюю конфигурацию.
 

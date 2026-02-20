@@ -426,6 +426,7 @@
     "previewError": "Failed to load preview.",
     "previewLoading": "Loading preview...",
     "openedInNewTab": "File opened in a new tab.",
+    "openS3Browser": "Open S3 in browser",
     "actions": "Actions",
     "download": "Download",
     "downloadHint": "Download file",

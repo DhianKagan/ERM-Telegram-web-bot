@@ -41,8 +41,7 @@ const normalizeAttachmentRecord = (
   input: Record<string, unknown>,
 ): Attachment | null => {
   const urlRaw = typeof input.url === 'string' ? input.url.trim() : '';
-  const fileIdRaw =
-    typeof input.fileId === 'string' ? input.fileId.trim() : '';
+  const fileIdRaw = typeof input.fileId === 'string' ? input.fileId.trim() : '';
   const fileId =
     fileIdRaw && Types.ObjectId.isValid(fileIdRaw) ? fileIdRaw : '';
   const resolvedUrl = urlRaw || (fileId ? `/api/v1/files/${fileId}` : '');
@@ -209,13 +208,26 @@ export const extractFileIdFromUrl = (
   if (!pathPart) {
     return null;
   }
+  const filesPathMatch = pathPart.match(
+    /\/api\/v1\/files\/([0-9a-fA-F]{24})(?=\/|$)/,
+  );
+  if (filesPathMatch?.[1]) {
+    const fromPath = normalizeObjectIdCandidate(filesPathMatch[1]);
+    if (fromPath) {
+      return fromPath;
+    }
+  }
   const segments = pathPart.split('/').filter(Boolean);
   if (segments.length === 0) {
     return null;
   }
-  const last = segments[segments.length - 1];
-  const normalized = normalizeObjectIdCandidate(last);
-  return normalized ?? null;
+  for (let index = segments.length - 1; index >= 0; index -= 1) {
+    const normalized = normalizeObjectIdCandidate(segments[index]);
+    if (normalized) {
+      return normalized;
+    }
+  }
+  return null;
 };
 
 export const buildAttachmentsFromCommentHtml = (

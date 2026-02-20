@@ -36,7 +36,7 @@ const buildJobOptions = (): JobsOptions => ({
 
 const buildJobId = (prefix: string, payload: unknown): string => {
   const hash = createHash('sha1').update(JSON.stringify(payload)).digest('hex');
-  return `${prefix}:${hash}`;
+  return `${prefix}-${hash}`;
 };
 
 const disableQueues = (reason: string, error?: unknown): void => {

@@ -44,14 +44,17 @@
 ## Рекомендованный preflight перед релизом
 
 1. Создать/проверить три Railway services: `erm-api`, `erm-bot`, `erm-worker`.
-2. Для каждого выставить Start Command:
-   - `pnpm run railway:start:api`
-   - `pnpm run railway:start:bot`
-   - `pnpm run railway:start:worker`
-3. Убедиться, что `QUEUE_PREFIX` одинаковый у `api` и `worker`.
-4. Для `api` не фиксировать `PORT` вручную (Railway подставляет порт сам).
-5. Проверить health endpoints после деплоя: `/` и `/health`.
-6. Задать per-service лимиты RAM через `API_NODE_OPTIONS`, `BOT_NODE_OPTIONS`, `WORKER_NODE_OPTIONS`.
+2. Для каждого выставить Start Command по типу builder:
+   - Nixpacks/runtime с `pnpm`: `pnpm run railway:start:{api|bot|worker}`
+   - Dockerfile runtime без `pnpm`: `APP_ROLE=<role> node apps/<service>/dist/<entry>.js`
+     - `api`: `APP_ROLE=api node apps/api/dist/server.js`
+     - `bot`: `APP_ROLE=bot node apps/api/dist/bot/runtime.js`
+     - `worker`: `APP_ROLE=worker node apps/worker/dist/index.js`
+3. Для внутренних вызовов в private network использовать актуальный host `erm-api.railway.internal` (вместо старого `agrmcs.railway.internal`).
+4. Убедиться, что `QUEUE_PREFIX` одинаковый у `api` и `worker`.
+5. Для `api` не фиксировать `PORT` вручную (Railway подставляет порт сам).
+6. Проверить health endpoints после деплоя: `/` и `/health`.
+7. Задать per-service лимиты RAM через `API_NODE_OPTIONS`, `BOT_NODE_OPTIONS`, `WORKER_NODE_OPTIONS`.
 
 ## Статус готовности
 

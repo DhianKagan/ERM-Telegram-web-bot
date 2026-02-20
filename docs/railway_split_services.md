@@ -48,9 +48,13 @@
      - `erm-worker`: `pnpm run railway:start:worker`
 
      **Если service использует Dockerfile runtime (частый случай) и `pnpm` в финальном слое недоступен:**
-     - `erm-api`: `APP_ROLE=api node apps/api/dist/server.js`
-     - `erm-bot`: `APP_ROLE=bot node apps/api/dist/bot/runtime.js`
-     - `erm-worker`: `APP_ROLE=worker node apps/worker/dist/index.js`
+     - Не добавляйте инлайн-назначение переменных (`APP_ROLE=...`) в `Start Command`: в Railway Docker runtime команда может запускаться без shell и падать с ошибкой `The executable "app_role=..." could not be found`.
+     - Укажите переменную сервиса `APP_ROLE` в разделе Variables (`api`/`bot`/`worker`).
+     - В `Start Command` оставьте только бинарь Node:
+       - `erm-api`: `node apps/api/dist/server.js`
+       - `erm-bot`: `node apps/api/dist/bot/runtime.js`
+       - `erm-worker`: `node apps/worker/dist/index.js`
+     - Либо очистите `Start Command`: Docker image сам запустит нужный процесс через `/app/scripts/railway/start-by-role.sh` по `APP_ROLE`.
 
    > Для split-режима не используйте в Start Command `./scripts/set_bot_commands.sh`: в Dockerfile runtime каталога `scripts/` может не быть.
    > Для фронта/внутренних вызовов внутри Railway private network используйте актуальный internal hostname API: `erm-api.railway.internal` (вместо старого `agrmcs.railway.internal`).

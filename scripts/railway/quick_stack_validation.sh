@@ -4,6 +4,8 @@ set -euo pipefail
 API_BASE_URL="${API_BASE_URL:-https://agromarket.up.railway.app}"
 HEALTH_PATH="${HEALTH_PATH:-/api/monitor/health}"
 METRICS_PATH="${METRICS_PATH:-/metrics}"
+QUEUE_LAG_LIMIT_SECONDS="${QUEUE_LAG_LIMIT_SECONDS:-180}"
+FAILED_JOBS_LIMIT="${FAILED_JOBS_LIMIT:-0}"
 
 if ! command -v curl >/dev/null 2>&1; then
   echo "ERROR: curl is required" >&2
@@ -80,10 +82,79 @@ if [[ "$missing" -ne 0 ]]; then
   exit 1
 fi
 
-# Optional sanity line for queue lag values.
-if rg -q '^bullmq_queue_oldest_wait_seconds\{queue="logistics-routing"\}' "$metrics_body"; then
-  echo "- bullmq_queue_oldest_wait_seconds{queue=\"logistics-routing\"}: present"
-fi
+echo "==> Queue/worker sanity checks"
+python3 - "$metrics_body" "$QUEUE_LAG_LIMIT_SECONDS" "$FAILED_JOBS_LIMIT" <<'PY'
+import re
+import sys
+from collections import defaultdict
+from typing import Dict, Optional
+
+metrics_path = sys.argv[1]
+lag_limit = float(sys.argv[2])
+failed_limit = float(sys.argv[3])
+
+line_re = re.compile(r'^(?P<name>[a-zA-Z_:][a-zA-Z0-9_:]*)(?:\{(?P<labels>[^}]*)\})?\s+(?P<value>[+-]?[0-9]+(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?)$')
+
+
+def parse_labels(raw: Optional[str]) -> Dict[str, str]:
+    if not raw:
+        return {}
+    labels: Dict[str, str] = {}
+    for part in raw.split(','):
+        key, _, value = part.partition('=')
+        labels[key.strip()] = value.strip().strip('"')
+    return labels
+
+
+queue_lag: Dict[str, float] = defaultdict(float)
+failed_jobs: Dict[str, float] = defaultdict(float)
+
+with open(metrics_path, 'r', encoding='utf-8') as fh:
+    for row in fh:
+        line = row.strip()
+        if not line or line.startswith('#'):
+            continue
+        match = line_re.match(line)
+        if not match:
+            continue
+
+        name = match.group('name')
+        labels = parse_labels(match.group('labels'))
+        value = float(match.group('value'))
+
+        if name == 'bullmq_queue_oldest_wait_seconds':
+            queue = labels.get('queue', 'unknown')
+            queue_lag[queue] = max(queue_lag[queue], value)
+        elif name == 'bullmq_jobs_total' and labels.get('state') == 'failed':
+            queue = labels.get('queue', 'unknown')
+            failed_jobs[queue] += value
+
+if not queue_lag:
+    print('FAILED: no queue lag metrics found')
+    sys.exit(1)
+
+lag_violations = []
+for queue, lag in sorted(queue_lag.items()):
+    print(f'- queue lag {queue}: {lag:.2f}s (limit={lag_limit:.2f}s)')
+    if lag > lag_limit:
+        lag_violations.append((queue, lag))
+
+failed_violations = []
+if not failed_jobs:
+    print('- failed jobs metrics: no queues with state=failed (ok)')
+else:
+    for queue, count in sorted(failed_jobs.items()):
+        print(f'- failed jobs {queue}: {count:.0f} (limit={failed_limit:.0f})')
+        if count > failed_limit:
+            failed_violations.append((queue, count))
+
+if lag_violations or failed_violations:
+    if lag_violations:
+        print('FAILED_LAG=' + ','.join(f'{q}:{v:.2f}' for q, v in lag_violations))
+    if failed_violations:
+        print('FAILED_JOBS=' + ','.join(f'{q}:{v:.0f}' for q, v in failed_violations))
+    sys.exit(1)
+PY
 
 rm -f "$metrics_body"
 echo "✅ quick stack validation passed"

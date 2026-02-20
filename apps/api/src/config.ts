@@ -25,14 +25,15 @@ const strictEnvs = new Set(['production', 'production-build']);
 const normalizeAppRole = (
   source: string | undefined,
 ): 'all' | 'api' | 'bot' | 'worker' => {
-  const normalized = (source || '').trim().toLowerCase();
-  if (normalized === 'api') {
+  const trimmed = (source || '').trim().toLowerCase();
+  const token = trimmed ? trimmed.split(/\s+/)[0] : '';
+  if (token === 'api') {
     return 'api';
   }
-  if (normalized === 'bot') {
+  if (token === 'bot') {
     return 'bot';
   }
-  if (normalized === 'worker') {
+  if (token === 'worker') {
     return 'worker';
   }
   return 'all';

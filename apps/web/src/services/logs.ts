@@ -8,3 +8,10 @@ export const createLog = (message: string) =>
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ message }),
   });
+
+export const clearLogs = (target: 'runtime' | 'db' = 'runtime') =>
+  authFetch('/api/v1/logs', {
+    method: 'DELETE',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ target }),
+  });

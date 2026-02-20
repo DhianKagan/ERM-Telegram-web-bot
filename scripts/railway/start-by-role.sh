@@ -4,10 +4,6 @@ set -eu
 APP_ROLE_RAW="${APP_ROLE:-all}"
 APP_ROLE_TOKEN="$(printf '%s' "$APP_ROLE_RAW" | awk '{print $1}')"
 
-if [ "$APP_ROLE_TOKEN" != "$APP_ROLE_RAW" ]; then
-  echo "APP_ROLE contains extra tokens ('$APP_ROLE_RAW'), using '$APP_ROLE_TOKEN'" >&2
-fi
-
 APP_ROLE_NORMALIZED="$(printf '%s' "${APP_ROLE_TOKEN:-all}" | tr '[:upper:]' '[:lower:]')"
 
 case "$APP_ROLE_NORMALIZED" in

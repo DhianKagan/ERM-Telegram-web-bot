@@ -1,44 +1,152 @@
-# Назначение файла: пример правил оповещения Prometheus
+# Назначение файла: правила оповещения Prometheus для ERM Telegram web bot
 # Модули: prom-client, Alertmanager
+
 groups:
-  - name: bot-alerts
+  - name: availability
     rules:
       - alert: BotDown
-        expr: up == 0
+        expr: up{job="erm-bot"} == 0
         for: 1m
         labels:
           severity: critical
         annotations:
           summary: 'Бот недоступен'
-          description: 'Экспортер метрик не отвечает более одной минуты'
-      - alert: CsrfErrors
-        expr: rate(csrf_errors_total[5m]) > 5
-        for: 2m
-        labels:
-          severity: warning
-        annotations:
-          summary: 'Рост ошибок CSRF'
-          description: 'Количество ошибок CSRF за 5 минут превысило порог'
-      - alert: HighHttpP95
-        expr: histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (le)) > 0.5
-        for: 2m
-        labels:
-          severity: warning
-        annotations:
-          summary: 'Высокое p95 ответа'
-          description: '95-й перцентиль HTTP выше 0.5с более двух минут'
+          description: 'Экспортер метрик не отвечает более 1 минуты.'
 
-  - name: ermbot-queue-health
+  - name: stack-health
     rules:
       - alert: ERMStackHealthWarn
         expr: stack_health_status > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Stack health degraded'
+          description: 'Сводный health-статус стека > 0 более 2 минут.'
+
+      - alert: ERMStackHealthCritical
+        expr: stack_health_status >= 2
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Stack health critical'
+          description: 'Сводный health-статус стека >= 2 более 1 минуты.'
+
+      - alert: ERMDependencyCheckWarn
+        expr: max by (component) (stack_health_check_status) > 0
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Dependency degraded: {{ $labels.component }}'
+          description: 'Проверка зависимости {{ $labels.component }} сигнализирует деградацию более 2 минут.'
+
+      - alert: ERMDependencyCheckCritical
+        expr: max by (component) (stack_health_check_status) >= 2
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Dependency critical: {{ $labels.component }}'
+          description: 'Проверка зависимости {{ $labels.component }} сигнализирует критическое состояние более 1 минуты.'
+
+  - name: http
+    rules:
+      - alert: HighHttpP95Warn
+        expr: histogram_quantile(0.95, sum by (le, route) (rate(http_request_duration_seconds_bucket{route!~".*\\.map$|/js/.*"}[5m]))) > 0.7
         for: 5m
         labels:
           severity: warning
         annotations:
-          summary: 'Stack health warn/error'
-          description: 'Общий health-статус стека сигнализирует о деградации более 5 минут'
+          summary: 'Высокая p95 латентность HTTP: {{ $labels.route }}'
+          description: 'p95 для route={{ $labels.route }} выше 0.7с более 5 минут.'
 
+      - alert: HighHttpP95Critical
+        expr: histogram_quantile(0.95, sum by (le, route) (rate(http_request_duration_seconds_bucket{route!~".*\\.map$|/js/.*"}[5m]))) > 1.5
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Критическая p95 латентность HTTP: {{ $labels.route }}'
+          description: 'p95 для route={{ $labels.route }} выше 1.5с более 3 минут.'
+
+      - alert: Http5xxErrorRateWarn
+        expr: (sum(rate(http_requests_total{status=~"5.."}[5m])) / clamp_min(sum(rate(http_requests_total[5m])), 1e-6)) > 0.01
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'HTTP 5xx error-rate > 1%'
+          description: 'Доля 5xx ответов превышает 1% более 5 минут.'
+
+      - alert: Http5xxErrorRateCritical
+        expr: (sum(rate(http_requests_total{status=~"5.."}[5m])) / clamp_min(sum(rate(http_requests_total[5m])), 1e-6)) > 0.03
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'HTTP 5xx error-rate > 3%'
+          description: 'Доля 5xx ответов превышает 3% более 5 минут.'
+
+  - name: node-runtime
+    rules:
+      - alert: HighEventLoopLagP99Warn
+        expr: nodejs_eventloop_lag_p99_seconds > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Высокий p99 event loop lag'
+          description: 'nodejs_eventloop_lag_p99_seconds > 50ms более 5 минут.'
+
+      - alert: HighEventLoopLagP99Critical
+        expr: nodejs_eventloop_lag_p99_seconds > 0.1
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Критический p99 event loop lag'
+          description: 'nodejs_eventloop_lag_p99_seconds > 100ms более 3 минут.'
+
+      - alert: NodeHeapPressureWarn
+        expr: (nodejs_heap_size_used_bytes / clamp_min(nodejs_heap_size_total_bytes, 1)) > 0.85
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Высокое давление на heap'
+          description: 'Использование heap > 85% более 10 минут.'
+
+      - alert: NodeHeapPressureCritical
+        expr: (nodejs_heap_size_used_bytes / clamp_min(nodejs_heap_size_total_bytes, 1)) > 0.92
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Критическое давление на heap'
+          description: 'Использование heap > 92% более 5 минут.'
+
+      - alert: OpenFDsWarn
+        expr: (process_open_fds / clamp_min(process_max_fds, 1)) > 0.7
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Высокая доля открытых FD'
+          description: 'Использование file descriptors > 70% более 10 минут.'
+
+      - alert: OpenFDsCritical
+        expr: (process_open_fds / clamp_min(process_max_fds, 1)) > 0.85
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Критическая доля открытых FD'
+          description: 'Использование file descriptors > 85% более 5 минут.'
+
+  - name: queue-health
+    rules:
       - alert: ERMGeocodingFailedJobs
         expr: bullmq_jobs_total{queue="logistics-geocoding",state="failed"} > 0
         for: 10m
@@ -46,7 +154,7 @@ groups:
           severity: critical
         annotations:
           summary: 'Geocoding queue has failed jobs'
-          description: 'В очереди logistics-geocoding есть failed-задачи более 10 минут'
+          description: 'В очереди logistics-geocoding есть failed-задачи более 10 минут.'
 
       - alert: ERMDeadLetterBacklog
         expr: bullmq_jobs_total{queue="logistics-dead-letter",state="waiting"} > 0
@@ -55,16 +163,63 @@ groups:
           severity: warning
         annotations:
           summary: 'Dead-letter queue backlog detected'
-          description: 'В dead-letter очереди есть waiting-задачи более 10 минут'
+          description: 'В dead-letter очереди есть waiting-задачи более 10 минут.'
 
-      - alert: ERMQueueOldestWaitTooHigh
-        expr: bullmq_queue_oldest_wait_seconds > 300
+      - alert: BullMQWaitingBacklogWarn
+        expr: sum(bullmq_jobs_total{state="waiting"}) > 20
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Накопление задач в BullMQ'
+          description: 'Суммарно waiting задач > 20 более 5 минут.'
+
+      - alert: BullMQWaitingBacklogCritical
+        expr: sum(bullmq_jobs_total{state="waiting"}) > 100
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Критическое накопление задач в BullMQ'
+          description: 'Суммарно waiting задач > 100 более 3 минут.'
+
+      - alert: ERMQueueOldestWaitWarn
+        expr: max(bullmq_queue_oldest_wait_seconds) > 60
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Долгое ожидание задач в очереди'
+          description: 'Возраст самой старой waiting задачи > 60 секунд более 5 минут.'
+
+      - alert: ERMQueueOldestWaitCritical
+        expr: max(bullmq_queue_oldest_wait_seconds) > 300
+        for: 3m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Критически долгое ожидание задач в очереди'
+          description: 'Возраст самой старой waiting задачи > 300 секунд более 3 минут.'
+
+  - name: infrastructure
+    rules:
+      - alert: DiskFreeWarn
+        expr: (disk_free_bytes / clamp_min(disk_total_bytes, 1)) < 0.15
         for: 10m
         labels:
           severity: warning
         annotations:
-          summary: 'Queue oldest wait too high'
-          description: 'Самая старая задача в очереди ожидает более 300 секунд'
+          summary: 'Мало свободного места на диске'
+          description: 'Свободное место на диске < 15% более 10 минут.'
+
+      - alert: DiskFreeCritical
+        expr: (disk_free_bytes / clamp_min(disk_total_bytes, 1)) < 0.08
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Критически мало свободного места на диске'
+          description: 'Свободное место на диске < 8% более 5 минут.'
 
   - name: ermbot-osrm
     rules:
@@ -75,4 +230,4 @@ groups:
           severity: warning
         annotations:
           summary: 'Ошибки OSRM'
-          description: 'За последние 5 минут зафиксированы ошибки запросов к OSRM'
+          description: 'За последние 5 минут зафиксированы ошибки запросов к OSRM.'

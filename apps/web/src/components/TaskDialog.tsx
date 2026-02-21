@@ -3717,7 +3717,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
             className="pointer-events-auto relative mx-auto w-full max-w-6xl space-y-6 overflow-y-auto rounded-2xl bg-white p-4 shadow-lg sm:p-6"
             style={{
               WebkitOverflowScrolling: 'touch',
-              maxHeight: 'calc(100vh - 2rem)',
+              maxHeight: 'calc(100dvh - 2rem)',
+              paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
             }}
             role="dialog"
             aria-modal="true"

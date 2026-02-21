@@ -80,6 +80,15 @@ groups:
           summary: 'HTTP 5xx error-rate > 1%'
           description: 'Доля 5xx ответов превышает 1% более 5 минут.'
 
+      - alert: HttpRoot404SpikeWarn
+        expr: sum(rate(http_requests_total{method="POST",route="/",status="404"}[5m])) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Аномальный поток POST / 404'
+          description: 'Скорость POST / 404 превышает 0.05 req/s более 10 минут. Проверьте источник некорректных запросов.'
+
       - alert: Http5xxErrorRateCritical
         expr: (sum(rate(http_requests_total{status=~"5.."}[5m])) / clamp_min(sum(rate(http_requests_total[5m])), 1e-6)) > 0.03
         for: 5m
@@ -126,6 +135,24 @@ groups:
         annotations:
           summary: 'Критическое давление на heap'
           description: 'Использование heap > 92% более 5 минут.'
+
+      - alert: NodeMajorGcAvgDurationWarn
+        expr: (rate(nodejs_gc_duration_seconds_sum{kind="major"}[10m]) / clamp_min(rate(nodejs_gc_duration_seconds_count{kind="major"}[10m]), 1e-6)) > 0.05
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: 'Увеличилась средняя длительность major GC'
+          description: 'Средняя длительность major GC > 50ms более 10 минут.'
+
+      - alert: NodeMajorGcAvgDurationCritical
+        expr: (rate(nodejs_gc_duration_seconds_sum{kind="major"}[10m]) / clamp_min(rate(nodejs_gc_duration_seconds_count{kind="major"}[10m]), 1e-6)) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: 'Критическая средняя длительность major GC'
+          description: 'Средняя длительность major GC > 100ms более 5 минут.'
 
       - alert: OpenFDsWarn
         expr: (process_open_fds / clamp_min(process_max_fds, 1)) > 0.7

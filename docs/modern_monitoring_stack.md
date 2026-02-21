@@ -47,6 +47,10 @@ curl -fsS http://localhost:9090/api/v1/targets | jq '.data.activeTargets[] | {jo
 3. **HTTP latency/error profile:**
    - `http_requests_total`
    - `http_request_duration_seconds`
+   - `sum(rate(http_requests_total{method="POST",route="/",status="404"}[5m]))`
+4. **Node runtime pressure:**
+   - `nodejs_heap_size_used_bytes / nodejs_heap_size_total_bytes`
+   - `rate(nodejs_gc_duration_seconds_sum{kind="major"}[10m]) / rate(nodejs_gc_duration_seconds_count{kind="major"}[10m])`
 
 ## Остановка
 

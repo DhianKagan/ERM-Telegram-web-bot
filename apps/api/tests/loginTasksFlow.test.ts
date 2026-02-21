@@ -35,6 +35,8 @@ const session = require('express-session');
 const lusca = require('lusca');
 const https = require('https');
 const fs = require('fs');
+const os = require('os');
+const path = require('path');
 const request = require('supertest');
 jest.unmock('jsonwebtoken');
 
@@ -84,6 +86,18 @@ const cert = fs.readFileSync(__dirname + '/test-cert.pem');
 let app: Express;
 let server: Server;
 let baseUrl: string;
+const debugLogDir = fs.mkdtempSync(
+  path.join(os.tmpdir(), 'erm-task-flow-debug-'),
+);
+const debugLogPath = path.join(debugLogDir, 'full-cycle.log');
+
+const appendDebugLog = (payload: Record<string, unknown>) => {
+  const line = JSON.stringify({
+    at: new Date().toISOString(),
+    ...payload,
+  });
+  fs.appendFileSync(debugLogPath, `${line}\n`, 'utf8');
+};
 beforeAll(
   () =>
     new Promise<void>((resolve) => {
@@ -174,4 +188,66 @@ test('полный цикл логина и создания задачи', asyn
     .set('Authorization', `Bearer ${verifyRes.body.token}`)
     .send({ formVersion: 1, title: 'T' });
   expect(res.status).toBe(201);
+});
+
+test('полный цикл создаёт задачу с ключевыми параметрами и пишет debug-лог', async () => {
+  const agent = request.agent(baseUrl, { ca: cert });
+  const csrfRes = await agent
+    .get('/api/v1/csrf')
+    .set('X-Forwarded-Proto', 'https');
+  const token = csrfRes.body.csrfToken;
+
+  await agent
+    .post('/api/v1/auth/send_code')
+    .set('X-Forwarded-Proto', 'https')
+    .send({ telegramId: 2 });
+  const code = codes.get('2').code;
+
+  const verifyRes = await agent
+    .post('/api/v1/auth/verify_code')
+    .set('X-Forwarded-Proto', 'https')
+    .set('X-XSRF-TOKEN', token)
+    .send({ telegramId: 2, code, username: 'manager-2' });
+
+  const payload = {
+    formVersion: 1,
+    title: 'Тестовая задача полного цикла',
+    status: 'Новая',
+    description: 'Проверка канала файлов и логирования',
+    request_id: 'E2E-LOG-001',
+    task_number: 'E2E-LOG-001',
+    priority: 'Высокий',
+    assignees: [2],
+    files: [
+      {
+        id: '507f1f77bcf86cd799439011',
+        name: 'evidence.png',
+        type: 'image/png',
+        size: 128,
+      },
+    ],
+  };
+
+  const res = await agent
+    .post('/api/v1/tasks')
+    .set('X-Forwarded-Proto', 'https')
+    .set('Authorization', `Bearer ${verifyRes.body.token}`)
+    .send(payload);
+
+  appendDebugLog({
+    test: 'full-cycle-task-create',
+    requestPayload: payload,
+    responseStatus: res.status,
+    responseBody: res.body,
+  });
+
+  const rawLog = fs.readFileSync(debugLogPath, 'utf8').trim();
+  const lines = rawLog.split('\n').filter(Boolean);
+  const lastEntry = JSON.parse(lines[lines.length - 1]);
+
+  expect(res.status).toBe(201);
+  expect(lastEntry.test).toBe('full-cycle-task-create');
+  expect(lastEntry.responseStatus).toBe(201);
+  expect(lastEntry.requestPayload.title).toBe(payload.title);
+  expect(fs.existsSync(debugLogPath)).toBe(true);
 });

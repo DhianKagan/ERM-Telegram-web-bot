@@ -1,4 +1,7 @@
 import type { Request } from 'express';
+import { generateShortToken } from '../auth/auth';
+import { ACCESS_MANAGER } from '../utils/accessMask';
+import type { RequestWithUser } from '../types/request';
 
 export type FullCycleStage =
   | 'setup'
@@ -96,6 +99,45 @@ const getBearerToken = (req: Request): string | null => {
   return null;
 };
 
+const resolveTaskApiToken = (
+  req: Request,
+): { token: string; source: 'bearer' | 'elevated_admin' } => {
+  const bearerToken = getBearerToken(req);
+  const user = (req as RequestWithUser).user;
+  const hasManagerAccess =
+    typeof user?.access === 'number' &&
+    (user.access & ACCESS_MANAGER) === ACCESS_MANAGER;
+
+  if (bearerToken && hasManagerAccess) {
+    return { token: bearerToken, source: 'bearer' };
+  }
+
+  if (
+    user &&
+    (typeof user.id === 'string' || typeof user.id === 'number') &&
+    typeof user.username === 'string' &&
+    typeof user.role === 'string'
+  ) {
+    return {
+      token: generateShortToken({
+        id: user.id,
+        username: user.username,
+        role: user.role,
+        access: Number(user.access ?? 0) | ACCESS_MANAGER,
+      }),
+      source: 'elevated_admin',
+    };
+  }
+
+  if (bearerToken) {
+    return { token: bearerToken, source: 'bearer' };
+  }
+
+  throw new Error(
+    'Не удалось получить токен для выполнения full-cycle проверки.',
+  );
+};
+
 const resolveBaseUrl = (req: Request): string => {
   const forwardedProto = req.headers['x-forwarded-proto'];
   const protocol =
@@ -152,11 +194,7 @@ export async function runFullCycleCheck(
   );
   const pollMs = Math.max(1_000, Number(options?.pollMs ?? DEFAULT_POLL_MS));
   const strictTelegram = options?.strictTelegram !== false;
-  const token = getBearerToken(req);
-
-  if (!token) {
-    throw new Error('Не удалось извлечь Bearer token из запроса.');
-  }
+  const { token, source: tokenSource } = resolveTaskApiToken(req);
 
   const baseUrl = resolveBaseUrl(req);
   const apiRoot = new URL('/api/v1', baseUrl).toString().replace(/\/$/, '');
@@ -169,6 +207,7 @@ export async function runFullCycleCheck(
       timeoutMs,
       pollMs,
       strictTelegram,
+      tokenSource,
     });
 
     const fixtures = createFixtures();

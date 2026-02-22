@@ -1997,6 +1997,21 @@ export async function getUser(
   return User.findOne({ telegram_id: telegramId });
 }
 
+export async function getUserByUsername(
+  username: string,
+  includePasswordHash = false,
+): Promise<UserDocument | null> {
+  const normalized = String(username || '').trim();
+  if (!normalized) {
+    return null;
+  }
+  const query = User.findOne({ username: normalized });
+  if (includePasswordHash) {
+    query.select('+password_hash');
+  }
+  return query;
+}
+
 export async function listUsers(): Promise<UserDocument[]> {
   return User.find();
 }
@@ -2145,6 +2160,7 @@ export default {
   createUser,
   generateUserCredentials,
   getUser,
+  getUserByUsername,
   listUsers,
   removeUser,
   getUsersMap,

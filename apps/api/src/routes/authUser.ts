@@ -12,6 +12,7 @@ import {
   SendCodeDto,
   VerifyCodeDto,
   VerifyInitDto,
+  PasswordLoginDto,
   UpdateProfileDto,
 } from '../dto/auth.dto';
 
@@ -30,6 +31,13 @@ router.post(
   authLimiter as unknown as RequestHandler,
   ...(validateDto(VerifyCodeDto) as RequestHandler[]),
   asyncHandler(authCtrl.verifyCode),
+);
+
+router.post(
+  '/login_password',
+  authLimiter as unknown as RequestHandler,
+  ...(validateDto(PasswordLoginDto) as RequestHandler[]),
+  asyncHandler(authCtrl.passwordLogin),
 );
 
 router.post(

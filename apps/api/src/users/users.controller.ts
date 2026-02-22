@@ -9,14 +9,19 @@ import type { UserDocument } from '../db/model';
 import formatUser from '../utils/formatUser';
 import { sendCached } from '../utils/sendCached';
 import { sendProblem } from '../utils/problem';
+import { hashPassword } from '../auth/password';
 
 interface CreateUserBody {
   id?: string | number;
   username?: string;
   roleId?: string;
+  is_service_account?: boolean;
+  password?: string;
 }
 
-type UpdateUserBody = Omit<Partial<UserDocument>, 'access' | 'role'>;
+type UpdateUserBody = Omit<Partial<UserDocument>, 'access' | 'role'> & {
+  password?: string;
+};
 
 @injectable()
 export default class UsersController {
@@ -86,6 +91,12 @@ export default class UsersController {
         normalizedId,
         normalizedUsername,
         normalizedRoleId,
+        {
+          is_service_account: Boolean(req.body.is_service_account),
+          password_hash: req.body.password
+            ? hashPassword(req.body.password)
+            : undefined,
+        },
       );
       res.status(201).json(formatUser(user));
     },
@@ -97,7 +108,14 @@ export default class UsersController {
       req: Request<{ id: string }, unknown, UpdateUserBody>,
       res: Response,
     ): Promise<void> => {
-      const user = await this.service.update(req.params.id, req.body);
+      const payload: Omit<Partial<UserDocument>, 'access'> = {
+        ...(req.body as Omit<Partial<UserDocument>, 'access'>),
+      };
+      if (req.body.password) {
+        payload.password_hash = hashPassword(req.body.password);
+      }
+      delete (payload as Record<string, unknown>).password;
+      const user = await this.service.update(req.params.id, payload);
       if (!user) {
         sendProblem(req, res, {
           type: 'about:blank',

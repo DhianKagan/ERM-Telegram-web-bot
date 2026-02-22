@@ -95,6 +95,7 @@ async function verifyCode(
     username: u.username || '',
     role,
     access: tokenAccess,
+    is_service_account: false,
   });
   await writeLog(`Вход пользователя ${telegramId}/${u.username}`);
   return token;
@@ -105,7 +106,7 @@ async function verifyPasswordLogin(username: string, password: string) {
   if (!normalizedUsername) {
     throw new Error('username required');
   }
-  const user = await getUserByUsername(normalizedUsername);
+  const user = await getUserByUsername(normalizedUsername, true);
   if (!user) {
     throw new Error('invalid credentials');
   }
@@ -127,6 +128,7 @@ async function verifyPasswordLogin(username: string, password: string) {
     username: user.username || '',
     role,
     access: tokenAccess,
+    is_service_account: Boolean(user.is_service_account),
   });
   await writeLog(
     `Вход сервисного аккаунта ${user.telegram_id}/${user.username}`,
@@ -166,6 +168,7 @@ async function verifyInitData(initData: string) {
     username: user.username || '',
     role,
     access: tokenAccess,
+    is_service_account: false,
   });
   await writeLog(`Вход пользователя ${telegramId}/${user.username}`);
   return token;
@@ -195,6 +198,7 @@ async function verifyTmaLogin(initData: ReturnType<typeof verifyInit>) {
     username: user.username || '',
     role,
     access: tokenAccess,
+    is_service_account: false,
   });
   await writeLog(`Вход мини-приложения ${telegramId}/${user.username}`);
   return token;

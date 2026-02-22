@@ -682,7 +682,7 @@ const userSchema = new Schema<UserDocument>({
   verified_at: Date,
   is_bot: { type: Boolean, default: false },
   is_service_account: { type: Boolean, default: false },
-  password_hash: String,
+  password_hash: { type: String, select: false },
 });
 
 userSchema.index({ roleId: 1 });

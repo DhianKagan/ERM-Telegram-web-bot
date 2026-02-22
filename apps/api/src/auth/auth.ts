@@ -10,6 +10,7 @@ interface Payload {
   username: string;
   role: string;
   access: number;
+  is_service_account?: boolean;
 }
 
 export function generateToken(user: Payload): string {
@@ -19,6 +20,7 @@ export function generateToken(user: Payload): string {
       username: user.username,
       role: user.role,
       access: user.access,
+      is_service_account: Boolean(user.is_service_account),
     },
     secretKey,
     {
@@ -36,6 +38,7 @@ export function generateShortToken(user: Payload): string {
       username: user.username,
       role: user.role,
       access: user.access,
+      is_service_account: Boolean(user.is_service_account),
     },
     secretKey,
     {
@@ -52,5 +55,6 @@ export function refreshToken(token: string): string {
     username: payload.username,
     role: payload.role,
     access: payload.access,
+    is_service_account: Boolean(payload.is_service_account),
   });
 }

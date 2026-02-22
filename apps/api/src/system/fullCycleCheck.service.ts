@@ -1,6 +1,6 @@
 import type { Request } from 'express';
 import { generateShortToken } from '../auth/auth';
-import { ACCESS_MANAGER } from '../utils/accessMask';
+import { ACCESS_MANAGER, ACCESS_TASK_DELETE } from '../utils/accessMask';
 import type { RequestWithUser } from '../types/request';
 
 export type FullCycleStage =
@@ -104,11 +104,11 @@ const resolveTaskApiToken = (
 ): { token: string; source: 'bearer' | 'elevated_admin' } => {
   const bearerToken = getBearerToken(req);
   const user = (req as RequestWithUser).user;
-  const hasManagerAccess =
+  const hasTaskDeleteAccess =
     typeof user?.access === 'number' &&
-    (user.access & ACCESS_MANAGER) === ACCESS_MANAGER;
+    (user.access & ACCESS_TASK_DELETE) === ACCESS_TASK_DELETE;
 
-  if (bearerToken && hasManagerAccess) {
+  if (bearerToken && hasTaskDeleteAccess) {
     return { token: bearerToken, source: 'bearer' };
   }
 
@@ -123,7 +123,7 @@ const resolveTaskApiToken = (
         id: user.id,
         username: user.username,
         role: user.role,
-        access: Number(user.access ?? 0) | ACCESS_MANAGER,
+        access: Number(user.access ?? 0) | ACCESS_MANAGER | ACCESS_TASK_DELETE,
       }),
       source: 'elevated_admin',
     };

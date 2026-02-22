@@ -8,6 +8,8 @@ export class CreateUserDto {
       body('id').optional({ checkFalsy: true }).isInt(),
       body('username').optional({ checkFalsy: true }).isString(),
       body('roleId').optional().isMongoId(),
+      body('is_service_account').optional().isBoolean(),
+      body('password').optional().isString().isLength({ min: 8 }),
     ];
   }
 }
@@ -26,6 +28,8 @@ export class UpdateUserDto {
       body('positionId').optional().isMongoId(),
       body('receive_reminders').optional().isBoolean(),
       body('verified_at').optional().isISO8601(),
+      body('is_service_account').optional().isBoolean(),
+      body('password').optional().isString().isLength({ min: 8 }),
     ];
   }
 }

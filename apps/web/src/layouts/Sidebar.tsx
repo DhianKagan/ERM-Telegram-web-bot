@@ -31,7 +31,6 @@ export default function Sidebar() {
   const { user } = useAuth();
   const { t } = useTranslation();
   const role = user?.role || 'user';
-  const access = typeof user?.access === 'number' ? user.access : 0;
 
   React.useEffect(() => {
     if (!isDesktop) {
@@ -102,6 +101,11 @@ export default function Sidebar() {
   );
 
   const items = React.useMemo(() => {
+    if (user?.is_service_account) {
+      return baseItems.filter((item) =>
+        ['/requests', '/profile'].includes(item.to),
+      );
+    }
     if (role === 'admin') {
       const [kanbanItem, logisticsItem, settingsItem] = adminItems;
       return [...baseItems, kanbanItem, logisticsItem, settingsItem];

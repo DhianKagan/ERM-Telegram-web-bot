@@ -2,12 +2,19 @@
 // Основные модули: otp, queries, userInfoService, writeLog, roleCache
 import * as otp from '../services/otp';
 import { generateToken, generateShortToken } from './auth';
-import { getUser, createUser, updateUser, accessByRole } from '../db/queries';
+import {
+  getUser,
+  getUserByUsername,
+  createUser,
+  updateUser,
+  accessByRole,
+} from '../db/queries';
 import { hasAccess, ACCESS_TASK_DELETE } from '../utils/accessMask';
 import { getMemberStatus } from '../services/userInfoService';
 import { writeLog } from '../services/service';
 import { resolveRoleId } from '../db/roleCache';
 import type { UserDocument } from '../db/model';
+import { verifyPassword } from './password';
 
 async function sendCode(telegramId: number | string) {
   if (!telegramId) throw new Error('telegramId required');
@@ -93,6 +100,40 @@ async function verifyCode(
   return token;
 }
 
+async function verifyPasswordLogin(username: string, password: string) {
+  const normalizedUsername = String(username || '').trim();
+  if (!normalizedUsername) {
+    throw new Error('username required');
+  }
+  const user = await getUserByUsername(normalizedUsername);
+  if (!user) {
+    throw new Error('invalid credentials');
+  }
+  if (!user.is_service_account) {
+    throw new Error('password login is allowed only for service accounts');
+  }
+  if (!user.password_hash || !verifyPassword(password, user.password_hash)) {
+    throw new Error('invalid credentials');
+  }
+  const role = user.role || 'user';
+  const access = accessByRole(role);
+  const currentAccess = typeof user.access === 'number' ? user.access : null;
+  const hasDeleteMask =
+    currentAccess !== null && hasAccess(currentAccess, ACCESS_TASK_DELETE);
+  const tokenAccess =
+    hasDeleteMask && currentAccess !== null ? currentAccess | access : access;
+  const token = generateToken({
+    id: String(user.telegram_id),
+    username: user.username || '',
+    role,
+    access: tokenAccess,
+  });
+  await writeLog(
+    `Вход сервисного аккаунта ${user.telegram_id}/${user.username}`,
+  );
+  return token;
+}
+
 import verifyInit from '../utils/verifyInitData';
 
 async function verifyInitData(initData: string) {
@@ -175,6 +216,7 @@ async function updateProfile(
 export default {
   sendCode,
   verifyCode,
+  verifyPasswordLogin,
   verifyInitData,
   verifyTmaLogin,
   getProfile,

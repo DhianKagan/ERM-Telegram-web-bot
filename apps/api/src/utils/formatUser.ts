@@ -18,9 +18,12 @@ export interface UserLike
 
 export default function formatUser(user: UserLike | null): UserLike | null {
   if (!user) return null;
-  const obj: UserLike = user.toObject ? user.toObject() : { ...user };
+  const obj = (user.toObject ? user.toObject() : { ...user }) as UserLike & {
+    password_hash?: string;
+  };
   obj.telegram_username = obj.username;
   obj.username = String(obj.telegram_id ?? '');
+  delete obj.password_hash;
   if (obj.roleId) obj.roleId = String(obj.roleId);
   if (obj.departmentId) obj.departmentId = String(obj.departmentId);
   if (obj.divisionId) obj.divisionId = String(obj.divisionId);

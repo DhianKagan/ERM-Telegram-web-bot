@@ -660,6 +660,8 @@ export interface UserAttrs {
   divisionId?: Types.ObjectId;
   positionId?: Types.ObjectId;
   is_bot?: boolean;
+  is_service_account?: boolean;
+  password_hash?: string;
 }
 export interface UserDocument extends UserAttrs, Document {}
 
@@ -679,6 +681,8 @@ const userSchema = new Schema<UserDocument>({
   receive_reminders: { type: Boolean, default: true },
   verified_at: Date,
   is_bot: { type: Boolean, default: false },
+  is_service_account: { type: Boolean, default: false },
+  password_hash: String,
 });
 
 userSchema.index({ roleId: 1 });

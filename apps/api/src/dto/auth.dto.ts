@@ -20,6 +20,15 @@ export class VerifyInitDto {
   }
 }
 
+export class PasswordLoginDto {
+  static rules() {
+    return [
+      body('username').isString().notEmpty(),
+      body('password').isString().isLength({ min: 8 }),
+    ];
+  }
+}
+
 export class UpdateProfileDto {
   static rules() {
     return [
@@ -35,5 +44,6 @@ export default {
   SendCodeDto,
   VerifyCodeDto,
   VerifyInitDto,
+  PasswordLoginDto,
   UpdateProfileDto,
 };

@@ -71,6 +71,7 @@ export interface User {
   divisionId?: string;
   positionId?: string;
   is_bot?: boolean;
+  is_service_account?: boolean;
 }
 
 export type TrackingAlarmType = 'delay' | 'route-deviation';

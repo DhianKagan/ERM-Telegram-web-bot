@@ -44,6 +44,22 @@ export const verifyCode = async (req: Request, res: Response) => {
   }
 };
 
+export const passwordLogin = async (req: Request, res: Response) => {
+  const { username, password } = req.body;
+  try {
+    const token = await service.verifyPasswordLogin(username, password);
+    setTokenCookie(res, token);
+    res.json({ token });
+  } catch (e) {
+    sendProblem(req, res, {
+      type: 'about:blank',
+      title: 'Ошибка входа по логину и паролю',
+      status: 400,
+      detail: String((e as Error).message),
+    });
+  }
+};
+
 export const verifyInitData = async (req: Request, res: Response) => {
   try {
     const token = await service.verifyInitData(req.body.initData);

@@ -40,6 +40,7 @@ function AppShell() {
   const { open, setOpen, isDesktop } = useSidebar();
   const { t } = useTranslation();
   const contentOffsetClass = open ? 'lg:pl-64' : 'lg:pl-0';
+  const isServiceAccount = Boolean(user?.is_service_account);
   return (
     <>
       {user && <Sidebar />}
@@ -64,9 +65,13 @@ function AppShell() {
               <Route
                 path="/index"
                 element={
-                  <ProtectedRoute>
-                    <FrontendIndex />
-                  </ProtectedRoute>
+                  isServiceAccount ? (
+                    <Navigate to="/requests" replace />
+                  ) : (
+                    <ProtectedRoute>
+                      <FrontendIndex />
+                    </ProtectedRoute>
+                  )
                 }
               />
               <Route
@@ -80,9 +85,13 @@ function AppShell() {
               <Route
                 path="/tasks"
                 element={
-                  <ProtectedRoute>
-                    <TasksPage />
-                  </ProtectedRoute>
+                  isServiceAccount ? (
+                    <Navigate to="/requests" replace />
+                  ) : (
+                    <ProtectedRoute>
+                      <TasksPage />
+                    </ProtectedRoute>
+                  )
                 }
               />
               <Route
@@ -96,9 +105,13 @@ function AppShell() {
               <Route
                 path="/events"
                 element={
-                  <ProtectedRoute>
-                    <EventLogPage />
-                  </ProtectedRoute>
+                  isServiceAccount ? (
+                    <Navigate to="/requests" replace />
+                  ) : (
+                    <ProtectedRoute>
+                      <EventLogPage />
+                    </ProtectedRoute>
+                  )
                 }
               />
               <Route
@@ -192,9 +205,13 @@ function AppShell() {
               <Route
                 path="/theme"
                 element={
-                  <ProtectedRoute>
-                    <ThemeSettings />
-                  </ProtectedRoute>
+                  isServiceAccount ? (
+                    <Navigate to="/requests" replace />
+                  ) : (
+                    <ProtectedRoute>
+                      <ThemeSettings />
+                    </ProtectedRoute>
+                  )
                 }
               />
               <Route path="*" element={<Navigate to="/error" replace />} />

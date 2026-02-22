@@ -31,7 +31,8 @@
     "db:cleanup-legacy-file-links": "pnpm --filter apps/api exec tsx ../../scripts/db/cleanup_legacy_file_links.ts",
     "ci:fast": "turbo run ci:fast",
     "ci:full": "turbo run ci:full",
-    "railway:quick-validate": "./scripts/railway/quick_stack_validation.sh"
+    "railway:quick-validate": "./scripts/railway/quick_stack_validation.sh",
+    "debug:full-cycle": "node tools/debug/full_cycle_check.mjs"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [

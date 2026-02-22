@@ -345,8 +345,8 @@
   "deliveryWindowStart": "Delivery window — from",
   "deliveryWindowEnd": "Delivery window — to",
   "deliveryWindowInvalidRange": "Delivery window end cannot be earlier than start",
-  "logisticsStartCoordinatesRequired": "Укажите координаты точки отправления",
-  "logisticsFinishCoordinatesRequired": "Укажите координаты точки прибытия",
+  "logisticsStartCoordinatesRequired": "Specify the start point coordinates",
+  "logisticsFinishCoordinatesRequired": "Specify the destination coordinates",
   "status": "Status",
   "task": "Task",
   "taskCreated": "Task created",
@@ -539,7 +539,8 @@
       "lastRun": "S3 checked at: {{date}}.",
       "summary": "Status: {{status}}, latency: {{latencyMs}} ms, bucket: {{bucket}}.",
       "errorMessage": "Error: {{message}}"
-    }
+    },
+    "openInlinePreview": "Open via API (inline)"
   },
   "googleMapsButton": "Google Maps",
   "googleMapsHint": "Open Google Maps to find a place or route",
@@ -554,8 +555,6 @@
   "viaPointsEmpty": "No intermediate stops added",
   "addAddress": "Add address",
   "logisticsCoordinatesHint": "Coordinates are required: paste a Google Maps link or select a point from the collection",
-  "logisticsStartCoordinatesRequired": "Specify the start point coordinates",
-  "logisticsFinishCoordinatesRequired": "Specify the destination coordinates",
   "logisticsViaCoordinatesRequired": "Specify coordinates for intermediate stop {{index}}",
   "startPoint": "Start point"
 }

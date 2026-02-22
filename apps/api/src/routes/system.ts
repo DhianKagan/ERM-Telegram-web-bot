@@ -12,6 +12,7 @@ import type StackOrchestratorController from '../system/stackOrchestrator.contro
 import type StackHealthController from '../system/stackHealth.controller';
 import { runS3Healthcheck } from '../services/s3Health';
 import QueueRecoveryService from '../system/queueRecovery.service';
+import { runFullCycleCheck } from '../system/fullCycleCheck.service';
 
 const router: Router = Router();
 
@@ -70,6 +71,26 @@ router.get(
   asyncHandler(async (_req, res) => {
     const report = await runS3Healthcheck();
     res.status(200).json(report);
+  }),
+);
+
+router.post(
+  '/full-cycle-check',
+  authMiddleware(),
+  Roles(ACCESS_ADMIN) as unknown as RequestHandler,
+  rolesGuard as unknown as RequestHandler,
+  asyncHandler(async (req, res) => {
+    const body = req.body as Partial<{
+      timeoutMs: number;
+      pollMs: number;
+      strictTelegram: boolean;
+    }>;
+    const report = await runFullCycleCheck(req, {
+      timeoutMs: body.timeoutMs,
+      pollMs: body.pollMs,
+      strictTelegram: body.strictTelegram,
+    });
+    res.status(report.ok ? 200 : 500).json(report);
   }),
 );
 

@@ -17,9 +17,11 @@ import { Button } from '../../components/ui/button';
 import SettingsSectionHeader from './SettingsSectionHeader';
 import {
   fetchQueueDiagnostics,
+  runFullCycleCheck,
   runQueueRecoveryApply,
   runQueueRecoveryDryRun,
   runStackHealthCheck,
+  type FullCycleLogEntry,
   type StackCheckResult,
   type StackCheckStatus,
 } from '../../services/healthcheck';
@@ -87,6 +89,9 @@ export default function HealthCheckTab(): JSX.Element {
   const [queueActionResult, setQueueActionResult] = useState<string | null>(
     null,
   );
+  const [fullCycleLoading, setFullCycleLoading] = useState(false);
+  const [fullCycleLogs, setFullCycleLogs] = useState<FullCycleLogEntry[]>([]);
+  const [fullCycleSummary, setFullCycleSummary] = useState<string | null>(null);
   const timerRef = useRef<number | null>(null);
 
   const sortedResults = useMemo(
@@ -161,6 +166,26 @@ export default function HealthCheckTab(): JSX.Element {
     }
   }, [runCheck]);
 
+  const handleFullCycleCheck = useCallback(async () => {
+    setFullCycleLoading(true);
+    setError(null);
+    setFullCycleSummary(null);
+    setFullCycleLogs([]);
+    try {
+      const report = await runFullCycleCheck({ strictTelegram: true });
+      setFullCycleLogs(report.logs);
+      setFullCycleSummary(
+        `Full-cycle OK: шагов=${report.logs.length}, файлов=${report.fileIds.length}, период ${formatDateTime(report.startedAt)} → ${formatDateTime(report.finishedAt)}.`,
+      );
+      await runCheck();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Неизвестная ошибка';
+      setError(message);
+    } finally {
+      setFullCycleLoading(false);
+    }
+  }, [runCheck]);
+
   useEffect(() => {
     if (auto) {
       void runCheck();
@@ -199,6 +224,21 @@ export default function HealthCheckTab(): JSX.Element {
                   <PlayIcon className="h-4 w-4" />
                 )}
                 Запустить проверку
+              </Button>
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="gap-2"
+                disabled={fullCycleLoading}
+                onClick={() => void handleFullCycleCheck()}
+              >
+                {fullCycleLoading ? (
+                  <ArrowPathIcon className="h-4 w-4 animate-spin" />
+                ) : (
+                  <ShieldCheckIcon className="h-4 w-4" />
+                )}
+                Full-cycle задачи
               </Button>
               <label className="inline-flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
                 <input
@@ -241,6 +281,56 @@ export default function HealthCheckTab(): JSX.Element {
       {queueActionResult ? (
         <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800 dark:border-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-100">
           {queueActionResult}
+        </div>
+      ) : null}
+
+      {fullCycleSummary ? (
+        <div className="rounded-2xl border border-sky-200 bg-sky-50 px-4 py-3 text-sm text-sky-900 dark:border-sky-700 dark:bg-sky-900/40 dark:text-sky-100">
+          {fullCycleSummary}
+        </div>
+      ) : null}
+
+      {fullCycleLogs.length > 0 ? (
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+          <h3 className="mb-3 text-sm font-semibold text-slate-900 dark:text-slate-100">
+            Full-cycle лог (развёрнутый)
+          </h3>
+          <div className="max-h-80 space-y-2 overflow-auto">
+            {fullCycleLogs.map((entry, index) => (
+              <div
+                key={`${entry.ts}-${index}`}
+                className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs dark:border-slate-700 dark:bg-slate-800"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-semibold uppercase text-slate-700 dark:text-slate-200">
+                    {entry.stage}
+                  </span>
+                  <span
+                    className={`rounded px-2 py-0.5 font-semibold ${
+                      entry.level === 'error'
+                        ? 'bg-rose-100 text-rose-700 dark:bg-rose-900/50 dark:text-rose-100'
+                        : entry.level === 'warn'
+                          ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-100'
+                          : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-100'
+                    }`}
+                  >
+                    {entry.level}
+                  </span>
+                </div>
+                <p className="mt-1 text-slate-700 dark:text-slate-200">
+                  {entry.message}
+                </p>
+                <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
+                  {formatDateTime(entry.ts)}
+                </p>
+                {entry.details ? (
+                  <pre className="mt-2 overflow-x-auto whitespace-pre-wrap rounded bg-slate-900/95 p-2 text-[11px] text-slate-100">
+                    {JSON.stringify(entry.details, null, 2)}
+                  </pre>
+                ) : null}
+              </div>
+            ))}
+          </div>
         </div>
       ) : null}
 

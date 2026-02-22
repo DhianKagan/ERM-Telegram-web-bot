@@ -42,6 +42,31 @@ export type QueueRecoveryRunResponse = {
   errors: string[];
 };
 
+export type FullCycleLogEntry = {
+  ts: string;
+  stage:
+    | 'setup'
+    | 'prepare_fixtures'
+    | 'create_task'
+    | 'telegram_check'
+    | 'delete_task'
+    | 'verify_task_deleted'
+    | 'verify_files_cleanup'
+    | 'finish';
+  level: 'info' | 'warn' | 'error';
+  message: string;
+  details?: Record<string, unknown>;
+};
+
+export type FullCycleCheckResponse = {
+  ok: boolean;
+  startedAt: string;
+  finishedAt: string;
+  taskId?: string;
+  fileIds: string[];
+  logs: FullCycleLogEntry[];
+};
+
 const isStackCheckResult = (value: unknown): value is StackCheckResult => {
   if (!value || typeof value !== 'object') return false;
   const candidate = value as { name?: unknown; status?: unknown };
@@ -139,4 +164,29 @@ export async function runQueueRecoveryApply(): Promise<QueueRecoveryRunResponse>
   }
 
   return (await response.json()) as QueueRecoveryRunResponse;
+}
+
+export async function runFullCycleCheck(options?: {
+  timeoutMs?: number;
+  pollMs?: number;
+  strictTelegram?: boolean;
+}): Promise<FullCycleCheckResponse> {
+  const response = await authFetch('/api/v1/system/full-cycle-check', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(options ?? {}),
+  });
+
+  const payload = (await response.json()) as FullCycleCheckResponse;
+  if (!response.ok) {
+    const lastError = payload.logs
+      .slice()
+      .reverse()
+      .find((entry) => entry.level === 'error');
+    throw new Error(
+      lastError?.message ?? 'Full-cycle проверка завершилась ошибкой',
+    );
+  }
+
+  return payload;
 }

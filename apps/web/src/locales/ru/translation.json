@@ -573,7 +573,8 @@
       "lastRun": "S3 проверен: {{date}}.",
       "summary": "Статус: {{status}}, задержка: {{latencyMs}} мс, bucket: {{bucket}}.",
       "errorMessage": "Ошибка: {{message}}"
-    }
+    },
+    "openInlinePreview": "Открыть через API (inline)"
   },
   "googleMapsButton": "Google Maps",
   "googleMapsHint": "Откройте Google Maps для поиска точки или маршрута",
@@ -588,8 +589,6 @@
   "viaPointsEmpty": "Промежуточные точки не добавлены",
   "addAddress": "Добавить адрес",
   "logisticsCoordinatesHint": "Координаты обязательны: вставьте ссылку Google Maps или выберите точку из коллекции",
-  "logisticsStartCoordinatesRequired": "Укажите координаты точки отправления",
-  "logisticsFinishCoordinatesRequired": "Укажите координаты точки прибытия",
   "logisticsViaCoordinatesRequired": "Укажите координаты промежуточной точки {{index}}",
   "startPoint": "Стартовая точка"
 }

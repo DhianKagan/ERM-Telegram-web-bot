@@ -1017,6 +1017,19 @@ export default function StoragePage() {
                   type="button"
                   variant="outline"
                   onClick={() => {
+                    const inlineUrl =
+                      selectedRow.previewUrl ||
+                      `${selectedRow.url}?mode=inline`;
+                    window.open(inlineUrl, '_blank', 'noopener,noreferrer');
+                  }}
+                >
+                  <RectangleStackIcon className="mr-2 size-4" />
+                  {t('storage.openInlinePreview')}
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
                     if (location.pathname.startsWith('/browser/erm-files')) {
                       return;
                     }

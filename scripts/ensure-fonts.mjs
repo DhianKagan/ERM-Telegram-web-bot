@@ -105,16 +105,30 @@ async function downloadFont({ file, url }) {
 async function ensureFonts() {
   await mkdir(fontsDir, { recursive: true });
   let downloaded = 0;
+  const failedDownloads = [];
   for (const font of fonts) {
     const target = path.join(fontsDir, font.file);
     if (await fileExists(target)) {
       continue;
     }
-    await downloadFont(font);
-    downloaded += 1;
+    try {
+      await downloadFont(font);
+      downloaded += 1;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      failedDownloads.push(`${font.file} (${message})`);
+    }
   }
   if (downloaded > 0) {
     console.log(`Скачано шрифтов: ${downloaded}`);
+  }
+  if (failedDownloads.length > 0) {
+    console.warn(
+      [
+        'Предупреждение: не удалось скачать часть шрифтов, сборка продолжится с системными fallback-шрифтами.',
+        ...failedDownloads.map((item) => `- ${item}`),
+      ].join('\n'),
+    );
   }
 
   await convertFonts(fontsDir);

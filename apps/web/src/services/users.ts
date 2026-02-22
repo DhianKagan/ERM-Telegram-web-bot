@@ -24,6 +24,10 @@ const buildCreateUserBody = (
   id?: number | string,
   username?: string,
   roleId?: string,
+  options?: {
+    isServiceAccount?: boolean;
+    password?: string;
+  },
 ) => {
   const payload: Record<string, unknown> = {};
   if (id !== undefined) {
@@ -40,6 +44,15 @@ const buildCreateUserBody = (
   const normalizedRoleId = normalizeRoleId(roleId);
   if (normalizedRoleId) {
     payload.roleId = normalizedRoleId;
+  }
+  if (options?.isServiceAccount) {
+    payload.is_service_account = true;
+  }
+  if (typeof options?.password === 'string') {
+    const trimmedPassword = options.password.trim();
+    if (trimmedPassword.length > 0) {
+      payload.password = trimmedPassword;
+    }
   }
   return payload;
 };
@@ -100,8 +113,12 @@ export const createUser = (
   id?: number | string,
   username?: string,
   roleId?: string,
+  options?: {
+    isServiceAccount?: boolean;
+    password?: string;
+  },
 ) => {
-  const body = buildCreateUserBody(id, username, roleId);
+  const body = buildCreateUserBody(id, username, roleId, options);
   return authFetch('/api/v1/users', {
     method: 'POST',
     confirmed: true,

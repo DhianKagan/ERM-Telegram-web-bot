@@ -76,6 +76,7 @@ import { settingsUserColumns } from '../../columns/settingsUserColumns';
 import {
   fetchUsers,
   createUser as createUserApi,
+  previewUserCredentials,
   updateUser as updateUserApi,
   deleteUser as deleteUserApi,
   type UserDetails,
@@ -337,6 +338,20 @@ const createInitialQueries = (): Record<CollectionKey, string> =>
     },
     {} as Record<CollectionKey, string>,
   );
+
+type ServiceAccountFormState = {
+  telegramId: string;
+  username: string;
+  password: string;
+  roleId: string;
+};
+
+const emptyServiceAccountForm: ServiceAccountFormState = {
+  telegramId: '',
+  username: '',
+  password: '',
+  roleId: '',
+};
 
 const emptyUser: UserFormData = {
   telegram_id: undefined,
@@ -1131,6 +1146,12 @@ export default function CollectionsPage() {
   const [userSearchDraft, setUserSearchDraft] = useState('');
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [userForm, setUserForm] = useState<UserFormData>(emptyUser);
+  const [serviceAccountModalOpen, setServiceAccountModalOpen] =
+    useState(false);
+  const [serviceAccountForm, setServiceAccountForm] =
+    useState<ServiceAccountFormState>(emptyServiceAccountForm);
+  const [serviceAccountSubmitting, setServiceAccountSubmitting] =
+    useState(false);
   const [collectionModalOpen, setCollectionModalOpen] = useState(false);
   const [selectedCollection, setSelectedCollection] =
     useState<CollectionItem | null>(null);
@@ -1772,6 +1793,9 @@ export default function CollectionsPage() {
     if (active !== 'users') {
       setUserModalOpen(false);
       setUserForm(emptyUser);
+      setServiceAccountModalOpen(false);
+      setServiceAccountForm(emptyServiceAccountForm);
+      setServiceAccountSubmitting(false);
     }
   }, [active, loadUsers]);
 
@@ -1868,6 +1892,62 @@ export default function CollectionsPage() {
     setUserModalOpen(false);
     setUserForm(emptyUser);
   }, []);
+
+  const closeServiceAccountModal = useCallback(() => {
+    setServiceAccountModalOpen(false);
+    setServiceAccountForm(emptyServiceAccountForm);
+  }, []);
+
+  const openServiceAccountModal = useCallback(async () => {
+    try {
+      const generated = await previewUserCredentials();
+      setServiceAccountForm({
+        telegramId: String(generated.telegram_id),
+        username: generated.username,
+        password: '',
+        roleId: '',
+      });
+    } catch {
+      setServiceAccountForm(emptyServiceAccountForm);
+    }
+    setServiceAccountModalOpen(true);
+  }, []);
+
+  const submitServiceAccount = useCallback(async () => {
+    const telegramId = Number(serviceAccountForm.telegramId);
+    if (!Number.isFinite(telegramId) || telegramId <= 0) {
+      showToast('Укажите корректный Telegram ID сервисного аккаунта', 'error');
+      return;
+    }
+    const password = serviceAccountForm.password.trim();
+    if (password.length < 8) {
+      showToast('Пароль сервисного аккаунта должен содержать минимум 8 символов', 'error');
+      return;
+    }
+    setServiceAccountSubmitting(true);
+    try {
+      await createUserApi(
+        telegramId,
+        serviceAccountForm.username,
+        serviceAccountForm.roleId,
+        {
+          isServiceAccount: true,
+          password,
+        },
+      );
+      showToast('Сервисный аккаунт создан', 'success');
+      await loadUsers();
+      closeServiceAccountModal();
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : 'Не удалось создать сервисный аккаунт';
+      showToast(message, 'error');
+    } finally {
+      setServiceAccountSubmitting(false);
+    }
+  }, [serviceAccountForm, closeServiceAccountModal, loadUsers]);
 
   const openEmployeeModal = useCallback((user?: User) => {
     if (user) {
@@ -2953,14 +3033,28 @@ export default function CollectionsPage() {
             submitUserSearch();
           }}
           actions={
-            <Button
-              type="button"
-              size="sm"
-              variant="primary"
-              onClick={handleAdd}
-            >
-              {addLabel}
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="primary"
+                onClick={handleAdd}
+              >
+                {addLabel}
+              </Button>
+              {!isEmployee ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    void openServiceAccountModal();
+                  }}
+                >
+                  Создать сервис аккаунт
+                </Button>
+              ) : null}
+            </div>
           }
         >
           <FormGroup
@@ -4187,6 +4281,96 @@ export default function CollectionsPage() {
               onSubmit={submitUser}
               onReset={() => setUserForm(emptyUser)}
             />
+          </div>
+        </Modal>
+        <Modal open={serviceAccountModalOpen} onClose={closeServiceAccountModal}>
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-base font-semibold">Создать сервис аккаунт</h3>
+              <p className="text-sm text-slate-500">
+                Учётная запись для входа по логину и паролю.
+              </p>
+            </div>
+            <div className="space-y-3">
+              <FormGroup label="Telegram ID" htmlFor="service-account-telegram-id">
+                <Input
+                  id="service-account-telegram-id"
+                  value={serviceAccountForm.telegramId}
+                  onChange={(event) =>
+                    setServiceAccountForm((prev) => ({
+                      ...prev,
+                      telegramId: event.target.value,
+                    }))
+                  }
+                  placeholder="Например, 900001"
+                />
+              </FormGroup>
+              <FormGroup label="Логин" htmlFor="service-account-username">
+                <Input
+                  id="service-account-username"
+                  value={serviceAccountForm.username}
+                  onChange={(event) =>
+                    setServiceAccountForm((prev) => ({
+                      ...prev,
+                      username: event.target.value,
+                    }))
+                  }
+                  placeholder="service_account"
+                />
+              </FormGroup>
+              <FormGroup label="Пароль" htmlFor="service-account-password">
+                <Input
+                  id="service-account-password"
+                  type="password"
+                  value={serviceAccountForm.password}
+                  onChange={(event) =>
+                    setServiceAccountForm((prev) => ({
+                      ...prev,
+                      password: event.target.value,
+                    }))
+                  }
+                  placeholder="Минимум 8 символов"
+                />
+              </FormGroup>
+              <FormGroup label="Роль" htmlFor="service-account-role-id">
+                <Select
+                  id="service-account-role-id"
+                  value={serviceAccountForm.roleId}
+                  onChange={(event) =>
+                    setServiceAccountForm((prev) => ({
+                      ...prev,
+                      roleId: event.target.value,
+                    }))
+                  }
+                >
+                  <option value="">Выберите роль</option>
+                  {allRoles.map((role) => (
+                    <option key={role._id} value={role._id}>
+                      {formatRoleName(role.name)}
+                    </option>
+                  ))}
+                </Select>
+              </FormGroup>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                onClick={() => {
+                  void submitServiceAccount();
+                }}
+                disabled={serviceAccountSubmitting}
+              >
+                {serviceAccountSubmitting ? 'Создаём…' : 'Создать'}
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={closeServiceAccountModal}
+                disabled={serviceAccountSubmitting}
+              >
+                Отмена
+              </Button>
+            </div>
           </div>
         </Modal>
         <Modal

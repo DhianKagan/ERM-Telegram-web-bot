@@ -1,5 +1,6 @@
 import type { Request } from 'express';
 import { generateShortToken } from '../auth/auth';
+import { User } from '../db/model';
 import { ACCESS_MANAGER, ACCESS_TASK_DELETE } from '../utils/accessMask';
 import type { RequestWithUser } from '../types/request';
 
@@ -138,12 +139,37 @@ const resolveTaskApiToken = (
   );
 };
 
-const resolveAssigneeId = (req: Request): number => {
-  const rawUserId = (req as RequestWithUser).user?.id;
-  const normalized = Number(rawUserId);
-  if (Number.isFinite(normalized)) {
-    return normalized;
+const resolveAssigneeId = async (req: Request): Promise<number> => {
+  const user = (req as RequestWithUser).user;
+  const candidates = [user?.id, (user as { telegram_id?: unknown })?.telegram_id];
+  for (const candidate of candidates) {
+    const normalized = Number(candidate);
+    if (Number.isFinite(normalized) && normalized > 0) {
+      return normalized;
+    }
   }
+
+  const username =
+    typeof user?.username === 'string' ? user.username.trim() : undefined;
+  if (username) {
+    const byUsername = await User.findOne({ username })
+      .select({ telegram_id: 1 })
+      .lean<{ telegram_id?: unknown } | null>();
+    const telegramId = Number(byUsername?.telegram_id);
+    if (Number.isFinite(telegramId) && telegramId > 0) {
+      return telegramId;
+    }
+  }
+
+  const fallbackUser = await User.findOne({ telegram_id: { $type: 'number' } })
+    .sort({ is_service_account: 1, role: 1, telegram_id: 1 })
+    .select({ telegram_id: 1 })
+    .lean<{ telegram_id?: unknown } | null>();
+  const fallbackId = Number(fallbackUser?.telegram_id);
+  if (Number.isFinite(fallbackId) && fallbackId > 0) {
+    return fallbackId;
+  }
+
   throw new Error(
     'Не удалось определить assigned_user_id для full-cycle проверки.',
   );
@@ -206,7 +232,7 @@ export async function runFullCycleCheck(
   const pollMs = Math.max(1_000, Number(options?.pollMs ?? DEFAULT_POLL_MS));
   const strictTelegram = options?.strictTelegram !== false;
   const { token, source: tokenSource } = resolveTaskApiToken(req);
-  const assigneeId = resolveAssigneeId(req);
+  const assigneeId = await resolveAssigneeId(req);
 
   const baseUrl = resolveBaseUrl(req);
   const apiRoot = new URL('/api/v1', baseUrl).toString().replace(/\/$/, '');

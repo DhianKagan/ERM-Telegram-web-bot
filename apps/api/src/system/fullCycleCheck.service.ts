@@ -138,6 +138,17 @@ const resolveTaskApiToken = (
   );
 };
 
+const resolveAssigneeId = (req: Request): number => {
+  const rawUserId = (req as RequestWithUser).user?.id;
+  const normalized = Number(rawUserId);
+  if (Number.isFinite(normalized)) {
+    return normalized;
+  }
+  throw new Error(
+    'Не удалось определить assigned_user_id для full-cycle проверки.',
+  );
+};
+
 const resolveBaseUrl = (req: Request): string => {
   const forwardedProto = req.headers['x-forwarded-proto'];
   const protocol =
@@ -195,6 +206,7 @@ export async function runFullCycleCheck(
   const pollMs = Math.max(1_000, Number(options?.pollMs ?? DEFAULT_POLL_MS));
   const strictTelegram = options?.strictTelegram !== false;
   const { token, source: tokenSource } = resolveTaskApiToken(req);
+  const assigneeId = resolveAssigneeId(req);
 
   const baseUrl = resolveBaseUrl(req);
   const apiRoot = new URL('/api/v1', baseUrl).toString().replace(/\/$/, '');
@@ -208,6 +220,7 @@ export async function runFullCycleCheck(
       pollMs,
       strictTelegram,
       tokenSource,
+      assigneeId,
     });
 
     const fixtures = createFixtures();
@@ -221,6 +234,7 @@ export async function runFullCycleCheck(
       'task_description',
       'Автотест полного цикла: вложения + Telegram + очистка',
     );
+    createBody.set('assigned_user_id', String(assigneeId));
 
     for (const fixture of fixtures) {
       createBody.append(

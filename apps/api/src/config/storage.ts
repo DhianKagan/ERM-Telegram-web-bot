@@ -20,7 +20,7 @@ export const uploadsDir = path.resolve(
 
 export const storageCleanupRetentionDays = resolvePositiveInteger(
   process.env.STORAGE_ORPHAN_RETENTION_DAYS,
-  30,
+  1,
 );
 
 export const storageCleanupCron =

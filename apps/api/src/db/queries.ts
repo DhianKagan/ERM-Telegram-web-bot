@@ -1037,6 +1037,9 @@ export async function updateTask(
   options: UpdateTaskOptions = {},
 ): Promise<TaskDocument | null> {
   const data = sanitizeUpdate(fields);
+  if (Object.prototype.hasOwnProperty.call(data, 'created_by')) {
+    delete (data as Record<string, unknown>).created_by;
+  }
   const prev = await Task.findById(id);
   if (!prev) return null;
   const allowAdminOverride = options.adminOverride === true;

@@ -46,7 +46,11 @@ import {
 } from '../tasks/uploadFinalizer';
 import { Roles } from '../auth/roles.decorator';
 import rolesGuard from '../auth/roles.guard';
-import { ACCESS_MANAGER, ACCESS_TASK_DELETE } from '../utils/accessMask';
+import {
+  ACCESS_MANAGER,
+  ACCESS_TASK_DELETE,
+  ACCESS_USER,
+} from '../utils/accessMask';
 import { buildInlineFileUrl } from '../utils/fileUrls';
 import { handleValidation } from '../utils/validate';
 import {
@@ -536,6 +540,11 @@ const requireTaskCreationRights: RequestHandler[] = [
   rolesGuard as unknown as RequestHandler,
 ];
 
+const requireInlineUploadRights: RequestHandler[] = [
+  Roles(ACCESS_USER) as unknown as RequestHandler,
+  rolesGuard as unknown as RequestHandler,
+];
+
 const handleInlineUpload: RequestHandler = async (req, res) => {
   try {
     const file = req.file as Express.Multer.File | undefined;
@@ -802,7 +811,7 @@ router.post(
 );
 router.post(
   '/upload-inline',
-  ...requireTaskCreationRights,
+  ...requireInlineUploadRights,
   inlineUpload,
   handleInlineUpload,
 );

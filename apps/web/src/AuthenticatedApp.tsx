@@ -105,13 +105,9 @@ function AppShell() {
               <Route
                 path="/events"
                 element={
-                  isServiceAccount ? (
-                    <Navigate to="/requests" replace />
-                  ) : (
-                    <ProtectedRoute>
-                      <EventLogPage />
-                    </ProtectedRoute>
-                  )
+                  <ProtectedRoute>
+                    <EventLogPage />
+                  </ProtectedRoute>
                 }
               />
               <Route

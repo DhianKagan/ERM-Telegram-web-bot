@@ -122,20 +122,12 @@ export default function RequestsPage() {
   React.useEffect(() => {
     if (!tasksResponse || !user?.telegram_id) return;
     const rawTasks = tasksResponse.tasks as RequestRow[];
-    const filtered = isPrivileged
-      ? rawTasks
-      : rawTasks.filter((t) => {
-          const assigned =
-            t.assignees || (t.assigned_user_id ? [t.assigned_user_id] : []);
-          const uid = user.telegram_id;
-          return assigned.includes(uid) || t.created_by === uid;
-        });
-    controller.setIndex(scopeKey, filtered, {
+    controller.setIndex(scopeKey, rawTasks, {
       kind: 'request',
       mine,
       userId: user.telegram_id,
       pageSize: 25,
-      total: tasksResponse.total || filtered.length,
+      total: tasksResponse.total || rawTasks.length,
       sort: 'desc',
     });
     const responseUsers = Array.isArray(tasksResponse.users)

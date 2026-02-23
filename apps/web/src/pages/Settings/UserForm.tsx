@@ -24,6 +24,8 @@ export interface UserFormData {
   departmentId?: string;
   divisionId?: string;
   positionId?: string;
+  is_service_account?: boolean;
+  password?: string;
 }
 
 interface Props {
@@ -202,6 +204,24 @@ export default function UserForm({ form, onChange, onSubmit, onReset }: Props) {
           ))}
         </select>
       </div>
+      {form.is_service_account ? (
+        <div>
+          <label className="block text-sm font-medium">Новый пароль</label>
+          <input
+            id="settings-user-password"
+            name="password"
+            type="password"
+            className="h-10 w-full rounded border px-3"
+            value={form.password || ''}
+            onChange={(e) => onChange({ ...form, password: e.target.value })}
+            placeholder="Оставьте пустым, чтобы не менять"
+            minLength={8}
+          />
+          <p className="mt-1 text-xs text-slate-500">
+            Для сервисного аккаунта можно задать новый пароль (минимум 8 символов).
+          </p>
+        </div>
+      ) : null}
       <div className="flex gap-2">
         <Button type="submit">Сохранить</Button>
         <Button type="button" variant="outline" onClick={onReset}>

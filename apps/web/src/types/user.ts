@@ -40,4 +40,6 @@ export interface User {
   positionId?: string;
   /** Название должности */
   positionName?: string;
+  /** Сервисный аккаунт (доступен вход по логину/паролю) */
+  is_service_account?: boolean;
 }

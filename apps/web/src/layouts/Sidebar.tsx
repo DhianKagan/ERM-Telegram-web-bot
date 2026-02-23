@@ -103,7 +103,7 @@ export default function Sidebar() {
   const items = React.useMemo(() => {
     if (user?.is_service_account) {
       return baseItems.filter((item) =>
-        ['/requests', '/profile'].includes(item.to),
+        ['/requests', '/events', '/profile'].includes(item.to),
       );
     }
     if (role === 'admin') {

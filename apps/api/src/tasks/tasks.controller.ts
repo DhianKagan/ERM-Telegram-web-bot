@@ -3169,7 +3169,12 @@ export default class TasksController {
 
     let tasks: TaskEx[];
     let total = 0;
-    if (['admin', 'manager'].includes(req.user!.role || '')) {
+    const isPrivilegedRole = ['admin', 'manager'].includes(
+      req.user!.role || '',
+    );
+    const canReadAllRequests = kindFilter === 'request';
+
+    if (isPrivilegedRole || canReadAllRequests) {
       const result = await this.service.get(
         normalizedFilters,
         pageNumber,

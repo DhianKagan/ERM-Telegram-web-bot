@@ -57,10 +57,15 @@ const buildCreateUserBody = (
   return payload;
 };
 
-const sanitizeUserUpdatePayload = (data: Partial<User>): Partial<User> => {
-  const payload: Partial<User> = {};
-  (Object.entries(data) as [keyof User, User[keyof User]][]).forEach(
-    ([key, value]) => {
+export type UserUpdatePayload = Partial<User> & {
+  password?: string;
+};
+
+const sanitizeUserUpdatePayload = (
+  data: UserUpdatePayload,
+): Record<string, unknown> => {
+  const payload: Record<string, unknown> = {};
+  Object.entries(data as Record<string, unknown>).forEach(([key, value]) => {
       if (value === undefined || value === null) {
         return;
       }
@@ -74,15 +79,14 @@ const sanitizeUserUpdatePayload = (data: Partial<User>): Partial<User> => {
           if (trimmed.length === 0) {
             return;
           }
-          payload[key] = trimmed as User[keyof User];
+          payload[key] = trimmed;
           return;
         }
-        payload[key] = trimmed as User[keyof User];
+        payload[key] = trimmed;
         return;
       }
       payload[key] = value;
-    },
-  );
+    });
   return payload;
 };
 
@@ -184,7 +188,7 @@ export const previewUserCredentials = (
 
 export const updateUser = (
   id: number | string,
-  data: Partial<User>,
+  data: UserUpdatePayload,
 ): Promise<UserDetails | null> => {
   const body = sanitizeUserUpdatePayload(data);
   return authFetch(`/api/v1/users/${id}`, {

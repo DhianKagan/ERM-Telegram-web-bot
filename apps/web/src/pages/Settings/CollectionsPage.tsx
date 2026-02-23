@@ -366,6 +366,8 @@ const emptyUser: UserFormData = {
   departmentId: '',
   divisionId: '',
   positionId: '',
+  is_service_account: false,
+  password: '',
 };
 
 const emptyItemForm: ItemForm = {
@@ -1881,6 +1883,8 @@ export default function CollectionsPage() {
     departmentId: user?.departmentId ?? '',
     divisionId: user?.divisionId ?? '',
     positionId: user?.positionId ?? '',
+    is_service_account: Boolean(user?.is_service_account),
+    password: '',
   });
 
   const openUserModal = useCallback((user?: User) => {
@@ -2233,8 +2237,19 @@ export default function CollectionsPage() {
     if (!users.find((u) => u.telegram_id === id)) {
       await createUserApi(id, userForm.username, userForm.roleId);
     }
-    const { telegram_id: _telegramId, ...data } = userForm;
-    await updateUserApi(id, data);
+    const data = { ...userForm };
+    const passwordValue =
+      typeof data.password === 'string' ? data.password.trim() : '';
+    delete data.telegram_id;
+    delete data.password;
+    if (passwordValue && passwordValue.length < 8) {
+      showToast('Пароль сервисного аккаунта должен содержать минимум 8 символов', 'error');
+      return;
+    }
+    await updateUserApi(id, {
+      ...data,
+      ...(passwordValue ? { password: passwordValue } : {}),
+    });
     void loadUsers();
     closeUserModal();
   };

@@ -131,6 +131,18 @@ const YOUTUBE_URL_REGEXP =
   /^(?:https?:\/\/)?(?:www\.)?(?:m\.)?(?:youtube\.com|youtu\.be)\//i;
 
 const attachmentsBaseUrl = baseAppUrl.replace(/\/+$/, '');
+const attachmentsBaseHost = (() => {
+  try {
+    return new URL(attachmentsBaseUrl).host;
+  } catch {
+    return null;
+  }
+})();
+const trustedAttachmentHosts = new Set(
+  [baseAppHost, attachmentsBaseHost].filter(
+    (host): host is string => typeof host === 'string' && host.length > 0,
+  ),
+);
 const ALBUM_MESSAGE_DELAY_MS = 100;
 
 const REQUEST_TYPE_NAME = 'Заявка';
@@ -1278,7 +1290,11 @@ export default class TasksController {
     if (!url) return null;
     try {
       const parsed = new URL(url, baseAppUrl);
-      if (baseAppHost && parsed.host && parsed.host !== baseAppHost) {
+      if (
+        parsed.host &&
+        trustedAttachmentHosts.size > 0 &&
+        !trustedAttachmentHosts.has(parsed.host)
+      ) {
         return null;
       }
       const match = FILE_ID_REGEXP.exec(parsed.pathname);

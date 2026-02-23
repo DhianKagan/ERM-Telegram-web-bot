@@ -27,5 +27,5 @@ export const maxUserStorage = parsePositiveNumber(
 
 export const staleUserFilesGraceMinutes = parsePositiveNumber(
   process.env.USER_FILES_STALE_GRACE_MINUTES,
-  60,
+  10,
 );

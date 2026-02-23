@@ -1822,14 +1822,19 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const resolveUserName = React.useCallback(
     (id: number) => {
       const person = users.find((u) => u.telegram_id === id);
+      const currentUserName =
+        currentUserId !== null && id === currentUserId
+          ? user?.name || user?.telegram_username || user?.username
+          : undefined;
       return (
         person?.name ||
+        currentUserName ||
         person?.telegram_username ||
         person?.username ||
         String(id)
       );
     },
-    [users],
+    [currentUserId, user?.name, user?.telegram_username, user?.username, users],
   );
   const removeAttachment = (a: Attachment) => {
     const key = buildAttachmentKey(a);
@@ -2898,6 +2903,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   }, [isEdit, startDateNotice, startDateValue]);
 
   React.useEffect(() => {
+    if (isEdit) {
+      return;
+    }
     if (entityKind === 'request') {
       if (user) {
         setCreator(String((user as UserBrief).telegram_id));
@@ -2922,7 +2930,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
       setCreator(String((user as UserBrief).telegram_id));
       setUsers([user as UserBrief]);
     }
-  }, [user, canEditAll, entityKind]);
+  }, [isEdit, user, canEditAll, entityKind]);
 
   React.useEffect(() => {
     if (isEdit) {
@@ -3189,7 +3197,6 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
           transport_type: resolvedTransportType,
           payment_method: paymentMethod,
           status,
-          created_by: toNumericValue(creator),
           assigned_user_id: assignedList[0],
           assignees: assignedList,
           start_location: start,
@@ -3231,8 +3238,8 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         } else if (!vehicleCandidate) {
           payload.transport_vehicle_registration = null;
         }
-        if (!isNewTask && payload.created_by === null) {
-          delete payload.created_by;
+        if (isNewTask) {
+          payload.created_by = toNumericValue(creator);
         }
         if (shouldIncludeStart) {
           payload.start_date = startInputValue || '';

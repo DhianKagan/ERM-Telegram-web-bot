@@ -3,7 +3,7 @@
 import path from 'node:path';
 import os from 'node:os';
 import { randomBytes } from 'node:crypto';
-import { createReadStream } from 'node:fs';
+import { createReadStream, createWriteStream } from 'node:fs';
 import { access, mkdir, stat, writeFile } from 'node:fs/promises';
 import sharp from 'sharp';
 import type { Context, Telegraf } from 'telegraf';
@@ -14,6 +14,7 @@ import { uploadsDir } from '../config/storage';
 import type { FormatTaskSection, InlineImage } from '../utils/formatTask';
 import { SECTION_SEPARATOR } from '../utils/formatTask';
 import { getFileRecord, setTelegramFileId } from '../services/fileService';
+import { getStorageBackend } from '../services/storage';
 import { extractFileIdFromUrl } from '../utils/attachments';
 
 type LocalPhotoInfo = {
@@ -239,6 +240,7 @@ const buildCaptionFromSections = (
 };
 
 const uploadsAbsoluteDir = path.resolve(uploadsDir);
+const storageBackend = getStorageBackend();
 
 const createAttachmentsBaseUrl = (baseAppUrl: string): string | null => {
   try {
@@ -1337,7 +1339,29 @@ export class TaskTelegramMedia {
       if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) {
         return null;
       }
-      await access(target);
+      let resolvedAbsolutePath = target;
+      try {
+        await access(resolvedAbsolutePath);
+      } catch {
+        const cacheDir = path.join(os.tmpdir(), 'erm-telegram-files');
+        await mkdir(cacheDir, { recursive: true });
+        const extFromName = path.extname(normalizedPath).toLowerCase();
+        const tempName = `${randomBytes(12).toString('hex')}${extFromName}`;
+        const tempPath = path.join(cacheDir, tempName);
+        const source = await storageBackend.read(normalizedPath);
+        await new Promise<void>((resolve, reject) => {
+          const writer = createWriteStream(tempPath);
+          const onError = (streamError: unknown) => {
+            source.stream.destroy();
+            reject(streamError);
+          };
+          writer.once('error', onError);
+          source.stream.once('error', onError);
+          writer.once('finish', () => resolve());
+          source.stream.pipe(writer);
+        });
+        resolvedAbsolutePath = tempPath;
+      }
       const filenameSource =
         typeof record.name === 'string' && record.name.trim()
           ? record.name.trim()
@@ -1353,7 +1377,7 @@ export class TaskTelegramMedia {
           : undefined;
       if (size === undefined) {
         try {
-          const fileStat = await stat(target);
+          const fileStat = await stat(resolvedAbsolutePath);
           size = fileStat.size;
         } catch (error) {
           console.error(
@@ -1363,7 +1387,12 @@ export class TaskTelegramMedia {
           );
         }
       }
-      return { absolutePath: target, filename, contentType, size };
+      return {
+        absolutePath: resolvedAbsolutePath,
+        filename,
+        contentType,
+        size,
+      };
     } catch (error) {
       if ((error as NodeJS.ErrnoException)?.code !== 'ENOENT') {
         console.error(

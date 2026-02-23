@@ -250,6 +250,20 @@ describe('Привязка вложений к задачам', () => {
     });
   });
 
+  test('не позволяет изменить создателя при редактировании', async () => {
+    await updateTask(
+      String(existingTaskId),
+      { created_by: 999 } as unknown as Record<string, unknown>,
+      1,
+    );
+
+    const call = mockTaskFindOneAndUpdate.mock.calls[0]!;
+    const setArg = call[1]?.$set as Record<string, unknown>;
+    expect(Object.prototype.hasOwnProperty.call(setArg, 'created_by')).toBe(
+      false,
+    );
+  });
+
   test('добавляет вложения из описания при обновлении', async () => {
     const inlineFileId = new Types.ObjectId();
     mockTaskFindById.mockResolvedValueOnce({

@@ -218,6 +218,28 @@ const tryParseJson = (value: string): Record<string, unknown> | null => {
   }
 };
 
+const resolveTaskIdFromPayload = (
+  payload: Record<string, unknown> | null,
+): string | undefined => {
+  if (!payload) return undefined;
+
+  const candidates: unknown[] = [
+    payload._id,
+    payload.id,
+    (payload.task as Record<string, unknown> | undefined)?._id,
+    (payload.task as Record<string, unknown> | undefined)?.id,
+  ];
+
+  for (const candidate of candidates) {
+    if (typeof candidate === 'string') {
+      const trimmed = candidate.trim();
+      if (trimmed.length > 0) return trimmed;
+    }
+  }
+
+  return undefined;
+};
+
 const resolveFailedStage = (logs: FullCycleLogEntry[]): FullCycleStage => {
   for (let i = logs.length - 1; i >= 0; i -= 1) {
     const entry = logs[i];
@@ -292,8 +314,7 @@ export async function runFullCycleCheck(
     const createText = await createResponse.text();
     const createPayload = tryParseJson(createText);
 
-    taskId =
-      typeof createPayload?._id === 'string' ? createPayload._id : undefined;
+    taskId = resolveTaskIdFromPayload(createPayload);
 
     if (!createResponse.ok || !taskId) {
       log('create_task', 'error', 'Не удалось создать задачу', {
@@ -303,8 +324,15 @@ export async function runFullCycleCheck(
       throw new Error('Этап create_task завершился ошибкой');
     }
 
-    const attachments = Array.isArray(createPayload?.attachments)
-      ? (createPayload?.attachments as Array<Record<string, unknown>>)
+    const responseTask =
+      createPayload?.task && typeof createPayload.task === 'object'
+        ? (createPayload.task as Record<string, unknown>)
+        : null;
+    const attachmentsSource = Array.isArray(createPayload?.attachments)
+      ? createPayload.attachments
+      : responseTask?.attachments;
+    const attachments = Array.isArray(attachmentsSource)
+      ? (attachmentsSource as Array<Record<string, unknown>>)
       : [];
     for (const attachment of attachments) {
       const fileId = extractFileId(attachment?.url);

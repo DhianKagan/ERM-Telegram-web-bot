@@ -13,14 +13,9 @@ import config from '../config';
 import { buildTokenCookieOptions } from '../utils/setTokenCookie';
 import type { RequestWithUser } from '../types/request';
 import shouldLog from '../utils/shouldLog';
+import { apiErrorsTotal } from '../metrics';
 
-import client from 'prom-client';
-
-export const apiErrors = new client.Counter({
-  name: 'api_errors_total',
-  help: 'Количество ошибок API',
-  labelNames: ['method', 'path', 'status'],
-});
+export const apiErrors = apiErrorsTotal;
 
 export const asyncHandler = (
   fn: (

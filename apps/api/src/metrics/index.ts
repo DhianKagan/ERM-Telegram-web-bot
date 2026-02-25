@@ -156,6 +156,39 @@ export const taskPointsValidationFailuresTotal = getOrCreateMetric(
     }),
 );
 
+export const apiErrorsTotal = getOrCreateMetric(
+  'api_errors_total',
+  () =>
+    new client.Counter({
+      name: 'api_errors_total',
+      help: 'Количество ошибок API',
+      labelNames: ['method', 'path', 'status'],
+      registers: [register],
+    }),
+);
+
+export const systemCriticalErrorsTotal = getOrCreateMetric(
+  'system_critical_errors_total',
+  () =>
+    new client.Counter({
+      name: 'system_critical_errors_total',
+      help: 'Критичные ошибки системы (HTTP 5xx и падения проверок)',
+      labelNames: ['component', 'operation', 'reason'],
+      registers: [register],
+    }),
+);
+
+export const fullCycleChecksTotal = getOrCreateMetric(
+  'full_cycle_checks_total',
+  () =>
+    new client.Counter({
+      name: 'full_cycle_checks_total',
+      help: 'Количество запусков full-cycle-check по итоговому статусу',
+      labelNames: ['status', 'failed_stage', 'strict_telegram'],
+      registers: [register],
+    }),
+);
+
 export const normalizeBullMqErrorClass = (error: unknown): BullMqErrorClass => {
   const message =
     error instanceof Error

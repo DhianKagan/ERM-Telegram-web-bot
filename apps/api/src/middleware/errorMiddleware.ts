@@ -7,6 +7,7 @@ import fs from 'fs';
 import path from 'path';
 import sanitizeError from '../utils/sanitizeError';
 import { writeLog } from '../services/service';
+import { systemCriticalErrorsTotal } from '../metrics';
 
 type KnownError = Error & {
   status?: number;
@@ -236,6 +237,14 @@ export default function errorMiddleware(
   appendErrorLog('');
 
   console.error('API error:', clean);
+  if (status >= 500) {
+    systemCriticalErrorsTotal.inc({
+      component: 'api',
+      operation: 'request',
+      reason: `http_${status}`,
+    });
+  }
+
   try {
     writeLog(
       'Ошибка ' +

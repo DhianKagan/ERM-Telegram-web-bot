@@ -3,6 +3,7 @@ import { generateShortToken } from '../auth/auth';
 import { User } from '../db/model';
 import { ACCESS_MANAGER, ACCESS_TASK_DELETE } from '../utils/accessMask';
 import type { RequestWithUser } from '../types/request';
+import { fullCycleChecksTotal, systemCriticalErrorsTotal } from '../metrics';
 
 export type FullCycleStage =
   | 'setup'
@@ -141,7 +142,10 @@ const resolveTaskApiToken = (
 
 const resolveAssigneeId = async (req: Request): Promise<number> => {
   const user = (req as RequestWithUser).user;
-  const candidates = [user?.id, (user as { telegram_id?: unknown })?.telegram_id];
+  const candidates = [
+    user?.id,
+    (user as { telegram_id?: unknown })?.telegram_id,
+  ];
   for (const candidate of candidates) {
     const normalized = Number(candidate);
     if (Number.isFinite(normalized) && normalized > 0) {
@@ -212,6 +216,16 @@ const tryParseJson = (value: string): Record<string, unknown> | null => {
   } catch {
     return null;
   }
+};
+
+const resolveFailedStage = (logs: FullCycleLogEntry[]): FullCycleStage => {
+  for (let i = logs.length - 1; i >= 0; i -= 1) {
+    const entry = logs[i];
+    if (entry.level === 'error' && entry.stage !== 'finish') {
+      return entry.stage;
+    }
+  }
+  return 'finish';
 };
 
 export async function runFullCycleCheck(
@@ -322,9 +336,15 @@ export async function runFullCycleCheck(
         continue;
       }
 
+      const attachmentsMessageIds = Array.isArray(
+        task.telegram_attachments_message_ids,
+      )
+        ? task.telegram_attachments_message_ids
+        : [];
       const hasTelegramSignal =
         Number.isFinite(task.telegram_message_id as number) ||
         Number.isFinite(task.telegram_topic_id as number) ||
+        attachmentsMessageIds.length > 0 ||
         (Array.isArray(task.telegram_dm_message_ids) &&
           task.telegram_dm_message_ids.length > 0);
 
@@ -333,6 +353,7 @@ export async function runFullCycleCheck(
         log('telegram_check', 'info', 'Найдены Telegram-метаданные задачи', {
           telegram_message_id: task.telegram_message_id ?? null,
           telegram_topic_id: task.telegram_topic_id ?? null,
+          telegram_attachments_message_ids: attachmentsMessageIds,
           telegram_dm_message_ids: task.telegram_dm_message_ids ?? [],
         });
         break;
@@ -400,6 +421,11 @@ export async function runFullCycleCheck(
     }
 
     log('finish', 'info', 'Full-cycle проверка завершена');
+    fullCycleChecksTotal.inc({
+      status: 'success',
+      failed_stage: 'none',
+      strict_telegram: strictTelegram ? 'true' : 'false',
+    });
 
     return {
       ok: true,
@@ -431,7 +457,19 @@ export async function runFullCycleCheck(
     }
 
     const message = error instanceof Error ? error.message : String(error);
+    const failedStage = resolveFailedStage(logs);
     log('finish', 'error', message);
+
+    fullCycleChecksTotal.inc({
+      status: 'failed',
+      failed_stage: failedStage,
+      strict_telegram: strictTelegram ? 'true' : 'false',
+    });
+    systemCriticalErrorsTotal.inc({
+      component: 'system',
+      operation: 'full_cycle_check',
+      reason: failedStage,
+    });
 
     return {
       ok: false,

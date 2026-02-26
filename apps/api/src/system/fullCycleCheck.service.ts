@@ -320,6 +320,7 @@ export async function runFullCycleCheck(
     });
 
     const createBody = new FormData();
+    createBody.set('formVersion', '1');
     createBody.set('title', `Full cycle check ${Date.now()}`);
     createBody.set(
       'task_description',

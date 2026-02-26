@@ -3,7 +3,13 @@ import { generateShortToken } from '../auth/auth';
 import { User } from '../db/model';
 import { ACCESS_MANAGER, ACCESS_TASK_DELETE } from '../utils/accessMask';
 import type { RequestWithUser } from '../types/request';
-import { fullCycleChecksTotal, systemCriticalErrorsTotal } from '../metrics';
+import {
+  fullCycleCheckDurationSeconds,
+  fullCycleChecksTotal,
+  fullCycleStageDurationSeconds,
+  fullCycleStageFailuresTotal,
+  systemCriticalErrorsTotal,
+} from '../metrics';
 
 export type FullCycleStage =
   | 'setup'
@@ -250,6 +256,27 @@ const resolveFailedStage = (logs: FullCycleLogEntry[]): FullCycleStage => {
   return 'finish';
 };
 
+const stageTimer = () => {
+  const startedAt = Date.now();
+  return {
+    end: (stage: FullCycleStage, status: 'success' | 'failed') => {
+      fullCycleStageDurationSeconds.observe(
+        { stage, status },
+        (Date.now() - startedAt) / 1000,
+      );
+    },
+  };
+};
+
+const classifyFailureReason = (message: string): string => {
+  const normalized = message.toLowerCase();
+  if (normalized.includes('timeout')) return 'timeout';
+  if (normalized.includes('telegram')) return 'telegram';
+  if (normalized.includes('token')) return 'auth';
+  if (normalized.includes('assigned_user_id')) return 'assignee';
+  return 'runtime';
+};
+
 export async function runFullCycleCheck(
   req: Request,
   options?: {
@@ -258,6 +285,7 @@ export async function runFullCycleCheck(
     strictTelegram?: boolean;
   },
 ): Promise<FullCycleCheckReport> {
+  const checkStartedAtMs = Date.now();
   const startedAt = nowIso();
   const logs: FullCycleLogEntry[] = [];
   const log = createLogger(logs);
@@ -274,6 +302,7 @@ export async function runFullCycleCheck(
   const apiRoot = new URL('/api/v1', baseUrl).toString().replace(/\/$/, '');
   const fileIds: string[] = [];
   let taskId: string | undefined;
+  let stageFailureRecorded = false;
 
   try {
     log('setup', 'info', 'Старт full-cycle проверки', {
@@ -306,6 +335,7 @@ export async function runFullCycleCheck(
       );
     }
 
+    const createStage = stageTimer();
     const createResponse = await fetch(`${apiRoot}/tasks`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}` },
@@ -317,10 +347,18 @@ export async function runFullCycleCheck(
     taskId = resolveTaskIdFromPayload(createPayload);
 
     if (!createResponse.ok || !taskId) {
+      createStage.end('create_task', 'failed');
       log('create_task', 'error', 'Не удалось создать задачу', {
         status: createResponse.status,
         body: createText,
       });
+      fullCycleStageFailuresTotal.inc({
+        stage: 'create_task',
+        reason: !createResponse.ok ? 'http_error' : 'task_id_missing',
+        http_status: String(createResponse.status),
+        strict_telegram: strictTelegram ? 'true' : 'false',
+      });
+      stageFailureRecorded = true;
       throw new Error('Этап create_task завершился ошибкой');
     }
 
@@ -343,7 +381,9 @@ export async function runFullCycleCheck(
       attachments: attachments.length,
       fileIds,
     });
+    createStage.end('create_task', 'success');
 
+    const telegramStage = stageTimer();
     let telegramReady = false;
     const started = Date.now();
     while (Date.now() - started < timeoutMs) {
@@ -391,33 +431,54 @@ export async function runFullCycleCheck(
     }
 
     if (!telegramReady) {
+      telegramStage.end('telegram_check', 'failed');
       log(
         'telegram_check',
         strictTelegram ? 'error' : 'warn',
         `Telegram-метаданные не появились за ${timeoutMs}ms`,
       );
+      fullCycleStageFailuresTotal.inc({
+        stage: 'telegram_check',
+        reason: 'timeout',
+        http_status: 'none',
+        strict_telegram: strictTelegram ? 'true' : 'false',
+      });
+      stageFailureRecorded = true;
       if (strictTelegram) {
         throw new Error('Этап telegram_check завершился ошибкой');
       }
+    } else {
+      telegramStage.end('telegram_check', 'success');
     }
 
+    const deleteStage = stageTimer();
     const deleteResponse = await fetch(`${apiRoot}/tasks/${taskId}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
     });
     const deleteText = await deleteResponse.text();
     if (deleteResponse.status !== 204) {
+      deleteStage.end('delete_task', 'failed');
       log('delete_task', 'error', 'Не удалось удалить задачу', {
         status: deleteResponse.status,
         body: deleteText,
       });
+      fullCycleStageFailuresTotal.inc({
+        stage: 'delete_task',
+        reason: 'http_error',
+        http_status: String(deleteResponse.status),
+        strict_telegram: strictTelegram ? 'true' : 'false',
+      });
+      stageFailureRecorded = true;
       throw new Error('Этап delete_task завершился ошибкой');
     }
 
     const deletedTaskId = taskId;
     log('delete_task', 'info', `Задача удалена: ${deletedTaskId}`);
+    deleteStage.end('delete_task', 'success');
     taskId = undefined;
 
+    const verifyDeletedStage = stageTimer();
     const checkDeletedResponse = await fetch(
       `${apiRoot}/tasks/${deletedTaskId}`,
       {
@@ -425,16 +486,26 @@ export async function runFullCycleCheck(
       },
     );
     if (checkDeletedResponse.status !== 404) {
+      verifyDeletedStage.end('verify_task_deleted', 'failed');
       log(
         'verify_task_deleted',
         'error',
         `Ожидали 404 после удаления, получили ${checkDeletedResponse.status}`,
       );
+      fullCycleStageFailuresTotal.inc({
+        stage: 'verify_task_deleted',
+        reason: 'unexpected_status',
+        http_status: String(checkDeletedResponse.status),
+        strict_telegram: strictTelegram ? 'true' : 'false',
+      });
+      stageFailureRecorded = true;
       throw new Error('Этап verify_task_deleted завершился ошибкой');
     }
 
     log('verify_task_deleted', 'info', 'Подтверждено удаление задачи (404)');
+    verifyDeletedStage.end('verify_task_deleted', 'success');
 
+    const verifyFilesStage = stageTimer();
     for (const fileId of fileIds) {
       const fileResponse = await fetch(`${apiRoot}/files/${fileId}`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -446,9 +517,26 @@ export async function runFullCycleCheck(
           ? `Файл ${fileId} удалён`
           : `Файл ${fileId} остался доступен (HTTP ${fileResponse.status})`,
       );
+      if (fileResponse.status !== 404) {
+        fullCycleStageFailuresTotal.inc({
+          stage: 'verify_files_cleanup',
+          reason: 'file_not_deleted',
+          http_status: String(fileResponse.status),
+          strict_telegram: strictTelegram ? 'true' : 'false',
+        });
+        stageFailureRecorded = true;
+      }
     }
+    verifyFilesStage.end('verify_files_cleanup', 'success');
 
     log('finish', 'info', 'Full-cycle проверка завершена');
+    fullCycleCheckDurationSeconds.observe(
+      {
+        status: 'success',
+        strict_telegram: strictTelegram ? 'true' : 'false',
+      },
+      (Date.now() - checkStartedAtMs) / 1000,
+    );
     fullCycleChecksTotal.inc({
       status: 'success',
       failed_stage: 'none',
@@ -487,6 +575,22 @@ export async function runFullCycleCheck(
     const message = error instanceof Error ? error.message : String(error);
     const failedStage = resolveFailedStage(logs);
     log('finish', 'error', message);
+
+    if (!stageFailureRecorded) {
+      fullCycleStageFailuresTotal.inc({
+        stage: failedStage,
+        reason: classifyFailureReason(message),
+        http_status: 'none',
+        strict_telegram: strictTelegram ? 'true' : 'false',
+      });
+    }
+    fullCycleCheckDurationSeconds.observe(
+      {
+        status: 'failed',
+        strict_telegram: strictTelegram ? 'true' : 'false',
+      },
+      (Date.now() - checkStartedAtMs) / 1000,
+    );
 
     fullCycleChecksTotal.inc({
       status: 'failed',

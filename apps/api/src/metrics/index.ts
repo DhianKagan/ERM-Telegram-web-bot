@@ -189,6 +189,41 @@ export const fullCycleChecksTotal = getOrCreateMetric(
     }),
 );
 
+export const fullCycleCheckDurationSeconds = getOrCreateMetric(
+  'full_cycle_check_duration_seconds',
+  () =>
+    new client.Histogram({
+      name: 'full_cycle_check_duration_seconds',
+      help: 'Длительность full-cycle-check по итоговому статусу',
+      labelNames: ['status', 'strict_telegram'],
+      buckets: [0.3, 0.5, 1, 3, 5, 10, 20, 30, 45, 60, 90],
+      registers: [register],
+    }),
+);
+
+export const fullCycleStageDurationSeconds = getOrCreateMetric(
+  'full_cycle_stage_duration_seconds',
+  () =>
+    new client.Histogram({
+      name: 'full_cycle_stage_duration_seconds',
+      help: 'Длительность этапов full-cycle-check',
+      labelNames: ['stage', 'status'],
+      buckets: [0.01, 0.03, 0.05, 0.1, 0.3, 0.5, 1, 3, 5, 10, 30, 60],
+      registers: [register],
+    }),
+);
+
+export const fullCycleStageFailuresTotal = getOrCreateMetric(
+  'full_cycle_stage_failures_total',
+  () =>
+    new client.Counter({
+      name: 'full_cycle_stage_failures_total',
+      help: 'Ошибки этапов full-cycle-check с классификацией причин',
+      labelNames: ['stage', 'reason', 'http_status', 'strict_telegram'],
+      registers: [register],
+    }),
+);
+
 export const normalizeBullMqErrorClass = (error: unknown): BullMqErrorClass => {
   const message =
     error instanceof Error

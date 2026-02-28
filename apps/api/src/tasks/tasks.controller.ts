@@ -3,7 +3,7 @@
 import path from 'node:path';
 import os from 'node:os';
 import { randomBytes } from 'node:crypto';
-import { createReadStream } from 'node:fs';
+import { createReadStream, createWriteStream } from 'node:fs';
 import { access, mkdir, stat, writeFile } from 'node:fs/promises';
 import { Request, Response } from 'express';
 import { injectable, inject } from 'tsyringe';
@@ -78,6 +78,7 @@ import {
 } from '../utils/taskPointsInput';
 import ReportGeneratorService from '../services/reportGenerator';
 import { taskPointsValidationFailuresTotal } from '../metrics';
+import { getStorageBackend } from '../services/storage';
 
 type TelegramMessageCleanupMeta = {
   chat_id: string | number;
@@ -107,6 +108,7 @@ type TaskWithMeta = TaskDocument & {
 
 const FILE_ID_REGEXP = /\/api\/v1\/files\/([0-9a-f]{24})(?=$|[/?#])/i;
 const uploadsAbsoluteDir = path.resolve(uploadsDir);
+const storageBackend = getStorageBackend();
 
 const baseAppHost = (() => {
   try {
@@ -1415,7 +1417,29 @@ export default class TasksController {
       if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) {
         return null;
       }
-      await access(target);
+      let resolvedAbsolutePath = target;
+      try {
+        await access(resolvedAbsolutePath);
+      } catch {
+        const cacheDir = path.join(os.tmpdir(), 'erm-telegram-files');
+        await mkdir(cacheDir, { recursive: true });
+        const extFromName = path.extname(normalizedPath).toLowerCase();
+        const tempName = `${randomBytes(12).toString('hex')}${extFromName}`;
+        const tempPath = path.join(cacheDir, tempName);
+        const source = await storageBackend.read(normalizedPath);
+        await new Promise<void>((resolve, reject) => {
+          const writer = createWriteStream(tempPath);
+          const onError = (streamError: unknown) => {
+            source.stream.destroy();
+            reject(streamError);
+          };
+          writer.once('error', onError);
+          source.stream.once('error', onError);
+          writer.once('finish', () => resolve());
+          source.stream.pipe(writer);
+        });
+        resolvedAbsolutePath = tempPath;
+      }
       const filenameSource =
         typeof record.name === 'string' && record.name.trim()
           ? normalizeFilename(record.name.trim())
@@ -1431,17 +1455,22 @@ export default class TasksController {
           : undefined;
       if (size === undefined) {
         try {
-          const fileStat = await stat(target);
+          const fileStat = await stat(resolvedAbsolutePath);
           size = fileStat.size;
         } catch (error) {
           console.error(
             'Не удалось получить размер файла вложения',
-            target,
+            resolvedAbsolutePath,
             error,
           );
         }
       }
-      return { absolutePath: target, filename, contentType, size };
+      return {
+        absolutePath: resolvedAbsolutePath,
+        filename,
+        contentType,
+        size,
+      };
     } catch (error) {
       if ((error as NodeJS.ErrnoException)?.code !== 'ENOENT') {
         console.error(

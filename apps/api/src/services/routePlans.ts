@@ -205,6 +205,19 @@ const normalizeTaskIds = (values: unknown): Types.ObjectId[] => {
   });
 };
 
+const hasSameTaskComposition = (
+  left: Types.ObjectId[] | unknown,
+  right: Types.ObjectId[] | unknown,
+): boolean => {
+  const leftNormalized = normalizeTaskIds(left);
+  const rightNormalized = normalizeTaskIds(right);
+  if (leftNormalized.length !== rightNormalized.length) {
+    return false;
+  }
+  const rightSet = new Set(rightNormalized.map((id) => id.toHexString()));
+  return leftNormalized.every((id) => rightSet.has(id.toHexString()));
+};
+
 const cloneCoords = (
   source: { lat?: number | null; lng?: number | null } | null | undefined,
 ): { lat: number; lng: number } | undefined => {
@@ -1066,7 +1079,9 @@ export async function updatePlan(
       if (!plan) return;
 
       const hasRouteStructurePatch =
-        payload.routes !== undefined || payload.tasks !== undefined;
+        payload.routes !== undefined ||
+        (payload.tasks !== undefined &&
+          !hasSameTaskComposition(payload.tasks, plan.tasks));
       if (plan.status !== 'draft') {
         if (hasRouteStructurePatch) {
           throw new Error(
@@ -1138,24 +1153,6 @@ export async function updatePlan(
           ]);
         } else {
           nextTasks = normalizedTasks;
-          if (plan.status === 'draft') {
-            const syntheticRoutes: RoutePlanRouteInput[] = nextTasks.length
-              ? [
-                  {
-                    order: 0,
-                    tasks: nextTasks.map((taskId) => taskId.toHexString()),
-                  },
-                ]
-              : [];
-            const { routes, metrics, taskIds } = await buildRoutesFromInput(
-              syntheticRoutes,
-              undefined,
-              { autoOptimize: true },
-            );
-            plan.routes = routes;
-            plan.metrics = metrics;
-            nextTasks = taskIds;
-          }
         }
       }
 

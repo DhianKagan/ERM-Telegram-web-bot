@@ -389,6 +389,77 @@ describe('routePlans service analytics', function () {
     );
   });
 
+  it('разрешает менять метаданные у плана не в draft, если tasks не меняется', async () => {
+    const task = await Task.create({
+      title: 'Задача без изменений',
+      status: 'Новая',
+    });
+    const taskId = (task._id as Types.ObjectId).toHexString();
+
+    const plan = await createDraftFromInputs([
+      {
+        tasks: [taskId],
+      },
+    ]);
+
+    const approved = await updatePlanStatus(plan.id, 'approved', 401);
+    assert.ok(approved);
+    assert.equal(approved?.status, 'approved');
+
+    const updated = await updatePlan(plan.id, {
+      title: 'Обновлённое название',
+      notes: 'Обновлённые заметки',
+      tasks: [taskId],
+    });
+
+    assert.ok(updated);
+    assert.equal(updated?.title, 'Обновлённое название');
+    assert.equal(updated?.notes, 'Обновлённые заметки');
+    assert.deepEqual(updated?.tasks, [taskId]);
+  });
+
+  it('в draft не перестраивает существующие routes, когда приходит только tasks', async () => {
+    const firstTask = await Task.create({
+      title: 'Первая задача',
+      status: 'Новая',
+    });
+    const secondTask = await Task.create({
+      title: 'Вторая задача',
+      status: 'Новая',
+    });
+    const firstTaskId = (firstTask._id as Types.ObjectId).toHexString();
+    const secondTaskId = (secondTask._id as Types.ObjectId).toHexString();
+
+    const plan = await createDraftFromInputs([
+      {
+        order: 0,
+        vehicleName: 'Фургон 1',
+        notes: 'Маршрут 1',
+        tasks: [firstTaskId],
+      },
+      {
+        order: 1,
+        vehicleName: 'Фургон 2',
+        notes: 'Маршрут 2',
+        tasks: [secondTaskId],
+      },
+    ]);
+
+    assert.equal(plan.routes.length, 2);
+
+    const updated = await updatePlan(plan.id, {
+      title: 'Черновик без изменения маршрутов',
+      tasks: [firstTaskId, secondTaskId],
+    });
+
+    assert.ok(updated);
+    assert.equal(updated?.routes.length, 2);
+    assert.equal(updated?.routes[0]?.vehicleName, 'Фургон 1');
+    assert.equal(updated?.routes[0]?.notes, 'Маршрут 1');
+    assert.equal(updated?.routes[1]?.vehicleName, 'Фургон 2');
+    assert.equal(updated?.routes[1]?.notes, 'Маршрут 2');
+  });
+
   it('публикует событие при удалении маршрутного плана', async () => {
     const plan = await createDraftFromInputs([
       {

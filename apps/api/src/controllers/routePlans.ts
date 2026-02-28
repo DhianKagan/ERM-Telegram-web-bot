@@ -72,6 +72,49 @@ const sendBadRequest = (req: Request, res: Response, detail: string): void => {
   });
 };
 
+const sendInternalError = (
+  req: Request,
+  res: Response,
+  detail = 'Внутренняя ошибка сервера',
+): void => {
+  sendProblem(req, res, {
+    type: 'about:blank',
+    title: 'Ошибка маршрутного листа',
+    status: 500,
+    detail,
+  });
+};
+
+const routePlanDomainErrorPatterns: RegExp[] = [
+  /Недопустимый переход статуса маршрутного плана/i,
+  /После принятия в работу маршрутный лист нельзя изменять/i,
+  /Нельзя добавить задачи в другой маршрутный лист/i,
+];
+
+const isRoutePlanDomainError = (error: unknown): error is Error => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return routePlanDomainErrorPatterns.some((pattern) =>
+    pattern.test(error.message),
+  );
+};
+
+const sendRoutePlanError = (
+  req: Request,
+  res: Response,
+  error: unknown,
+): void => {
+  if (isRoutePlanDomainError(error)) {
+    sendBadRequest(req, res, error.message);
+    return;
+  }
+
+  console.error('Unexpected route plan controller error', error);
+  sendInternalError(req, res);
+};
+
 const normalizeStringList = (value: unknown): string[] | undefined => {
   if (!Array.isArray(value)) return undefined;
   const list = value
@@ -166,11 +209,7 @@ export async function create(
 
     res.status(201).json({ plan });
   } catch (error) {
-    const detail =
-      error instanceof Error
-        ? error.message
-        : 'Не удалось создать маршрутный лист';
-    sendBadRequest(req, res, detail);
+    sendRoutePlanError(req, res, error);
   }
 }
 
@@ -294,11 +333,7 @@ export async function update(
     }
     res.json({ plan });
   } catch (error) {
-    const detail =
-      error instanceof Error
-        ? error.message
-        : 'Не удалось обновить маршрутный лист';
-    sendBadRequest(req, res, detail);
+    sendRoutePlanError(req, res, error);
   }
 }
 
@@ -340,11 +375,7 @@ export async function changeStatus(
     }
     res.json({ plan });
   } catch (error) {
-    const detail =
-      error instanceof Error
-        ? error.message
-        : 'Не удалось изменить статус маршрутного листа';
-    sendBadRequest(req, res, detail);
+    sendRoutePlanError(req, res, error);
   }
 }
 

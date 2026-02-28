@@ -460,6 +460,88 @@ describe('routePlans service analytics', function () {
     assert.equal(updated?.routes[1]?.notes, 'Маршрут 2');
   });
 
+  it('в draft синхронизирует состав routes при tasks-only обновлении', async () => {
+    const firstTask = await Task.create({
+      title: 'Синхронизация 1',
+      status: 'Новая',
+    });
+    const secondTask = await Task.create({
+      title: 'Синхронизация 2',
+      status: 'Новая',
+    });
+    const thirdTask = await Task.create({
+      title: 'Синхронизация 3',
+      status: 'Новая',
+    });
+
+    const firstTaskId = (firstTask._id as Types.ObjectId).toHexString();
+    const secondTaskId = (secondTask._id as Types.ObjectId).toHexString();
+    const thirdTaskId = (thirdTask._id as Types.ObjectId).toHexString();
+
+    const plan = await createDraftFromInputs([
+      {
+        order: 0,
+        vehicleName: 'Фургон 1',
+        tasks: [firstTaskId],
+      },
+      {
+        order: 1,
+        vehicleName: 'Фургон 2',
+        tasks: [secondTaskId],
+      },
+    ]);
+
+    const updated = await updatePlan(plan.id, {
+      tasks: [firstTaskId, thirdTaskId],
+    });
+
+    assert.ok(updated);
+    assert.deepEqual(updated?.tasks, [firstTaskId, thirdTaskId]);
+    const routeTaskIds = (updated?.routes ?? []).flatMap((route) =>
+      route.tasks.map((task) => task.taskId),
+    );
+    assert.deepEqual(routeTaskIds.sort(), [firstTaskId, thirdTaskId].sort());
+    assert.equal(updated?.metrics.totalTasks, 2);
+
+    const detachedTask = await Task.findById(secondTaskId);
+    assert.equal(detachedTask?.routePlanId ?? null, null);
+  });
+
+  it('при отмене не очищает routePlanId у задач, уже переназначенных в другой лист', async () => {
+    const task = await Task.create({
+      title: 'Задача для гонки отмены',
+      status: 'Новая',
+    });
+    const taskId = (task._id as Types.ObjectId).toHexString();
+
+    const sourcePlan = await createDraftFromInputs([
+      {
+        tasks: [taskId],
+      },
+    ]);
+    const targetPlan = await createDraftFromInputs([
+      {
+        tasks: [],
+      },
+    ]);
+
+    await Task.updateOne(
+      { _id: task._id },
+      { $set: { routePlanId: new Types.ObjectId(targetPlan.id) } },
+    );
+
+    const cancelled = await updatePlanStatus(sourcePlan.id, 'cancelled', 401);
+    assert.ok(cancelled);
+    assert.equal(cancelled?.status, 'cancelled');
+
+    const refreshed = await Task.findById(taskId);
+    assert.ok(refreshed?.routePlanId);
+    assert.equal(
+      (refreshed?.routePlanId as Types.ObjectId).toHexString(),
+      targetPlan.id,
+    );
+  });
+
   it('публикует событие при удалении маршрутного плана', async () => {
     const plan = await createDraftFromInputs([
       {

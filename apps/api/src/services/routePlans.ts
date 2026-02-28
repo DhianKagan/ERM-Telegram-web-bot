@@ -218,6 +218,52 @@ const hasSameTaskComposition = (
   return leftNormalized.every((id) => rightSet.has(id.toHexString()));
 };
 
+const syncRoutesWithTasks = async (
+  routes: RoutePlanRouteEntry[] | undefined,
+  taskIds: Types.ObjectId[],
+): Promise<BuildResult> => {
+  const normalizedTaskIds = normalizeTaskIds(taskIds);
+  const allowed = new Set(normalizedTaskIds.map((id) => id.toHexString()));
+  const routeInputs: RoutePlanRouteInput[] = (routes ?? []).map((route) => ({
+    id: route.id,
+    order: route.order,
+    vehicleId: normalizeId(route.vehicleId) ?? undefined,
+    vehicleName: route.vehicleName ?? null,
+    driverId: route.driverId ?? null,
+    driverName: route.driverName ?? null,
+    notes: route.notes ?? null,
+    tasks: (route.tasks ?? [])
+      .map((task) => normalizeId(task.taskId))
+      .filter((taskId): taskId is string =>
+        Boolean(taskId && allowed.has(taskId)),
+      ),
+  }));
+
+  const assigned = new Set<string>();
+  for (const route of routeInputs) {
+    for (const taskId of route.tasks) {
+      assigned.add(taskId);
+    }
+  }
+
+  const missing = normalizedTaskIds
+    .map((id) => id.toHexString())
+    .filter((taskId) => !assigned.has(taskId));
+
+  if (missing.length) {
+    if (routeInputs.length) {
+      routeInputs[0].tasks = normalizeTaskIds([
+        ...routeInputs[0].tasks,
+        ...missing,
+      ]).map((id) => id.toHexString());
+    } else {
+      routeInputs.push({ tasks: missing });
+    }
+  }
+
+  return buildRoutesFromInput(routeInputs, undefined, { autoOptimize: false });
+};
+
 const cloneCoords = (
   source: { lat?: number | null; lng?: number | null } | null | undefined,
 ): { lat: number; lng: number } | undefined => {
@@ -1159,10 +1205,22 @@ export async function updatePlan(
       if (nextTasks) {
         await assertTasksAssignable(nextTasks, plan._id as Types.ObjectId);
         plan.tasks = nextTasks;
-        plan.metrics = {
-          ...plan.metrics,
-          totalTasks: nextTasks.length,
-        };
+        if (
+          payload.tasks !== undefined &&
+          !Array.isArray(payload.routes) &&
+          plan.status === 'draft'
+        ) {
+          const synced = await syncRoutesWithTasks(plan.routes, nextTasks);
+          plan.routes = synced.routes;
+          plan.metrics = synced.metrics;
+          nextTasks = synced.taskIds;
+          plan.tasks = nextTasks;
+        } else {
+          plan.metrics = {
+            ...plan.metrics,
+            totalTasks: nextTasks.length,
+          };
+        }
       }
 
       await plan.save({ session });
@@ -1368,7 +1426,10 @@ export async function updatePlanStatus(
   await updateTasksForStatus(plan.tasks as Types.ObjectId[], status);
   if (status === 'cancelled') {
     await Task.updateMany(
-      { _id: { $in: plan.tasks as Types.ObjectId[] } },
+      {
+        _id: { $in: plan.tasks as Types.ObjectId[] },
+        routePlanId: plan._id,
+      },
       { $set: { routePlanId: null } },
     );
   }

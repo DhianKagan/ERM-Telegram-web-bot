@@ -16,7 +16,9 @@ router.get(
   ...validate([
     query('from').optional().isISO8601(),
     query('to').optional().isISO8601(),
-    query('status').optional().isIn(['draft', 'approved', 'completed']),
+    query('status')
+      .optional()
+      .isIn(['draft', 'approved', 'completed', 'cancelled']),
   ]),
   asyncHandler(ctrl.routePlanSummary),
 );

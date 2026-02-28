@@ -63,6 +63,58 @@ const parseOptionalUserId = (value: unknown): number | null | undefined => {
   return parseActorId(value);
 };
 
+const sendBadRequest = (req: Request, res: Response, detail: string): void => {
+  sendProblem(req, res, {
+    type: 'about:blank',
+    title: 'Ошибка маршрутного листа',
+    status: 400,
+    detail,
+  });
+};
+
+const sendInternalError = (
+  req: Request,
+  res: Response,
+  detail = 'Внутренняя ошибка сервера',
+): void => {
+  sendProblem(req, res, {
+    type: 'about:blank',
+    title: 'Ошибка маршрутного листа',
+    status: 500,
+    detail,
+  });
+};
+
+const routePlanDomainErrorPatterns: RegExp[] = [
+  /Недопустимый переход статуса маршрутного плана/i,
+  /После принятия в работу маршрутный лист нельзя изменять/i,
+  /Нельзя добавить задачи в другой маршрутный лист/i,
+];
+
+const isRoutePlanDomainError = (error: unknown): error is Error => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  return routePlanDomainErrorPatterns.some((pattern) =>
+    pattern.test(error.message),
+  );
+};
+
+const sendRoutePlanError = (
+  req: Request,
+  res: Response,
+  error: unknown,
+): void => {
+  if (isRoutePlanDomainError(error)) {
+    sendBadRequest(req, res, error.message);
+    return;
+  }
+
+  console.error('Unexpected route plan controller error', error);
+  sendInternalError(req, res);
+};
+
 const normalizeStringList = (value: unknown): string[] | undefined => {
   if (!Array.isArray(value)) return undefined;
   const list = value
@@ -142,19 +194,23 @@ export async function create(
       : undefined;
   const tasks = normalizeStringList(req.body?.tasks);
 
-  const plan = await createDraftFromInputs(routes, {
-    actorId,
-    title,
-    notes,
-    creatorId,
-    executorId,
-    companyPointIds,
-    transportId,
-    transportName,
-    tasks,
-  });
+  try {
+    const plan = await createDraftFromInputs(routes, {
+      actorId,
+      title,
+      notes,
+      creatorId,
+      executorId,
+      companyPointIds,
+      transportId,
+      transportName,
+      tasks,
+    });
 
-  res.status(201).json({ plan });
+    res.status(201).json({ plan });
+  } catch (error) {
+    sendRoutePlanError(req, res, error);
+  }
 }
 
 const normalizeRoutesPayload = (
@@ -264,17 +320,21 @@ export async function update(
     tasks: normalizeStringList(req.body?.tasks),
   };
 
-  const plan = await updatePlan(req.params.id, payload);
-  if (!plan) {
-    sendProblem(req, res, {
-      type: 'about:blank',
-      title: 'Маршрутный план не найден',
-      status: 404,
-      detail: 'Маршрутный план не найден',
-    });
-    return;
+  try {
+    const plan = await updatePlan(req.params.id, payload);
+    if (!plan) {
+      sendProblem(req, res, {
+        type: 'about:blank',
+        title: 'Маршрутный план не найден',
+        status: 404,
+        detail: 'Маршрутный план не найден',
+      });
+      return;
+    }
+    res.json({ plan });
+  } catch (error) {
+    sendRoutePlanError(req, res, error);
   }
-  res.json({ plan });
 }
 
 export async function changeStatus(
@@ -302,17 +362,21 @@ export async function changeStatus(
     typeof statusValue === 'string' ? statusValue.trim() : statusValue
   ) as RoutePlanStatus;
   const actorId = parseActorId(req.user?.id);
-  const plan = await updatePlanStatus(req.params.id, status, actorId);
-  if (!plan) {
-    sendProblem(req, res, {
-      type: 'about:blank',
-      title: 'Маршрутный план не найден',
-      status: 404,
-      detail: 'Маршрутный план не найден',
-    });
-    return;
+  try {
+    const plan = await updatePlanStatus(req.params.id, status, actorId);
+    if (!plan) {
+      sendProblem(req, res, {
+        type: 'about:blank',
+        title: 'Маршрутный план не найден',
+        status: 404,
+        detail: 'Маршрутный план не найден',
+      });
+      return;
+    }
+    res.json({ plan });
+  } catch (error) {
+    sendRoutePlanError(req, res, error);
   }
-  res.json({ plan });
 }
 
 export async function remove(req: Request, res: Response): Promise<void> {

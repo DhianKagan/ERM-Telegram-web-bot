@@ -156,7 +156,7 @@ export interface FleetVehicleDto {
   notes?: string;
 }
 
-export type RoutePlanStatus = 'draft' | 'approved' | 'completed';
+export type RoutePlanStatus = 'draft' | 'approved' | 'completed' | 'cancelled';
 
 export interface RoutePlanStop {
   order: number;

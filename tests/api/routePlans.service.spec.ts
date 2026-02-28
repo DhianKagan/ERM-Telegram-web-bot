@@ -297,6 +297,98 @@ describe('routePlans service analytics', function () {
     );
   });
 
+  it('запрещает добавлять задачу во второй активный маршрутный лист', async () => {
+    const task = await Task.create({
+      title: 'Контрольная задача',
+      status: 'Новая',
+    });
+    const taskId = (task._id as Types.ObjectId).toHexString();
+
+    await createDraftFromInputs(
+      [
+        {
+          tasks: [taskId],
+        },
+      ],
+      { title: 'Первый лист' },
+    );
+
+    await assert.rejects(
+      () =>
+        createDraftFromInputs(
+          [
+            {
+              tasks: [taskId],
+            },
+          ],
+          { title: 'Второй лист' },
+        ),
+      /Нельзя добавить задачи в другой маршрутный лист/,
+    );
+  });
+
+  it('после отмены листа задача может быть назначена в новый маршрутный лист', async () => {
+    const task = await Task.create({
+      title: 'Задача для отмены',
+      status: 'Новая',
+    });
+    const taskId = (task._id as Types.ObjectId).toHexString();
+
+    const plan = await createDraftFromInputs([
+      {
+        tasks: [taskId],
+      },
+    ]);
+
+    const cancelled = await updatePlanStatus(plan.id, 'cancelled', 401);
+    assert.ok(cancelled);
+    assert.equal(cancelled?.status, 'cancelled');
+
+    const detachedTask = await Task.findById(taskId);
+    assert.equal(detachedTask?.routePlanId ?? null, null);
+
+    const nextPlan = await createDraftFromInputs([
+      {
+        tasks: [taskId],
+      },
+    ]);
+
+    assert.equal(nextPlan.tasks.length, 1);
+    assert.equal(nextPlan.tasks[0], taskId);
+  });
+
+  it('после принятия в работу запрещает менять состав задач', async () => {
+    const firstTask = await Task.create({
+      title: 'Первая задача',
+      status: 'Новая',
+    });
+    const secondTask = await Task.create({
+      title: 'Вторая задача',
+      status: 'Новая',
+    });
+
+    const firstTaskId = (firstTask._id as Types.ObjectId).toHexString();
+    const secondTaskId = (secondTask._id as Types.ObjectId).toHexString();
+
+    const plan = await createDraftFromInputs([
+      {
+        tasks: [firstTaskId],
+      },
+    ]);
+
+    const approved = await updatePlanStatus(plan.id, 'approved', 401);
+    assert.ok(approved);
+    assert.equal(approved?.status, 'approved');
+
+    await assert.rejects(
+      () =>
+        updatePlan(plan.id, {
+          tasks: [secondTaskId],
+        }),
+      /После принятия в работу маршрутный лист нельзя изменять/,
+    );
+  });
+
   it('публикует событие при удалении маршрутного плана', async () => {
     const plan = await createDraftFromInputs([
       {

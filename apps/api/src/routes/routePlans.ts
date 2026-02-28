@@ -14,7 +14,9 @@ router.get(
   '/',
   authMiddleware(),
   ...validate([
-    query('status').optional().isIn(['draft', 'approved', 'completed']),
+    query('status')
+      .optional()
+      .isIn(['draft', 'approved', 'completed', 'cancelled']),
     query('page').optional().isInt({ min: 1 }),
     query('limit').optional().isInt({ min: 1, max: 100 }),
   ]),
@@ -82,7 +84,9 @@ router.patch(
 router.patch(
   '/:id/status',
   authMiddleware(),
-  ...validate([body('status').isIn(['draft', 'approved', 'completed'])]),
+  ...validate([
+    body('status').isIn(['draft', 'approved', 'completed', 'cancelled']),
+  ]),
   asyncHandler(ctrl.changeStatus),
 );
 

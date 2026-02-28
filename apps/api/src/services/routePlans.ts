@@ -16,6 +16,7 @@ import {
   type RoutePlanRouteEntry,
 } from '../db/models/routePlan';
 import { Task, type TaskPoint } from '../db/model';
+import * as routeService from './route';
 import { chatId } from '../config';
 import { call as telegramCall } from './telegramApi';
 import { getUser } from '../db/queries';
@@ -105,9 +106,10 @@ type BuildResult = {
 };
 
 const statusTransitions: Record<RoutePlanStatus, RoutePlanStatus[]> = {
-  draft: ['approved'],
-  approved: ['draft', 'completed'],
+  draft: ['approved', 'cancelled'],
+  approved: ['completed', 'cancelled'],
   completed: [],
+  cancelled: [],
 };
 
 const roundDistance = (value: number | null | undefined): number | null => {
@@ -293,6 +295,172 @@ const buildLegacyPoints = (task: TaskSource): TaskPoint[] => {
   return points;
 };
 
+const resolveTaskCoordinate = (
+  task: TaskSource,
+): { lat: number; lng: number } | null => {
+  const normalizedPoints = normalizeTaskPoints(task.points);
+  if (normalizedPoints.length) {
+    const startPoint =
+      normalizedPoints.find((point) => point.kind === 'start') ??
+      normalizedPoints[0];
+    const fromPoint = cloneCoords(startPoint?.coordinates ?? null);
+    if (fromPoint) {
+      return fromPoint;
+    }
+  }
+  const start = cloneCoords(task.startCoordinates ?? null);
+  if (start) {
+    return start;
+  }
+  return cloneCoords(task.finishCoordinates ?? null) ?? null;
+};
+
+const optimizeRouteTaskOrder = async (
+  taskIds: string[],
+  taskMap: TaskMap,
+): Promise<string[]> => {
+  if (taskIds.length < 2) {
+    return taskIds;
+  }
+  const coordinates: string[] = [];
+  const coordinateTaskIds: string[] = [];
+  for (const taskId of taskIds) {
+    const task = taskMap.get(taskId);
+    if (!task) {
+      continue;
+    }
+    const point = resolveTaskCoordinate(task);
+    if (!point) {
+      continue;
+    }
+    coordinates.push(`${point.lng},${point.lat}`);
+    coordinateTaskIds.push(taskId);
+  }
+  if (coordinates.length < 2) {
+    return taskIds;
+  }
+
+  try {
+    const response = await routeService.trip<TripData>(coordinates.join(';'), {
+      source: 'first',
+      destination: 'last',
+      roundtrip: 'false',
+    });
+    const waypoints = response.trips?.[0]?.waypoints;
+    if (!Array.isArray(waypoints) || !waypoints.length) {
+      return taskIds;
+    }
+    const optimized = waypoints
+      .map((waypoint) => coordinateTaskIds[waypoint.waypoint_index])
+      .filter((taskId): taskId is string => Boolean(taskId));
+    if (!optimized.length) {
+      return taskIds;
+    }
+    const optimizedSet = new Set(optimized);
+    const rest = taskIds.filter((taskId) => !optimizedSet.has(taskId));
+    return [...optimized, ...rest];
+  } catch {
+    return taskIds;
+  }
+};
+
+const optimizeRoutesInput = async (
+  routesInput: RoutePlanRouteInput[],
+  taskMap: TaskMap,
+): Promise<RoutePlanRouteInput[]> => {
+  const optimizedRoutes: RoutePlanRouteInput[] = [];
+  for (const routeInput of routesInput) {
+    const routeTasks = Array.isArray(routeInput.tasks) ? routeInput.tasks : [];
+    optimizedRoutes.push({
+      ...routeInput,
+      tasks: await optimizeRouteTaskOrder(routeTasks, taskMap),
+    });
+  }
+  return optimizedRoutes;
+};
+
+type TripData = {
+  trips?: { waypoints?: Array<{ waypoint_index: number }> }[];
+};
+
+const assertTasksAssignable = async (
+  taskIds: Types.ObjectId[],
+  currentPlanId?: Types.ObjectId,
+): Promise<void> => {
+  if (!taskIds.length) {
+    return;
+  }
+
+  const docs = await Task.find({
+    _id: { $in: taskIds },
+    routePlanId: { $ne: null },
+  })
+    .select('_id routePlanId')
+    .lean<
+      Array<{ _id: Types.ObjectId; routePlanId?: Types.ObjectId | null }>
+    >();
+
+  const taskToPlan = new Map<string, string>();
+  const planIds = new Set<string>();
+  for (const doc of docs) {
+    const taskId = normalizeId(doc._id);
+    const planId = normalizeId(doc.routePlanId);
+    if (!taskId || !planId) {
+      continue;
+    }
+    if (currentPlanId && planId === currentPlanId.toHexString()) {
+      continue;
+    }
+    taskToPlan.set(taskId, planId);
+    planIds.add(planId);
+  }
+  if (!planIds.size) {
+    return;
+  }
+
+  const activePlans = await RoutePlanModel.find({
+    _id: { $in: Array.from(planIds) },
+    status: { $ne: 'cancelled' },
+  })
+    .select('_id title status')
+    .lean<
+      Array<{ _id: Types.ObjectId; title?: string; status: RoutePlanStatus }>
+    >();
+  if (!activePlans.length) {
+    return;
+  }
+
+  const activePlanById = new Map<
+    string,
+    { title?: string; status: RoutePlanStatus }
+  >();
+  for (const plan of activePlans) {
+    const id = normalizeId(plan._id);
+    if (id) {
+      activePlanById.set(id, { title: plan.title, status: plan.status });
+    }
+  }
+
+  const conflicts: string[] = [];
+  for (const [taskId, planId] of taskToPlan.entries()) {
+    const activePlan = activePlanById.get(planId);
+    if (!activePlan) {
+      continue;
+    }
+    const planTitle =
+      typeof activePlan.title === 'string' && activePlan.title.trim()
+        ? activePlan.title
+        : planId;
+    conflicts.push(`${taskId} -> ${planTitle} (${activePlan.status})`);
+  }
+
+  if (conflicts.length) {
+    throw new Error(
+      `Нельзя добавить задачи в другой маршрутный лист: ${conflicts.join(', ')}`,
+    );
+  }
+};
+
 const LOG_TITLE_PREFIX = 'LOG_';
 const LOG_TITLE_WIDTH = 5;
 const LOG_TITLE_PATTERN = /^LOG_\d{5}$/;
@@ -342,13 +510,24 @@ const generateLogTitle = async (): Promise<string> => {
 async function buildRoutesFromInput(
   routesInput: RoutePlanRouteInput[] = [],
   taskMap?: TaskMap,
+  options: { autoOptimize?: boolean } = {},
 ): Promise<BuildResult> {
-  const normalizedInputs = routesInput
+  const map = await ensureTaskMap(routesInput, taskMap);
+  const effectiveInputs = options.autoOptimize
+    ? await optimizeRoutesInput(routesInput, map)
+    : routesInput;
+  const routes: RoutePlanRouteEntry[] = [];
+  const uniqueTaskIds = new Map<string, Types.ObjectId>();
+  let totalDistance = 0;
+  let totalStops = 0;
+  let totalTasks = 0;
+
+  const normalizedInputs = effectiveInputs
     .map((route, idx) => {
       const tasks = Array.isArray(route.tasks)
         ? route.tasks
-          .map((id) => normalizeId(id))
-          .filter((id): id is string => Boolean(id))
+            .map((id) => normalizeId(id))
+            .filter((id): id is string => Boolean(id))
         : [];
       return {
         id:
@@ -368,13 +547,6 @@ async function buildRoutesFromInput(
       };
     })
     .filter((route) => route.tasks.length);
-
-  const map = await ensureTaskMap(routesInput, taskMap);
-  const routes: RoutePlanRouteEntry[] = [];
-  const uniqueTaskIds = new Map<string, Types.ObjectId>();
-  let totalDistance = 0;
-  let totalStops = 0;
-  let totalTasks = 0;
 
   for (const route of normalizedInputs) {
     const routeTasks: RoutePlanRouteEntry['tasks'] = [];
@@ -650,13 +822,13 @@ const serializePlan = (plan: RoutePlanDocument): SharedRoutePlan => {
     typeof rawMetrics?.totalDistanceKm === 'number'
       ? Number(rawMetrics.totalDistanceKm)
       : sortedRoutes.reduce(
-        (sum, route) =>
-          sum +
-          (Number.isFinite(route.metrics?.distanceKm)
-            ? Number(route.metrics?.distanceKm)
-            : 0),
-        0,
-      );
+          (sum, route) =>
+            sum +
+            (Number.isFinite(route.metrics?.distanceKm)
+              ? Number(route.metrics?.distanceKm)
+              : 0),
+          0,
+        );
   const totalTasks =
     typeof rawMetrics?.totalTasks === 'number'
       ? Number(rawMetrics.totalTasks)
@@ -668,14 +840,14 @@ const serializePlan = (plan: RoutePlanDocument): SharedRoutePlan => {
 
   const taskIds = Array.isArray(rawTasks)
     ? rawTasks
-      .map((id) => normalizeId(id))
-      .filter((id): id is string => Boolean(id))
+        .map((id) => normalizeId(id))
+        .filter((id): id is string => Boolean(id))
     : [];
 
   const companyPoints = Array.isArray(companyPointIds)
     ? companyPointIds
-      .map((id) => normalizeId(id))
-      .filter((id): id is string => Boolean(id))
+        .map((id) => normalizeId(id))
+        .filter((id): id is string => Boolean(id))
     : [];
 
   const normalizedTransportId = normalizeId(transportId);
@@ -774,9 +946,12 @@ export async function createDraftFromInputs(
         routes: builtRoutes,
         metrics,
         taskIds,
-      } = await buildRoutesFromInput(routes, hintMap);
+      } = await buildRoutesFromInput(routes, hintMap, {
+        autoOptimize: true,
+      });
       const normalizedTasks = normalizeTaskIds(options.tasks);
       const mergedTasks = normalizeTaskIds([...taskIds, ...normalizedTasks]);
+      await assertTasksAssignable(mergedTasks);
       const title =
         normalizeString(options.title, TITLE_MAX_LENGTH) ??
         (await generateLogTitle());
@@ -801,7 +976,8 @@ export async function createDraftFromInputs(
             transportId,
             transportName,
             suggestedBy:
-              typeof options.actorId === 'number' && Number.isFinite(options.actorId)
+              typeof options.actorId === 'number' &&
+              Number.isFinite(options.actorId)
                 ? Number(options.actorId)
                 : undefined,
             method: options.method,
@@ -889,6 +1065,16 @@ export async function updatePlan(
       const plan = await RoutePlanModel.findById(objectId).session(session);
       if (!plan) return;
 
+      const hasRouteStructurePatch =
+        payload.routes !== undefined || payload.tasks !== undefined;
+      if (plan.status !== 'draft') {
+        if (hasRouteStructurePatch) {
+          throw new Error(
+            'После принятия в работу маршрутный лист нельзя изменять. Допустима только отмена.',
+          );
+        }
+      }
+
       if (typeof payload.title === 'string') {
         const nextTitle = normalizeString(payload.title, TITLE_MAX_LENGTH);
         if (nextTitle) {
@@ -897,7 +1083,8 @@ export async function updatePlan(
       }
 
       if (payload.notes === null || typeof payload.notes === 'string') {
-        plan.notes = normalizeString(payload.notes, NOTES_MAX_LENGTH) ?? undefined;
+        plan.notes =
+          normalizeString(payload.notes, NOTES_MAX_LENGTH) ?? undefined;
       }
 
       if (payload.creatorId === null || payload.creatorId !== undefined) {
@@ -912,7 +1099,10 @@ export async function updatePlan(
         plan.transportId = parseObjectId(payload.transportId);
       }
 
-      if (payload.transportName === null || payload.transportName !== undefined) {
+      if (
+        payload.transportName === null ||
+        payload.transportName !== undefined
+      ) {
         if (payload.transportName === null) {
           plan.transportName = null;
         } else {
@@ -931,6 +1121,8 @@ export async function updatePlan(
       if (Array.isArray(payload.routes)) {
         const { routes, metrics, taskIds } = await buildRoutesFromInput(
           payload.routes,
+          undefined,
+          { autoOptimize: plan.status === 'draft' },
         );
         plan.routes = routes;
         plan.metrics = metrics;
@@ -939,13 +1131,36 @@ export async function updatePlan(
 
       if (payload.tasks !== undefined) {
         const normalizedTasks = normalizeTaskIds(payload.tasks);
-        nextTasks = normalizeTaskIds([
-          ...(nextTasks ?? plan.tasks ?? []),
-          ...normalizedTasks,
-        ]);
+        if (Array.isArray(payload.routes)) {
+          nextTasks = normalizeTaskIds([
+            ...(nextTasks ?? []),
+            ...normalizedTasks,
+          ]);
+        } else {
+          nextTasks = normalizedTasks;
+          if (plan.status === 'draft') {
+            const syntheticRoutes: RoutePlanRouteInput[] = nextTasks.length
+              ? [
+                  {
+                    order: 0,
+                    tasks: nextTasks.map((taskId) => taskId.toHexString()),
+                  },
+                ]
+              : [];
+            const { routes, metrics, taskIds } = await buildRoutesFromInput(
+              syntheticRoutes,
+              undefined,
+              { autoOptimize: true },
+            );
+            plan.routes = routes;
+            plan.metrics = metrics;
+            nextTasks = taskIds;
+          }
+        }
       }
 
       if (nextTasks) {
+        await assertTasksAssignable(nextTasks, plan._id as Types.ObjectId);
         plan.tasks = nextTasks;
         plan.metrics = {
           ...plan.metrics,
@@ -1148,10 +1363,18 @@ export async function updatePlanStatus(
     if (!plan.approvedAt) {
       plan.approvedAt = now;
     }
+  } else if (status === 'cancelled') {
+    plan.status = 'cancelled';
   }
 
   await plan.save();
   await updateTasksForStatus(plan.tasks as Types.ObjectId[], status);
+  if (status === 'cancelled') {
+    await Task.updateMany(
+      { _id: { $in: plan.tasks as Types.ObjectId[] } },
+      { $set: { routePlanId: null } },
+    );
+  }
   const serialized = serializePlan(plan);
   if (status === 'approved') {
     await notifyPlanApproved(serialized, actorId).catch(() => undefined);

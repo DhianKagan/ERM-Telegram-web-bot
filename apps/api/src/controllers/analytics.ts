@@ -24,7 +24,8 @@ const parseStatus = (value: unknown): RoutePlanStatus | undefined => {
   if (
     normalized === 'draft' ||
     normalized === 'approved' ||
-    normalized === 'completed'
+    normalized === 'completed' ||
+    normalized === 'cancelled'
   ) {
     return normalized;
   }

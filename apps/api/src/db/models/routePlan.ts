@@ -139,7 +139,7 @@ const routePlanSchema = new Schema<RoutePlanAttrs>(
     title: { type: String, required: true },
     status: {
       type: String,
-      enum: ['draft', 'approved', 'completed'],
+      enum: ['draft', 'approved', 'completed', 'cancelled'],
       default: 'draft',
     },
     creatorId: Number,

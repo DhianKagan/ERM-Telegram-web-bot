@@ -531,7 +531,7 @@ export default function RoutePlanDialog({
         if (!next) onClose();
       }}
     >
-      <DialogContent className="max-h-[90vh] w-[calc(100%-1rem)] overflow-hidden p-4 sm:max-w-5xl sm:p-6">
+      <DialogContent className="max-h-[90vh] w-[calc(100%-1rem)] overflow-y-auto overflow-x-hidden p-4 sm:max-w-5xl sm:p-6">
         <DialogHeader>
           <DialogTitle>
             {isEdit

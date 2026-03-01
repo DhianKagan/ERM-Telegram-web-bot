@@ -3,6 +3,7 @@
 
 import mongoose, { Types } from 'mongoose';
 import {
+  extractCoords,
   generateMultiRouteLink,
   type LogisticsRoutePlanUpdateReason,
   type RoutePlan as SharedRoutePlan,
@@ -354,14 +355,79 @@ const buildLegacyPoints = (task: TaskSource): TaskPoint[] => {
   return points;
 };
 
+const resolvePointCoordinates = (
+  point: TaskPoint,
+  fallbackUrl?: string,
+): { lat: number; lng: number } | undefined => {
+  const direct = cloneCoords(point.coordinates ?? null);
+  if (direct) {
+    return direct;
+  }
+
+  const urls = [
+    normalizeUrl(point.sourceUrl),
+    normalizeUrl(fallbackUrl),
+  ].filter((value): value is string => Boolean(value));
+  for (const url of urls) {
+    const extracted = extractCoords(url);
+    if (extracted) {
+      return { lat: extracted.lat, lng: extracted.lng };
+    }
+  }
+  return undefined;
+};
+
+const materializeTaskPoints = (task: TaskSource): TaskPoint[] => {
+  const normalizedPoints = normalizeTaskPoints(task.points);
+  const fallbackUrl = normalizeUrl(task.google_route_url) ?? undefined;
+  const resolvedPoints = normalizedPoints.map((point) => {
+    const coordinates = resolvePointCoordinates(point, fallbackUrl);
+    if (!coordinates) {
+      return point;
+    }
+    return {
+      ...point,
+      coordinates,
+    };
+  });
+
+  const hasResolvedCoordinates = resolvedPoints.some((point) =>
+    Boolean(cloneCoords(point.coordinates ?? null)),
+  );
+  if (hasResolvedCoordinates) {
+    return resolvedPoints;
+  }
+
+  const legacyPoints = buildLegacyPoints(task);
+  if (legacyPoints.length) {
+    return legacyPoints;
+  }
+
+  if (fallbackUrl) {
+    const extracted = extractCoords(fallbackUrl);
+    if (extracted) {
+      return [
+        {
+          order: 0,
+          kind: 'start',
+          coordinates: { lat: extracted.lat, lng: extracted.lng },
+          title: sanitizeAddress(task.start_location) ?? undefined,
+          sourceUrl: fallbackUrl,
+        },
+      ];
+    }
+  }
+
+  return resolvedPoints;
+};
+
 const resolveTaskCoordinate = (
   task: TaskSource,
 ): { lat: number; lng: number } | null => {
-  const normalizedPoints = normalizeTaskPoints(task.points);
-  if (normalizedPoints.length) {
+  const points = materializeTaskPoints(task);
+  if (points.length) {
     const startPoint =
-      normalizedPoints.find((point) => point.kind === 'start') ??
-      normalizedPoints[0];
+      points.find((point) => point.kind === 'start') ?? points[0];
     const fromPoint = cloneCoords(startPoint?.coordinates ?? null);
     if (fromPoint) {
       return fromPoint;
@@ -620,10 +686,7 @@ async function buildRoutesFromInput(
       if (!objectId) continue;
       uniqueTaskIds.set(objectId.toHexString(), objectId);
 
-      const normalizedPoints = normalizeTaskPoints(task.points);
-      const points = normalizedPoints.length
-        ? normalizedPoints
-        : buildLegacyPoints(task);
+      const points = materializeTaskPoints(task);
 
       const legacyCoords = extractLegacyCoordinates(points);
       const start = cloneCoords(

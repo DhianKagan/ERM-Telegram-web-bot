@@ -53,17 +53,17 @@ const parseBooleanFlag = (
   return ['1', 'true', 'yes', 'on'].includes(normalized);
 };
 
-const authBearerEnabled = parseBooleanFlag(
-  process.env.AUTH_BEARER_ENABLED,
-  false,
-);
-
 const allowMissingEnv =
   parseBooleanFlag(process.env.ALLOW_MISSING_ENV) ||
   Boolean(process.env.RAILWAY_ENVIRONMENT);
 
 // Загружаем .env из корня проекта, чтобы избежать undefined переменных при запуске из каталога bot
 dotenv.config({ path: path.resolve(__dirname, '../../..', '.env') });
+
+const authBearerEnabled = parseBooleanFlag(
+  process.env.AUTH_BEARER_ENABLED,
+  false,
+);
 
 type EnvPick = { key: string; value: string };
 

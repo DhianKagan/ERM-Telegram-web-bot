@@ -1513,6 +1513,12 @@ export default function CollectionsPage() {
   }, [active, loadTaskSettings]);
 
   useEffect(() => {
+    if (activeModule === 'admin' && activeAdminTab === 'tasks') {
+      void loadTaskSettings();
+    }
+  }, [activeAdminTab, activeModule, loadTaskSettings]);
+
+  useEffect(() => {
     if (active === 'fixed_assets' && allObjects.length === 0) {
       void loadObjects();
     }
@@ -1791,6 +1797,14 @@ export default function CollectionsPage() {
       setServiceAccountSubmitting(false);
     }
   }, [active, loadUsers]);
+
+  useEffect(() => {
+    if (activeModule === 'admin' && activeAdminTab === 'users') {
+      void loadUsers();
+      setUserForm(emptyUser);
+      setSelectedEmployeeId(undefined);
+    }
+  }, [activeAdminTab, activeModule, loadUsers]);
 
   const openCollectionModal = (item?: CollectionItem) => {
     if (item) {
@@ -3113,6 +3127,98 @@ export default function CollectionsPage() {
 
   const activeModuleMeta =
     moduleTabs.find((module) => module.key === activeModule) ?? moduleTabs[0];
+
+  const adminUsersContent = (() => {
+    const showEmpty = paginatedUsers.length === 0;
+
+    if (showEmpty) {
+      return (
+        <div className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-[color:var(--color-gray-200)] bg-white p-8 text-center shadow-sm dark:border-[color:var(--color-gray-700)] dark:bg-[color:var(--color-gray-dark)]">
+          <h3 className="text-lg font-semibold text-[color:var(--color-gray-800)] dark:text-white">
+            {collectionEmptyTitle}
+          </h3>
+          <p className="max-w-md text-sm text-[color:var(--color-gray-600)] dark:text-[color:var(--color-gray-300)]">
+            {collectionEmptyDescription}
+          </p>
+          <Button variant="accent" onClick={() => openUserModal()}>
+            {userAddCta}
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <Card bodyClassName="space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-base font-semibold text-[color:var(--color-gray-800)] dark:text-white">
+            Пользователи
+          </h3>
+          <Badge variant="pill" size="sm" className="text-muted-foreground">
+            {paginatedUsers.length} записей
+          </Badge>
+        </div>
+        <div className="hidden lg:block">
+          <SimpleTable<User>
+            columns={withNameActions(settingsUserColumns, (row) => [
+              {
+                label: 'Открыть',
+                icon: <EyeIcon className="size-4" />,
+                onClick: () => openUserModal(row),
+              },
+            ])}
+            data={paginatedUsers}
+            pageIndex={userPage - 1}
+            pageSize={limit}
+            pageCount={userTotalPages}
+            onPageChange={(next) => setUserPage(next + 1)}
+            showGlobalSearch={false}
+            showFilters={false}
+            wrapCellsAsBadges
+            rowHeight={56}
+            badgeClassName={SETTINGS_BADGE_CLASS}
+            badgeWrapperClassName={SETTINGS_BADGE_WRAPPER_CLASS}
+            badgeEmptyPlaceholder={SETTINGS_BADGE_EMPTY}
+          />
+        </div>
+        <div className="grid gap-4 lg:hidden">
+          {paginatedUsers.map((user, index) => {
+            const displayName =
+              (user.name && user.name.trim()) ||
+              (user.username && user.username.trim()) ||
+              `ID ${user.telegram_id ?? '—'}`;
+            const username = user.telegram_username || user.username || '';
+            return (
+              <article
+                key={user.telegram_id ?? user.username ?? user.name ?? index}
+                className={mobileCardClass}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <h4 className="truncate text-sm font-semibold">
+                      {displayName}
+                    </h4>
+                    <p className="truncate text-xs text-muted-foreground">
+                      {username || 'Без логина'}
+                    </p>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => openUserModal(user)}
+                  >
+                    Открыть
+                  </Button>
+                </div>
+                <div className="mt-3 text-xs text-muted-foreground">
+                  Telegram ID: {user.telegram_id ?? '—'}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </Card>
+    );
+  })();
 
   return (
     <div className="flex w-full flex-col gap-6 pb-12 pt-4">
@@ -4543,39 +4649,20 @@ export default function CollectionsPage() {
               })}
             </TabsList>
             <TabsContent value="users" className="mt-0">
-              <Card className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">
-                  Раздел «Пользователь» перенесён в Админ панель.
-                </p>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => {
-                    setActive('users');
-                    handleModuleChange('directories');
-                  }}
-                >
-                  Открыть пользователей
-                </Button>
-              </Card>
+              {adminUsersContent}
             </TabsContent>
             <TabsContent value="tasks" className="mt-0">
-              <Card className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-                <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">
-                  Раздел «Задачи» перенесён в Админ панель и открыт как
-                  отдельный рабочий сценарий.
-                </p>
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={() => {
-                    setActive('tasks');
-                    handleModuleChange('directories');
-                  }}
-                >
-                  Открыть настройки задач
-                </Button>
-              </Card>
+              <TaskSettingsTab
+                fields={taskFieldItems}
+                types={taskTypeItems}
+                routePlanSettings={routePlanSettings}
+                loading={tasksLoading}
+                onSaveField={saveTaskField}
+                onDeleteField={deleteTaskField}
+                onSaveType={saveTaskType}
+                onDeleteType={deleteTaskType}
+                onSaveRoutePlanSetting={saveRoutePlanSetting}
+              />
             </TabsContent>
             <TabsContent value="reports" className="mt-0">
               <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">

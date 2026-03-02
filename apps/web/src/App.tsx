@@ -57,6 +57,7 @@ function AppContent({
   useEffect(() => {
     if (loading || isAttachmentMenu) return;
     const allowedPrefixes = [
+      '/',
       '/login',
       '/menu',
       '/tasks',
@@ -83,7 +84,7 @@ function AppContent({
     }
     if (!user && !isLogin && !isErrorPage) {
       navigate('/login', { replace: true });
-    } else if (user && isLogin) {
+    } else if (user && (isLogin || location.pathname === '/')) {
       navigate('/index', { replace: true });
     }
   }, [

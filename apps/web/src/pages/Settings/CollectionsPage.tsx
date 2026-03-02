@@ -111,8 +111,6 @@ import {
   MapPinIcon,
   WrenchScrewdriverIcon,
   EyeIcon,
-  PencilSquareIcon,
-  TrashIcon,
 } from '@heroicons/react/24/outline';
 
 type AssetLocationInfo = { label: string; raw: string };
@@ -242,33 +240,9 @@ const moduleTabs = [
     icon: AdjustmentsHorizontalIcon,
   },
   {
-    key: 'reports',
-    label: 'Отчёты',
-    description: 'Аналитика процессов и KPI',
-    icon: ChartPieIcon,
-  },
-  {
-    key: 'archive',
-    label: 'Архив',
-    description: 'История задач и записей',
-    icon: ArchiveBoxIcon,
-  },
-  {
-    key: 'logs',
-    label: 'Логи',
-    description: 'Журнал действий и событий',
-    icon: DocumentTextIcon,
-  },
-  {
-    key: 'storage',
-    label: 'Файлы',
-    description: 'Управление вложениями',
-    icon: RectangleStackIcon,
-  },
-  {
-    key: 'health',
-    label: 'Мониторинг',
-    description: 'Проверка прокси, Redis и MongoDB',
+    key: 'admin',
+    label: 'Админ панель',
+    description: 'Пользователи, задачи, отчёты, архив, логи и мониторинг',
     icon: ShieldCheckIcon,
   },
 ] as const;
@@ -328,7 +302,22 @@ const types = [
 
 type CollectionKey = (typeof types)[number]['key'];
 
-const directoryTypes = types.filter((type) => type.key !== 'employees');
+const directoryTypes = types.filter(
+  (type) =>
+    type.key !== 'employees' && type.key !== 'users' && type.key !== 'tasks',
+);
+
+const adminModuleTabs = [
+  { key: 'users', label: 'Пользователь', icon: KeyIcon },
+  { key: 'tasks', label: 'Задачи', icon: ClipboardDocumentListIcon },
+  { key: 'reports', label: 'Отчёты', icon: ChartPieIcon },
+  { key: 'archive', label: 'Архив', icon: ArchiveBoxIcon },
+  { key: 'logs', label: 'Логи', icon: DocumentTextIcon },
+  { key: 'storage', label: 'Файлы', icon: RectangleStackIcon },
+  { key: 'health', label: 'Мониторинг', icon: ShieldCheckIcon },
+] as const;
+
+type AdminModuleKey = (typeof adminModuleTabs)[number]['key'];
 
 const createInitialQueries = (): Record<CollectionKey, string> =>
   types.reduce(
@@ -1126,6 +1115,7 @@ export default function CollectionsPage() {
     return isValidModuleKey(param) ? param : 'directories';
   });
   const [active, setActive] = useState<CollectionKey>('departments');
+  const [activeAdminTab, setActiveAdminTab] = useState<AdminModuleKey>('users');
   const [items, setItems] = useState<CollectionItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [total, setTotal] = useState(0);
@@ -1150,8 +1140,7 @@ export default function CollectionsPage() {
   const [userSearchDraft, setUserSearchDraft] = useState('');
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [userForm, setUserForm] = useState<UserFormData>(emptyUser);
-  const [serviceAccountModalOpen, setServiceAccountModalOpen] =
-    useState(false);
+  const [serviceAccountModalOpen, setServiceAccountModalOpen] = useState(false);
   const [serviceAccountForm, setServiceAccountForm] =
     useState<ServiceAccountFormState>(emptyServiceAccountForm);
   const [serviceAccountSubmitting, setServiceAccountSubmitting] =
@@ -1928,7 +1917,10 @@ export default function CollectionsPage() {
     }
     const password = serviceAccountForm.password.trim();
     if (password.length < 8) {
-      showToast('Пароль сервисного аккаунта должен содержать минимум 8 символов', 'error');
+      showToast(
+        'Пароль сервисного аккаунта должен содержать минимум 8 символов',
+        'error',
+      );
       return;
     }
     if (password !== serviceAccountForm.passwordConfirm.trim()) {
@@ -1988,28 +1980,6 @@ export default function CollectionsPage() {
     [applyCollectionSearch, currentSearchDraft],
   );
 
-  const handleCollectionSearchKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLInputElement>) => {
-      if (!isCollectionSearchSupported) {
-        return;
-      }
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        submitCollectionSearch(event.currentTarget.value);
-      }
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        updateCollectionSearchDraft('');
-        submitCollectionSearch('');
-      }
-    },
-    [
-      isCollectionSearchSupported,
-      submitCollectionSearch,
-      updateCollectionSearchDraft,
-    ],
-  );
-
   const resetCollectionSearch = useCallback(() => {
     updateCollectionSearchDraft('');
     submitCollectionSearch('');
@@ -2023,24 +1993,6 @@ export default function CollectionsPage() {
       setSelectedEmployeeId(undefined);
     },
     [userSearchDraft],
-  );
-
-  const handleUserSearchKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLInputElement>) => {
-      if (!isUserSearchActive) {
-        return;
-      }
-      if (event.key === 'Enter') {
-        event.preventDefault();
-        submitUserSearch();
-      }
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        setUserSearchDraft('');
-        submitUserSearch();
-      }
-    },
-    [isUserSearchActive, submitUserSearch],
   );
 
   const handleEmployeeSaved = (updated: UserDetails) => {
@@ -2250,7 +2202,10 @@ export default function CollectionsPage() {
     delete data.telegram_id;
     delete data.password;
     if (passwordValue && passwordValue.length < 8) {
-      showToast('Пароль сервисного аккаунта должен содержать минимум 8 символов', 'error');
+      showToast(
+        'Пароль сервисного аккаунта должен содержать минимум 8 символов',
+        'error',
+      );
       return;
     }
     await updateUserApi(id, {
@@ -2500,7 +2455,6 @@ export default function CollectionsPage() {
   const collectionSearchPlaceholder = t('collections.search.placeholder');
   const collectionSearchHint = t('collections.search.hint');
   const collectionSearchCta = t('collections.actions.search');
-  const collectionResetCta = t('collections.actions.reset');
   const collectionAddCta = t('collections.actions.add');
   const collectionEmptyTitle = t('collections.table.empty.title');
   const collectionEmptyDescription = t('collections.table.empty.description');
@@ -3173,7 +3127,7 @@ export default function CollectionsPage() {
           icon={ClipboardDocumentListIcon}
           title={t('collections.page.title')}
           description={t('collections.page.description')}
-          filters={directoriesFilters}
+          filters={activeModule === 'directories' ? directoriesFilters : null}
         />
         <div className="flex flex-col gap-3">
           <div className="sm:hidden">
@@ -4305,16 +4259,24 @@ export default function CollectionsPage() {
             />
           </div>
         </Modal>
-        <Modal open={serviceAccountModalOpen} onClose={closeServiceAccountModal}>
+        <Modal
+          open={serviceAccountModalOpen}
+          onClose={closeServiceAccountModal}
+        >
           <div className="space-y-4">
             <div>
-              <h3 className="text-base font-semibold">Создать сервис аккаунт</h3>
+              <h3 className="text-base font-semibold">
+                Создать сервис аккаунт
+              </h3>
               <p className="text-sm text-slate-500">
                 Учётная запись для входа по логину и паролю.
               </p>
             </div>
             <div className="space-y-3">
-              <FormGroup label="Telegram ID" htmlFor="service-account-telegram-id">
+              <FormGroup
+                label="Telegram ID"
+                htmlFor="service-account-telegram-id"
+              >
                 <Input
                   id="service-account-telegram-id"
                   value={serviceAccountForm.telegramId}
@@ -4552,30 +4514,95 @@ export default function CollectionsPage() {
           onCancel={() => setConfirmEmployeeDelete(false)}
           confirmText="Удалить"
         />
-        <TabsContent value="reports" className="mt-0">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-            <AnalyticsDashboard />
-          </div>
-        </TabsContent>
-        <TabsContent value="archive" className="mt-0">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-            <ArchivePage />
-          </div>
-        </TabsContent>
-        <TabsContent value="logs" className="mt-0">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-            <LogsPage />
-          </div>
-        </TabsContent>
-        <TabsContent value="storage" className="mt-0">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-            <StoragePage />
-          </div>
-        </TabsContent>
-        <TabsContent value="health" className="mt-0">
-          <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-            <HealthCheckTab />
-          </div>
+        <TabsContent value="admin" className="mt-0 space-y-6">
+          <SettingsSectionHeader
+            title="Админ панель"
+            description="Управление доступами, задачами и служебными разделами"
+            icon={ShieldCheckIcon}
+          />
+          <Tabs
+            value={activeAdminTab}
+            onValueChange={(value) =>
+              setActiveAdminTab(value as AdminModuleKey)
+            }
+            className="space-y-4"
+          >
+            <TabsList className="flex flex-nowrap items-center gap-4 overflow-x-auto no-scrollbar rounded-lg bg-muted/60 p-2">
+              {adminModuleTabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <TabsTrigger
+                    key={tab.key}
+                    value={tab.key}
+                    className="group flex min-h-[2.5rem] items-center gap-2 rounded-lg border border-transparent px-3 py-2 text-sm font-semibold"
+                  >
+                    <Icon className="size-5 flex-shrink-0 text-[color:var(--color-gray-500)]" />
+                    <span className="whitespace-nowrap">{tab.label}</span>
+                  </TabsTrigger>
+                );
+              })}
+            </TabsList>
+            <TabsContent value="users" className="mt-0">
+              <Card className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">
+                  Раздел «Пользователь» перенесён в Админ панель.
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => {
+                    setActive('users');
+                    setActiveModule('directories');
+                  }}
+                >
+                  Открыть пользователей
+                </Button>
+              </Card>
+            </TabsContent>
+            <TabsContent value="tasks" className="mt-0">
+              <Card className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">
+                  Раздел «Задачи» перенесён в Админ панель и открыт как
+                  отдельный рабочий сценарий.
+                </p>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => {
+                    setActive('tasks');
+                    setActiveModule('directories');
+                  }}
+                >
+                  Открыть настройки задач
+                </Button>
+              </Card>
+            </TabsContent>
+            <TabsContent value="reports" className="mt-0">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                <AnalyticsDashboard />
+              </div>
+            </TabsContent>
+            <TabsContent value="archive" className="mt-0">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                <ArchivePage />
+              </div>
+            </TabsContent>
+            <TabsContent value="logs" className="mt-0">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                <LogsPage />
+              </div>
+            </TabsContent>
+            <TabsContent value="storage" className="mt-0">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                <StoragePage />
+              </div>
+            </TabsContent>
+            <TabsContent value="health" className="mt-0">
+              <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                <HealthCheckTab />
+              </div>
+            </TabsContent>
+          </Tabs>
         </TabsContent>
       </Tabs>
     </div>

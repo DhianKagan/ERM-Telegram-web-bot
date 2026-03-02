@@ -46,7 +46,7 @@ export default function CodeLogin() {
       body: JSON.stringify({ telegramId: Number(telegramId), code }),
     });
     if (res.ok) {
-      window.location.href = '/';
+      window.location.href = '/index';
     } else {
       addToast('Неверный код', 'error');
     }

@@ -63,6 +63,7 @@ import { TOKENS } from '../di/tokens';
 import authService from '../auth/auth.service';
 import StackHealthService from '../system/stackHealth.service';
 import {
+  authBearerEnabled,
   telegramWebhookPath,
   telegramWebhookSecret,
   telegramWebhookUrl,
@@ -154,6 +155,7 @@ export default async function registerRoutes(
     '/api/v1/auth/verify_code',
     '/api/v1/auth/login_password',
     '/api/v1/auth/login',
+    ...(authBearerEnabled ? ['/api/v1/auth/refresh'] : []),
     '/api/v1/csrf',
     '/api/v1/optimizer',
     '/api/v1/maps/expand',

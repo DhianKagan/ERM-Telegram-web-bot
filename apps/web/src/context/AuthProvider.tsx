@@ -7,6 +7,7 @@ import { taskStateController } from '../controllers/taskStateController';
 import { AuthContext } from './AuthContext';
 import { AuthActionsContext } from './AuthActionsContext';
 import { setCsrfToken } from '../utils/csrfToken';
+import { clearAccessToken, shouldUseBearerAuth } from '../lib/auth';
 import type { User } from '../types/user';
 
 interface AuthProviderProps {
@@ -33,11 +34,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
         /* игнорируем */
       }
     };
-    loadCsrf();
+    if (!shouldUseBearerAuth()) {
+      loadCsrf();
+    }
     const onVisible = () => {
-      if (!document.hidden) loadCsrf();
+      if (!document.hidden && !shouldUseBearerAuth()) loadCsrf();
     };
-    window.addEventListener('focus', loadCsrf);
+    if (!shouldUseBearerAuth()) {
+      window.addEventListener('focus', loadCsrf);
+    }
     document.addEventListener('visibilitychange', onVisible);
     getProfile({ noRedirect: true })
       .then((u) => {
@@ -49,13 +54,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setLoading(false);
       });
     return () => {
-      window.removeEventListener('focus', loadCsrf);
+      if (!shouldUseBearerAuth()) {
+        window.removeEventListener('focus', loadCsrf);
+      }
       document.removeEventListener('visibilitychange', onVisible);
     };
   }, []);
   // logout полностью очищает кеш и закрывает мини-приложение
   const logout = async () => {
     await apiLogout();
+    clearAccessToken();
     setUserState(null);
     try {
       clearAnonTasksCache();

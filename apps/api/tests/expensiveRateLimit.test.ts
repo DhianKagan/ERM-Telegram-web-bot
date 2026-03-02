@@ -29,6 +29,9 @@ jest.mock('../src/auth/auth.controller.ts', () => ({
   passwordLogin: jest.fn((_req: Request, res: Response) =>
     res.json({ token: 't' }),
   ),
+  login: jest.fn((_req: Request, res: Response) =>
+    res.json({ accessToken: 'a' }),
+  ),
   verifyInitData: jest.fn((_req: Request, res: Response) =>
     res.json({ ok: true }),
   ),

@@ -14,6 +14,42 @@ import { sendProblem } from '../utils/problem';
 import { refreshToken } from './auth';
 import { authPasswordLoginAttemptsTotal } from '../metrics';
 import { recordPasswordLoginDiagnostic } from './authDiagnostics';
+import {
+  decodeLegacyToken,
+  issueSession,
+  revokeRefresh,
+  rotateSession,
+  tokenSettings,
+} from '../services/token.service';
+
+const buildRefreshCookieOptions = (): CookieOptions => {
+  const secure =
+    process.env.COOKIE_SECURE === undefined
+      ? process.env.NODE_ENV === 'production'
+      : process.env.COOKIE_SECURE !== 'false';
+  const opts: CookieOptions = {
+    httpOnly: true,
+    secure,
+    sameSite: secure ? 'none' : 'lax',
+    path: tokenSettings.refreshCookiePath,
+    maxAge: tokenSettings.refreshTtl * 1000,
+  };
+  return opts;
+};
+
+const setRefreshCookie = (res: Response, refreshTokenValue: string): void => {
+  res.cookie(
+    tokenSettings.refreshCookieName,
+    refreshTokenValue,
+    buildRefreshCookieOptions(),
+  );
+};
+
+const clearRefreshCookie = (res: Response): void => {
+  const opts = buildRefreshCookieOptions();
+  delete opts.maxAge;
+  res.clearCookie(tokenSettings.refreshCookieName, opts);
+};
 
 export const sendCode = async (req: Request, res: Response) => {
   const { telegramId } = req.body;
@@ -57,6 +93,27 @@ export const passwordLogin = async (req: Request, res: Response) => {
   } catch (e) {
     authPasswordLoginAttemptsTotal.inc({ status: 'failure' });
     recordPasswordLoginDiagnostic(false, (e as Error)?.message);
+    sendProblem(req, res, {
+      type: 'about:blank',
+      title: 'Ошибка входа по логину и паролю',
+      status: 400,
+      detail: String((e as Error).message),
+    });
+  }
+};
+
+export const login = async (req: Request, res: Response) => {
+  const { username, password } = req.body;
+  try {
+    const legacyToken = await service.verifyPasswordLogin(username, password);
+    const payload = decodeLegacyToken(legacyToken);
+    const session = await issueSession(payload, {
+      ip: req.ip,
+      userAgent: req.get('user-agent') || undefined,
+    });
+    setRefreshCookie(res, session.refreshToken);
+    res.json({ accessToken: session.accessToken });
+  } catch (e) {
     sendProblem(req, res, {
       type: 'about:blank',
       title: 'Ошибка входа по логину и паролю',
@@ -119,14 +176,40 @@ export const updateProfile = async (
   res.json(formatUser(user));
 };
 
-export const logout = (_req: Request, res: Response) => {
+export const logout = async (req: Request, res: Response) => {
   const opts: CookieOptions = buildTokenCookieOptions(config, undefined);
   delete opts.maxAge;
   res.clearCookie('token', opts);
+  const refresh = (req.cookies as Record<string, string> | undefined)?.[
+    tokenSettings.refreshCookieName
+  ];
+  if (refresh) {
+    await revokeRefresh(refresh);
+  }
+  clearRefreshCookie(res);
   res.json({ status: 'ok' });
 };
 
-export const refresh = (req: RequestWithUser, res: Response) => {
+export const refresh = async (req: RequestWithUser, res: Response) => {
+  const refreshCookie = (req.cookies as Record<string, string> | undefined)?.[
+    tokenSettings.refreshCookieName
+  ];
+
+  if (refreshCookie) {
+    const session = await rotateSession(refreshCookie, {
+      ip: req.ip,
+      userAgent: req.get('user-agent') || undefined,
+    });
+    if (!session) {
+      clearRefreshCookie(res);
+      res.sendStatus(401);
+      return;
+    }
+    setRefreshCookie(res, session.refreshToken);
+    res.json({ accessToken: session.accessToken });
+    return;
+  }
+
   const old = (req.cookies as Record<string, string> | undefined)?.token;
   if (!old || !req.user) {
     res.sendStatus(401);

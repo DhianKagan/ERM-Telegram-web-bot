@@ -26,6 +26,7 @@
 - [`railway_s3_setup.md`](railway_s3_setup.md)
 - [`queue_recovery_runbook.md`](queue_recovery_runbook.md)
 - [`logistics_recovery_plan.md`](logistics_recovery_plan.md)
+- [`auth_bearer_rollout.md`](auth_bearer_rollout.md)
 
 ## 4) Исторические материалы
 

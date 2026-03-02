@@ -43,6 +43,8 @@ interface Role {
 
 export default function UserForm({ form, onChange, onSubmit, onReset }: Props) {
   const [confirmSave, setConfirmSave] = React.useState(false);
+  const [passwordConfirm, setPasswordConfirm] = React.useState('');
+  const [passwordError, setPasswordError] = React.useState('');
   const [departments, setDepartments] = React.useState<CollectionItem[]>([]);
   const [divisions, setDivisions] = React.useState<CollectionItem[]>([]);
   const [positions, setPositions] = React.useState<CollectionItem[]>([]);
@@ -61,6 +63,11 @@ export default function UserForm({ form, onChange, onSubmit, onReset }: Props) {
     fetchRoles().then((r) => setRoles(r));
   }, []);
 
+  React.useEffect(() => {
+    setPasswordConfirm('');
+    setPasswordError('');
+  }, [form.telegram_id]);
+
   const handleRoleChange = (value: string) => {
     const r = roles.find((x) => x.name === value);
     onChange({
@@ -73,6 +80,13 @@ export default function UserForm({ form, onChange, onSubmit, onReset }: Props) {
 
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
+    const passwordValue = (form.password || '').trim();
+    const confirmValue = passwordConfirm.trim();
+    if (passwordValue && passwordValue !== confirmValue) {
+      setPasswordError('Пароли не совпадают');
+      return;
+    }
+    setPasswordError('');
     setConfirmSave(true);
   };
   return (
@@ -220,6 +234,25 @@ export default function UserForm({ form, onChange, onSubmit, onReset }: Props) {
           <p className="mt-1 text-xs text-slate-500">
             Для сервисного аккаунта можно задать новый пароль (минимум 8 символов).
           </p>
+          <label className="mt-2 block text-sm font-medium">Повторите пароль</label>
+          <input
+            id="settings-user-password-confirm"
+            name="passwordConfirm"
+            type="password"
+            className="h-10 w-full rounded border px-3"
+            value={passwordConfirm}
+            onChange={(e) => {
+              setPasswordConfirm(e.target.value);
+              if (passwordError) {
+                setPasswordError('');
+              }
+            }}
+            placeholder="Повторите новый пароль"
+            minLength={8}
+          />
+          {passwordError ? (
+            <p className="mt-1 text-xs text-red-600">{passwordError}</p>
+          ) : null}
         </div>
       ) : null}
       <div className="flex gap-2">

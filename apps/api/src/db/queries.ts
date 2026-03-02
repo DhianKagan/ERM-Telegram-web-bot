@@ -2008,7 +2008,8 @@ export async function getUserByUsername(
   if (!normalized) {
     return null;
   }
-  const query = User.findOne({ username: normalized });
+  const usernameRegex = new RegExp(`^${escapeRegex(normalized)}$`, 'i');
+  const query = User.findOne({ username: usernameRegex });
   if (includePasswordHash) {
     query.select('+password_hash');
   }

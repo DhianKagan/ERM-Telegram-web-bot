@@ -18,8 +18,8 @@
   "close": "Close",
   "collections": {
     "page": {
-      "title": "Directories",
-      "description": "Manage directories, users, and access."
+      "title": "Settings",
+      "description": "Manage directories and the admin panel modules."
     },
     "moduleSelectLabel": "Select settings module",
     "directorySelectLabel": "Select directory",

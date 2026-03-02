@@ -64,6 +64,8 @@ const CARD_CLASS =
   'rounded-lg border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900';
 
 const SECTION_GAP = 'space-y-4';
+const SECTION_CARD_CLASS =
+  'rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900';
 
 const FieldCard: React.FC<{
   item: TaskFieldItem;
@@ -787,8 +789,14 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
 
   return (
     <div className="space-y-6">
+      <section className={SECTION_CARD_CLASS}>
+        <p className="text-sm text-slate-600 dark:text-slate-300">
+          Быстрая схема: сначала настройте «Поля задачи», затем «Типы задач и
+          темы Telegram», после чего проверьте «Маршрутные листы».
+        </p>
+      </section>
       <section className={SECTION_GAP}>
-        <header className="space-y-1">
+        <header className={`space-y-1 ${SECTION_CARD_CLASS}`}>
           <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
             Поля задачи
           </h3>
@@ -802,7 +810,7 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
             <Spinner />
           </div>
         ) : (
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4 xl:grid-cols-2">
             {sortedFields.map((item) => (
               <FieldCard
                 key={item._id}
@@ -823,7 +831,7 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
         )}
       </section>
       <section className={SECTION_GAP}>
-        <header className="space-y-1">
+        <header className={`space-y-1 ${SECTION_CARD_CLASS}`}>
           <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
             Типы задач и темы Telegram
           </h3>
@@ -837,7 +845,7 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
             <Spinner />
           </div>
         ) : (
-          <div className="grid gap-4 lg:grid-cols-2">
+          <div className="grid gap-4 xl:grid-cols-2">
             {sortedTypes.map((item) => (
               <TypeCard
                 key={item._id}
@@ -868,7 +876,7 @@ const TaskSettingsTab: React.FC<TaskSettingsTabProps> = ({
         )}
       </section>
       <section className={SECTION_GAP}>
-        <header className="space-y-1">
+        <header className={`space-y-1 ${SECTION_CARD_CLASS}`}>
           <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
             Маршрутные листы
           </h3>

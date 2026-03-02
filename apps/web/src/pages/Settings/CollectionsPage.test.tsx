@@ -522,7 +522,6 @@ describe('CollectionsPage', () => {
 
     await screen.findByText('Отдел снабжения');
 
-    const divisionsPanel = screen.getByTestId('tab-content-divisions');
     const activeSearch = screen.getByPlaceholderText(
       'Поиск по названию или значению',
     ) as HTMLInputElement;
@@ -573,8 +572,28 @@ describe('CollectionsPage', () => {
     expect(directoriesTab).toHaveAttribute('aria-selected', 'true');
   });
 
+  it('кнопка открытия пользователей переводит в справочники без возврата в админ-модуль', async () => {
+    const history = renderCollectionsPage('/cp/settings?module=admin');
+
+    await screen.findByRole('tab', { name: 'Пользователь' });
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Пользователь' }));
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Открыть пользователей' }),
+    );
+
+    await screen.findByTestId('tab-content-users');
+
+    await waitFor(() => expect(history.location.search).toBe(''));
+    expect(screen.getByRole('tab', { name: 'Справочники' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+  });
+
   it('копирует идентификатор коллекции при клике по значку', async () => {
-    const originalClipboard = (navigator as any).clipboard;
+    const originalClipboard = (navigator as { clipboard?: Clipboard })
+      .clipboard;
     const writeText = jest.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,

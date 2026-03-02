@@ -15,6 +15,7 @@ import {
   PasswordLoginDto,
   UpdateProfileDto,
 } from '../dto/auth.dto';
+import { authBearerEnabled } from '../config';
 
 const router: Router = Router();
 const authLimiter = createRateLimiter(rateLimits.auth);
@@ -41,6 +42,13 @@ router.post(
 );
 
 router.post(
+  '/login',
+  authLimiter as unknown as RequestHandler,
+  ...(validateDto(PasswordLoginDto) as RequestHandler[]),
+  asyncHandler(authCtrl.login),
+);
+
+router.post(
   '/verify_init',
   authLimiter as unknown as RequestHandler,
   ...(validateDto(VerifyInitDto) as RequestHandler[]),
@@ -54,20 +62,19 @@ router.post(
 );
 router.post(
   '/refresh',
-  authMiddleware(),
   authLimiter as unknown as RequestHandler,
   authCtrl.refresh as unknown as RequestHandler,
 );
 
 router.get(
   '/profile',
-  authMiddleware(),
+  authMiddleware({ bearerOnly: authBearerEnabled }),
   authLimiter as unknown as RequestHandler,
   asyncHandler(authCtrl.profile),
 );
 router.patch(
   '/profile',
-  authMiddleware(),
+  authMiddleware({ bearerOnly: authBearerEnabled }),
   authLimiter as unknown as RequestHandler,
   ...(validateDto(UpdateProfileDto) as RequestHandler[]),
   asyncHandler(authCtrl.updateProfile),

@@ -343,6 +343,7 @@ type ServiceAccountFormState = {
   telegramId: string;
   username: string;
   password: string;
+  passwordConfirm: string;
   roleId: string;
 };
 
@@ -350,6 +351,7 @@ const emptyServiceAccountForm: ServiceAccountFormState = {
   telegramId: '',
   username: '',
   password: '',
+  passwordConfirm: '',
   roleId: '',
 };
 
@@ -1909,6 +1911,7 @@ export default function CollectionsPage() {
         telegramId: String(generated.telegram_id),
         username: generated.username,
         password: '',
+        passwordConfirm: '',
         roleId: '',
       });
     } catch {
@@ -1926,6 +1929,10 @@ export default function CollectionsPage() {
     const password = serviceAccountForm.password.trim();
     if (password.length < 8) {
       showToast('Пароль сервисного аккаунта должен содержать минимум 8 символов', 'error');
+      return;
+    }
+    if (password !== serviceAccountForm.passwordConfirm.trim()) {
+      showToast('Пароли сервисного аккаунта не совпадают', 'error');
       return;
     }
     setServiceAccountSubmitting(true);
@@ -4345,6 +4352,23 @@ export default function CollectionsPage() {
                     }))
                   }
                   placeholder="Минимум 8 символов"
+                />
+              </FormGroup>
+              <FormGroup
+                label="Повторите пароль"
+                htmlFor="service-account-password-confirm"
+              >
+                <Input
+                  id="service-account-password-confirm"
+                  type="password"
+                  value={serviceAccountForm.passwordConfirm}
+                  onChange={(event) =>
+                    setServiceAccountForm((prev) => ({
+                      ...prev,
+                      passwordConfirm: event.target.value,
+                    }))
+                  }
+                  placeholder="Повторите пароль"
                 />
               </FormGroup>
               <FormGroup label="Роль" htmlFor="service-account-role-id">

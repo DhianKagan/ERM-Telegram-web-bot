@@ -579,6 +579,7 @@ describe('CollectionsPage', () => {
 
     await screen.findByText('Пользователи');
 
+    await waitFor(() => expect(mockedFetchUsers).toHaveBeenCalledTimes(1));
     expect(history.location.search).toBe('?module=admin');
     expect(screen.getByRole('tab', { name: 'Админ панель' })).toHaveAttribute(
       'aria-selected',
@@ -897,6 +898,25 @@ describe('CollectionsPage', () => {
     expect(
       within(employeesPanel).getByText('test@example.com'),
     ).toBeInTheDocument();
+  });
+
+  it('загружает настройки задач во вкладке админ-модуля', async () => {
+    renderCollectionsPage('/cp/settings?module=admin');
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Задачи' }));
+
+    await waitFor(() =>
+      expect(mockedFetchAll).toHaveBeenCalledWith('task_fields'),
+    );
+    await waitFor(() =>
+      expect(mockedFetchAll).toHaveBeenCalledWith('task_types'),
+    );
+    await waitFor(() =>
+      expect(mockedFetchAll).toHaveBeenCalledWith('route_plan_settings'),
+    );
+
+    const tasksPanel = await screen.findByTestId('tab-content-tasks');
+    expect(within(tasksPanel).getByText('Поля задачи')).toBeInTheDocument();
   });
 
   it("отображает настройки задач во вкладке 'Задачи'", async () => {

@@ -1513,6 +1513,12 @@ export default function CollectionsPage() {
   }, [active, loadTaskSettings]);
 
   useEffect(() => {
+    if (activeModule === 'admin' && activeAdminTab === 'tasks') {
+      void loadTaskSettings();
+    }
+  }, [activeAdminTab, activeModule, loadTaskSettings]);
+
+  useEffect(() => {
     if (active === 'fixed_assets' && allObjects.length === 0) {
       void loadObjects();
     }
@@ -1791,6 +1797,14 @@ export default function CollectionsPage() {
       setServiceAccountSubmitting(false);
     }
   }, [active, loadUsers]);
+
+  useEffect(() => {
+    if (activeModule === 'admin' && activeAdminTab === 'users') {
+      void loadUsers();
+      setUserForm(emptyUser);
+      setSelectedEmployeeId(undefined);
+    }
+  }, [activeAdminTab, activeModule, loadUsers]);
 
   const openCollectionModal = (item?: CollectionItem) => {
     if (item) {

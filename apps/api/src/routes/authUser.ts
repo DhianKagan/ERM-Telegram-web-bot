@@ -63,7 +63,6 @@ router.post(
 router.post(
   '/refresh',
   authLimiter as unknown as RequestHandler,
-  authMiddleware() as unknown as RequestHandler,
   authCtrl.refresh as unknown as RequestHandler,
 );
 

@@ -52,12 +52,18 @@ const parseBooleanFlag = (
   }
   return ['1', 'true', 'yes', 'on'].includes(normalized);
 };
+
 const allowMissingEnv =
   parseBooleanFlag(process.env.ALLOW_MISSING_ENV) ||
   Boolean(process.env.RAILWAY_ENVIRONMENT);
 
 // Загружаем .env из корня проекта, чтобы избежать undefined переменных при запуске из каталога bot
 dotenv.config({ path: path.resolve(__dirname, '../../..', '.env') });
+
+const authBearerEnabled = parseBooleanFlag(
+  process.env.AUTH_BEARER_ENABLED,
+  false,
+);
 
 type EnvPick = { key: string; value: string };
 
@@ -565,6 +571,7 @@ export const locale = process.env.LOCALE || 'ru';
 export const osrmBaseUrl = osrmBaseUrlValue;
 export const routingUrl = routingUrlEnv;
 export const cookieDomain = cookieDomainEnv;
+export { authBearerEnabled };
 const config = {
   botToken,
   botApiUrl,
@@ -579,6 +586,7 @@ const config = {
   osrmBaseUrl,
   routingUrl,
   cookieDomain,
+  authBearerEnabled,
   telegramWebhookUrl,
   telegramWebhookPath,
   telegramWebhookSecret,

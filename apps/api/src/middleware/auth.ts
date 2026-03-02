@@ -4,6 +4,26 @@ import type { RequestHandler } from 'express';
 import { verifyToken } from '../api/middleware';
 import type { RequestWithUser } from '../types/request';
 
-export default function authMiddleware(): RequestHandler {
-  return (req, res, next) => verifyToken(req as RequestWithUser, res, next);
+interface AuthMiddlewareOptions {
+  bearerOnly?: boolean;
+}
+
+export default function authMiddleware(
+  options: AuthMiddlewareOptions = {},
+): RequestHandler {
+  return (req, res, next) => {
+    if (options.bearerOnly) {
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        res.status(401).json({
+          type: 'about:blank',
+          title: 'Ошибка авторизации',
+          status: 401,
+          detail: 'Требуется Authorization: Bearer <accessToken>.',
+        });
+        return;
+      }
+    }
+    verifyToken(req as RequestWithUser, res, next);
+  };
 }

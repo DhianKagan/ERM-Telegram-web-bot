@@ -7,7 +7,8 @@ import fs from 'fs';
 import path from 'path';
 import sanitizeError from '../utils/sanitizeError';
 import { writeLog } from '../services/service';
-import { systemCriticalErrorsTotal } from '../metrics';
+import { authCsrfErrorsTotal, systemCriticalErrorsTotal } from '../metrics';
+import { recordCsrfDiagnostic } from '../auth/authDiagnostics';
 
 type KnownError = Error & {
   status?: number;
@@ -237,6 +238,26 @@ export default function errorMiddleware(
   appendErrorLog('');
 
   console.error('API error:', clean);
+  if (csrfError) {
+    const methodLabel = req.method || 'UNKNOWN';
+    const pathLabel = req.path || req.originalUrl || 'unknown';
+    authCsrfErrorsTotal.inc({ method: methodLabel, path: pathLabel });
+    recordCsrfDiagnostic({
+      method: methodLabel,
+      path: pathLabel,
+      origin:
+        typeof req.headers.origin === 'string' ? req.headers.origin : undefined,
+      referer:
+        typeof req.headers.referer === 'string'
+          ? req.headers.referer
+          : undefined,
+      userAgent:
+        typeof req.headers['user-agent'] === 'string'
+          ? req.headers['user-agent']
+          : undefined,
+      reason: clean,
+    });
+  }
   if (status >= 500) {
     systemCriticalErrorsTotal.inc({
       component: 'api',

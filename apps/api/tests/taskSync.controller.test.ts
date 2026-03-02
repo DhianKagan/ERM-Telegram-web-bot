@@ -75,6 +75,9 @@ const botMock = {
   },
 };
 
+const getTaskSyncController = async () =>
+  (await import('../src/controllers/taskSync.controller')).default;
+
 describe('TaskSyncController — обновление inline-клавиатуры', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -89,9 +92,7 @@ describe('TaskSyncController — обновление inline-клавиатур�
   it('повторно применяет inline-клавиатуру при ошибке «message is not modified»', async () => {
     mockEditMessageText.mockRejectedValueOnce(buildNotModifiedError());
 
-    const {
-      default: TaskSyncController,
-    } = require('../src/controllers/taskSync.controller');
+    const TaskSyncController = await getTaskSyncController();
     const controller = new TaskSyncController(botMock as never);
 
     const override = {
@@ -121,5 +122,25 @@ describe('TaskSyncController — обновление inline-клавиатур�
       expect.objectContaining({ inline_keyboard: expect.any(Array) }),
     );
     expect(mockDeleteMessage).not.toHaveBeenCalled();
+  });
+
+  it('не обновляет MongoDB при невалидном taskId', async () => {
+    const TaskSyncController = await getTaskSyncController();
+    const controller = new TaskSyncController(botMock as never);
+
+    const override = {
+      _id: 'task-1',
+      telegram_message_id: 111,
+      status: 'Новая',
+      title: 'Тестовая задача',
+      attachments: [],
+      assignees: [],
+      controllers: [],
+      created_by: 42,
+    };
+
+    await controller.syncAfterChange('task-1', override as never);
+
+    expect(mockUpdateOne).not.toHaveBeenCalled();
   });
 });

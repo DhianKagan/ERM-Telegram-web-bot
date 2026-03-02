@@ -2,6 +2,7 @@
 // Основные модули: bot, config, db/model, db/queries, services/service, utils/formatTask, utils/taskButtons
 import 'reflect-metadata';
 import { injectable, inject } from 'tsyringe';
+import { isValidObjectId } from 'mongoose';
 import type { Context, Telegraf } from 'telegraf';
 import type { TaskDocument } from '../db/model';
 import { TOKENS } from '../di/tokens';
@@ -1068,6 +1069,9 @@ export default class TaskSyncController {
       updatePayload.$unset = unsetPayload;
     }
     if (Object.keys(updatePayload).length) {
+      if (!isValidObjectId(taskId)) {
+        return;
+      }
       try {
         await Task.updateOne({ _id: taskId }, updatePayload).exec();
       } catch (error) {

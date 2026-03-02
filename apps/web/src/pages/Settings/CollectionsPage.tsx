@@ -3233,7 +3233,7 @@ export default function CollectionsPage() {
                 );
               })}
             </TabsList>
-            {directoryTypes.map((type) => {
+            {types.map((type) => {
               const isActiveTab = type.key === active;
               const rows: CollectionTableRow[] = isActiveTab
                 ? items.map((item) => {

@@ -21,6 +21,7 @@ import {
   rotateSession,
   tokenSettings,
 } from '../services/token.service';
+import { authBearerEnabled } from '../config';
 
 const buildRefreshCookieOptions = (): CookieOptions => {
   const secure =
@@ -71,6 +72,16 @@ export const verifyCode = async (req: Request, res: Response) => {
   try {
     const token = await service.verifyCode(telegramId, code, username);
     setTokenCookie(res, token);
+    if (authBearerEnabled) {
+      const payload = decodeLegacyToken(token);
+      const session = await issueSession(payload, {
+        ip: req.ip,
+        userAgent: req.get('user-agent') || undefined,
+      });
+      setRefreshCookie(res, session.refreshToken);
+      res.json({ token, accessToken: session.accessToken });
+      return;
+    }
     res.json({ token });
   } catch (e) {
     sendProblem(req, res, {

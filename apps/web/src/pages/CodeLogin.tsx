@@ -45,9 +45,18 @@ export default function CodeLogin() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ telegramId: Number(telegramId), code }),
+      noRedirect: true,
     });
     if (res.ok) {
-      window.location.href = '/index';
+      if (shouldUseBearerAuth()) {
+        const data = (await res.json().catch(() => ({}))) as {
+          accessToken?: string;
+        };
+        if (data.accessToken) {
+          setAccessToken(data.accessToken);
+        }
+      }
+      window.location.href = '/requests';
     } else {
       addToast('Неверный код', 'error');
     }

@@ -201,7 +201,7 @@ export const logout = async (req: Request, res: Response) => {
   res.json({ status: 'ok' });
 };
 
-export const refresh = async (req: RequestWithUser, res: Response) => {
+export const refresh = async (req: Request, res: Response) => {
   const refreshCookie = (req.cookies as Record<string, string> | undefined)?.[
     tokenSettings.refreshCookieName
   ];
@@ -222,7 +222,7 @@ export const refresh = async (req: RequestWithUser, res: Response) => {
   }
 
   const old = (req.cookies as Record<string, string> | undefined)?.token;
-  if (!old || !req.user) {
+  if (!old) {
     res.sendStatus(401);
     return;
   }

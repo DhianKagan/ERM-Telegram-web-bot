@@ -2008,11 +2008,30 @@ export async function getUserByUsername(
   if (!normalized) {
     return null;
   }
-  const query = User.findOne({ username: normalized });
+
+  const exactQuery = User.findOne({ username: normalized });
+  if (includePasswordHash) {
+    exactQuery.select('+password_hash');
+  }
+  const exactMatch = await exactQuery;
+  if (exactMatch) {
+    return exactMatch;
+  }
+
+  const usernameRegex = new RegExp(`^${escapeRegex(normalized)}$`, 'i');
+  const query = User.find({ username: usernameRegex })
+    .sort({ username: 1, _id: 1 })
+    .limit(2);
   if (includePasswordHash) {
     query.select('+password_hash');
   }
-  return query;
+
+  const matches = await query;
+  if (matches.length !== 1) {
+    return null;
+  }
+
+  return matches[0] ?? null;
 }
 
 export async function listUsers(): Promise<UserDocument[]> {

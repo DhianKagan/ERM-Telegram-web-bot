@@ -4552,7 +4552,7 @@ export default function CollectionsPage() {
                   size="sm"
                   onClick={() => {
                     setActive('users');
-                    setActiveModule('directories');
+                    handleModuleChange('directories');
                   }}
                 >
                   Открыть пользователей
@@ -4570,7 +4570,7 @@ export default function CollectionsPage() {
                   size="sm"
                   onClick={() => {
                     setActive('tasks');
-                    setActiveModule('directories');
+                    handleModuleChange('directories');
                   }}
                 >
                   Открыть настройки задач

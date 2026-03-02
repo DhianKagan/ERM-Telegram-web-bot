@@ -572,20 +572,15 @@ describe('CollectionsPage', () => {
     expect(directoriesTab).toHaveAttribute('aria-selected', 'true');
   });
 
-  it('кнопка открытия пользователей переводит в справочники без возврата в админ-модуль', async () => {
+  it('показывает пользователей внутри админ-модуля без перехода в справочники', async () => {
     const history = renderCollectionsPage('/cp/settings?module=admin');
 
-    await screen.findByRole('tab', { name: 'Пользователь' });
-
     fireEvent.click(screen.getByRole('tab', { name: 'Пользователь' }));
-    fireEvent.click(
-      screen.getByRole('button', { name: 'Открыть пользователей' }),
-    );
 
-    await screen.findByTestId('tab-content-users');
+    await screen.findByText('Пользователи');
 
-    await waitFor(() => expect(history.location.search).toBe(''));
-    expect(screen.getByRole('tab', { name: 'Справочники' })).toHaveAttribute(
+    expect(history.location.search).toBe('?module=admin');
+    expect(screen.getByRole('tab', { name: 'Админ панель' })).toHaveAttribute(
       'aria-selected',
       'true',
     );

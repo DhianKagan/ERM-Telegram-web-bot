@@ -12,6 +12,8 @@ import config from '../config';
 import type { UserDocument } from '../db/model';
 import { sendProblem } from '../utils/problem';
 import { refreshToken } from './auth';
+import { authPasswordLoginAttemptsTotal } from '../metrics';
+import { recordPasswordLoginDiagnostic } from './authDiagnostics';
 
 export const sendCode = async (req: Request, res: Response) => {
   const { telegramId } = req.body;
@@ -48,9 +50,13 @@ export const passwordLogin = async (req: Request, res: Response) => {
   const { username, password } = req.body;
   try {
     const token = await service.verifyPasswordLogin(username, password);
+    authPasswordLoginAttemptsTotal.inc({ status: 'success' });
+    recordPasswordLoginDiagnostic(true);
     setTokenCookie(res, token);
     res.json({ token });
   } catch (e) {
+    authPasswordLoginAttemptsTotal.inc({ status: 'failure' });
+    recordPasswordLoginDiagnostic(false, (e as Error)?.message);
     sendProblem(req, res, {
       type: 'about:blank',
       title: 'Ошибка входа по логину и паролю',

@@ -167,6 +167,28 @@ export const apiErrorsTotal = getOrCreateMetric(
     }),
 );
 
+export const authCsrfErrorsTotal = getOrCreateMetric(
+  'auth_csrf_errors_total',
+  () =>
+    new client.Counter({
+      name: 'auth_csrf_errors_total',
+      help: 'Количество CSRF-ошибок в API авторизации',
+      labelNames: ['method', 'path'],
+      registers: [register],
+    }),
+);
+
+export const authPasswordLoginAttemptsTotal = getOrCreateMetric(
+  'auth_password_login_attempts_total',
+  () =>
+    new client.Counter({
+      name: 'auth_password_login_attempts_total',
+      help: 'Попытки входа сервисного аккаунта по логину/паролю',
+      labelNames: ['status'],
+      registers: [register],
+    }),
+);
+
 export const systemCriticalErrorsTotal = getOrCreateMetric(
   'system_critical_errors_total',
   () =>

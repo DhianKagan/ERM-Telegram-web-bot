@@ -72,6 +72,7 @@ import {
   getShortLinkPathPrefix,
   resolveShortLinkBySlug,
 } from '../services/shortLinks';
+import { getAuthDiagnosticsSnapshot } from '../auth/authDiagnostics';
 
 // new imports for access check
 import { ACCESS_TASK_DELETE, hasAccess } from '../utils/accessMask';
@@ -151,6 +152,9 @@ export default async function registerRoutes(
   const csrfExclude = [
     '/api/v1/auth/send_code',
     '/api/v1/auth/verify_code',
+    '/api/v1/auth/login_password',
+    '/api/v1/auth/refresh',
+    '/api/v1/auth/logout',
     '/api/v1/csrf',
     '/api/v1/optimizer',
     '/api/v1/maps/expand',
@@ -429,6 +433,18 @@ export default async function registerRoutes(
   app.get('/metrics', async (_req: Request, res: Response) => {
     res.set('Content-Type', register.contentType);
     res.end(await register.metrics());
+  });
+  app.get('/api/monitor/auth', (_req: Request, res: Response) => {
+    const diagnostics = getAuthDiagnosticsSnapshot();
+    res.json({
+      status: 'ok',
+      csrf: {
+        disabled: process.env.DISABLE_CSRF === '1',
+        excludedPaths: csrfExclude,
+        excludedPrefixes: csrfExcludePrefix,
+      },
+      diagnostics,
+    });
   });
   const shortLinkRoute = `${getShortLinkPathPrefix()}/:slug`;
   app.get(

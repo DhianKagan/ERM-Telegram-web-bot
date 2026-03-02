@@ -4,6 +4,7 @@
 import authFetch from '../utils/authFetch';
 import type { User } from '../types/user';
 import { normalizeUser } from './normalizeUser';
+import { clearAccessToken, setAccessToken } from '../lib/auth';
 
 type FetchOptions = Parameters<typeof authFetch>[1];
 
@@ -53,10 +54,19 @@ export const updateProfile = async (data: ProfileData): Promise<User> => {
 };
 
 export const logout = () =>
-  authFetch('/api/v1/auth/logout', { method: 'POST' }).then(() => undefined);
+  authFetch('/api/v1/auth/logout', { method: 'POST' }).then(() => {
+    clearAccessToken();
+  });
 
 export const refresh = () =>
   authFetch('/api/v1/auth/refresh', {
     method: 'POST',
     noRedirect: true,
-  }).then(() => undefined);
+  }).then(async (res) => {
+    const data = (await res.json().catch(() => ({}))) as {
+      accessToken?: string;
+    };
+    if (data.accessToken) {
+      setAccessToken(data.accessToken);
+    }
+  });

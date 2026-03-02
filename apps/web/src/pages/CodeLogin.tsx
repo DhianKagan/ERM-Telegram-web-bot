@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useToast } from '../context/useToast';
 import authFetch from '../utils/authFetch';
+import { setAccessToken, shouldUseBearerAuth } from '../lib/auth';
 
 type LoginMode = 'telegram' | 'password';
 
@@ -54,12 +55,25 @@ export default function CodeLogin() {
 
   async function loginWithPassword(e?: React.FormEvent) {
     e?.preventDefault();
-    const res = await authFetch('/api/v1/auth/login_password', {
+    const endpoint = shouldUseBearerAuth()
+      ? '/api/v1/auth/login'
+      : '/api/v1/auth/login_password';
+    const res = await authFetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
+      noRedirect: true,
     });
+
     if (res.ok) {
+      if (shouldUseBearerAuth()) {
+        const data = (await res.json().catch(() => ({}))) as {
+          accessToken?: string;
+        };
+        if (data.accessToken) {
+          setAccessToken(data.accessToken);
+        }
+      }
       window.location.href = '/requests';
       return;
     }

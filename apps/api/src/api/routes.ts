@@ -153,6 +153,7 @@ export default async function registerRoutes(
     '/api/v1/auth/send_code',
     '/api/v1/auth/verify_code',
     '/api/v1/auth/login_password',
+    '/api/v1/auth/login',
     '/api/v1/csrf',
     '/api/v1/optimizer',
     '/api/v1/maps/expand',

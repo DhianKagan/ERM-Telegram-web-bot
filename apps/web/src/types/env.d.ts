@@ -11,6 +11,7 @@ declare global {
     readonly VITE_LOGISTICS_POLL_INTERVAL_MS?: string;
     readonly VITE_BOT_USERNAME?: string;
     readonly VITE_CHAT_ID?: string;
+    readonly VITE_AUTH_BEARER_ENABLED?: string;
   }
 
   interface ImportMeta {

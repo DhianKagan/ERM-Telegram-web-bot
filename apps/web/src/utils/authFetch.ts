@@ -3,6 +3,12 @@
 // Основные модули: fetch, XMLHttpRequest, window.location, localStorage
 import { getCsrfToken, setCsrfToken } from './csrfToken';
 import { showToast } from './toast';
+import {
+  clearAccessToken,
+  getAccessToken,
+  setAccessToken,
+  shouldUseBearerAuth,
+} from '../lib/auth';
 
 const unavailablePaths = new Set<string>();
 
@@ -208,6 +214,7 @@ export default async function authFetch(
   options: AuthFetchOptions = {},
 ): Promise<Response> {
   const { noRedirect, onProgress, confirmed, ...fetchOpts } = options;
+  const useBearer = shouldUseBearerAuth();
   const getToken = getCsrfToken;
   const saveToken = setCsrfToken;
   const headers: Record<string, string> = { ...(fetchOpts.headers || {}) };
@@ -216,6 +223,14 @@ export default async function authFetch(
   if (confirmed && !headers['X-Confirmed-Action']) {
     headers['X-Confirmed-Action'] = 'true';
   }
+
+  if (useBearer) {
+    const accessToken = getAccessToken();
+    if (accessToken) {
+      headers.Authorization = `Bearer ${accessToken}`;
+    }
+  }
+
   let token = getToken();
   if (isProfileRequest && unavailablePaths.has(PROFILE_PATH)) {
     return new Response(null, {
@@ -223,13 +238,14 @@ export default async function authFetch(
       statusText: 'Not Found',
     });
   }
-  if (!token && !unavailablePaths.has(CSRF_PATH)) {
+  if (!useBearer && !token && !unavailablePaths.has(CSRF_PATH)) {
     token = await fetchCsrfToken();
     if (token) {
       saveToken(token);
     }
   }
-  if (token) headers['X-XSRF-TOKEN'] = token;
+  if (!useBearer && token) headers['X-XSRF-TOKEN'] = token;
+
   const opts: FetchOptions = { ...fetchOpts, credentials: 'include', headers };
   let res = await sendRequest(url, opts, onProgress);
   if (res.status === 404 && isProfileRequest) {
@@ -237,7 +253,7 @@ export default async function authFetch(
   } else if (isProfileRequest && res.ok) {
     unavailablePaths.delete(PROFILE_PATH);
   }
-  if (res.status === 403 && !unavailablePaths.has(CSRF_PATH)) {
+  if (!useBearer && res.status === 403 && !unavailablePaths.has(CSRF_PATH)) {
     if (opts.body) {
       try {
         if (
@@ -273,10 +289,23 @@ export default async function authFetch(
         credentials: 'include',
       });
       if (r.ok) {
+        if (useBearer) {
+          const data = (await r.json().catch(() => ({}))) as {
+            accessToken?: string;
+          };
+          if (data.accessToken) {
+            setAccessToken(data.accessToken);
+            headers.Authorization = `Bearer ${data.accessToken}`;
+          } else {
+            clearAccessToken();
+          }
+        }
         res = await sendRequest(url, opts, onProgress);
       }
     } catch {
-      /* игнорируем */
+      if (useBearer) {
+        clearAccessToken();
+      }
     }
   }
   if (res.status === 403) {

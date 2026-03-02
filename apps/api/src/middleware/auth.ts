@@ -2,6 +2,7 @@
 // Модули: express, api/middleware
 import type { RequestHandler } from 'express';
 import { verifyToken } from '../api/middleware';
+import { authBearerEnabled } from '../config';
 import type { RequestWithUser } from '../types/request';
 
 interface AuthMiddlewareOptions {
@@ -12,7 +13,8 @@ export default function authMiddleware(
   options: AuthMiddlewareOptions = {},
 ): RequestHandler {
   return (req, res, next) => {
-    if (options.bearerOnly) {
+    const bearerOnly = options.bearerOnly ?? authBearerEnabled;
+    if (bearerOnly) {
       const authHeader = req.headers.authorization;
       if (!authHeader || !authHeader.startsWith('Bearer ')) {
         res.status(401).json({

@@ -28,7 +28,9 @@ export default function initCustomAdmin(app: Express): void {
     next();
   });
 
-  router.use(authMiddleware());
+  // Навигация в SPA (/cp, /mg) не может отправить Authorization заголовок,
+  // поэтому здесь обязательно разрешаем cookie-авторизацию даже в bearer-режиме API.
+  router.use(authMiddleware({ bearerOnly: false }));
   router.use((req: RequestWithUser, res: Response, next: NextFunction) => {
     if (req.user?.role === 'manager' || req.user?.role === 'admin')
       return next();

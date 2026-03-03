@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '../context/useToast';
+import { useAuth } from '../context/useAuth';
+import { getProfile } from '../services/auth';
 import authFetch from '../utils/authFetch';
 import { setAccessToken, shouldUseBearerAuth } from '../lib/auth';
 
@@ -15,7 +17,9 @@ export default function CodeLogin() {
   const [mode, setMode] = useState<LoginMode>('telegram');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const { addToast } = useToast();
+  const { setUser } = useAuth();
   const [params] = useSearchParams();
   const expired = params.get('expired');
 
@@ -67,31 +71,41 @@ export default function CodeLogin() {
 
   async function loginWithPassword(e?: React.FormEvent) {
     e?.preventDefault();
+    if (isSubmitting) return;
+    setIsSubmitting(true);
     const endpoint = shouldUseBearerAuth()
       ? '/api/v1/auth/login'
       : '/api/v1/auth/login_password';
-    const res = await authFetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
-      noRedirect: true,
-    });
+    try {
+      const res = await authFetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password }),
+        noRedirect: true,
+      });
 
-    if (res.ok) {
-      if (shouldUseBearerAuth()) {
-        const data = (await res.json().catch(() => ({}))) as {
-          accessToken?: string;
-          token?: string;
-        };
-        const nextToken = data.accessToken || data.token;
-        if (nextToken) {
-          setAccessToken(nextToken);
+      if (res.ok) {
+        if (shouldUseBearerAuth()) {
+          const data = (await res.json().catch(() => ({}))) as {
+            accessToken?: string;
+            token?: string;
+          };
+          const nextToken = data.accessToken || data.token;
+          if (nextToken) {
+            setAccessToken(nextToken);
+          }
         }
+        const profile = await getProfile({ noRedirect: true });
+        setUser(profile);
+        navigate('/requests', { replace: true });
+        return;
       }
-      navigate('/requests', { replace: true });
-      return;
+      addToast('Неверный логин или пароль', 'error');
+    } catch {
+      addToast('Не удалось выполнить вход', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
-    addToast('Неверный логин или пароль', 'error');
   }
 
   if (mode === 'password') {
@@ -128,9 +142,10 @@ export default function CodeLogin() {
         />
         <button
           type="submit"
+          disabled={isSubmitting}
           className="min-h-[var(--touch-target)] rounded-[var(--radius)] bg-[var(--color-primary)] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--color-primary-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-400)]"
         >
-          Войти
+          {isSubmitting ? 'Вход...' : 'Войти'}
         </button>
       </form>
     );

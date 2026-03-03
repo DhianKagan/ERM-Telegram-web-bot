@@ -4,7 +4,6 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useSearchParams } from 'react-router-dom';
 import {
-  ArrowTopRightOnSquareIcon,
   ArrowDownTrayIcon,
   DocumentIcon,
   DocumentTextIcon,
@@ -231,6 +230,13 @@ export default function StoragePage() {
         setS3HealthLoading(false);
       });
   }, [t]);
+
+  const handleOpenS3Browser = React.useCallback(() => {
+    if (location.pathname.startsWith('/browser/erm-files')) {
+      return;
+    }
+    window.open('/browser/erm-files', '_blank', 'noopener,noreferrer');
+  }, [location.pathname]);
 
   const handleSearchSubmit = React.useCallback(() => {
     setSearch((value) => value.trim());
@@ -749,6 +755,15 @@ export default function StoragePage() {
               type="button"
               variant="outline"
               className="self-start border-amber-400 text-amber-900 hover:bg-amber-100"
+              onClick={handleOpenS3Browser}
+              disabled={location.pathname.startsWith('/browser/erm-files')}
+            >
+              {t('storage.openS3Browser')}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              className="self-start border-amber-400 text-amber-900 hover:bg-amber-100"
               disabled={diagnosticsLoading}
               onClick={() => {
                 void handleDiagnostics();
@@ -1025,24 +1040,6 @@ export default function StoragePage() {
                 >
                   <RectangleStackIcon className="mr-2 size-4" />
                   {t('storage.openInlinePreview')}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => {
-                    if (location.pathname.startsWith('/browser/erm-files')) {
-                      return;
-                    }
-                    window.open(
-                      '/browser/erm-files',
-                      '_blank',
-                      'noopener,noreferrer',
-                    );
-                  }}
-                  disabled={location.pathname.startsWith('/browser/erm-files')}
-                >
-                  <ArrowTopRightOnSquareIcon className="mr-2 size-4" />
-                  {t('storage.openS3Browser')}
                 </Button>
                 <Button
                   type="button"

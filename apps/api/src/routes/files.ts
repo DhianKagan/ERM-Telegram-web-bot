@@ -349,7 +349,7 @@ router.post(
 
 router.get(
   '/:id',
-  authMiddleware(),
+  authMiddleware({ bearerOnly: false }),
   param('id').isMongoId() as unknown as RequestHandler,
   async (req: RequestWithUser, res, next) => {
     try {
@@ -457,7 +457,7 @@ router.get(
 
 router.delete(
   '/:id',
-  authMiddleware(),
+  authMiddleware({ bearerOnly: false }),
   param('id').isMongoId() as unknown as RequestHandler,
   async (req: RequestWithUser, res, next) => {
     try {

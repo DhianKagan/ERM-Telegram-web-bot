@@ -37,6 +37,7 @@ const MAPS_URL_PATTERNS = [
 const ALLOWED_MAPS_HOSTS = new Set([
   'goo.gl',
   'maps.app.goo.gl',
+  'google.com',
   'maps.google.com',
   'www.google.com',
 ]);
@@ -45,7 +46,11 @@ const isAllowedMapsHost = (host: string): boolean => {
   if (ALLOWED_MAPS_HOSTS.has(host)) {
     return true;
   }
-  return host.startsWith('maps.google.') || host.startsWith('www.google.');
+  return (
+    host.startsWith('maps.google.') ||
+    host.startsWith('www.google.') ||
+    host.startsWith('google.')
+  );
 };
 
 const assertSafeMapsUrl = async (urlObj: URL): Promise<void> => {
@@ -94,8 +99,10 @@ const decodeMapsUrlCandidate = (candidate: string): string | null => {
     const parsed = new URL(current);
     const host = parsed.hostname.toLowerCase();
     const isMapsHost =
+      host === 'google.com' ||
       host === 'maps.google.com' ||
       host.startsWith('maps.google.') ||
+      host.startsWith('google.') ||
       host.startsWith('www.google.');
     if (!isMapsHost) {
       return null;

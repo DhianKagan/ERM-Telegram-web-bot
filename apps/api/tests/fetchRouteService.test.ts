@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports */
 // Назначение: автотесты. Модули: jest, supertest.
 // Тест сервиса fetchRoute
 process.env.NODE_ENV = 'test';
@@ -10,8 +11,18 @@ process.env.APP_URL = 'https://localhost';
 const { stopScheduler } = require('../src/services/scheduler');
 const { stopQueue } = require('../src/services/messageQueue');
 
-jest.mock('../../web/src/utils/authFetch');
+jest.mock('../../web/src/utils/authFetch', () => ({
+  __esModule: true,
+  default: jest.fn(),
+}));
 const authFetch = require('../../web/src/utils/authFetch').default;
+
+jest.mock('../../web/src/lib/auth', () => ({
+  clearAccessToken: jest.fn(),
+  getAccessToken: () => null,
+  setAccessToken: jest.fn(),
+  shouldUseBearerAuth: () => false,
+}));
 
 const { fetchRoute } = require('../../web/src/services/route');
 

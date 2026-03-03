@@ -3,6 +3,10 @@
 // Основные модули: React, @testing-library/react.
 import '@testing-library/jest-dom';
 import React from 'react';
+
+jest.mock('../apps/web/src/services/auth', () => ({
+  refresh: jest.fn().mockResolvedValue(undefined),
+}));
 import { render } from '@testing-library/react';
 import ProtectedRoute from '../apps/web/src/components/ProtectedRoute';
 import AdminRoute from '../apps/web/src/components/AdminRoute';

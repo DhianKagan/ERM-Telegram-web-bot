@@ -1,6 +1,13 @@
 /** @jest-environment jsdom */
 // Назначение: unit-тесты для authFetch
 // Основные модули: jest, authFetch, Response
+jest.mock('../apps/web/src/lib/auth', () => ({
+  clearAccessToken: jest.fn(),
+  getAccessToken: () => null,
+  setAccessToken: jest.fn(),
+  shouldUseBearerAuth: () => false,
+}));
+
 import authFetch from '../apps/web/src/utils/authFetch';
 
 jest.mock('../apps/web/src/utils/csrfToken', () => ({
@@ -10,7 +17,7 @@ jest.mock('../apps/web/src/utils/csrfToken', () => ({
 
 function makeResponse(
   status: number,
-  body: any = null,
+  body: unknown = null,
   jsonFn?: jest.Mock,
 ): Response {
   const json = jsonFn || jest.fn().mockResolvedValue(body);

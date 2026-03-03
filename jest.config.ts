@@ -20,6 +20,7 @@ const config: Config = {
     '^shared/(.*)$': '<rootDir>/packages/shared/src/$1',
     '^@erm/utils$': '<rootDir>/packages/utils/src',
     '^@erm/utils/(.*)$': '<rootDir>/packages/utils/src/$1',
+    '^../lib/auth$': '<rootDir>/tests/mocks/webAuth.ts',
   },
   setupFiles: [
     '<rootDir>/tests/setupMongoMemoryServer.ts',

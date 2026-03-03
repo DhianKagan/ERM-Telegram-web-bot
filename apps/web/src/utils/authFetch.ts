@@ -28,6 +28,21 @@ const CSRF_PATH = '/api/v1/csrf';
 const PROFILE_PATH = '/api/v1/auth/profile';
 let csrfRequest: Promise<string | null> | null = null;
 
+async function hasBearerDetail(res: Response): Promise<boolean> {
+  const contentType = res.headers.get('content-type')?.toLowerCase() || '';
+  if (!contentType.includes('application/json')) {
+    return false;
+  }
+  const payload = (await res
+    .clone()
+    .json()
+    .catch(() => null)) as { detail?: unknown } | null;
+  if (!payload || typeof payload.detail !== 'string') {
+    return false;
+  }
+  return payload.detail.toLowerCase().includes('bearer');
+}
+
 interface FetchOptions extends globalThis.RequestInit {
   headers?: Record<string, string>;
   body?: globalThis.BodyInit | null;
@@ -248,6 +263,7 @@ export default async function authFetch(
 
   const opts: FetchOptions = { ...fetchOpts, credentials: 'include', headers };
   let res = await sendRequest(url, opts, onProgress);
+  let skipExpiredRedirect = false;
   if (res.status === 404 && isProfileRequest) {
     unavailablePaths.add(PROFILE_PATH);
   } else if (isProfileRequest && res.ok) {
@@ -289,20 +305,29 @@ export default async function authFetch(
         credentials: 'include',
       });
       if (r.ok) {
-        if (useBearer) {
-          const data = (await r.json().catch(() => ({}))) as {
-            accessToken?: string;
-            token?: string;
-          };
-          const nextToken = data.accessToken || data.token;
-          if (nextToken) {
-            setAccessToken(nextToken);
-            headers.Authorization = `Bearer ${nextToken}`;
-          } else {
-            clearAccessToken();
-          }
+        const data = (await r.json().catch(() => ({}))) as {
+          accessToken?: string;
+          token?: string;
+        };
+        const nextToken = data.accessToken || data.token;
+        if (nextToken) {
+          setAccessToken(nextToken);
+          headers.Authorization = `Bearer ${nextToken}`;
+        } else if (useBearer) {
+          clearAccessToken();
         }
         res = await sendRequest(url, opts, onProgress);
+        if (
+          isProfileRequest &&
+          res.status === 401 &&
+          (await hasBearerDetail(res))
+        ) {
+          showToast(
+            'Ошибка конфигурации окружения: backend требует Bearer для /api/v1/auth/profile.',
+            'error',
+          );
+          skipExpiredRedirect = true;
+        }
       }
     } catch {
       if (useBearer) {
@@ -313,7 +338,7 @@ export default async function authFetch(
   if (res.status === 403) {
     showToast('Недостаточно прав', 'error');
   }
-  if (res.status === 401 && !noRedirect) {
+  if (res.status === 401 && !noRedirect && !skipExpiredRedirect) {
     window.location.href = '/login?expired=1';
   }
   return res;

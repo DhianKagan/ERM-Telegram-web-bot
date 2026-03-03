@@ -1120,11 +1120,10 @@ async function ensureUserCanUpdateTask(
     const isAllowed =
       (assignedUserId !== null && assignedUserId === userId) ||
       assignees.includes(userId);
-    const kind = detectTaskKind(task);
     const creatorId = Number(task.created_by);
     const isCreator = Number.isFinite(creatorId) && creatorId === userId;
     const allowCreatorCancellation =
-      options.targetStatus === 'Отменена' && kind === 'request' && isCreator;
+      options.targetStatus === 'Отменена' && isCreator;
     if (hasAssignments && !isAllowed && !allowCreatorCancellation) {
       await ctx.answerCbQuery(messages.taskAssignmentRequired, {
         show_alert: true,

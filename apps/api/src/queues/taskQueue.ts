@@ -171,6 +171,34 @@ const waitForResult = async <T>(
   };
 
   try {
+    const workersCount = await queue.getWorkersCount();
+    if (workersCount <= 0) {
+      const error = new Error(`Для очереди ${queueName} нет активных воркеров`);
+      console.warn('Пропускаем ожидание результата задачи BullMQ', {
+        queue: queueName,
+        job: jobName,
+        jobId: job.id,
+        reason: error.message,
+      });
+      observeWait('failed');
+      bullmqJobsProcessedTotal.inc({
+        queue: queueName,
+        job: jobName,
+        status: 'failed',
+        error_class: normalizeBullMqErrorClass(error),
+      });
+      return fallback();
+    }
+  } catch (error) {
+    console.warn('Не удалось определить количество воркеров BullMQ', {
+      queue: queueName,
+      job: jobName,
+      jobId: job.id,
+      error,
+    });
+  }
+
+  try {
     const result = await job.waitUntilFinished(
       events,
       queueConfig.jobTimeoutMs,

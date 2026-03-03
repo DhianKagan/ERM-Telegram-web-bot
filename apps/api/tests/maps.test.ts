@@ -51,6 +51,26 @@ test('expandMapsUrl возвращает полный url', async () => {
   expect(text).not.toHaveBeenCalled();
 });
 
+test('expandMapsUrl принимает редирект на google.com/maps', async () => {
+  const text = jest.fn();
+  global.fetch = jest
+    .fn()
+    .mockResolvedValueOnce({
+      status: 302,
+      headers: new Headers({
+        location: 'https://google.com/maps/@46.3877422,30.7065156,17z',
+      }),
+    })
+    .mockResolvedValueOnce({
+      status: 200,
+      headers: new Headers(),
+      text,
+    });
+  const res = await expandMapsUrl('https://maps.app.goo.gl/test');
+  expect(res).toBe('https://google.com/maps/@46.3877422,30.7065156,17z');
+  expect(text).not.toHaveBeenCalled();
+});
+
 test('expandMapsUrl нормализует ссылку статической карты', async () => {
   global.fetch = jest
     .fn()
@@ -106,6 +126,20 @@ test('expandMapsUrl парсит экранированную ссылку из 
   const res = await expandMapsUrl('https://maps.app.goo.gl/test');
   expect(res).toBe(
     'https://www.google.com/maps/place/Point/@48.123456,30.654321,17z?entry=ttu',
+  );
+});
+
+test('expandMapsUrl парсит ссылку google.com/maps из html-ответа', async () => {
+  const html =
+    '<html><head><link rel="canonical" href="https://google.com/maps/place/Point/@46.3877422,30.7065156,17z" /></head></html>';
+  global.fetch = jest.fn().mockResolvedValue({
+    status: 200,
+    headers: new Headers(),
+    text: jest.fn().mockResolvedValue(html),
+  });
+  const res = await expandMapsUrl('https://maps.app.goo.gl/test');
+  expect(res).toBe(
+    'https://google.com/maps/place/Point/@46.3877422,30.7065156,17z',
   );
 });
 

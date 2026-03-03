@@ -148,6 +148,34 @@ describe('authFetch', () => {
     expect(taskCalls).toHaveLength(2);
   });
 
+  it('в bearer-режиме принимает legacy token из refresh-ответа', async () => {
+    process.env.VITE_AUTH_BEARER_ENABLED = 'true';
+    const { setAccessToken } = await import('../lib/auth');
+    setAccessToken('expired-token');
+
+    const fetchMock = globalThis.fetch as jest.MockedFunction<
+      typeof globalThis.fetch
+    >;
+    fetchMock
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ token: 'legacy-token' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 200 }));
+
+    const authFetch = await loadAuthFetch();
+    const res = await authFetch('/api/v1/tasks', { noRedirect: true });
+
+    expect(res.status).toBe(200);
+    const retryHeaders = fetchMock.mock.calls[2][1] as RequestInit;
+    expect((retryHeaders.headers as Record<string, string>).Authorization).toBe(
+      'Bearer legacy-token',
+    );
+  });
+
   it('в bearer-режиме отправляет Authorization и обновляет access после refresh', async () => {
     process.env.VITE_AUTH_BEARER_ENABLED = 'true';
     const { setAccessToken } = await import('../lib/auth');

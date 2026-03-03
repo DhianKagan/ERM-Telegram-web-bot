@@ -292,10 +292,12 @@ export default async function authFetch(
         if (useBearer) {
           const data = (await r.json().catch(() => ({}))) as {
             accessToken?: string;
+            token?: string;
           };
-          if (data.accessToken) {
-            setAccessToken(data.accessToken);
-            headers.Authorization = `Bearer ${data.accessToken}`;
+          const nextToken = data.accessToken || data.token;
+          if (nextToken) {
+            setAccessToken(nextToken);
+            headers.Authorization = `Bearer ${nextToken}`;
           } else {
             clearAccessToken();
           }

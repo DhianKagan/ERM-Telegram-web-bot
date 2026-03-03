@@ -34,10 +34,12 @@
 
 ## Smoke-checklist
 
-1. Войти сервисным аккаунтом (`/api/v1/auth/login`).
-2. Открыть защищённый раздел и убедиться, что запросы уходят с `Authorization`.
-3. Принудительно получить `401` (истёкший access), проверить автоматический `refresh`.
-4. Выйти (`/api/v1/auth/logout`) и убедиться, что refresh-cookie очищен.
+1. Проверить env parity в Railway перед деплоем: `AUTH_BEARER_ENABLED == VITE_AUTH_BEARER_ENABLED` (оба `true`/`1`).
+2. Убедиться, что после обновления env пересобран/перезапущен сервис с web-сборкой. Если `api` и `web` разнесены — перезапустить **оба** (`api`, `web`); если это один Railway-сервис — достаточно одного redeploy/restart.
+3. Открыть `/login`, пройти `send_code` + `verify_code`.
+4. Проверить в DevTools Network, что `GET /api/v1/auth/profile` уходит с заголовком `Authorization: Bearer <accessToken>`.
+5. Принудительно получить `401` (истёкший access), проверить автоматический `refresh`.
+6. Выйти (`/api/v1/auth/logout`) и убедиться, что refresh-cookie очищен.
 
 ## Rollback
 

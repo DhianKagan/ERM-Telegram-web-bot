@@ -1,6 +1,6 @@
 // Страница входа через код подтверждения или логин/пароль
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '../context/useToast';
 import authFetch from '../utils/authFetch';
 import { setAccessToken, shouldUseBearerAuth } from '../lib/auth';
@@ -8,6 +8,7 @@ import { setAccessToken, shouldUseBearerAuth } from '../lib/auth';
 type LoginMode = 'telegram' | 'password';
 
 export default function CodeLogin() {
+  const navigate = useNavigate();
   const [telegramId, setTelegramId] = useState('');
   const [code, setCode] = useState('');
   const [sent, setSent] = useState(false);
@@ -51,12 +52,14 @@ export default function CodeLogin() {
       if (shouldUseBearerAuth()) {
         const data = (await res.json().catch(() => ({}))) as {
           accessToken?: string;
+          token?: string;
         };
-        if (data.accessToken) {
-          setAccessToken(data.accessToken);
+        const nextToken = data.accessToken || data.token;
+        if (nextToken) {
+          setAccessToken(nextToken);
         }
       }
-      window.location.href = '/requests';
+      navigate('/requests', { replace: true });
     } else {
       addToast('Неверный код', 'error');
     }
@@ -78,12 +81,14 @@ export default function CodeLogin() {
       if (shouldUseBearerAuth()) {
         const data = (await res.json().catch(() => ({}))) as {
           accessToken?: string;
+          token?: string;
         };
-        if (data.accessToken) {
-          setAccessToken(data.accessToken);
+        const nextToken = data.accessToken || data.token;
+        if (nextToken) {
+          setAccessToken(nextToken);
         }
       }
-      window.location.href = '/requests';
+      navigate('/requests', { replace: true });
       return;
     }
     addToast('Неверный логин или пароль', 'error');

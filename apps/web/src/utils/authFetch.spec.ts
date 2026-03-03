@@ -207,4 +207,70 @@ describe('authFetch', () => {
       'Bearer fresh-token',
     );
   });
+
+  it('в cookie-режиме добавляет Authorization на retry, если refresh вернул accessToken', async () => {
+    process.env.VITE_AUTH_BEARER_ENABLED = 'false';
+
+    const fetchMock = globalThis.fetch as jest.MockedFunction<
+      typeof globalThis.fetch
+    >;
+    fetchMock
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ accessToken: 'fresh-token' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 200 }));
+
+    const authFetch = await loadAuthFetch();
+    const res = await authFetch('/api/v1/auth/profile', { noRedirect: true });
+
+    expect(res.status).toBe(200);
+    const firstHeaders = fetchMock.mock.calls[0][1] as RequestInit;
+    expect(
+      (firstHeaders.headers as Record<string, string>).Authorization,
+    ).toBeUndefined();
+    const retryHeaders = fetchMock.mock.calls[2][1] as RequestInit;
+    expect((retryHeaders.headers as Record<string, string>).Authorization).toBe(
+      'Bearer fresh-token',
+    );
+  });
+
+  it('показывает toast о конфигурации, если profile после refresh снова возвращает Bearer-401', async () => {
+    process.env.VITE_AUTH_BEARER_ENABLED = 'false';
+
+    const fetchMock = globalThis.fetch as jest.MockedFunction<
+      typeof globalThis.fetch
+    >;
+    fetchMock
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ accessToken: 'fresh-token' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            detail: 'Not authenticated: Bearer token required',
+          }),
+          {
+            status: 401,
+            headers: { 'Content-Type': 'application/json' },
+          },
+        ),
+      );
+
+    const authFetch = await loadAuthFetch();
+    const res = await authFetch('/api/v1/auth/profile', { noRedirect: true });
+
+    expect(res.status).toBe(401);
+    expect(showToastMock).toHaveBeenCalledWith(
+      'Ошибка конфигурации окружения: backend требует Bearer для /api/v1/auth/profile.',
+      'error',
+    );
+  });
 });

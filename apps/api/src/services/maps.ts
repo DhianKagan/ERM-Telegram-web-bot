@@ -53,6 +53,22 @@ const isAllowedMapsHost = (host: string): boolean => {
   );
 };
 
+const isTransientMapsFetchError = (error: unknown): boolean => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const networkCodes = ['ENETUNREACH', 'EAI_AGAIN', 'ETIMEDOUT', 'ECONNRESET'];
+  const code =
+    (error as Error & { code?: unknown }).code ??
+    (error as Error & { cause?: { code?: unknown } }).cause?.code;
+  if (typeof code === 'string' && networkCodes.includes(code)) {
+    return true;
+  }
+
+  return error.message.toLowerCase().includes('fetch failed');
+};
+
 const assertSafeMapsUrl = async (urlObj: URL): Promise<void> => {
   if (urlObj.protocol !== 'https:') {
     throw new Error('Недопустимый протокол URL');
@@ -219,7 +235,20 @@ export async function expandMapsUrl(shortUrl: string): Promise<string> {
     throw new Error('Слишком много редиректов');
   };
 
-  const { res, finalUrl } = await fetchWithSafeRedirects(urlObj);
+  let res: Response;
+  let finalUrl: URL;
+
+  try {
+    const expanded = await fetchWithSafeRedirects(urlObj);
+    res = expanded.res;
+    finalUrl = expanded.finalUrl;
+  } catch (error) {
+    if (isTransientMapsFetchError(error)) {
+      return normalizeMapsUrl(urlObj.toString());
+    }
+    throw error;
+  }
+
   const finalUrlString = normalizeMapsUrl(finalUrl.toString());
   if (hasCoordsInUrl(finalUrlString)) {
     return finalUrlString;

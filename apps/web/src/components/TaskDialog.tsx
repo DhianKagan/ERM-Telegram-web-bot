@@ -737,6 +737,8 @@ const resolveLocationLink = async (
   let resolved = sanitized;
   let coords = extractCoords(resolved);
   let title = parseGoogleAddress(resolved);
+  const isFallbackTitle = (candidate: string): boolean =>
+    candidate.trim() === 'Точка на карте';
 
   const shouldSearchByTitle = (candidate: string): boolean => {
     const trimmed = candidate.trim();
@@ -786,6 +788,9 @@ const resolveLocationLink = async (
   }
   if (!coords) {
     coords = await resolveCoordsByTitle(title);
+  }
+  if (coords && isFallbackTitle(title)) {
+    title = formatCoords(coords);
   }
   return {
     link,

@@ -232,10 +232,13 @@ export default function StoragePage() {
   }, [t]);
 
   const handleOpenS3Browser = React.useCallback(() => {
-    if (location.pathname.startsWith('/browser/erm-files')) {
+    if (
+      location.pathname.startsWith('/cp/storage') ||
+      location.pathname.startsWith('/browser/erm-files')
+    ) {
       return;
     }
-    window.open('/browser/erm-files', '_blank', 'noopener,noreferrer');
+    window.open('/cp/storage', '_blank', 'noopener,noreferrer');
   }, [location.pathname]);
 
   const handleSearchSubmit = React.useCallback(() => {
@@ -756,7 +759,10 @@ export default function StoragePage() {
               variant="outline"
               className="self-start border-amber-400 text-amber-900 hover:bg-amber-100"
               onClick={handleOpenS3Browser}
-              disabled={location.pathname.startsWith('/browser/erm-files')}
+              disabled={
+                location.pathname.startsWith('/cp/storage') ||
+                location.pathname.startsWith('/browser/erm-files')
+              }
             >
               {t('storage.openS3Browser')}
             </Button>

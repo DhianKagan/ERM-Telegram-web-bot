@@ -32,7 +32,11 @@
     "ci:fast": "turbo run ci:fast",
     "ci:full": "turbo run ci:full",
     "railway:quick-validate": "./scripts/railway/quick_stack_validation.sh",
-    "debug:full-cycle": "node tools/debug/full_cycle_check.mjs"
+    "debug:full-cycle": "node tools/debug/full_cycle_check.mjs",
+    "deps:analyze": "./scripts/check_repo_deps.sh",
+    "deps:audit": "./scripts/audit_deps.sh",
+    "deps:update:browserslist": "pnpm --filter web run update:browserslist",
+    "deps:update:critical": "pnpm run deps:update:browserslist"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [

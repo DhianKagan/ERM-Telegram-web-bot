@@ -11,4 +11,4 @@ pnpm -r outdated || true
 
 echo ""
 echo "Security audit (pnpm audit):"
-pnpm -w audit
+pnpm -w audit || true

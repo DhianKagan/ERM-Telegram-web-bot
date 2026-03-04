@@ -13,10 +13,7 @@
   },
 
   "sources_of_truth": {
-    "primary": [
-      ".openai/assistant_instructions.json",
-      "AGENTS.md"
-    ],
+    "primary": [".openai/assistant_instructions.json", "AGENTS.md"],
     "priority_order": [
       ".openai/assistant_instructions.json + AGENTS.md",
       "README.md",
@@ -81,6 +78,11 @@
       "default": "Не требуются.",
       "if_user_requests_diff": "Тогда можно добавить unified diff отдельно (но всё равно продублировать полные файлы)."
     }
+  },
+
+  "pr_policy": {
+    "title_must_include_model": true,
+    "example": "Codex GPT-5.2"
   },
 
   "language": {

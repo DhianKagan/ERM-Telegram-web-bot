@@ -148,6 +148,8 @@ const trustedAttachmentHosts = new Set(
 const ALBUM_MESSAGE_DELAY_MS = 100;
 
 const REQUEST_TYPE_NAME = 'Заявка';
+const TEST_TASK_TYPE_NAME = 'Тест';
+const TEST_TASK_COMPLETION_DELAY_MS = 10_000;
 const TERMINAL_TASK_STATUSES: ReadonlySet<TaskDocument['status']> = new Set([
   'Выполнена',
   'Отменена',
@@ -3152,6 +3154,114 @@ export default class TasksController {
     await this.broadcastTaskSnapshot(task, creatorId, { action: 'создана' });
   }
 
+  private isTestTaskType(taskType: unknown): boolean {
+    return (
+      typeof taskType === 'string' &&
+      taskType.trim().toLowerCase() === TEST_TASK_TYPE_NAME.toLowerCase()
+    );
+  }
+
+  private resolveTestFlowUserId(
+    task: Partial<TaskDocument> & Record<string, unknown>,
+    fallbackUserId: number,
+  ): number {
+    const candidates: unknown[] = [];
+    if (Array.isArray(task.assignees)) {
+      candidates.push(...task.assignees);
+    }
+    candidates.push(task.assigned_user_id, task.created_by, fallbackUserId);
+    for (const candidate of candidates) {
+      const numeric = Number(candidate);
+      if (Number.isFinite(numeric) && numeric > 0) {
+        return numeric;
+      }
+    }
+    return fallbackUserId;
+  }
+
+  private async emulateInlineButtonPress(
+    callbackData: string,
+    actorId: number,
+    task: Partial<TaskDocument> & Record<string, unknown>,
+  ): Promise<boolean> {
+    const messageId = this.toMessageId(task.telegram_message_id);
+    const chatIdRaw = this.normalizeChatId(resolveGroupChatId());
+    const chatId = chatIdRaw ? Number.parseInt(chatIdRaw, 10) : Number.NaN;
+    if (!Number.isFinite(messageId) || !Number.isFinite(chatId)) {
+      return false;
+    }
+    const topicId = this.normalizeTopicId(task.telegram_topic_id);
+    const updateIdBase = Date.now();
+    await bot.handleUpdate({
+      update_id: updateIdBase,
+      callback_query: {
+        id: `autotest_${updateIdBase}_${randomBytes(3).toString('hex')}`,
+        from: {
+          id: actorId,
+          is_bot: false,
+          first_name: 'ERM Test',
+        },
+        chat_instance: `${chatId}`,
+        message: {
+          message_id: messageId,
+          date: Math.floor(updateIdBase / 1000),
+          chat: {
+            id: chatId,
+            type: chatId < 0 ? 'supergroup' : 'private',
+          },
+          ...(typeof topicId === 'number'
+            ? { message_thread_id: topicId }
+            : {}),
+        },
+        data: callbackData,
+      },
+    } as never);
+    return true;
+  }
+
+  private async runTestTaskFlow(taskId: string, fallbackUserId: number) {
+    try {
+      const currentRaw = await Task.findById(taskId);
+      const current = currentRaw
+        ? ((typeof currentRaw.toObject === 'function'
+            ? (currentRaw.toObject() as unknown)
+            : (currentRaw as unknown)) as Partial<TaskDocument> &
+            Record<string, unknown>)
+        : null;
+      if (!current || !this.isTestTaskType(current.task_type)) {
+        return;
+      }
+      const actorId = this.resolveTestFlowUserId(current, fallbackUserId);
+      const callbacks = [
+        `task_accept_prompt:${taskId}`,
+        `task_accept_confirm:${taskId}`,
+      ];
+      for (const callback of callbacks) {
+        await this.emulateInlineButtonPress(callback, actorId, current);
+      }
+      await delay(TEST_TASK_COMPLETION_DELAY_MS);
+      const refreshRaw = await Task.findById(taskId);
+      const refreshed = refreshRaw
+        ? ((typeof refreshRaw.toObject === 'function'
+            ? (refreshRaw.toObject() as unknown)
+            : (refreshRaw as unknown)) as Partial<TaskDocument> &
+            Record<string, unknown>)
+        : current;
+      const completionCallbacks = [
+        `task_done_prompt:${taskId}`,
+        `task_done_confirm:${taskId}`,
+      ];
+      for (const callback of completionCallbacks) {
+        await this.emulateInlineButtonPress(callback, actorId, refreshed);
+      }
+    } catch (error) {
+      console.error('Не удалось выполнить автоматический тестовый сценарий', {
+        taskId,
+        error,
+      });
+    }
+  }
+
   downloadPdf = async (req: RequestWithUser, res: Response) => {
     try {
       const filters = { ...(req.query as Record<string, unknown>) };
@@ -3400,12 +3510,31 @@ export default class TasksController {
       const normalizedTask = this.normalizeTaskResponse(task);
       res.status(201).json(normalizedTask);
       if (process.env.DISABLE_TASK_NOTIFICATIONS !== 'true') {
-        void this.notifyTaskCreated(task, actorId).catch((error) => {
-          console.error(
-            'Не удалось отправить уведомление о создании задачи',
-            error,
-          );
-        });
+        if (this.isTestTaskType(task.task_type)) {
+          void this.notifyTaskCreated(task, actorId)
+            .then(() =>
+              this.runTestTaskFlow(
+                String(
+                  (task._id as { toString?: () => string })?.toString?.() ??
+                    task._id,
+                ),
+                actorId,
+              ),
+            )
+            .catch((error) => {
+              console.error(
+                'Не удалось отправить уведомление о создании тестовой задачи',
+                error,
+              );
+            });
+        } else {
+          void this.notifyTaskCreated(task, actorId).catch((error) => {
+            console.error(
+              'Не удалось отправить уведомление о создании задачи',
+              error,
+            );
+          });
+        }
       }
     },
   ];

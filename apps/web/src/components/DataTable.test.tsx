@@ -99,7 +99,6 @@ describe('DataTable', () => {
     if (originalMatchMedia) {
       window.matchMedia = originalMatchMedia;
     } else {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       delete (window as any).matchMedia;
     }
   });

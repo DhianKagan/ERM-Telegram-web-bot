@@ -91,10 +91,7 @@ export function taskAcceptConfirmKeyboard(
   id: string,
 ): ReturnType<typeof Markup.inlineKeyboard> {
   const rows: InlineKeyboardMatrix = [
-    [
-      Markup.button.callback('Подтвердить', `task_accept_confirm:${id}`),
-      Markup.button.callback('Отмена', `task_accept_cancel:${id}`),
-    ],
+    [Markup.button.callback('Подтвердить', `task_accept_confirm:${id}`)],
   ];
   return ensureReplyMarkup(Markup.inlineKeyboard(rows), rows);
 }
@@ -103,10 +100,7 @@ export function taskDoneConfirmKeyboard(
   id: string,
 ): ReturnType<typeof Markup.inlineKeyboard> {
   const rows: InlineKeyboardMatrix = [
-    [
-      Markup.button.callback('Подтвердить', `task_done_confirm:${id}`),
-      Markup.button.callback('Отмена', `task_done_cancel:${id}`),
-    ],
+    [Markup.button.callback('Подтвердить', `task_done_confirm:${id}`)],
   ];
   return ensureReplyMarkup(Markup.inlineKeyboard(rows), rows);
 }
@@ -115,10 +109,7 @@ export function taskCancelConfirmKeyboard(
   id: string,
 ): ReturnType<typeof Markup.inlineKeyboard> {
   const rows: InlineKeyboardMatrix = [
-    [
-      Markup.button.callback('Подтвердить', `task_cancel_confirm:${id}`),
-      Markup.button.callback('Отмена', `task_cancel_cancel:${id}`),
-    ],
+    [Markup.button.callback('Подтвердить', `task_cancel_confirm:${id}`)],
   ];
   return ensureReplyMarkup(Markup.inlineKeyboard(rows), rows);
 }

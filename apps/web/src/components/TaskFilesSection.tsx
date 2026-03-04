@@ -243,7 +243,7 @@ export default function TaskFilesSection({
   );
 
   const rowActions = React.useCallback(
-    (file: StoredFile): SimpleTableAction<StoredFile>[] => [
+    (): SimpleTableAction<StoredFile>[] => [
       {
         id: 'download',
         label: t('storage.download'),

@@ -670,7 +670,7 @@ export default function TaskBoard() {
           );
           window.alert(t('taskSaveFailed'));
         }
-      } catch (error) {
+      } catch {
         setTasks((ts) =>
           ts.map((t) =>
             t._id === draggableId ? { ...t, status: prevStatus } : t,

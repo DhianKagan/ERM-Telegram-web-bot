@@ -404,21 +404,6 @@ const formatDurationBadge = (
   return segments.join(' ');
 };
 
-const getRussianPlural = (value: number, forms: [string, string, string]) => {
-  const absValue = Math.abs(value) % 100;
-  if (absValue >= 11 && absValue <= 14) {
-    return forms[2];
-  }
-  const lastDigit = absValue % 10;
-  if (lastDigit === 1) {
-    return forms[0];
-  }
-  if (lastDigit >= 2 && lastDigit <= 4) {
-    return forms[1];
-  }
-  return forms[2];
-};
-
 const getCountdownToneKey = (
   state: CountdownLikeState,
 ): keyof typeof countdownToneClassMap => {

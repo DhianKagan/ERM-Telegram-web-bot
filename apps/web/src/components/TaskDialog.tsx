@@ -39,7 +39,7 @@ import authFetch from '../utils/authFetch';
 import parseGoogleAddress from '../utils/parseGoogleAddress';
 import { validateURL } from '../utils/validation';
 import extractCoords from '../utils/extractCoords';
-import { expandLink, searchAddress } from '../services/maps';
+import { expandLink, reverseGeocode, searchAddress } from '../services/maps';
 import {
   ArrowPathIcon,
   DocumentTextIcon,
@@ -737,6 +737,8 @@ const resolveLocationLink = async (
   let resolved = sanitized;
   let coords = extractCoords(resolved);
   let title = parseGoogleAddress(resolved);
+  const isFallbackTitle = (candidate: string): boolean =>
+    candidate.trim() === 'Точка на карте';
 
   const shouldSearchByTitle = (candidate: string): boolean => {
     const trimmed = candidate.trim();
@@ -786,6 +788,16 @@ const resolveLocationLink = async (
   }
   if (!coords) {
     coords = await resolveCoordsByTitle(title);
+  }
+  if (coords && isFallbackTitle(title)) {
+    try {
+      const place = await reverseGeocode(coords);
+      const normalizedLabel =
+        typeof place?.label === 'string' ? place.label.trim() : '';
+      title = normalizedLabel || formatCoords(coords);
+    } catch {
+      title = formatCoords(coords);
+    }
   }
   return {
     link,

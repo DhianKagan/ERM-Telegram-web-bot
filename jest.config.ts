@@ -10,7 +10,6 @@ const config: Config = {
   roots: ['<rootDir>/tests', '<rootDir>/apps/api/tests'],
   testPathIgnorePatterns: [
     '<rootDir>/tests/e2e/',
-    '<rootDir>/tests/api/',
     '<rootDir>/tests/playwright/',
     '<rootDir>/apps/web/src/types/',
   ],

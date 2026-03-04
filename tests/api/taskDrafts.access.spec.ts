@@ -159,4 +159,13 @@ describe('Task drafts access', function () {
     assert.equal(fetchResponse.body.kind, 'request');
     assert.equal(fetchResponse.body.payload.title, 'demo');
   });
+
+  it('возвращает 204 для отсутствующего черновика', async () => {
+    const response = await request(app)
+      .get('/api/v1/task-drafts/task')
+      .set('Authorization', 'Bearer test-token');
+
+    assert.equal(response.status, 204);
+    assert.equal(response.text, '');
+  });
 });

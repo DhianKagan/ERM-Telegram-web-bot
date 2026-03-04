@@ -61,7 +61,7 @@ export default class TaskDraftsController {
       ? await this.service.getDraft(userId, kind)
       : null;
     if (!draft) {
-      res.status(404).json({ error: 'Черновик не найден' });
+      res.sendStatus(204);
       return;
     }
     res.json(mapDraft({ ...draft, userId }));

@@ -27,30 +27,27 @@ declare const beforeEach: (
 
 describe('GET /api/v1/files/:id?mode=inline', function () {
   let skipSuite = false;
-  jest.setTimeout(60000);
 
   let app: express.Express;
   let File: typeof import('../../apps/api/src/db/model').File;
   let uploadsDir: string;
 
   beforeAll(async function () {
-    jest.setTimeout(60000);
     const tempUploads = path.resolve(__dirname, '../tmp/uploads-inline');
     process.env.STORAGE_DIR = tempUploads;
     const uri = process.env.MONGO_DATABASE_URL;
     if (!uri) {
-      throw new Error('MONGO_DATABASE_URL не задан для files.inline.spec');
+      skipSuite = true;
+      console.warn('MONGO_DATABASE_URL не задан для files.inline.spec');
     }
     process.env.MONGO_DATABASE_URL = uri;
     delete process.env.MONGODB_URI;
     delete process.env.DATABASE_URL;
     try {
-      await mongoose.connect(uri);
+      await mongoose.connect(uri, { serverSelectionTimeoutMS: 5000 });
     } catch (error) {
       skipSuite = true;
-      console.warn('MongoDB недоступна, пропускаем files.inline.spec', {
-        error,
-      });
+      console.warn('MongoDB недоступна, пропускаем suite', { error });
       return;
     }
     ({ File } = await import('../../apps/api/src/db/model'));
@@ -63,16 +60,17 @@ describe('GET /api/v1/files/:id?mode=inline', function () {
     );
     app = express();
     app.use('/api/v1/files', filesRouter);
-  });
+  }, 60000);
 
   afterAll(async () => {
+    if (skipSuite) return;
     await mongoose.disconnect();
     if (uploadsDir) {
       await fs
         .rm(uploadsDir, { recursive: true, force: true })
         .catch(() => undefined);
     }
-  });
+  }, 60000);
 
   beforeEach(async () => {
     if (skipSuite) return;

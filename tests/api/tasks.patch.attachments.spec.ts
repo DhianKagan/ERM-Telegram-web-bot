@@ -29,7 +29,6 @@ import {
 
 describe('PATCH /api/v1/tasks/:id с вложениями', function () {
   let skipSuite = false;
-  jest.setTimeout(60000);
   let app: express.Express;
   let Task: typeof import('../../apps/api/src/db/model').Task;
   let File: typeof import('../../apps/api/src/db/model').File;
@@ -37,12 +36,13 @@ describe('PATCH /api/v1/tasks/:id с вложениями', function () {
   let updateTask: typeof import('../../apps/api/src/db/queries').updateTask;
 
   beforeAll(async function () {
-    jest.setTimeout(60000);
     const uri = process.env.MONGO_DATABASE_URL;
     if (!uri) {
-      throw new Error(
+      skipSuite = true;
+      console.warn(
         'MONGO_DATABASE_URL не задан для tasks.patch.attachments.spec',
       );
+      return;
     }
     process.env.MONGO_DATABASE_URL = uri;
     delete process.env.MONGODB_URI;
@@ -50,13 +50,10 @@ describe('PATCH /api/v1/tasks/:id с вложениями', function () {
     process.env.SESSION_SECRET ||= 'test-session-secret';
 
     try {
-      await mongoose.connect(uri);
+      await mongoose.connect(uri, { serverSelectionTimeoutMS: 5000 });
     } catch (error) {
       skipSuite = true;
-      console.warn(
-        'MongoDB недоступна, пропускаем tasks.patch.attachments.spec',
-        { error },
-      );
+      console.warn('MongoDB недоступна, пропускаем suite', { error });
       return;
     }
     const models = await import('../../apps/api/src/db/model');
@@ -79,12 +76,12 @@ describe('PATCH /api/v1/tasks/:id с вложениями', function () {
         res.status(500).json({ error: (error as Error).message });
       }
     });
-  });
+  }, 60000);
 
   afterAll(async () => {
     if (skipSuite) return;
     await mongoose.disconnect();
-  });
+  }, 60000);
 
   beforeEach(async () => {
     if (skipSuite) return;

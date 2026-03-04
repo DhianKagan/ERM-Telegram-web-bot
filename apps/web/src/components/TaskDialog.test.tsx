@@ -572,4 +572,93 @@ describe('TaskDialog', () => {
       'https://maps.app.goo.gl/xsiC9fHdunCcifQF6',
     );
   });
+
+  it('показывает координаты для ссылки Google Maps через поиск адреса', async () => {
+    authFetchMock.mockImplementation((url: string) => {
+      if (url === '/api/v1/maps/expand') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            url: 'https://www.google.com/maps/search/?api=1&query=%D0%9D%D0%BE%D0%B2%D0%B0+%D0%9F%D0%BE%D1%88%D1%82%D0%B0.+%D0%92%D0%B0%D0%BD%D1%82%D0%B0%D0%B6%D0%BD%D0%B5+%D0%B2%D1%96%D0%B4%D0%B4%D1%96%D0%BB%D0%B5%D0%BD%D0%BD%D1%8F+%E2%84%964+%D0%9E%D0%B4%D0%B5%D1%81%D0%B0',
+            coords: null,
+          }),
+        });
+      }
+      if (url.startsWith('/api/v1/maps/search?')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            items: [
+              {
+                id: 'n1',
+                label: 'Нова Пошта',
+                lat: '46.46966',
+                lon: '30.731809',
+              },
+            ],
+          }),
+        });
+      }
+      return defaultAuthFetch(url);
+    });
+
+    render(
+      <MemoryRouter>
+        <TaskDialog onClose={() => {}} id="1" />
+      </MemoryRouter>,
+    );
+
+    const logisticsToggle = await screen.findByRole('checkbox', {
+      name: 'logisticsToggle',
+    });
+    fireEvent.click(logisticsToggle);
+
+    const startInput = await screen.findByPlaceholderText('googleMapsLink');
+    fireEvent.change(startInput, {
+      target: { value: 'https://maps.app.goo.gl/z99o4ZgU9mEvhqqm9' },
+    });
+
+    expect(
+      await screen.findByDisplayValue('46.469660, 30.731809'),
+    ).toBeTruthy();
+    expect(authFetchMock).toHaveBeenCalledWith(
+      expect.stringMatching(/^\/api\/v1\/maps\/search\?/),
+      expect.objectContaining({ method: 'GET' }),
+    );
+  });
+
+  it('не показывает координаты, если поиск адреса не дал результат', async () => {
+    authFetchMock.mockImplementation((url: string) => {
+      if (url === '/api/v1/maps/expand') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            url: 'https://www.google.com/maps/search/?api=1&query=%D0%9D%D0%BE%D0%B2%D0%B0+%D0%9F%D0%BE%D1%88%D1%82%D0%B0.+%D0%92%D0%B0%D0%BD%D1%82%D0%B0%D0%B6%D0%BD%D0%B5+%D0%B2%D1%96%D0%B4%D0%B4%D1%96%D0%BB%D0%B5%D0%BD%D0%BD%D1%8F+%E2%84%964+%D0%9E%D0%B4%D0%B5%D1%81%D0%B0',
+            coords: null,
+          }),
+        });
+      }
+      if (url.startsWith('/api/v1/maps/search?')) {
+        return Promise.resolve({ ok: true, json: async () => ({ items: [] }) });
+      }
+      return defaultAuthFetch(url);
+    });
+
+    render(
+      <MemoryRouter>
+        <TaskDialog onClose={() => {}} id="1" />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(
+      await screen.findByRole('checkbox', { name: 'logisticsToggle' }),
+    );
+    fireEvent.change(await screen.findByPlaceholderText('googleMapsLink'), {
+      target: { value: 'https://maps.app.goo.gl/z99o4ZgU9mEvhqqm9' },
+    });
+
+    await waitFor(() => {
+      expect(screen.queryByDisplayValue('46.469660, 30.731809')).toBeNull();
+    });
+  });
 });

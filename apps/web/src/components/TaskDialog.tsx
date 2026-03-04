@@ -39,7 +39,7 @@ import authFetch from '../utils/authFetch';
 import parseGoogleAddress from '../utils/parseGoogleAddress';
 import { validateURL } from '../utils/validation';
 import extractCoords from '../utils/extractCoords';
-import { expandLink } from '../services/maps';
+import { expandLink, searchAddress } from '../services/maps';
 import {
   ArrowPathIcon,
   DocumentTextIcon,
@@ -736,6 +736,30 @@ const resolveLocationLink = async (
   let link = sanitized;
   let resolved = sanitized;
   let coords = extractCoords(resolved);
+  let title = parseGoogleAddress(resolved);
+
+  const shouldSearchByTitle = (candidate: string): boolean => {
+    const trimmed = candidate.trim();
+    return Boolean(trimmed) && trimmed !== 'Точка на карте';
+  };
+
+  const resolveCoordsByTitle = async (
+    candidate: string,
+  ): Promise<{ lat: number; lng: number } | null> => {
+    if (!shouldSearchByTitle(candidate)) {
+      return null;
+    }
+    try {
+      const [first] = await searchAddress(candidate, { limit: 1 });
+      if (!first) {
+        return null;
+      }
+      return { lat: first.lat, lng: first.lng };
+    } catch {
+      return null;
+    }
+  };
+
   if (
     isManagedShortLink(sanitized) ||
     (isGoogleMapsLink(sanitized) && !coords)
@@ -754,16 +778,20 @@ const resolveLocationLink = async (
       } else {
         link = expanded;
       }
+      title = parseGoogleAddress(resolved);
     }
     if (!coords) {
       coords = extractCoords(resolved);
     }
   }
+  if (!coords) {
+    coords = await resolveCoordsByTitle(title);
+  }
   return {
     link,
     resolved,
     coords: coords ?? extractCoords(resolved),
-    title: parseGoogleAddress(resolved),
+    title,
   };
 };
 

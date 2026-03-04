@@ -683,7 +683,7 @@ export default function Logistics() {
       )}
       <ConfirmDialog
         open={Boolean(deletePlan)}
-        message={`Удалить маршрутный лист \"${deletePlan?.title ?? ''}\"?`}
+        message={`Удалить маршрутный лист "${deletePlan?.title ?? ''}"?`}
         onConfirm={handleDeleteConfirm}
         onCancel={() => setDeletePlan(null)}
         confirmText="Удалить"

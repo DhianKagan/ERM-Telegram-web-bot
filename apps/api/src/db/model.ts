@@ -250,6 +250,7 @@ export interface TaskAttrs {
     | 'Выполнить'
     | 'Построить'
     | 'Починить'
+    | 'Тест'
     | 'Заявка';
   task_type_id?: number;
   start_date?: Date;
@@ -367,6 +368,7 @@ const taskSchema = new Schema<TaskDocument>(
         'Выполнить',
         'Построить',
         'Починить',
+        'Тест',
         'Заявка',
       ],
     },

@@ -1,6 +1,6 @@
 // Провайдер уведомлений, управляет списком тостов
 import React, { useState, useCallback, useRef, useEffect } from 'react';
-import { ToastContext, type Toast, type ToastState } from './ToastContext';
+import { ToastContext, type Toast } from './ToastContext';
 
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({
   children,

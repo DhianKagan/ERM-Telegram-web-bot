@@ -14,7 +14,9 @@ export default function ReportFilterForm({ onChange }: ReportFilterFormProps) {
   const [to, setTo] = React.useState('');
   const submit = (e) => {
     e.preventDefault();
-    onChange && onChange({ from, to });
+    if (onChange) {
+      onChange({ from, to });
+    }
   };
   return (
     <form

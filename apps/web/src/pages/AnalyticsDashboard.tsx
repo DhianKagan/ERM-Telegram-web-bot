@@ -141,7 +141,6 @@ export default function AnalyticsDashboard(): React.ReactElement {
   );
   const loadSeries = React.useMemo(() => mapLoadSeries(summary), [summary]);
   const slaSeries = React.useMemo(() => mapSlaSeries(summary), [summary]);
-  const isLoading = isFetching && !summary;
   const loadError =
     error instanceof Error
       ? error.message || t('analytics.loadError')

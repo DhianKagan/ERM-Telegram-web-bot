@@ -278,7 +278,8 @@ export default function EmployeeCardForm({
           throw new Error('ID должен быть числом');
         }
         await createUser(telegramIdValue, form.username, form.roleId);
-        const { telegram_id: _, ...payload } = form;
+        const payload = { ...form };
+        delete payload.telegram_id;
         const updated = await updateUser(telegramIdValue, payload);
         if (!updated) throw new Error('Не удалось сохранить изменения');
         const mapped = mapUserToForm(updated);

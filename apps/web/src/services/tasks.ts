@@ -412,7 +412,7 @@ export const fetchTaskDraft = async (
   kind: 'task' | 'request',
 ): Promise<TaskDraft | null> => {
   const res = await authFetch(`/api/v1/task-drafts/${kind}`);
-  if (res.status === 404) return null;
+  if (res.status === 204 || res.status === 404) return null;
   if (!res.ok) {
     throw new TaskRequestError({
       status: res.status,

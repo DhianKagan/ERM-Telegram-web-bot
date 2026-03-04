@@ -39,7 +39,7 @@ import authFetch from '../utils/authFetch';
 import parseGoogleAddress from '../utils/parseGoogleAddress';
 import { validateURL } from '../utils/validation';
 import extractCoords from '../utils/extractCoords';
-import { expandLink, searchAddress } from '../services/maps';
+import { expandLink, reverseGeocode, searchAddress } from '../services/maps';
 import {
   ArrowPathIcon,
   DocumentTextIcon,
@@ -790,7 +790,14 @@ const resolveLocationLink = async (
     coords = await resolveCoordsByTitle(title);
   }
   if (coords && isFallbackTitle(title)) {
-    title = formatCoords(coords);
+    try {
+      const place = await reverseGeocode(coords);
+      const normalizedLabel =
+        typeof place?.label === 'string' ? place.label.trim() : '';
+      title = normalizedLabel || formatCoords(coords);
+    } catch {
+      title = formatCoords(coords);
+    }
   }
   return {
     link,

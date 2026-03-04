@@ -139,7 +139,7 @@ export interface FleetVehicleDto {
   remoteName?: string;
   notes?: string;
 }
-export type RoutePlanStatus = 'draft' | 'approved' | 'completed';
+export type RoutePlanStatus = 'draft' | 'approved' | 'completed' | 'cancelled';
 export interface RoutePlanStop {
   order: number;
   kind: 'start' | 'via' | 'finish';

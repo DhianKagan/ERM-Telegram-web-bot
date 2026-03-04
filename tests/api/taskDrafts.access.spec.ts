@@ -2,9 +2,9 @@
  * Назначение файла: интеграционный тест доступа к черновикам задач для обычных пользователей.
  * Основные модули: express, supertest, path.
  */
-import express = require('express');
-import request = require('supertest');
-import path = require('path');
+import express from 'express';
+import request from 'supertest';
+import path from 'path';
 import { strict as assert } from 'assert';
 import { ACCESS_USER } from '../../apps/api/src/utils/accessMask';
 
@@ -12,35 +12,12 @@ const previousMongoUrl = process.env.MONGO_DATABASE_URL;
 process.env.MONGO_DATABASE_URL =
   'mongodb://admin:admin@localhost:27017/ermdb?authSource=admin';
 
-declare const before: (
-  handler: (this: unknown) => unknown | Promise<unknown>,
-) => void;
-declare const after: (
-  handler: (this: unknown) => unknown | Promise<unknown>,
-) => void;
-declare const describe: (name: string, suite: (this: unknown) => void) => void;
-declare const it: (
-  name: string,
-  test: (this: unknown) => unknown | Promise<unknown>,
-) => void;
+jest.setTimeout(60000);
 
-describe('Task drafts access', function () {
-  const suite = this as { timeout?: (ms: number) => void };
-  suite.timeout?.(60000);
-
+describe('Task drafts access', () => {
   let app: express.Express;
 
-  before(async function () {
-    const hook = this as { timeout?: (ms: number) => void };
-    hook.timeout?.(60000);
-
-    const jestApi = (
-      global as typeof globalThis & {
-        jest: {
-          mock: (moduleId: string, factory: () => unknown) => void;
-        };
-      }
-    ).jest;
+  beforeAll(async () => {
     const drafts = new Map<
       string,
       {
@@ -56,7 +33,7 @@ describe('Task drafts access', function () {
       __dirname,
       '../../apps/api/src/taskDrafts/taskDrafts.service',
     );
-    jestApi.mock(serviceModulePath, () => ({
+    jest.doMock(serviceModulePath, () => ({
       __esModule: true,
       default: class {
         async getDraft(userId: number, kind: 'task' | 'request') {
@@ -107,7 +84,7 @@ describe('Task drafts access', function () {
       __dirname,
       '../../apps/api/src/middleware/auth',
     );
-    jestApi.mock(authModulePath, () => ({
+    jest.doMock(authModulePath, () => ({
       __esModule: true,
       default: () =>
         ((
@@ -132,7 +109,7 @@ describe('Task drafts access', function () {
     app.use('/api/v1/task-drafts', router);
   });
 
-  after(async () => {
+  afterAll(async () => {
     if (previousMongoUrl === undefined) {
       delete process.env.MONGO_DATABASE_URL;
     } else {

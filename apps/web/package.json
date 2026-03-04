@@ -17,6 +17,7 @@
     "format": "pnpm exec prettier --config ../../prettier.config.cjs \"src/**/*.{js,jsx,ts,tsx}\"",
     "shadcn": "shadcn",
     "bundle-report": "ANALYZE=true vite build",
+    "update:browserslist": "cd ../.. && pnpm dlx update-browserslist-db@latest",
     "test:types": "pnpm exec tsc --noEmit --lib ESNext,DOM --types node src/types/task.test.ts",
     "lint:lpt": "pnpm exec eslint -c ../../eslint.lpt.config.ts --ignore-pattern postcss.config.cjs --rule \"@typescript-eslint/no-unused-expressions: off\" --rule \"react-refresh/only-export-components: off\" .",
     "ci:fast": "pnpm run build && pnpm run typecheck && pnpm run lint && pnpm run test",

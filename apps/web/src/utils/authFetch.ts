@@ -239,11 +239,9 @@ export default async function authFetch(
     headers['X-Confirmed-Action'] = 'true';
   }
 
-  if (useBearer) {
-    const accessToken = getAccessToken();
-    if (accessToken) {
-      headers.Authorization = `Bearer ${accessToken}`;
-    }
+  const accessToken = getAccessToken();
+  if (accessToken) {
+    headers.Authorization = `Bearer ${accessToken}`;
   }
 
   let token = getToken();

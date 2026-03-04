@@ -6,7 +6,7 @@ export interface Coords {
   lng: number;
 }
 
-const COORD_PAIR_PATTERN = /(-?\d+(?:\.\d+)?)[,\s+]+(-?\d+(?:\.\d+)?)/;
+const COORD_PAIR_PATTERN = /(-?\d{1,3}(?:\.\d+)?)[\s,;|]+(-?\d{1,3}(?:\.\d+)?)/;
 const NESTED_URL_KEYS = ['link', 'url', 'u'];
 const MAX_NESTING_DEPTH = 3;
 
@@ -45,11 +45,36 @@ const parseCombinedValue = (
     return null;
   }
   const decoded = safeDecode(value);
+  if (decoded.startsWith('geo:')) {
+    const geoMatch = decoded.match(
+      /^geo:\s*(-?\d{1,3}(?:\.\d+)?)[\s,]+(-?\d{1,3}(?:\.\d+)?)/,
+    );
+    if (geoMatch) {
+      return parseCoordPair(geoMatch[1], geoMatch[2]);
+    }
+  }
   const match = decoded.match(COORD_PAIR_PATTERN);
   if (!match) {
     return null;
   }
   return parseCoordPair(match[1], match[2]);
+};
+
+const searchCoordsInText = (value: string): Coords | null => {
+  if (!value) {
+    return null;
+  }
+  const decoded = safeDecode(value);
+  const regex = /(-?\d{1,3}(?:\.\d+)?)[\s,;|]+(-?\d{1,3}(?:\.\d+)?)/g;
+  let match = regex.exec(decoded);
+  while (match) {
+    const coords = parseCoordPair(match[1], match[2]);
+    if (coords) {
+      return coords;
+    }
+    match = regex.exec(decoded);
+  }
+  return null;
 };
 
 const looksLikeUrl = (value: string): boolean => {
@@ -120,6 +145,13 @@ const extractCoordsInternal = (url: string, depth = 0): Coords | null => {
         return coords;
       }
     }
+
+    for (const [, rawValue] of candidate.searchParams.entries()) {
+      const coords = extractNestedCoords(rawValue, depth + 1);
+      if (coords) {
+        return coords;
+      }
+    }
     const hashCoords = parseCombinedValue(candidate.hash.replace(/^#/, ''));
     if (hashCoords) {
       return hashCoords;
@@ -151,6 +183,22 @@ const extractCoordsInternal = (url: string, depth = 0): Coords | null => {
       return coords;
     }
   }
+
+  const bang1d2dMatch = decoded.match(
+    /!1d(-?\d+(?:\.\d+)?)!2d(-?\d+(?:\.\d+)?)/,
+  );
+  if (bang1d2dMatch) {
+    const coords = parseCoordPair(bang1d2dMatch[2], bang1d2dMatch[1]);
+    if (coords) {
+      return coords;
+    }
+  }
+
+  const textCoords = searchCoordsInText(decoded);
+  if (textCoords) {
+    return textCoords;
+  }
+
   if (decoded !== url && looksLikeUrl(decoded)) {
     return extractCoordsInternal(decoded, depth + 1);
   }

@@ -17,10 +17,10 @@ declare const it: (
   name: string,
   test: (this: unknown) => unknown | Promise<unknown>,
 ) => void;
-declare const before: (
+declare const beforeAll: (
   handler: (this: unknown) => unknown | Promise<unknown>,
 ) => void;
-declare const after: (
+declare const afterAll: (
   handler: (this: unknown) => unknown | Promise<unknown>,
 ) => void;
 declare const afterEach: (
@@ -32,7 +32,7 @@ describe('optimizer VRP', () => {
   let optimizerTesting: typeof import('../../apps/api/src/services/optimizer').__testing;
   let originalConfigModule: NodeJS.Module | undefined;
 
-  before(() => {
+  beforeAll(async () => {
     const configModuleId = require.resolve('../../apps/api/src/config');
     originalConfigModule = require.cache[configModuleId];
     const stubExports = {
@@ -86,7 +86,7 @@ describe('optimizer VRP', () => {
     } as unknown as NodeJS.Module;
   });
 
-  after(() => {
+  afterAll(() => {
     const configModuleId = require.resolve('../../apps/api/src/config');
     if (originalConfigModule) {
       require.cache[configModuleId] = originalConfigModule;
@@ -95,15 +95,14 @@ describe('optimizer VRP', () => {
     }
   });
 
-  before(() => {
+  beforeAll(async () => {
     // Диагностика окружения для корректного подключения конфигурации.
     if (!process.env.MONGO_DATABASE_URL) {
       throw new Error(
         'MONGO_DATABASE_URL отсутствует перед загрузкой оптимизатора',
       );
     }
-    const module =
-      require('../../apps/api/src/services/optimizer') as typeof import('../../apps/api/src/services/optimizer');
+    const module = await import('../../apps/api/src/services/optimizer');
     optimize = module.optimize;
     optimizerTesting = module.__testing;
   });

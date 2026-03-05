@@ -53,6 +53,36 @@ const isAllowedMapsHost = (host: string): boolean => {
   );
 };
 
+const tryGetWrappedMapsUrl = (value: URL): URL | null => {
+  const host = value.hostname.toLowerCase();
+  const isGoogleWrapperHost =
+    host === 'consent.google.com' ||
+    host === 'google.com' ||
+    host.startsWith('www.google.') ||
+    host.startsWith('google.');
+  if (!isGoogleWrapperHost) {
+    return null;
+  }
+
+  const redirectKeys = ['continue', 'q', 'url', 'dest', 'destination', 'u'];
+  for (const key of redirectKeys) {
+    const candidate = value.searchParams.get(key);
+    if (!candidate) {
+      continue;
+    }
+    try {
+      const parsed = new URL(candidate, value);
+      if (isAllowedMapsHost(parsed.hostname.toLowerCase())) {
+        return parsed;
+      }
+    } catch {
+      // ignore invalid wrapped URL values
+    }
+  }
+
+  return null;
+};
+
 const isTransientMapsFetchError = (error: unknown): boolean => {
   if (!(error instanceof Error)) {
     return false;
@@ -360,6 +390,10 @@ export async function expandMapsUrl(shortUrl: string): Promise<string> {
   ): Promise<{ res: Response; finalUrl: URL }> => {
     let currentUrl = initialUrl;
     for (let i = 0; i <= maxRedirects; i += 1) {
+      const unwrappedCurrentUrl = tryGetWrappedMapsUrl(currentUrl);
+      if (unwrappedCurrentUrl) {
+        currentUrl = unwrappedCurrentUrl;
+      }
       await assertSafeMapsUrl(currentUrl);
       const res = await fetch(currentUrl.toString(), { redirect: 'manual' });
       if (res.status >= 300 && res.status < 400) {
@@ -376,7 +410,7 @@ export async function expandMapsUrl(shortUrl: string): Promise<string> {
         if (nextUrl.protocol !== 'http:' && nextUrl.protocol !== 'https:') {
           return { res, finalUrl: currentUrl };
         }
-        currentUrl = nextUrl;
+        currentUrl = tryGetWrappedMapsUrl(nextUrl) ?? nextUrl;
         continue;
       }
       return { res, finalUrl: currentUrl };

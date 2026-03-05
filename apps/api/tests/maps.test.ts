@@ -18,8 +18,11 @@ import {
   searchAddress,
   reverseGeocode,
 } from '../src/services/maps';
+import { lookup } from 'dns/promises';
 import { stopScheduler } from '../src/services/scheduler';
 import { stopQueue } from '../src/services/messageQueue';
+
+const lookupMock = lookup as jest.MockedFunction<typeof lookup>;
 
 test('expandMapsUrl возвращает полный url', async () => {
   const text = jest.fn();
@@ -141,6 +144,27 @@ test('expandMapsUrl парсит ссылку google.com/maps из html-отве
   expect(res).toBe(
     'https://google.com/maps/place/Point/@46.3877422,30.7065156,17z',
   );
+});
+
+test('expandMapsUrl не падает, если DNS Google-хоста возвращает только private IPv6', async () => {
+  lookupMock.mockResolvedValueOnce([{ address: 'fd12::1', family: 6 }]);
+  global.fetch = jest
+    .fn()
+    .mockResolvedValueOnce({
+      status: 302,
+      headers: new Headers({
+        location: 'https://maps.google.com/@10.1,20.2,15z',
+      }),
+    })
+    .mockResolvedValueOnce({
+      status: 200,
+      headers: new Headers(),
+      text: jest.fn(),
+    });
+
+  const res = await expandMapsUrl('https://maps.app.goo.gl/test');
+
+  expect(res).toBe('https://maps.google.com/@10.1,20.2,15z');
 });
 
 test('extractCoords извлекает широту и долготу', () => {

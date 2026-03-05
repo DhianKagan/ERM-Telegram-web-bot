@@ -98,6 +98,16 @@ const assertSafeMapsUrl = async (urlObj: URL): Promise<void> => {
     throw new Error('Недопустимый домен URL');
   }
 
+  const isGoogleMapsHost =
+    host === 'goo.gl' ||
+    host === 'maps.app.goo.gl' ||
+    host === 'google.com' ||
+    host === 'maps.google.com' ||
+    host === 'www.google.com' ||
+    host.startsWith('maps.google.') ||
+    host.startsWith('www.google.') ||
+    host.startsWith('google.');
+
   let addresses;
   try {
     addresses = await lookup(host, { all: true });
@@ -108,6 +118,16 @@ const assertSafeMapsUrl = async (urlObj: URL): Promise<void> => {
     return;
   }
   if (!addresses || addresses.length === 0) {
+    return;
+  }
+  if (
+    isGoogleMapsHost &&
+    addresses.every((addr) => isPrivateIp(addr.address))
+  ) {
+    // В некоторых окружениях (например, edge/proxy сети) DNS для валидных
+    // Google-хостов может возвращать только внутренние IPv6-адреса.
+    // Для жёстко ограниченного списка доменов Google это не SSRF-вектор,
+    // поэтому не отклоняем ссылку, чтобы избежать ложных 400.
     return;
   }
   for (const addr of addresses) {

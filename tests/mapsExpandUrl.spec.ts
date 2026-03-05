@@ -54,4 +54,33 @@ describe('expandMapsUrl', () => {
     await expect(expandMapsUrl(mapsShortUrl)).resolves.toBe(mapsShortUrl);
     expect(warnSpy).toHaveBeenCalled();
   });
+
+  it('возвращает исходный URL при редиректе на intent-ссылку', async () => {
+    const mapsShortUrl = 'https://maps.app.goo.gl/W3ae6PPzPePpegJU7';
+    jest.spyOn(globalThis, 'fetch').mockResolvedValue({
+      status: 302,
+      headers: new Headers({
+        location:
+          'intent://maps.google.com/maps/place/AGROMARKET#Intent;scheme=https;package=com.google.android.apps.maps;end',
+      }),
+      text: async () => '',
+    } as Response);
+
+    const expandMapsUrl = await importExpandMapsUrl();
+    await expect(expandMapsUrl(mapsShortUrl)).resolves.toBe(mapsShortUrl);
+  });
+
+  it('возвращает исходный URL при ENOTFOUND во время fetch', async () => {
+    const mapsShortUrl = 'https://maps.app.goo.gl/W3ae6PPzPePpegJU7';
+    const error = new Error(
+      'getaddrinfo ENOTFOUND maps.app.goo.gl',
+    ) as Error & {
+      code?: string;
+    };
+    error.code = 'ENOTFOUND';
+    jest.spyOn(globalThis, 'fetch').mockRejectedValue(error);
+
+    const expandMapsUrl = await importExpandMapsUrl();
+    await expect(expandMapsUrl(mapsShortUrl)).resolves.toBe(mapsShortUrl);
+  });
 });

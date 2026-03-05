@@ -58,11 +58,22 @@ const isTransientMapsFetchError = (error: unknown): boolean => {
     return false;
   }
 
-  const networkCodes = ['ENETUNREACH', 'EAI_AGAIN', 'ETIMEDOUT', 'ECONNRESET'];
+  const networkCodes = [
+    'ENETUNREACH',
+    'EAI_AGAIN',
+    'ETIMEDOUT',
+    'ECONNRESET',
+    'ENOTFOUND',
+    'ECONNREFUSED',
+  ];
   const code =
     (error as Error & { code?: unknown }).code ??
     (error as Error & { cause?: { code?: unknown } }).cause?.code;
   if (typeof code === 'string' && networkCodes.includes(code)) {
+    return true;
+  }
+
+  if (typeof code === 'string' && code.startsWith('UND_ERR_')) {
     return true;
   }
 
@@ -336,7 +347,16 @@ export async function expandMapsUrl(shortUrl: string): Promise<string> {
         if (!location) {
           throw new Error('Ответ редиректа без заголовка Location');
         }
-        currentUrl = new URL(location, currentUrl);
+        let nextUrl: URL;
+        try {
+          nextUrl = new URL(location, currentUrl);
+        } catch {
+          return { res, finalUrl: currentUrl };
+        }
+        if (nextUrl.protocol !== 'http:' && nextUrl.protocol !== 'https:') {
+          return { res, finalUrl: currentUrl };
+        }
+        currentUrl = nextUrl;
         continue;
       }
       return { res, finalUrl: currentUrl };

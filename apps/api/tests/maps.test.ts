@@ -148,6 +148,25 @@ test('extractCoords извлекает широту и долготу', () => {
   expect(coords).toEqual({ lat: 10.1, lng: 20.2 });
 });
 
+test('extractCoords извлекает координаты из geo-ссылки', () => {
+  const coords = extractCoords('geo:48.477836,30.705930?q=point');
+  expect(coords).toEqual({ lat: 48.477836, lng: 30.70593 });
+});
+
+test('extractCoords извлекает координаты из произвольного query-параметра', () => {
+  const coords = extractCoords(
+    'https://www.google.com/maps?destination=Kyiv&checkpoint=48.477836,30.705930',
+  );
+  expect(coords).toEqual({ lat: 48.477836, lng: 30.70593 });
+});
+
+test('extractCoords извлекает координаты из !1d/!2d формата', () => {
+  const coords = extractCoords(
+    'https://www.google.com/maps/place/Point/data=!3m1!4b1!1d30.70593!2d48.477836',
+  );
+  expect(coords).toEqual({ lat: 48.477836, lng: 30.70593 });
+});
+
 test('searchAddress нормализует подсказки', async () => {
   global.fetch = jest.fn().mockResolvedValue({
     ok: true,

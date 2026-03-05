@@ -173,6 +173,17 @@ const buildCoordsUrl = (coords: Coordinates): string =>
   )},17z`;
 
 const STATIC_MAP_PATH = '/maps/api/staticmap';
+const MAPS_HEADLESS_FALLBACK_ENABLED =
+  (process.env.MAPS_HEADLESS_FALLBACK || '').toLowerCase() === 'playwright';
+const MAPS_HEADLESS_MODULE_NAME =
+  process.env.MAPS_HEADLESS_MODULE_NAME || 'playwright';
+const MAPS_HEADLESS_TIMEOUT_MS = Math.min(
+  Math.max(
+    Number.parseInt(process.env.MAPS_HEADLESS_TIMEOUT_MS || '', 10) || 8000,
+    1000,
+  ),
+  20000,
+);
 
 const normalizeMapsUrl = (value: string): string => {
   if (!value) {
@@ -200,6 +211,104 @@ const normalizeMapsUrl = (value: string): string => {
     // Игнорируем ошибки парсинга и возвращаем исходное значение.
   }
   return value;
+};
+
+const extractCoordsViaPlaywright = async (
+  url: string,
+): Promise<Coordinates | null> => {
+  if (!MAPS_HEADLESS_FALLBACK_ENABLED) {
+    return null;
+  }
+
+  try {
+    const playwright = (await import(MAPS_HEADLESS_MODULE_NAME)) as {
+      chromium?: {
+        launch: (options?: Record<string, unknown>) => Promise<{
+          newContext: (options?: Record<string, unknown>) => Promise<{
+            newPage: () => Promise<{
+              goto: (
+                target: string,
+                options?: Record<string, unknown>,
+              ) => Promise<void>;
+              evaluate: <T>(pageFunction: () => T) => Promise<T>;
+              close: () => Promise<void>;
+            }>;
+            close: () => Promise<void>;
+          }>;
+          close: () => Promise<void>;
+        }>;
+      };
+    };
+
+    if (!playwright.chromium) {
+      return null;
+    }
+
+    const browser = await playwright.chromium.launch({
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      headless: true,
+    });
+
+    const context = await browser.newContext({
+      viewport: { width: 1366, height: 768 },
+      userAgent:
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    });
+    const page = await context.newPage();
+
+    try {
+      await page.goto(url, {
+        waitUntil: 'networkidle',
+        timeout: MAPS_HEADLESS_TIMEOUT_MS,
+      });
+
+      const rendered = await page.evaluate(() => {
+        const payloads: string[] = [];
+        const windowData = window as unknown as Record<string, unknown>;
+        const appState = windowData.APP_INITIALIZATION_STATE;
+        const pageData = windowData.pageData;
+        const initialData = windowData.__INITIAL_DATA__;
+
+        const pushIfString = (value: unknown) => {
+          if (typeof value === 'string' && value.trim()) {
+            payloads.push(value);
+          }
+        };
+
+        const pushIfJson = (value: unknown) => {
+          if (value === null || value === undefined) {
+            return;
+          }
+          if (typeof value === 'object') {
+            try {
+              payloads.push(JSON.stringify(value));
+            } catch {
+              // ignore circular / non-serializable objects
+            }
+            return;
+          }
+          pushIfString(value);
+        };
+
+        pushIfJson(appState);
+        pushIfJson(pageData);
+        pushIfJson(initialData);
+        pushIfString(location.href);
+        pushIfString(document.documentElement?.innerHTML || '');
+
+        return payloads.join('\n');
+      });
+
+      return extractCoords(rendered);
+    } finally {
+      await page.close();
+      await context.close();
+      await browser.close();
+    }
+  } catch (error) {
+    console.warn('Headless fallback for maps parsing failed', error);
+    return null;
+  }
 };
 
 export type { Coordinates };
@@ -269,6 +378,11 @@ export async function expandMapsUrl(shortUrl: string): Promise<string> {
     } catch {
       // Игнорируем ошибки чтения тела, вернём исходный URL ниже
     }
+  }
+
+  const renderedCoords = await extractCoordsViaPlaywright(finalUrlString);
+  if (renderedCoords) {
+    return buildCoordsUrl(renderedCoords);
   }
 
   return finalUrlString;

@@ -224,6 +224,25 @@ async function fetchCsrfToken(): Promise<string | null> {
   }
 }
 
+async function refreshAccessToken(): Promise<string | null> {
+  try {
+    const r = await fetch('/api/v1/auth/refresh', {
+      method: 'POST',
+      credentials: 'include',
+    });
+    if (!r.ok) {
+      return null;
+    }
+    const data = (await r.json().catch(() => ({}))) as {
+      accessToken?: string;
+      token?: string;
+    };
+    return data.accessToken || data.token || null;
+  } catch {
+    return null;
+  }
+}
+
 export default async function authFetch(
   url: string,
   options: AuthFetchOptions = {},
@@ -242,6 +261,12 @@ export default async function authFetch(
   const accessToken = getAccessToken();
   if (accessToken) {
     headers.Authorization = `Bearer ${accessToken}`;
+  } else if (useBearer && isProfileRequest) {
+    const refreshedToken = await refreshAccessToken();
+    if (refreshedToken) {
+      setAccessToken(refreshedToken);
+      headers.Authorization = `Bearer ${refreshedToken}`;
+    }
   }
 
   let token = getToken();
@@ -298,22 +323,10 @@ export default async function authFetch(
   }
   if (res.status === 401) {
     try {
-      const r = await fetch('/api/v1/auth/refresh', {
-        method: 'POST',
-        credentials: 'include',
-      });
-      if (r.ok) {
-        const data = (await r.json().catch(() => ({}))) as {
-          accessToken?: string;
-          token?: string;
-        };
-        const nextToken = data.accessToken || data.token;
-        if (nextToken) {
-          setAccessToken(nextToken);
-          headers.Authorization = `Bearer ${nextToken}`;
-        } else if (useBearer) {
-          clearAccessToken();
-        }
+      const nextToken = await refreshAccessToken();
+      if (nextToken) {
+        setAccessToken(nextToken);
+        headers.Authorization = `Bearer ${nextToken}`;
         res = await sendRequest(url, opts, onProgress);
         if (
           isProfileRequest &&
@@ -326,6 +339,8 @@ export default async function authFetch(
           );
           skipExpiredRedirect = true;
         }
+      } else if (useBearer) {
+        clearAccessToken();
       }
     } catch {
       if (useBearer) {

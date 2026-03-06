@@ -198,6 +198,24 @@ test('expandMapsUrl парсит ссылку google.com/maps из html-отве
   );
 });
 
+test('expandMapsUrl возвращает исходный URL при ошибке failed to fetch', async () => {
+  global.fetch = jest.fn().mockRejectedValue(new Error('Failed to fetch'));
+
+  const res = await expandMapsUrl('https://maps.app.goo.gl/test');
+
+  expect(res).toBe('https://maps.app.goo.gl/test');
+});
+
+test('expandMapsUrl возвращает исходный URL при TLS/certificate ошибке', async () => {
+  global.fetch = jest
+    .fn()
+    .mockRejectedValue(new Error('TLS handshake failed: certificate expired'));
+
+  const res = await expandMapsUrl('https://maps.app.goo.gl/test');
+
+  expect(res).toBe('https://maps.app.goo.gl/test');
+});
+
 test('expandMapsUrl не падает, если DNS Google-хоста возвращает только private IPv6', async () => {
   lookupMock.mockResolvedValueOnce([{ address: 'fd12::1', family: 6 }]);
   global.fetch = jest

@@ -109,6 +109,8 @@ const isTransientMapsFetchError = (error: unknown): boolean => {
     return false;
   }
 
+  const normalizedMessage = error.message.toLowerCase();
+
   const networkCodes = [
     'ENETUNREACH',
     'EAI_AGAIN',
@@ -128,7 +130,29 @@ const isTransientMapsFetchError = (error: unknown): boolean => {
     return true;
   }
 
-  return error.message.toLowerCase().includes('fetch failed');
+  const transientMessageFragments = [
+    'fetch failed',
+    'failed to fetch',
+    'failed to connect',
+    'network error',
+    'network is unreachable',
+    'timed out',
+    'timeout',
+    'socket hang up',
+    'tls',
+    'ssl',
+    'certificate',
+  ];
+
+  if (
+    transientMessageFragments.some((fragment) =>
+      normalizedMessage.includes(fragment),
+    )
+  ) {
+    return true;
+  }
+
+  return false;
 };
 
 const assertSafeMapsUrl = async (urlObj: URL): Promise<void> => {

@@ -74,6 +74,39 @@ test('expandMapsUrl принимает редирект на google.com/maps', a
   expect(text).not.toHaveBeenCalled();
 });
 
+test('expandMapsUrl разворачивает google consent redirect с continue', async () => {
+  const text = jest.fn();
+  global.fetch = jest
+    .fn()
+    .mockResolvedValueOnce({
+      status: 302,
+      headers: new Headers({
+        location:
+          'https://consent.google.com/m?continue=https%3A%2F%2Fwww.google.com%2Fmaps%2F%4046.3877422%2C30.7065156%2C17z',
+      }),
+    })
+    .mockResolvedValueOnce({
+      status: 200,
+      headers: new Headers(),
+      text,
+    });
+
+  const res = await expandMapsUrl('https://maps.app.goo.gl/test');
+
+  expect(fetch).toHaveBeenNthCalledWith(1, 'https://maps.app.goo.gl/test', {
+    redirect: 'manual',
+  });
+  expect(fetch).toHaveBeenNthCalledWith(
+    2,
+    'https://www.google.com/maps/@46.3877422,30.7065156,17z',
+    {
+      redirect: 'manual',
+    },
+  );
+  expect(res).toBe('https://www.google.com/maps/@46.3877422,30.7065156,17z');
+  expect(text).not.toHaveBeenCalled();
+});
+
 test('expandMapsUrl нормализует ссылку статической карты', async () => {
   global.fetch = jest
     .fn()

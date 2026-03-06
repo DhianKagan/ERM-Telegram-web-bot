@@ -83,4 +83,68 @@ describe('expandMapsUrl', () => {
     const expandMapsUrl = await importExpandMapsUrl();
     await expect(expandMapsUrl(mapsShortUrl)).resolves.toBe(mapsShortUrl);
   });
+
+  it('разворачивает maps.app.goo.gl через fallback с redirect: follow', async () => {
+    const mapsShortUrl = 'https://maps.app.goo.gl/9xjhwpxs9cnNhdqy5';
+    const expandedUrl =
+      'https://www.google.com/maps/place/%D0%9F%D0%B8%D0%B2%D0%B7%D0%B0%D0%B2%D0%BE%D0%B4/@46.3409589,30.6713341,240m/data=!3m1!1e3!4m6!3m5!1s0x40c7cb8dda3eaa89:0xb40a2a1459f63cb8!8m2!3d46.340739!4d30.671928!16s%2Fg%2F12vs__yfz';
+
+    const fetchSpy = jest
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce({
+        status: 200,
+        headers: new Headers(),
+        url: mapsShortUrl,
+        text: async () => '<html><body>no coords in body</body></html>',
+      } as Response)
+      .mockResolvedValueOnce({
+        status: 200,
+        headers: new Headers(),
+        url: expandedUrl,
+        text: async () => '<html><body>ok</body></html>',
+      } as Response);
+
+    const expandMapsUrl = await importExpandMapsUrl();
+    await expect(expandMapsUrl(mapsShortUrl)).resolves.toBe(expandedUrl);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+  });
+  it('использует заголовки из MAPS_BROWSER_LIKE_HEADERS_JSON для follow fallback', async () => {
+    const mapsShortUrl = 'https://maps.app.goo.gl/9xjhwpxs9cnNhdqy5';
+    const expandedUrl =
+      'https://www.google.com/maps/place/%D0%9F%D0%B8%D0%B2%D0%B7%D0%B0%D0%B2%D0%BE%D0%B4/@46.3409589,30.6713341,240m/data=!3m1!1e3!4m6!3m5!1s0x40c7cb8dda3eaa89:0xb40a2a1459f63cb8!8m2!3d46.340739!4d30.671928!16s%2Fg%2F12vs__yfz';
+    process.env.MAPS_BROWSER_LIKE_HEADERS_JSON = JSON.stringify({
+      'User-Agent': 'ERM-Test-UA/1.0',
+      'X-Test-Header': 'test-value',
+    });
+
+    const fetchSpy = jest
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce({
+        status: 200,
+        headers: new Headers(),
+        url: mapsShortUrl,
+        text: async () => '<html><body>no coords in body</body></html>',
+      } as Response)
+      .mockResolvedValueOnce({
+        status: 200,
+        headers: new Headers(),
+        url: expandedUrl,
+        text: async () => '<html><body>ok</body></html>',
+      } as Response);
+
+    const expandMapsUrl = await importExpandMapsUrl();
+    await expect(expandMapsUrl(mapsShortUrl)).resolves.toBe(expandedUrl);
+    expect(fetchSpy).toHaveBeenCalledTimes(2);
+    expect(fetchSpy).toHaveBeenNthCalledWith(
+      2,
+      mapsShortUrl,
+      expect.objectContaining({
+        redirect: 'follow',
+        headers: expect.objectContaining({
+          'User-Agent': 'ERM-Test-UA/1.0',
+          'X-Test-Header': 'test-value',
+        }),
+      }),
+    );
+  });
 });

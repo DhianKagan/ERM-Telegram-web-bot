@@ -194,6 +194,54 @@ class RedisRefreshStore implements RefreshStore {
   }
 }
 
+class ResilientRefreshStore implements RefreshStore {
+  private readonly fallback = new MemoryRefreshStore();
+  private degraded = false;
+
+  constructor(private readonly primary: RefreshStore) {}
+
+  private async withFallback<T>(
+    op: (store: RefreshStore) => Promise<T>,
+  ): Promise<T> {
+    if (this.degraded) {
+      return op(this.fallback);
+    }
+    try {
+      return await op(this.primary);
+    } catch {
+      this.degraded = true;
+      return op(this.fallback);
+    }
+  }
+
+  async save(
+    hash: string,
+    record: RefreshSessionRecord,
+    ttlSeconds: number,
+  ): Promise<void> {
+    await this.withFallback((store) => store.save(hash, record, ttlSeconds));
+  }
+
+  async rotate(
+    oldHash: string,
+    newHash: string,
+    nextRecord: RefreshSessionRecord,
+    ttlSeconds: number,
+  ): Promise<RotateResult> {
+    return this.withFallback((store) =>
+      store.rotate(oldHash, newHash, nextRecord, ttlSeconds),
+    );
+  }
+
+  async revoke(hash: string, ttlSeconds: number): Promise<void> {
+    await this.withFallback((store) => store.revoke(hash, ttlSeconds));
+  }
+
+  async revokeAllByUser(userId: string): Promise<void> {
+    await this.withFallback((store) => store.revokeAllByUser(userId));
+  }
+}
+
 let cachedStore: RefreshStore | null = null;
 
 function buildStore(): RefreshStore {
@@ -205,12 +253,23 @@ function buildStore(): RefreshStore {
   try {
     const redis = new Redis(redisUrl, {
       lazyConnect: true,
+      connectTimeout: Number.parseInt(
+        process.env.AUTH_REDIS_CONNECT_TIMEOUT_MS || '1000',
+        10,
+      ),
+      commandTimeout: Number.parseInt(
+        process.env.AUTH_REDIS_COMMAND_TIMEOUT_MS || '1000',
+        10,
+      ),
       maxRetriesPerRequest: 1,
+      enableOfflineQueue: false,
     });
     redis.connect().catch(() => undefined);
-    return new RedisRefreshStore(
-      redis,
-      process.env.REFRESH_REDIS_PREFIX || 'erm:auth:refresh',
+    return new ResilientRefreshStore(
+      new RedisRefreshStore(
+        redis,
+        process.env.REFRESH_REDIS_PREFIX || 'erm:auth:refresh',
+      ),
     );
   } catch {
     return new MemoryRefreshStore();

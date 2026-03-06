@@ -217,10 +217,18 @@ function buildStore(): RefreshStore {
   }
 }
 
+const getJwtSecret = (): string => {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET не задан');
+  }
+  return secret;
+};
+
 export const hashRefreshToken = (token: string): string =>
   crypto
     .createHash('sha256')
-    .update(`${process.env.JWT_SECRET || 'test-secret'}:${token}`)
+    .update(`${getJwtSecret()}:${token}`)
     .digest('hex');
 
 export const __resetRefreshStoreForTests = (): void => {

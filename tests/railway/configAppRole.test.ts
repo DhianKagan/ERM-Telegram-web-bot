@@ -5,7 +5,7 @@ export {};
 process.env.NODE_ENV = 'test';
 process.env.BOT_TOKEN = 'token';
 process.env.CHAT_ID = '1';
-process.env.JWT_SECRET = 'secret';
+process.env.JWT_SECRET = 'StrongSecret123A';
 process.env.APP_URL = 'https://localhost';
 process.env.MONGO_DATABASE_URL =
   'mongodb://mongo:pass@erm-mongodb.railway.internal:27017/ermdb?authSource=admin';
@@ -24,7 +24,7 @@ describe('APP_ROLE env requirements', () => {
     delete process.env.VITEST_WORKER_ID;
     delete process.env.ALLOW_MISSING_ENV;
     delete process.env.RAILWAY_ENVIRONMENT;
-    process.env.JWT_SECRET = 'secret';
+    process.env.JWT_SECRET = 'StrongSecret123A';
     process.env.APP_URL = 'https://example.com';
     process.env.MONGO_DATABASE_URL =
       'mongodb://mongo:pass@erm-mongodb.railway.internal:27017/ermdb?authSource=admin';
@@ -48,6 +48,15 @@ describe('APP_ROLE env requirements', () => {
     delete process.env.CHAT_ID;
 
     await expect(import('../../apps/api/src/config')).resolves.toBeDefined();
+  });
+
+  test('production-режим отклоняет слабый JWT_SECRET', async () => {
+    process.env.APP_ROLE = 'api';
+    process.env.JWT_SECRET = 'secret';
+
+    await expect(import('../../apps/api/src/config')).rejects.toThrow(
+      'JWT_SECRET должен быть задан и не может быть тестовым',
+    );
   });
 
   test('bot-роль требует BOT_TOKEN', async () => {

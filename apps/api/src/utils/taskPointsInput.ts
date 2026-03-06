@@ -95,7 +95,7 @@ export async function prepareIncomingPoints(
       } catch (error) {
         throw new TaskPointsValidationError(
           'invalid_point',
-          `Не удалось обработать ссылку точки ${i + 1}`,
+          `Не удалось обработать ссылку точки ${i + 1}. Вставьте полную ссылку Google Maps с координатами.`,
           { index: i, message: (error as Error).message },
         );
       }
@@ -105,7 +105,7 @@ export async function prepareIncomingPoints(
     if (!coordinates) {
       throw new TaskPointsValidationError(
         'invalid_point',
-        `Некорректные координаты точки ${i + 1}`,
+        `Некорректные координаты точки ${i + 1}. Вставьте полную ссылку Google Maps или координаты в формате lat,lng.`,
         { index: i },
       );
     }

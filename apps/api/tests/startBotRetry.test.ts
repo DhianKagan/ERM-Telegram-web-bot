@@ -230,7 +230,7 @@ test('startBot настраивает webhook по умолчанию в product
     process.env.NODE_ENV = 'production';
     process.env.BOT_TOKEN = 't';
     process.env.CHAT_ID = '1';
-    process.env.JWT_SECRET = 'test-secret';
+    process.env.JWT_SECRET = 'StrongSecret123A';
     process.env.APP_URL = 'https://example.com';
     delete process.env.TELEGRAM_WEBHOOK_URL;
     delete process.env.TELEGRAM_WEBHOOK_SECRET;

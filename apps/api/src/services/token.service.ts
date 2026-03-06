@@ -33,6 +33,14 @@ const refreshTtl = Number.parseInt(
 const refreshCookieName = process.env.REFRESH_COOKIE_NAME || 'refresh';
 const refreshCookiePath = process.env.REFRESH_COOKIE_PATH || '/api/v1/auth';
 
+const getJwtSecret = (): string => {
+  const secret = config.jwtSecret;
+  if (!secret) {
+    throw new Error('JWT_SECRET не задан');
+  }
+  return secret;
+};
+
 const signAccess = (payload: AccessPayload): string =>
   jwt.sign(
     {
@@ -42,7 +50,7 @@ const signAccess = (payload: AccessPayload): string =>
       access: payload.access,
       is_service_account: Boolean(payload.is_service_account),
     },
-    config.jwtSecret || 'test-secret',
+    getJwtSecret(),
     {
       expiresIn: accessTtl,
       algorithm: 'HS256',
@@ -60,7 +68,7 @@ const signRefresh = (payload: AccessPayload): string =>
       type: 'refresh',
       jti: crypto.randomUUID(),
     },
-    config.jwtSecret || 'test-secret',
+    getJwtSecret(),
     {
       expiresIn: refreshTtl,
       algorithm: 'HS256',
@@ -81,13 +89,9 @@ const buildRecord = (
 
 const parseRefreshPayload = (refreshToken: string): AccessPayload | null => {
   try {
-    const payload = jwt.verify(
-      refreshToken,
-      config.jwtSecret || 'test-secret',
-      {
-        algorithms: ['HS256'],
-      },
-    ) as AccessPayload & { type?: string };
+    const payload = jwt.verify(refreshToken, getJwtSecret(), {
+      algorithms: ['HS256'],
+    }) as unknown as AccessPayload & { type?: string };
     if (payload.type !== 'refresh') {
       return null;
     }
@@ -153,9 +157,9 @@ export async function revokeRefresh(refreshToken: string): Promise<void> {
 }
 
 export function verifyAccessToken(token: string): AccessPayload {
-  return jwt.verify(token, config.jwtSecret || 'test-secret', {
+  return jwt.verify(token, getJwtSecret(), {
     algorithms: ['HS256'],
-  }) as AccessPayload;
+  }) as unknown as AccessPayload;
 }
 
 export function decodeLegacyToken(token: string): AccessPayload {

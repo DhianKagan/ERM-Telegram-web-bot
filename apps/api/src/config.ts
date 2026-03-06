@@ -2,6 +2,7 @@
 // Модули: path, dotenv, process, URL
 import path from 'path';
 import dotenv from 'dotenv';
+import { randomUUID } from 'node:crypto';
 import { PROJECT_TIMEZONE } from 'shared';
 
 if (!process.env.TZ) {
@@ -173,12 +174,25 @@ const applyMongoAuthSourceFallback = (
   return undefined;
 };
 
-const fallback = {
-  BOT_TOKEN: 'test-bot-token',
-  CHAT_ID: '0',
-  JWT_SECRET: 'test-secret',
-  APP_URL: 'https://localhost',
+const buildFallback = () => {
+  if (isTestEnvironment) {
+    return {
+      BOT_TOKEN: `test-bot-${randomUUID()}`,
+      CHAT_ID: '0',
+      JWT_SECRET: `test-jwt-${randomUUID()}-A1!`,
+      APP_URL: 'https://localhost',
+    };
+  }
+
+  return {
+    BOT_TOKEN: '',
+    CHAT_ID: '0',
+    JWT_SECRET: '',
+    APP_URL: 'https://localhost',
+  };
 };
+
+const fallback = buildFallback();
 
 const requiredByRole: Record<
   typeof appRole,
@@ -207,6 +221,37 @@ for (const key of required) {
   }
   console.warn(`Переменная ${key} не задана, используем значение по умолчанию`);
   process.env[key] = fallback[key];
+}
+
+const insecureSecretLikeValue = (value: string): boolean => {
+  const normalized = value.trim().toLowerCase();
+  return [
+    'test-secret',
+    'secret',
+    'changeme',
+    'test',
+    'password',
+    '123456',
+  ].includes(normalized);
+};
+
+const isStrongJwtSecret = (value: string): boolean => {
+  if (value.length < 16) {
+    return false;
+  }
+  return /[a-z]/.test(value) && /[A-Z]/.test(value) && /\d/.test(value);
+};
+
+if (strictEnvs.has(nodeEnv)) {
+  const jwtSecretValue = normalizeEnvValue(process.env.JWT_SECRET);
+  if (!jwtSecretValue || insecureSecretLikeValue(jwtSecretValue)) {
+    throw new Error('JWT_SECRET должен быть задан и не может быть тестовым');
+  }
+  if (!isStrongJwtSecret(jwtSecretValue)) {
+    throw new Error(
+      'JWT_SECRET в production должен быть длиной не менее 16 символов и содержать строчные/заглавные буквы и цифры',
+    );
+  }
 }
 
 const mongoUrlEnvRaw = normalizeEnvValue(

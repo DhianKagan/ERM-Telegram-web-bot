@@ -2,10 +2,7 @@
  * Назначение файла: тесты валидации и нормализации точек задач.
  * Основные модули: utils/taskPointsInput.
  */
-import {
-  prepareIncomingPoints,
-  TaskPointsValidationError,
-} from '../../src/utils/taskPointsInput';
+import { prepareIncomingPoints } from '../../src/utils/taskPointsInput';
 
 jest.mock('../../src/services/maps', () => ({
   shouldExpandMapsUrl: jest.fn().mockReturnValue(true),
@@ -36,6 +33,23 @@ describe('prepareIncomingPoints', () => {
     expect(points[0].sourceUrl).toMatch('maps.google.com');
   });
 
+  it('подсказывает вставить полную ссылку при ошибке разворачивания карты', async () => {
+    const maps = await import('../../src/services/maps');
+    (maps.expandMapsUrl as jest.Mock).mockRejectedValueOnce(new Error('dns'));
+
+    await expect(
+      prepareIncomingPoints([
+        {
+          kind: 'start',
+          sourceUrl: 'https://maps.app.goo.gl/fail',
+        },
+      ]),
+    ).rejects.toMatchObject({
+      code: 'invalid_point',
+      message: expect.stringContaining('Вставьте полную ссылку Google Maps'),
+    });
+  });
+
   it('бросает ошибку при недопустимой ссылке или координатах', async () => {
     await expect(
       prepareIncomingPoints([
@@ -49,7 +63,10 @@ describe('prepareIncomingPoints', () => {
           coordinates: { lat: 0, lng: 0 },
         },
       ]),
-    ).rejects.toBeInstanceOf(TaskPointsValidationError);
+    ).rejects.toMatchObject({
+      code: 'invalid_point',
+      message: expect.stringContaining('координаты'),
+    });
   });
 
   it('ограничивает количество точек десятью элементами', async () => {

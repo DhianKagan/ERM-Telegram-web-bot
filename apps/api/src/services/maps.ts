@@ -424,6 +424,114 @@ const extractCoordsViaPlaywright = async (
   }
 };
 
+export type MapsPlaceDetails = {
+  name: string;
+  category?: string;
+  address?: string;
+};
+
+export const extractPlaceDetailsViaPlaywright = async (
+  url: string,
+): Promise<MapsPlaceDetails | null> => {
+  if (!MAPS_HEADLESS_FALLBACK_ENABLED) {
+    return null;
+  }
+
+  try {
+    const playwright = (await import(MAPS_HEADLESS_MODULE_NAME)) as {
+      chromium?: {
+        launch: (options?: Record<string, unknown>) => Promise<{
+          newContext: (options?: Record<string, unknown>) => Promise<{
+            newPage: () => Promise<{
+              goto: (
+                target: string,
+                options?: Record<string, unknown>,
+              ) => Promise<void>;
+              locator: (selector: string) => {
+                first: () => {
+                  textContent: () => Promise<string | null>;
+                };
+              };
+              waitForTimeout: (timeout: number) => Promise<void>;
+              close: () => Promise<void>;
+            }>;
+            close: () => Promise<void>;
+          }>;
+          close: () => Promise<void>;
+        }>;
+      };
+    };
+
+    if (!playwright.chromium) {
+      return null;
+    }
+
+    const browser = await playwright.chromium.launch({
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      headless: true,
+    });
+    const context = await browser.newContext({
+      viewport: { width: 1366, height: 768 },
+      locale: 'uk-UA',
+      userAgent:
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    });
+    const page = await context.newPage();
+
+    try {
+      await page.goto(url, {
+        waitUntil: 'domcontentloaded',
+        timeout: MAPS_HEADLESS_TIMEOUT_MS,
+      });
+      await page.waitForTimeout(1200);
+
+      const readText = async (selectors: string[]): Promise<string | null> => {
+        for (const selector of selectors) {
+          const text = await page.locator(selector).first().textContent();
+          if (typeof text === 'string' && text.trim()) {
+            return text.trim();
+          }
+        }
+        return null;
+      };
+
+      const name = await readText([
+        'h1.DUwDvf',
+        'h1[data-attrid="title"]',
+        '[role="main"] h1',
+      ]);
+
+      if (!name) {
+        return null;
+      }
+
+      const category = await readText([
+        'button.DkEaL',
+        'button[jsaction*="pane.rating.category"]',
+        '[data-item-id="authority"] button',
+      ]);
+
+      const address = await readText([
+        'button[data-item-id="address"] .Io6YTe',
+        'button[data-item-id="address"]',
+      ]);
+
+      return {
+        name,
+        ...(category ? { category } : {}),
+        ...(address ? { address } : {}),
+      };
+    } finally {
+      await page.close();
+      await context.close();
+      await browser.close();
+    }
+  } catch (error) {
+    console.warn('Headless fallback for place details parsing failed', error);
+    return null;
+  }
+};
+
 export type { Coordinates };
 
 export async function expandMapsUrl(shortUrl: string): Promise<string> {

@@ -111,6 +111,7 @@ const isTransientMapsFetchError = (error: unknown): boolean => {
 
   const normalizedMessage = error.message.toLowerCase();
 
+  // 1) Системные/сетевые коды ошибок из Node.js/undici
   const networkCodes = [
     'ENETUNREACH',
     'EAI_AGAIN',
@@ -130,6 +131,12 @@ const isTransientMapsFetchError = (error: unknown): boolean => {
     return true;
   }
 
+  // 2) Ошибки, которые часто бросает fetch при неуспешном соединении
+  if (error.name === 'TypeError' || error.name === 'FetchError') {
+    return true;
+  }
+
+  // 3) Типовые фрагменты сообщений для временных сетевых/TLS-сбоев
   const transientMessageFragments = [
     'fetch failed',
     'failed to fetch',

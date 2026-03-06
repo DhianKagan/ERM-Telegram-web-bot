@@ -16,6 +16,22 @@ import {
 } from '../services/shortLinks';
 import { normalizeManagedShortLink } from '../services/taskLinks';
 
+const looksLikeMapsUrl = (value: string): boolean => {
+  try {
+    const parsed = new URL(value);
+    const host = parsed.hostname.toLowerCase();
+    if (host === 'maps.app.goo.gl') {
+      return true;
+    }
+    if (!host.includes('google.')) {
+      return false;
+    }
+    return parsed.pathname.startsWith('/maps');
+  } catch {
+    return false;
+  }
+};
+
 export async function expand(req: Request, res: Response): Promise<void> {
   try {
     const input = typeof req.body.url === 'string' ? req.body.url.trim() : '';
@@ -31,8 +47,27 @@ export async function expand(req: Request, res: Response): Promise<void> {
       }
       resolvedSource = expanded;
     }
-    const full = await expandMapsUrl(resolvedSource);
-    const place = await extractPlaceDetailsViaPlaywright(full);
+    let full = resolvedSource;
+    try {
+      full = await expandMapsUrl(resolvedSource);
+    } catch (error) {
+      const canFallbackToSource =
+        managedShortLink || looksLikeMapsUrl(resolvedSource);
+      if (!canFallbackToSource) {
+        throw error;
+      }
+      console.warn(
+        'Не удалось развернуть ссылку карты, используем исходную ссылку',
+        error,
+      );
+    }
+
+    let place = null;
+    try {
+      place = await extractPlaceDetailsViaPlaywright(full);
+    } catch (error) {
+      console.warn('Не удалось извлечь данные места из ссылки карты', error);
+    }
     let shortUrl: string | undefined;
     if (managedShortLink) {
       shortUrl = normalizeManagedShortLink(input);

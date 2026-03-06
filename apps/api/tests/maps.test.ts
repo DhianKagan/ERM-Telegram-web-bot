@@ -15,6 +15,7 @@ jest.mock('dns/promises', () => ({
 import {
   expandMapsUrl,
   extractCoords,
+  shouldExpandMapsUrl,
   searchAddress,
   reverseGeocode,
 } from '../src/services/maps';
@@ -24,6 +25,24 @@ import { stopQueue } from '../src/services/messageQueue';
 
 const lookupMock = lookup as jest.MockedFunction<typeof lookup>;
 
+test('shouldExpandMapsUrl использует единый allowlist Google-хостов', () => {
+  expect(
+    shouldExpandMapsUrl('https://google.com/maps/@50.4501,30.5234,17z'),
+  ).toBe(true);
+  expect(
+    shouldExpandMapsUrl('https://www.google.co.uk/maps/@50.4501,30.5234,17z'),
+  ).toBe(true);
+  expect(shouldExpandMapsUrl('https://maps.google.de/?q=50.4501,30.5234')).toBe(
+    true,
+  );
+});
+
+test('shouldExpandMapsUrl отклоняет небезопасные URL', () => {
+  expect(shouldExpandMapsUrl('http://maps.app.goo.gl/test')).toBe(false);
+  expect(shouldExpandMapsUrl('https://user@maps.app.goo.gl/test')).toBe(false);
+  expect(shouldExpandMapsUrl('https://maps.app.goo.gl:444/test')).toBe(false);
+  expect(shouldExpandMapsUrl('https://example.com/maps')).toBe(false);
+});
 test('expandMapsUrl возвращает полный url', async () => {
   const text = jest.fn();
   global.fetch = jest

@@ -8,6 +8,7 @@ import {
 } from '../../src/utils/taskPointsInput';
 
 jest.mock('../../src/services/maps', () => ({
+  shouldExpandMapsUrl: jest.fn().mockReturnValue(true),
   expandMapsUrl: jest.fn().mockImplementation((url: string) => {
     if (url.includes('first')) {
       return Promise.resolve('https://maps.google.com/?q=50.4500,30.5230');

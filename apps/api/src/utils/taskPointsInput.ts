@@ -6,7 +6,7 @@ import type { TaskPoint } from '../db/model';
 import { latLngToLonLat, parsePointInput, precheckLocations } from './geo';
 import parseGoogleAddress from './parseGoogleAddress';
 import { normalizeTaskPoints } from './taskPoints';
-import { expandMapsUrl } from '../services/maps';
+import { expandMapsUrl, shouldExpandMapsUrl } from '../services/maps';
 
 const MAX_POINTS = 10;
 
@@ -14,22 +14,6 @@ const normalizeText = (value: unknown): string | undefined => {
   if (typeof value !== 'string') return undefined;
   const trimmed = value.trim();
   return trimmed ? trimmed : undefined;
-};
-
-const shouldExpandMapsUrl = (value: string): boolean => {
-  if (!value) return false;
-  try {
-    const parsed = new URL(value);
-    const host = parsed.hostname.toLowerCase();
-    return (
-      parsed.protocol === 'https:' &&
-      ['goo.gl', 'maps.app.goo.gl', 'maps.google.com', 'www.google.com'].includes(
-        host,
-      )
-    );
-  } catch {
-    return false;
-  }
 };
 
 export type TaskPointsErrorCode =

@@ -53,6 +53,27 @@ const isAllowedMapsHost = (host: string): boolean => {
   );
 };
 
+export const shouldExpandMapsUrl = (value: string): boolean => {
+  if (!value) {
+    return false;
+  }
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== 'https:') {
+      return false;
+    }
+    if (parsed.username || parsed.password) {
+      return false;
+    }
+    if (parsed.port && parsed.port !== '443') {
+      return false;
+    }
+    return isAllowedMapsHost(parsed.hostname.toLowerCase());
+  } catch {
+    return false;
+  }
+};
+
 const tryGetWrappedMapsUrl = (value: URL): URL | null => {
   const host = value.hostname.toLowerCase();
   const isGoogleWrapperHost =

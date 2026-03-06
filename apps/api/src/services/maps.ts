@@ -285,7 +285,7 @@ const buildCoordsUrl = (coords: Coordinates): string =>
     coords.lng,
   )},17z`;
 
-const DEFAULT_MAPS_BROWSER_LIKE_HEADERS: Record<string, string> = {
+const MAPS_BROWSER_LIKE_HEADERS: Record<string, string> = {
   'User-Agent':
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
   Accept:
@@ -293,34 +293,6 @@ const DEFAULT_MAPS_BROWSER_LIKE_HEADERS: Record<string, string> = {
   'Accept-Language': 'ru,en;q=0.9',
   'Cache-Control': 'no-cache',
   Pragma: 'no-cache',
-};
-
-const resolveMapsBrowserLikeHeaders = (): Record<string, string> => {
-  const raw = process.env.MAPS_BROWSER_LIKE_HEADERS_JSON;
-  if (!raw || !raw.trim()) {
-    return DEFAULT_MAPS_BROWSER_LIKE_HEADERS;
-  }
-  try {
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
-    const sanitizedEntries = Object.entries(parsed).filter(
-      ([key, value]) =>
-        typeof key === 'string' &&
-        key.trim().length > 0 &&
-        typeof value === 'string' &&
-        value.trim().length > 0,
-    ) as Array<[string, string]>;
-
-    if (sanitizedEntries.length === 0) {
-      return DEFAULT_MAPS_BROWSER_LIKE_HEADERS;
-    }
-
-    return {
-      ...DEFAULT_MAPS_BROWSER_LIKE_HEADERS,
-      ...Object.fromEntries(sanitizedEntries),
-    };
-  } catch {
-    return DEFAULT_MAPS_BROWSER_LIKE_HEADERS;
-  }
 };
 
 const STATIC_MAP_PATH = '/maps/api/staticmap';
@@ -639,7 +611,7 @@ export async function expandMapsUrl(shortUrl: string): Promise<string> {
     try {
       const followed = await fetch(finalUrlString, {
         redirect: 'follow',
-        headers: resolveMapsBrowserLikeHeaders(),
+        headers: MAPS_BROWSER_LIKE_HEADERS,
       });
       const followedUrl = normalizeMapsUrl(followed.url || finalUrlString);
       const followedUrlObj = new URL(followedUrl);

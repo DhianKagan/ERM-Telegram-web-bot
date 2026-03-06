@@ -3,6 +3,7 @@
 import { Request, Response } from 'express';
 import {
   expandMapsUrl,
+  extractPlaceDetailsViaPlaywright,
   searchAddress as searchAddressService,
   reverseGeocode as reverseGeocodeService,
 } from '../services/maps';
@@ -31,6 +32,7 @@ export async function expand(req: Request, res: Response): Promise<void> {
       resolvedSource = expanded;
     }
     const full = await expandMapsUrl(resolvedSource);
+    const place = await extractPlaceDetailsViaPlaywright(full);
     let shortUrl: string | undefined;
     if (managedShortLink) {
       shortUrl = normalizeManagedShortLink(input);
@@ -46,6 +48,7 @@ export async function expand(req: Request, res: Response): Promise<void> {
       url: full,
       coords: extractCoords(full),
       ...(shortUrl ? { short: shortUrl } : {}),
+      ...(place ? { place } : {}),
     });
   } catch {
     sendProblem(req, res, {

@@ -15,6 +15,11 @@ export type ExpandLinkResponse = {
   url: string;
   coords?: { lat: number; lng: number } | null;
   short?: string;
+  place?: {
+    name: string;
+    category?: string;
+    address?: string;
+  };
 };
 
 type SearchOptions = {
@@ -154,10 +159,28 @@ export const expandLink = async (
       typeof (data as { short?: unknown }).short === 'string'
         ? (data as { short: string }).short.trim()
         : undefined;
+    const placeRaw = (data as { place?: unknown }).place;
+    const place =
+      placeRaw && typeof placeRaw === 'object'
+        ? {
+            name:
+              typeof (placeRaw as { name?: unknown }).name === 'string'
+                ? (placeRaw as { name: string }).name.trim()
+                : '',
+            ...(typeof (placeRaw as { category?: unknown }).category ===
+            'string'
+              ? { category: (placeRaw as { category: string }).category.trim() }
+              : {}),
+            ...(typeof (placeRaw as { address?: unknown }).address === 'string'
+              ? { address: (placeRaw as { address: string }).address.trim() }
+              : {}),
+          }
+        : null;
     return {
       url: data.url.trim(),
       coords: coords ?? null,
       ...(short ? { short } : {}),
+      ...(place && place.name ? { place } : {}),
     };
   } catch {
     return null;

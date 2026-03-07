@@ -197,8 +197,38 @@ class RedisRefreshStore implements RefreshStore {
 class ResilientRefreshStore implements RefreshStore {
   private readonly fallback = new MemoryRefreshStore();
   private degraded = false;
+  private readonly operationTimeoutMs: number;
 
-  constructor(private readonly primary: RefreshStore) {}
+  constructor(primary: RefreshStore, operationTimeoutMs?: number) {
+    this.primary = primary;
+    this.operationTimeoutMs =
+      Number.isFinite(operationTimeoutMs) && (operationTimeoutMs ?? 0) > 0
+        ? Math.floor(operationTimeoutMs as number)
+        : 0;
+  }
+
+  private readonly primary: RefreshStore;
+
+  private withTimeout<T>(promise: Promise<T>): Promise<T> {
+    if (!this.operationTimeoutMs) {
+      return promise;
+    }
+    return new Promise<T>((resolve, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error('refresh store operation timeout'));
+      }, this.operationTimeoutMs);
+      promise.then(
+        (value) => {
+          clearTimeout(timer);
+          resolve(value);
+        },
+        (error: unknown) => {
+          clearTimeout(timer);
+          reject(error);
+        },
+      );
+    });
+  }
 
   private async withFallback<T>(
     op: (store: RefreshStore) => Promise<T>,
@@ -207,7 +237,7 @@ class ResilientRefreshStore implements RefreshStore {
       return op(this.fallback);
     }
     try {
-      return await op(this.primary);
+      return await this.withTimeout(op(this.primary));
     } catch {
       this.degraded = true;
       return op(this.fallback);
@@ -265,11 +295,16 @@ function buildStore(): RefreshStore {
       enableOfflineQueue: false,
     });
     redis.connect().catch(() => undefined);
+    const operationTimeoutMs = Number.parseInt(
+      process.env.AUTH_REDIS_OPERATION_TIMEOUT_MS || '250',
+      10,
+    );
     return new ResilientRefreshStore(
       new RedisRefreshStore(
         redis,
         process.env.REFRESH_REDIS_PREFIX || 'erm:auth:refresh',
       ),
+      operationTimeoutMs,
     );
   } catch {
     return new MemoryRefreshStore();

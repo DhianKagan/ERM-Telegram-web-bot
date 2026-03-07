@@ -308,6 +308,71 @@ const MAPS_HEADLESS_TIMEOUT_MS = Math.min(
   20000,
 );
 
+type PlaywrightChromiumLike = {
+  launch: (options?: Record<string, unknown>) => Promise<{
+    newContext: (options?: Record<string, unknown>) => Promise<{
+      newPage: () => Promise<{
+        goto: (
+          target: string,
+          options?: Record<string, unknown>,
+        ) => Promise<void>;
+        evaluate: <T>(pageFunction: () => T) => Promise<T>;
+        locator: (selector: string) => {
+          first: () => {
+            textContent: () => Promise<string | null>;
+          };
+        };
+        waitForTimeout: (timeout: number) => Promise<void>;
+        close: () => Promise<void>;
+      }>;
+      close: () => Promise<void>;
+    }>;
+    close: () => Promise<void>;
+  }>;
+};
+
+const MODULE_NOT_FOUND_CODE = 'MODULE_NOT_FOUND';
+let hasLoggedMissingHeadlessModule = false;
+
+const isMissingHeadlessModuleError = (error: unknown): boolean => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const code = (error as Error & { code?: unknown }).code;
+  if (code !== MODULE_NOT_FOUND_CODE) {
+    return false;
+  }
+
+  return (
+    error.message.includes(
+      `Cannot find module '${MAPS_HEADLESS_MODULE_NAME}'`,
+    ) ||
+    error.message.includes(`Cannot find package '${MAPS_HEADLESS_MODULE_NAME}'`)
+  );
+};
+
+const getPlaywrightChromium =
+  async (): Promise<PlaywrightChromiumLike | null> => {
+    try {
+      const playwright = (await import(MAPS_HEADLESS_MODULE_NAME)) as {
+        chromium?: PlaywrightChromiumLike;
+      };
+      return playwright.chromium ?? null;
+    } catch (error) {
+      if (isMissingHeadlessModuleError(error)) {
+        if (!hasLoggedMissingHeadlessModule) {
+          hasLoggedMissingHeadlessModule = true;
+          console.warn(
+            `Headless fallback disabled: module "${MAPS_HEADLESS_MODULE_NAME}" is not installed in this runtime`,
+          );
+        }
+        return null;
+      }
+      throw error;
+    }
+  };
+
 const normalizeMapsUrl = (value: string): string => {
   if (!value) {
     return value;
@@ -344,30 +409,12 @@ const extractCoordsViaPlaywright = async (
   }
 
   try {
-    const playwright = (await import(MAPS_HEADLESS_MODULE_NAME)) as {
-      chromium?: {
-        launch: (options?: Record<string, unknown>) => Promise<{
-          newContext: (options?: Record<string, unknown>) => Promise<{
-            newPage: () => Promise<{
-              goto: (
-                target: string,
-                options?: Record<string, unknown>,
-              ) => Promise<void>;
-              evaluate: <T>(pageFunction: () => T) => Promise<T>;
-              close: () => Promise<void>;
-            }>;
-            close: () => Promise<void>;
-          }>;
-          close: () => Promise<void>;
-        }>;
-      };
-    };
-
-    if (!playwright.chromium) {
+    const chromium = await getPlaywrightChromium();
+    if (!chromium) {
       return null;
     }
 
-    const browser = await playwright.chromium.launch({
+    const browser = await chromium.launch({
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
       headless: true,
     });
@@ -448,35 +495,12 @@ export const extractPlaceDetailsViaPlaywright = async (
   }
 
   try {
-    const playwright = (await import(MAPS_HEADLESS_MODULE_NAME)) as {
-      chromium?: {
-        launch: (options?: Record<string, unknown>) => Promise<{
-          newContext: (options?: Record<string, unknown>) => Promise<{
-            newPage: () => Promise<{
-              goto: (
-                target: string,
-                options?: Record<string, unknown>,
-              ) => Promise<void>;
-              locator: (selector: string) => {
-                first: () => {
-                  textContent: () => Promise<string | null>;
-                };
-              };
-              waitForTimeout: (timeout: number) => Promise<void>;
-              close: () => Promise<void>;
-            }>;
-            close: () => Promise<void>;
-          }>;
-          close: () => Promise<void>;
-        }>;
-      };
-    };
-
-    if (!playwright.chromium) {
+    const chromium = await getPlaywrightChromium();
+    if (!chromium) {
       return null;
     }
 
-    const browser = await playwright.chromium.launch({
+    const browser = await chromium.launch({
       args: ['--no-sandbox', '--disable-setuid-sandbox'],
       headless: true,
     });

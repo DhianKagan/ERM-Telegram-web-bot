@@ -159,6 +159,10 @@ const isTransientMapsFetchError = (error: unknown): boolean => {
     return true;
   }
 
+  if (normalizedMessage.includes('слишком много редиректов')) {
+    return true;
+  }
+
   return false;
 };
 
@@ -583,11 +587,19 @@ export async function expandMapsUrl(shortUrl: string): Promise<string> {
     maxRedirects = 5,
   ): Promise<{ res: Response; finalUrl: URL }> => {
     let currentUrl = initialUrl;
+    const visitedUrls = new Set<string>();
     for (let i = 0; i <= maxRedirects; i += 1) {
       const unwrappedCurrentUrl = tryGetWrappedMapsUrl(currentUrl);
       if (unwrappedCurrentUrl) {
         currentUrl = unwrappedCurrentUrl;
       }
+
+      const currentKey = currentUrl.toString();
+      if (visitedUrls.has(currentKey)) {
+        throw new Error('Слишком много редиректов');
+      }
+      visitedUrls.add(currentKey);
+
       await assertSafeMapsUrl(currentUrl);
       const res = await fetch(currentUrl.toString(), { redirect: 'manual' });
       if (res.status >= 300 && res.status < 400) {

@@ -31,6 +31,7 @@ RUN pnpm install --offline --frozen-lockfile || pnpm install --no-frozen-lockfil
 FROM node:20-slim
 WORKDIR /app
 ENV NODE_ENV=production
+ENV PLAYWRIGHT_BROWSERS_PATH=0
 COPY --from=build /app/apps/api/dist /app/apps/api/dist
 COPY --from=build /app/apps/api/public /app/apps/api/public
 COPY --from=build /app/apps/api/ecosystem.config.cjs /app/apps/api/ecosystem.config.cjs
@@ -52,6 +53,7 @@ COPY --from=build /app/scripts/railway/start-by-role.sh /app/scripts/railway/sta
 # pnpm workspaces install places many packages in root node_modules; pm2 and other shared
 # deps can be hoisted there. Copy it so binaries like pm2-runtime are present.
 COPY --from=build /app/node_modules /app/node_modules
+RUN /app/apps/api/node_modules/.bin/playwright install --with-deps chromium
 RUN mkdir -p /var/log/pm2
 EXPOSE 3000
 CMD ["/app/scripts/railway/start-by-role.sh"]

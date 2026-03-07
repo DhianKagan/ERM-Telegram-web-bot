@@ -987,6 +987,83 @@ export default class TasksController {
           }
         : {};
 
+    const sendAlbumItemIndividually = async (
+      item: NormalizedImage,
+      isFirst: boolean,
+    ): Promise<void> => {
+      const captionValue = isFirst ? albumCaption : item.caption;
+      const photoOptions: SendPhotoOptions = {
+        ...(typeof topicId === 'number' ? { message_thread_id: topicId } : {}),
+        ...mediaReplyParameters,
+        ...(captionValue
+          ? {
+              caption: isFirst ? captionValue : escapeMarkdownV2(captionValue),
+              parse_mode: 'MarkdownV2' as const,
+            }
+          : {}),
+      };
+      const sendPhotoAttempt = async () => {
+        const photo = await this.resolvePhotoInputWithCache(item.url, cache);
+        const photoResponse = await bot.telegram.sendPhoto(
+          chat,
+          photo,
+          photoOptions,
+        );
+        if (photoResponse?.message_id) {
+          albumMessageIds.push(photoResponse.message_id);
+        }
+        await this.persistTelegramFileId(
+          item.url,
+          this.extractTelegramPhotoId(photoResponse),
+        );
+      };
+
+      try {
+        await sendPhotoAttempt();
+      } catch (photoError) {
+        const photoErrorCode = this.extractPhotoErrorCode(photoError);
+        if (!photoErrorCode) {
+          throw photoError;
+        }
+        console.warn(
+          `Telegram не смог обработать изображение в альбоме (код: ${photoErrorCode}), отправляем как документ`,
+          item.url,
+          photoError,
+        );
+        const documentOptions: SendDocumentOptions = {
+          ...(typeof topicId === 'number'
+            ? { message_thread_id: topicId }
+            : {}),
+          ...mediaReplyParameters,
+          ...(captionValue
+            ? {
+                caption: isFirst
+                  ? captionValue
+                  : escapeMarkdownV2(captionValue),
+                parse_mode: 'MarkdownV2' as const,
+              }
+            : {}),
+        };
+        const fallback = await this.resolveDocumentInputWithCache(
+          item.url,
+          cache,
+        );
+        const response = await bot.telegram.sendDocument(
+          chat,
+          fallback,
+          documentOptions,
+        );
+        if (response?.message_id) {
+          albumMessageIds.push(response.message_id);
+        }
+        await this.persistTelegramFileId(
+          item.url,
+          this.extractTelegramDocumentId(response),
+        );
+      }
+      consumedAlbumUrls.push(item.url);
+    };
+
     if (!skipAlbum && albumCandidates.length > 1) {
       try {
         type SendMediaGroupOptions = Parameters<
@@ -1044,7 +1121,19 @@ export default class TasksController {
           );
         }
       } catch (error) {
-        console.error('Не удалось отправить альбом задачи', error);
+        const photoErrorCode = this.extractPhotoErrorCode(error);
+        if (!photoErrorCode) {
+          console.error('Не удалось отправить альбом задачи', error);
+        } else {
+          console.warn(
+            `Telegram не смог обработать медиа-группу (код: ${photoErrorCode}), отправляем изображения по одному`,
+            error,
+          );
+        }
+        const selected = albumCandidates.slice(0, 10);
+        for (let index = 0; index < selected.length; index += 1) {
+          await sendAlbumItemIndividually(selected[index], index === 0);
+        }
       }
     } else if (!skipAlbum && previewUrl) {
       try {

@@ -525,9 +525,18 @@ export const extractPlaceDetailsViaPlaywright = async (
 
       const readText = async (selectors: string[]): Promise<string | null> => {
         for (const selector of selectors) {
-          const text = await page.locator(selector).first().textContent();
-          if (typeof text === 'string' && text.trim()) {
-            return text.trim();
+          try {
+            const text = await Promise.race<string | null>([
+              page.locator(selector).first().textContent(),
+              new Promise<null>((resolve) => {
+                setTimeout(() => resolve(null), 1500);
+              }),
+            ]);
+            if (typeof text === 'string' && text.trim()) {
+              return text.trim();
+            }
+          } catch {
+            // ignore timeout for optional selectors and continue probing
           }
         }
         return null;

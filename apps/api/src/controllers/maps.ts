@@ -32,6 +32,39 @@ const looksLikeMapsUrl = (value: string): boolean => {
   }
 };
 
+const buildGoogleMapsLink = (coords: { lat: number; lng: number }): string =>
+  `https://www.google.com/maps/search/?api=1&query=${coords.lat},${coords.lng}`;
+
+const extractTextQueryFromMapsUrl = (value: string): string | null => {
+  try {
+    const parsed = new URL(value);
+    const queryFromParams =
+      parsed.searchParams.get('query') || parsed.searchParams.get('q');
+    if (queryFromParams && !extractCoords(queryFromParams)) {
+      return queryFromParams.trim() || null;
+    }
+
+    const placeMarker = '/maps/place/';
+    const pathname = parsed.pathname;
+    const index = pathname.toLowerCase().indexOf(placeMarker);
+    if (index === -1) {
+      return null;
+    }
+    const placePart = pathname.slice(index + placeMarker.length);
+    const encodedName = placePart.split('/')[0] || '';
+    if (!encodedName) {
+      return null;
+    }
+    const decoded = decodeURIComponent(encodedName.replace(/\+/g, ' ')).trim();
+    if (!decoded || extractCoords(decoded)) {
+      return null;
+    }
+    return decoded;
+  } catch {
+    return null;
+  }
+};
+
 export async function expand(req: Request, res: Response): Promise<void> {
   try {
     const input = typeof req.body.url === 'string' ? req.body.url.trim() : '';
@@ -68,6 +101,39 @@ export async function expand(req: Request, res: Response): Promise<void> {
     } catch (error) {
       console.warn('Не удалось извлечь данные места из ссылки карты', error);
     }
+
+    let coords = extractCoords(full);
+    if (!coords) {
+      const locationHintCandidates = [
+        place?.address,
+        place?.name,
+        extractTextQueryFromMapsUrl(full),
+      ].filter(
+        (candidate): candidate is string =>
+          typeof candidate === 'string' && Boolean(candidate.trim()),
+      );
+
+      for (const hint of locationHintCandidates) {
+        try {
+          const [bestMatch] = await searchAddressService(hint, { limit: 1 });
+          if (!bestMatch) {
+            continue;
+          }
+          coords = { lat: bestMatch.lat, lng: bestMatch.lng };
+          full = buildGoogleMapsLink(coords);
+          break;
+        } catch (error) {
+          console.warn(
+            'Не удалось определить координаты из текстовой подсказки',
+            {
+              hint,
+              error,
+            },
+          );
+        }
+      }
+    }
+
     let shortUrl: string | undefined;
     if (managedShortLink) {
       shortUrl = normalizeManagedShortLink(input);
@@ -81,7 +147,7 @@ export async function expand(req: Request, res: Response): Promise<void> {
     }
     res.json({
       url: full,
-      coords: extractCoords(full),
+      coords,
       ...(shortUrl ? { short: shortUrl } : {}),
       ...(place ? { place } : {}),
     });

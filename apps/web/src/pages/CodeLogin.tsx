@@ -29,6 +29,11 @@ export default function CodeLogin() {
     }
   }, [expired, addToast]);
 
+  const sleep = (ms: number) =>
+    new Promise((resolve) => {
+      setTimeout(resolve, ms);
+    });
+
   async function send(e?: React.FormEvent) {
     e?.preventDefault();
     const r = await authFetch('/api/v1/auth/send_code', {
@@ -46,12 +51,34 @@ export default function CodeLogin() {
 
   async function verify(e?: React.FormEvent) {
     e?.preventDefault();
-    const res = await authFetch('/api/v1/auth/verify_code', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ telegramId: Number(telegramId), code }),
-      noRedirect: true,
-    });
+    let res: Response | null = null;
+    const maxAttempts = 4;
+    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      res = await authFetch('/api/v1/auth/verify_code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ telegramId: Number(telegramId), code }),
+        noRedirect: true,
+      });
+      if (res.ok) {
+        break;
+      }
+      if (res.status !== 400 || attempt === maxAttempts) {
+        break;
+      }
+      const payload = (await res
+        .clone()
+        .json()
+        .catch(() => ({}))) as { detail?: string };
+      if (String(payload.detail || '').toLowerCase() !== 'invalid code') {
+        break;
+      }
+      await sleep(500);
+    }
+    if (!res) {
+      addToast('Неверный код', 'error');
+      return;
+    }
     if (res.ok) {
       if (shouldUseBearerAuth()) {
         const data = (await res.json().catch(() => ({}))) as {

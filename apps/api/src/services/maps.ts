@@ -337,6 +337,8 @@ type PlaywrightChromiumLike = {
 
 const MODULE_NOT_FOUND_CODE = 'MODULE_NOT_FOUND';
 let hasLoggedMissingHeadlessModule = false;
+let hasLoggedMissingHeadlessBrowser = false;
+let isHeadlessBrowserUnavailable = false;
 
 const isMissingHeadlessModuleError = (error: unknown): boolean => {
   if (!(error instanceof Error)) {
@@ -377,6 +379,34 @@ const getPlaywrightChromium =
     }
   };
 
+const isMissingPlaywrightBrowserError = (error: unknown): boolean => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const normalizedMessage = error.message.toLowerCase();
+  return (
+    normalizedMessage.includes("executable doesn't exist") &&
+    normalizedMessage.includes('playwright install')
+  );
+};
+
+const shouldDisableHeadlessFallback = (error: unknown): boolean => {
+  if (!isMissingPlaywrightBrowserError(error)) {
+    return false;
+  }
+
+  isHeadlessBrowserUnavailable = true;
+  if (!hasLoggedMissingHeadlessBrowser) {
+    hasLoggedMissingHeadlessBrowser = true;
+    console.warn(
+      `Headless fallback disabled: browser executable is missing for module "${MAPS_HEADLESS_MODULE_NAME}"`,
+    );
+  }
+
+  return true;
+};
+
 const normalizeMapsUrl = (value: string): string => {
   if (!value) {
     return value;
@@ -409,6 +439,10 @@ const extractCoordsViaPlaywright = async (
   url: string,
 ): Promise<Coordinates | null> => {
   if (!MAPS_HEADLESS_FALLBACK_ENABLED) {
+    return null;
+  }
+
+  if (isHeadlessBrowserUnavailable) {
     return null;
   }
 
@@ -480,6 +514,9 @@ const extractCoordsViaPlaywright = async (
       await browser.close();
     }
   } catch (error) {
+    if (shouldDisableHeadlessFallback(error)) {
+      return null;
+    }
     console.warn('Headless fallback for maps parsing failed', error);
     return null;
   }
@@ -495,6 +532,10 @@ export const extractPlaceDetailsViaPlaywright = async (
   url: string,
 ): Promise<MapsPlaceDetails | null> => {
   if (!MAPS_HEADLESS_FALLBACK_ENABLED) {
+    return null;
+  }
+
+  if (isHeadlessBrowserUnavailable) {
     return null;
   }
 
@@ -574,6 +615,9 @@ export const extractPlaceDetailsViaPlaywright = async (
       await browser.close();
     }
   } catch (error) {
+    if (shouldDisableHeadlessFallback(error)) {
+      return null;
+    }
     console.warn('Headless fallback for place details parsing failed', error);
     return null;
   }

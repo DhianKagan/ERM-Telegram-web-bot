@@ -545,6 +545,7 @@
   "googleMapsButton": "Google Maps",
   "googleMapsHint": "Open Google Maps to find a place or route",
   "googleMapsLink": "Paste a Google Maps link",
+  "googleMapsProcessing": "Link received, processing coordinates…",
   "collectionAddressLabel": "Object list",
   "collectionAddressPlaceholder": "Select an object",
   "collectionAddressesLoading": "Loading addresses...",

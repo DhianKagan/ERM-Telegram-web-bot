@@ -780,7 +780,9 @@ const resolveLocationLink = async (
       } else {
         link = expanded;
       }
-      title = parseGoogleAddress(resolved);
+      const placeName =
+        typeof data.place?.name === 'string' ? data.place.name.trim() : '';
+      title = placeName || parseGoogleAddress(resolved);
     }
     if (!coords) {
       coords = extractCoords(resolved);
@@ -1341,8 +1343,10 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   } | null>(null);
   const startLinkInputRef = React.useRef<HTMLInputElement | null>(null);
   const [startCollectionId, setStartCollectionId] = React.useState('');
+  const [isStartLinkResolving, setIsStartLinkResolving] = React.useState(false);
   const viaPointCounterRef = React.useRef(0);
   const [viaPoints, setViaPoints] = React.useState<ViaPointState[]>([]);
+  const [resolvingViaIds, setResolvingViaIds] = React.useState<string[]>([]);
   const [end, setEnd] = React.useState('');
   const [endLink, setEndLink] = React.useState('');
   const [finishCoordinates, setFinishCoordinates] = React.useState<{
@@ -1351,6 +1355,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   } | null>(null);
   const finishLinkInputRef = React.useRef<HTMLInputElement | null>(null);
   const [finishCollectionId, setFinishCollectionId] = React.useState('');
+  const [isEndLinkResolving, setIsEndLinkResolving] = React.useState(false);
   const [collectionObjects, setCollectionObjects] = React.useState<
     CollectionObject[]
   >([]);
@@ -2521,32 +2526,46 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
 
   const handleStartLink = async (value: string) => {
     autoRouteRef.current = true;
-    const resolved = await resolveLocationLink(value);
-    if (!resolved) {
-      setStart('');
-      setStartCoordinates(null);
-      setStartLink('');
-      return;
+    const sanitized = sanitizeLocationLink(value);
+    setStartLink(sanitized || value);
+    setIsStartLinkResolving(Boolean(sanitized));
+    try {
+      const resolved = await resolveLocationLink(value);
+      if (!resolved) {
+        setStart('');
+        setStartCoordinates(null);
+        setStartLink('');
+        return;
+      }
+      setStart(resolved.title);
+      setStartCoordinates(resolved.coords);
+      setStartLink(resolved.link);
+      setStartCollectionId('');
+    } finally {
+      setIsStartLinkResolving(false);
     }
-    setStart(resolved.title);
-    setStartCoordinates(resolved.coords);
-    setStartLink(resolved.link);
-    setStartCollectionId('');
   };
 
   const handleEndLink = async (value: string) => {
     autoRouteRef.current = true;
-    const resolved = await resolveLocationLink(value);
-    if (!resolved) {
-      setEnd('');
-      setFinishCoordinates(null);
-      setEndLink('');
-      return;
+    const sanitized = sanitizeLocationLink(value);
+    setEndLink(sanitized || value);
+    setIsEndLinkResolving(Boolean(sanitized));
+    try {
+      const resolved = await resolveLocationLink(value);
+      if (!resolved) {
+        setEnd('');
+        setFinishCoordinates(null);
+        setEndLink('');
+        return;
+      }
+      setEnd(resolved.title);
+      setFinishCoordinates(resolved.coords);
+      setEndLink(resolved.link);
+      setFinishCollectionId('');
+    } finally {
+      setIsEndLinkResolving(false);
     }
-    setEnd(resolved.title);
-    setFinishCoordinates(resolved.coords);
-    setEndLink(resolved.link);
-    setFinishCollectionId('');
   };
 
   const clearStartPoint = React.useCallback(() => {
@@ -2568,28 +2587,48 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const handleViaLinkChange = React.useCallback(
     async (id: string, value: string) => {
       autoRouteRef.current = true;
-      const resolved = await resolveLocationLink(value);
+      const sanitized = sanitizeLocationLink(value);
       setViaPoints((prev) =>
-        prev.map((point) => {
-          if (point.id !== id) return point;
-          if (!resolved) {
+        prev.map((point) =>
+          point.id === id
+            ? {
+                ...point,
+                link: sanitized || value,
+              }
+            : point,
+        ),
+      );
+      if (sanitized) {
+        setResolvingViaIds((prev) =>
+          prev.includes(id) ? prev : [...prev, id],
+        );
+      }
+      try {
+        const resolved = await resolveLocationLink(value);
+        setViaPoints((prev) =>
+          prev.map((point) => {
+            if (point.id !== id) return point;
+            if (!resolved) {
+              return {
+                ...point,
+                title: '',
+                link: '',
+                coordinates: null,
+                collectionId: '',
+              };
+            }
             return {
               ...point,
-              title: '',
-              link: '',
-              coordinates: null,
+              title: resolved.title,
+              link: resolved.link,
+              coordinates: resolved.coords,
               collectionId: '',
             };
-          }
-          return {
-            ...point,
-            title: resolved.title,
-            link: resolved.link,
-            coordinates: resolved.coords,
-            collectionId: '',
-          };
-        }),
-      );
+          }),
+        );
+      } finally {
+        setResolvingViaIds((prev) => prev.filter((itemId) => itemId !== id));
+      }
     },
     [],
   );
@@ -4119,6 +4158,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                 {t('collectionAddressesLoading')}
                               </p>
                             ) : null}
+                            {isStartLinkResolving ? (
+                              <p className="mt-1 text-xs text-slate-500">
+                                {t('googleMapsProcessing')}
+                              </p>
+                            ) : null}
                             {collectionObjectsError ? (
                               <p className="mt-1 text-xs text-red-600">
                                 {collectionObjectsError}
@@ -4268,6 +4312,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                       {t('collectionAddressesLoading')}
                                     </p>
                                   ) : null}
+                                  {resolvingViaIds.includes(point.id) ? (
+                                    <p className="mt-1 text-xs text-slate-500">
+                                      {t('googleMapsProcessing')}
+                                    </p>
+                                  ) : null}
                                   {collectionObjectsError ? (
                                     <p className="mt-1 text-xs text-red-600">
                                       {collectionObjectsError}
@@ -4402,6 +4451,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                             {collectionObjectsLoading ? (
                               <p className="mt-1 text-xs text-slate-500">
                                 {t('collectionAddressesLoading')}
+                              </p>
+                            ) : null}
+                            {isEndLinkResolving ? (
+                              <p className="mt-1 text-xs text-slate-500">
+                                {t('googleMapsProcessing')}
                               </p>
                             ) : null}
                             {collectionObjectsError ? (

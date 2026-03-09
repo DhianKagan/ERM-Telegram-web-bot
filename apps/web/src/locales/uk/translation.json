@@ -67,6 +67,7 @@
   "googleMapsButton": "Google Maps",
   "googleMapsHint": "Відкрийте Google Maps, щоб знайти точку або маршрут",
   "googleMapsLink": "Вставте посилання Google Maps",
+  "googleMapsProcessing": "Посилання отримано, обробляємо координати…",
   "collectionAddressLabel": "Список об'єктів",
   "collectionAddressPlaceholder": "Оберіть об'єкт",
   "collectionAddressesLoading": "Завантажуємо адреси...",

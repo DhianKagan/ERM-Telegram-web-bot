@@ -142,11 +142,33 @@ test('POST /api/v1/maps/expand подбирает координаты чере�
     .post('/api/v1/maps/expand')
     .send({ url: 'https://maps.app.goo.gl/5RESMr48ropZkVYs8' });
 
-  expect(searchAddress).toHaveBeenCalledWith('Київ, Україна', { limit: 1 });
+  expect(searchAddress).toHaveBeenCalledWith('Київ', { limit: 1 });
   expect(res.body.url).toBe(
     'https://www.google.com/maps/search/?api=1&query=50.4501,30.5234',
   );
   expect(res.body.coords).toEqual({ lat: 50.4501, lng: 30.5234 });
+});
+
+test('POST /api/v1/maps/expand берет название места из URL без headless fallback', async () => {
+  (expandMapsUrl as jest.Mock).mockResolvedValue(
+    'https://www.google.com/maps/place/AGROMARKET/@46.392470,30.703428,17z',
+  );
+  (extractCoords as jest.Mock).mockImplementation((value: string) =>
+    value.includes('@46.392470,30.703428')
+      ? { lat: 46.39247, lng: 30.703428 }
+      : null,
+  );
+
+  const res = await request(app)
+    .post('/api/v1/maps/expand')
+    .send({ url: 'https://maps.app.goo.gl/fr1VNAH7RiVbY1vQ9' });
+
+  expect(res.body.url).toBe(
+    'https://www.google.com/maps/place/AGROMARKET/@46.392470,30.703428,17z',
+  );
+  expect(res.body.coords).toEqual({ lat: 46.39247, lng: 30.703428 });
+  expect(res.body.place).toEqual({ name: 'AGROMARKET' });
+  expect(extractPlaceDetailsViaPlaywright).not.toHaveBeenCalled();
 });
 
 afterAll(() => {

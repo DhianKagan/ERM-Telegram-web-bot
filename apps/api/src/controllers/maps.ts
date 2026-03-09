@@ -35,6 +35,40 @@ const looksLikeMapsUrl = (value: string): boolean => {
 const buildGoogleMapsLink = (coords: { lat: number; lng: number }): string =>
   `https://www.google.com/maps/search/?api=1&query=${coords.lat},${coords.lng}`;
 
+const extractPlaceNameFromMapsUrl = (value: string): string | null => {
+  try {
+    const parsed = new URL(value);
+    const placeMarker = '/maps/place/';
+    const pathname = parsed.pathname;
+    const index = pathname.toLowerCase().indexOf(placeMarker);
+    if (index !== -1) {
+      const placePart = pathname.slice(index + placeMarker.length);
+      const encodedName = placePart.split('/')[0] || '';
+      if (encodedName) {
+        const decoded = decodeURIComponent(
+          encodedName.replace(/\+/g, ' '),
+        ).trim();
+        if (decoded && !extractCoords(decoded)) {
+          return decoded;
+        }
+      }
+    }
+
+    const queryFromParams =
+      parsed.searchParams.get('query') || parsed.searchParams.get('q');
+    if (queryFromParams && !extractCoords(queryFromParams)) {
+      const normalized = queryFromParams.trim();
+      if (normalized) {
+        return normalized;
+      }
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+};
+
 const extractTextQueryFromMapsUrl = (value: string): string | null => {
   try {
     const parsed = new URL(value);
@@ -96,10 +130,15 @@ export async function expand(req: Request, res: Response): Promise<void> {
     }
 
     let place = null;
-    try {
-      place = await extractPlaceDetailsViaPlaywright(full);
-    } catch (error) {
-      console.warn('Не удалось извлечь данные места из ссылки карты', error);
+    const placeNameFromUrl = extractPlaceNameFromMapsUrl(full);
+    if (placeNameFromUrl) {
+      place = { name: placeNameFromUrl };
+    } else {
+      try {
+        place = await extractPlaceDetailsViaPlaywright(full);
+      } catch (error) {
+        console.warn('Не удалось извлечь данные места из ссылки карты', error);
+      }
     }
 
     let coords = extractCoords(full);

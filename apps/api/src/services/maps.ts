@@ -642,6 +642,12 @@ export async function expandMapsUrl(shortUrl: string): Promise<string> {
     finalUrl = expanded.finalUrl;
   } catch (error) {
     if (isTransientMapsFetchError(error)) {
+      const renderedCoords = await extractCoordsViaPlaywright(
+        urlObj.toString(),
+      );
+      if (renderedCoords) {
+        return buildCoordsUrl(renderedCoords);
+      }
       return normalizeMapsUrl(urlObj.toString());
     }
     throw error;

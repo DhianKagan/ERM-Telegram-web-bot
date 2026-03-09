@@ -12,7 +12,13 @@ cmds = [
 cmds = ["pnpm install --frozen-lockfile"]
 
 [phases.build]
-cmds = ["pnpm build"]
+cmds = [
+  "pnpm build",
+  "pnpm --filter apps/api exec playwright install --with-deps chromium"
+]
+
+[variables]
+PLAYWRIGHT_BROWSERS_PATH = "0"
 
 [start]
 cmd = "./scripts/railway/start.sh"

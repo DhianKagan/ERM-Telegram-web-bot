@@ -118,22 +118,6 @@ export function parsePointInput(
         lng: roundCoord(lngN, precisionDecimals),
       };
     }
-
-    const maybeLatitude2 = obj.lng;
-    const maybeLongitude2 = obj.lat;
-    const lat2 = Number(maybeLatitude2);
-    const lng2 = Number(maybeLongitude2);
-    if (
-      Number.isFinite(lat2) &&
-      Number.isFinite(lng2) &&
-      isValidLat(lat2) &&
-      isValidLon(lng2)
-    ) {
-      return {
-        lat: roundCoord(lat2, precisionDecimals),
-        lng: roundCoord(lng2, precisionDecimals),
-      };
-    }
     return null;
   }
 

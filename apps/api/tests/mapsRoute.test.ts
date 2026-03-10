@@ -149,6 +149,23 @@ test('POST /api/v1/maps/expand подбирает координаты чере�
   expect(res.body.coords).toEqual({ lat: 50.4501, lng: 30.5234 });
 });
 
+test('POST /api/v1/maps/expand не вызывает headless fallback когда координаты уже есть в URL', async () => {
+  (expandMapsUrl as jest.Mock).mockResolvedValue(
+    'https://www.google.com/maps/@46.459854,30.546979,17z',
+  );
+  (extractCoords as jest.Mock).mockImplementation((value: string) =>
+    value.includes('@46.459854,30.546979')
+      ? { lat: 46.459854, lng: 30.546979 }
+      : null,
+  );
+
+  const res = await request(app)
+    .post('/api/v1/maps/expand')
+    .send({ url: 'https://maps.app.goo.gl/h4DvKu4FwHBpfnJz9' });
+
+  expect(res.body.coords).toEqual({ lat: 46.459854, lng: 30.546979 });
+  expect(extractPlaceDetailsViaPlaywright).not.toHaveBeenCalled();
+});
 test('POST /api/v1/maps/expand берет название места из URL без headless fallback', async () => {
   (expandMapsUrl as jest.Mock).mockResolvedValue(
     'https://www.google.com/maps/place/AGROMARKET/@46.392470,30.703428,17z',

@@ -143,10 +143,27 @@ test('POST /api/v1/maps/expand подбирает координаты чере�
     .send({ url: 'https://maps.app.goo.gl/5RESMr48ropZkVYs8' });
 
   expect(searchAddress).toHaveBeenCalledWith('Київ', { limit: 1 });
-  expect(res.body.url).toBe(
-    'https://www.google.com/maps/search/?api=1&query=50.4501,30.5234',
-  );
+  expect(res.body.url).toBe('https://www.google.com/maps/place/Київ');
   expect(res.body.coords).toEqual({ lat: 50.4501, lng: 30.5234 });
+});
+
+test('POST /api/v1/maps/expand сохраняет развернутую google maps ссылку при подборе координат', async () => {
+  (expandMapsUrl as jest.Mock).mockResolvedValue(
+    'https://www.google.com/maps/place/%D0%9D%D0%BE%D0%B2%D0%B0+%D0%9F%D0%BE%D1%88%D1%82%D0%B0+4/@46.3898373,30.7110779,722m/data=!3m1!1e3!4m6!3m5!1s0x40c633546596afd1:0x36d0660e11cfa775!8m2!3d46.390!4d30.711',
+  );
+  (extractCoords as jest.Mock).mockImplementation((value: string) =>
+    value.includes('@46.3898373,30.7110779')
+      ? { lat: 46.3898373, lng: 30.7110779 }
+      : null,
+  );
+
+  const res = await request(app)
+    .post('/api/v1/maps/expand')
+    .send({ url: 'https://maps.app.goo.gl/Kf757aAs' });
+
+  expect(res.body.url).toContain('/maps/place/');
+  expect(res.body.url).toContain('@46.3898373,30.7110779');
+  expect(res.body.coords).toEqual({ lat: 46.3898373, lng: 30.7110779 });
 });
 
 test('POST /api/v1/maps/expand не вызывает headless fallback когда координаты уже есть в URL', async () => {

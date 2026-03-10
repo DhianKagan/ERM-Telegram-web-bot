@@ -11,7 +11,6 @@ const router: Router = Router();
 
 router.post(
   '/expand',
-  authMiddleware(),
   validate([body('url').isString().notEmpty()]),
   asyncHandler(expand),
 );

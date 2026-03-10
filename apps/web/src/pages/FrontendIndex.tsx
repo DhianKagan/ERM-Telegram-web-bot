@@ -19,6 +19,9 @@ import {
   ArrowsUpDownIcon,
   ArrowPathIcon,
   ClockIcon,
+  CheckCircleIcon,
+  AcademicCapIcon,
+  PlayIcon,
 } from '@heroicons/react/24/outline';
 import { Card } from '@/components/ui/card';
 import { useAuth } from '@/context/useAuth';
@@ -51,6 +54,13 @@ type FaqCategory = {
   description: string;
   icon: React.ComponentType<React.ComponentProps<'svg'>>;
   items: FaqItem[];
+};
+
+type OnboardingStep = {
+  id: string;
+  title: string;
+  description: string;
+  route?: string;
 };
 
 const baseSections: DashboardSection[] = [
@@ -448,6 +458,37 @@ const personalStats = [
   },
 ] as const;
 
+const onboardingSteps: OnboardingStep[] = [
+  {
+    id: 'open-priority-tasks',
+    title: 'Проверьте приоритетные задачи',
+    description:
+      'Откройте раздел задач и отфильтруйте элементы со срочным приоритетом на текущую смену.',
+    route: '/tasks',
+  },
+  {
+    id: 'process-requests',
+    title: 'Обработайте входящие заявки',
+    description:
+      'В заявках разберите свежий поток, валидные обращения переведите в задачи, отклонённые — прокомментируйте.',
+    route: '/requests',
+  },
+  {
+    id: 'sync-logistics',
+    title: 'Сверьте логистические точки',
+    description:
+      'Для задач с логистикой проверьте координаты и маршрутные статусы перед стартом выполнения.',
+    route: '/mg/logistics',
+  },
+  {
+    id: 'close-day',
+    title: 'Закройте цикл дня в журнале',
+    description:
+      'Зафиксируйте ключевые события и обновите статусы завершённых операций для прозрачной отчётности.',
+    route: '/events',
+  },
+];
+
 function createOpenState(categories: FaqCategory[]): Record<string, boolean> {
   return categories
     .flatMap((category) => category.items)
@@ -465,6 +506,9 @@ export default function FrontendIndex() {
   const [openItems, setOpenItems] = React.useState<Record<string, boolean>>(
     () => createOpenState(faqCategories),
   );
+  const [completedSteps, setCompletedSteps] = React.useState<string[]>([]);
+  const [quizIndex, setQuizIndex] = React.useState(0);
+  const [quizRevealed, setQuizRevealed] = React.useState(false);
 
   const sections = React.useMemo(() => {
     if (role === 'admin') return [...baseSections, ...adminSections];
@@ -518,6 +562,16 @@ export default function FrontendIndex() {
     answers: faqCount,
   };
 
+  const onboardingProgress = Math.round(
+    (completedSteps.length / onboardingSteps.length) * 100,
+  );
+
+  const quizPool = React.useMemo(() => {
+    return faqCategories.flatMap((category) => category.items);
+  }, []);
+
+  const currentQuizItem = quizPool[quizIndex % quizPool.length];
+
   const toggleItem = (id: string) => {
     setOpenItems((current) => ({
       ...current,
@@ -531,6 +585,19 @@ export default function FrontendIndex() {
       nextState[key] = openValue;
     });
     setOpenItems(nextState);
+  };
+
+  const toggleStep = (stepId: string) => {
+    setCompletedSteps((current) =>
+      current.includes(stepId)
+        ? current.filter((id) => id !== stepId)
+        : [...current, stepId],
+    );
+  };
+
+  const nextQuiz = () => {
+    setQuizIndex((current) => (current + 1) % quizPool.length);
+    setQuizRevealed(false);
   };
 
   return (
@@ -577,6 +644,128 @@ export default function FrontendIndex() {
             </p>
           </Card>
         ))}
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <Card className="space-y-4 p-5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <CheckCircleIcon className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                Чек‑лист рабочего дня
+              </h2>
+            </div>
+            <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+              Выполнено: {completedSteps.length}/{onboardingSteps.length}
+            </span>
+          </div>
+
+          <div className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+            <div
+              className="h-full rounded-full bg-primary transition-all"
+              style={{ width: `${onboardingProgress}%` }}
+            />
+          </div>
+
+          <div className="space-y-2">
+            {onboardingSteps.map((step) => {
+              const completed = completedSteps.includes(step.id);
+              return (
+                <div
+                  key={step.id}
+                  className="rounded-lg border border-slate-200 p-3 dark:border-slate-700"
+                >
+                  <div className="flex items-start gap-3">
+                    <button
+                      type="button"
+                      onClick={() => toggleStep(step.id)}
+                      className={`mt-0.5 inline-flex h-5 w-5 items-center justify-center rounded border text-[10px] font-bold transition ${
+                        completed
+                          ? 'border-primary bg-primary text-white'
+                          : 'border-slate-300 text-slate-400 hover:border-primary/50'
+                      }`}
+                      aria-label={`Шаг: ${step.title}`}
+                    >
+                      {completed ? '✓' : ''}
+                    </button>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                        {step.title}
+                      </p>
+                      <p className="mt-1 text-xs leading-5 text-slate-600 dark:text-slate-300">
+                        {step.description}
+                      </p>
+                      {step.route && (
+                        <Link
+                          to={step.route}
+                          className="mt-1 inline-flex text-xs font-medium text-primary underline-offset-2 hover:underline"
+                        >
+                          Перейти к шагу
+                        </Link>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </Card>
+
+        <Card className="space-y-4 p-5">
+          <div className="flex items-center gap-2">
+            <AcademicCapIcon className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+              Мини‑тренажёр по ERM
+            </h2>
+          </div>
+
+          {currentQuizItem && (
+            <div className="space-y-3 rounded-xl border border-primary/20 bg-primary/5 p-4 dark:bg-primary/10">
+              <p className="text-xs font-medium uppercase tracking-wide text-primary">
+                Вопрос для самопроверки
+              </p>
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                {currentQuizItem.question}
+              </p>
+              {quizRevealed ? (
+                <p className="text-sm leading-6 text-slate-700 dark:text-slate-200">
+                  {currentQuizItem.answer}
+                </p>
+              ) : (
+                <p className="text-sm text-slate-600 dark:text-slate-300">
+                  Сформулируйте ответ самостоятельно, затем откройте подсказку.
+                </p>
+              )}
+
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => setQuizRevealed((current) => !current)}
+                  className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:border-primary/50 hover:text-primary dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                >
+                  <PlayIcon className="h-4 w-4" />
+                  {quizRevealed ? 'Скрыть ответ' : 'Показать ответ'}
+                </button>
+                <button
+                  type="button"
+                  onClick={nextQuiz}
+                  className="inline-flex items-center gap-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-xs font-medium text-slate-700 transition hover:border-primary/50 hover:text-primary dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200"
+                >
+                  <ArrowPathIcon className="h-4 w-4" />
+                  Следующий вопрос
+                </button>
+                {currentQuizItem.route && (
+                  <Link
+                    to={currentQuizItem.route}
+                    className="inline-flex items-center rounded-lg border border-primary/40 bg-white px-3 py-2 text-xs font-medium text-primary transition hover:bg-primary/5 dark:bg-slate-900"
+                  >
+                    Открыть раздел из вопроса
+                  </Link>
+                )}
+              </div>
+            </div>
+          )}
+        </Card>
       </div>
 
       <Card className="p-5">

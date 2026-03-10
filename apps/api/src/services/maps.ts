@@ -264,6 +264,27 @@ const hasCoordsInUrl = (value: string): boolean => {
   }
 };
 
+const isGoogleMapsPlaceUrl = (value: string): boolean => {
+  if (!value) {
+    return false;
+  }
+  try {
+    const parsed = new URL(value);
+    const host = parsed.hostname.toLowerCase();
+    const isGoogleHost =
+      host === 'www.google.com' ||
+      host === 'maps.google.com' ||
+      host.startsWith('maps.google.') ||
+      host.startsWith('www.google.');
+    if (!isGoogleHost) {
+      return false;
+    }
+    return parsed.pathname.toLowerCase().startsWith('/maps/place/');
+  } catch {
+    return false;
+  }
+};
+
 const findMapsUrlInBody = (body: string): string | null => {
   if (!body) return null;
   for (const pattern of MAPS_URL_PATTERNS) {
@@ -698,11 +719,11 @@ export async function expandMapsUrl(shortUrl: string): Promise<string> {
   }
 
   const finalUrlString = normalizeMapsUrl(finalUrl.toString());
-  if (hasCoordsInUrl(finalUrlString)) {
-    return finalUrlString;
-  }
-
-  if (finalUrl.hostname.toLowerCase() === 'maps.app.goo.gl') {
+  const sourceHost = urlObj.hostname.toLowerCase();
+  if (
+    sourceHost === 'maps.app.goo.gl' ||
+    finalUrl.hostname.toLowerCase() === 'maps.app.goo.gl'
+  ) {
     try {
       const followed = await fetch(finalUrlString, {
         redirect: 'follow',
@@ -711,12 +732,19 @@ export async function expandMapsUrl(shortUrl: string): Promise<string> {
       const followedUrl = normalizeMapsUrl(followed.url || finalUrlString);
       const followedUrlObj = new URL(followedUrl);
       await assertSafeMapsUrl(followedUrlObj);
+      if (isGoogleMapsPlaceUrl(followedUrl)) {
+        return followedUrl;
+      }
       if (hasCoordsInUrl(followedUrl)) {
         return followedUrl;
       }
     } catch {
       // Ignore fallback errors and continue with HTML/body parsing.
     }
+  }
+
+  if (hasCoordsInUrl(finalUrlString)) {
+    return finalUrlString;
   }
 
   if (typeof (res as { text?: () => Promise<string> }).text === 'function') {

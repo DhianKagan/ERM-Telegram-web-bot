@@ -237,7 +237,11 @@ export default function errorMiddleware(
   appendErrorLog(stack);
   appendErrorLog('');
 
-  console.error('API error:', clean);
+  if (aborted) {
+    console.warn('API request aborted:', clean);
+  } else {
+    console.error('API error:', clean);
+  }
   if (csrfError) {
     const methodLabel = req.method || 'UNKNOWN';
     const pathLabel = req.path || req.originalUrl || 'unknown';

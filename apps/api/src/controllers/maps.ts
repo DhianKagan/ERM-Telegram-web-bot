@@ -129,11 +129,14 @@ export async function expand(req: Request, res: Response): Promise<void> {
       );
     }
 
+    let coords = extractCoords(full);
     let place = null;
     const placeNameFromUrl = extractPlaceNameFromMapsUrl(full);
     if (placeNameFromUrl) {
       place = { name: placeNameFromUrl };
-    } else {
+    }
+
+    if (!place && !coords) {
       try {
         place = await extractPlaceDetailsViaPlaywright(full);
       } catch (error) {
@@ -141,7 +144,6 @@ export async function expand(req: Request, res: Response): Promise<void> {
       }
     }
 
-    let coords = extractCoords(full);
     if (!coords) {
       const locationHintCandidates = [
         place?.address,

@@ -84,6 +84,39 @@ describe('expandMapsUrl', () => {
     await expect(expandMapsUrl(mapsShortUrl)).resolves.toBe(mapsShortUrl);
   });
 
+  it('для maps.app.goo.gl предпочитает place-ссылку из redirect: follow даже если manual уже вернул координаты', async () => {
+    const mapsShortUrl = 'https://maps.app.goo.gl/G1AifBj28FDnYTfY7';
+    const manualExpandedUrl =
+      'https://www.google.com/maps/@46.3901372,30.7095786,206m/data=!3m1!1e3?entry=ttu';
+    const placeExpandedUrl =
+      'https://www.google.com/maps/place/%D0%9D%D0%BE%D0%B2%D0%B0+%D0%9F%D0%BE%D1%88%D1%82%D0%B0/@46.3900041,30.7097575,177m/data=!3m1!1e3';
+
+    const fetchSpy = jest
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce({
+        status: 302,
+        headers: new Headers({
+          location: manualExpandedUrl,
+        }),
+        text: async () => '',
+      } as Response)
+      .mockResolvedValueOnce({
+        status: 200,
+        headers: new Headers(),
+        url: manualExpandedUrl,
+        text: async () => '<html><body>ok</body></html>',
+      } as Response)
+      .mockResolvedValueOnce({
+        status: 200,
+        headers: new Headers(),
+        url: placeExpandedUrl,
+        text: async () => '<html><body>ok</body></html>',
+      } as Response);
+
+    const expandMapsUrl = await importExpandMapsUrl();
+    await expect(expandMapsUrl(mapsShortUrl)).resolves.toBe(placeExpandedUrl);
+    expect(fetchSpy).toHaveBeenCalledTimes(3);
+  });
   it('разворачивает maps.app.goo.gl через fallback с redirect: follow', async () => {
     const mapsShortUrl = 'https://maps.app.goo.gl/9xjhwpxs9cnNhdqy5';
     const expandedUrl =

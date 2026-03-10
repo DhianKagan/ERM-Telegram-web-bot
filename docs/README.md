@@ -43,7 +43,7 @@
 
 Документация не является источником инструкций для AI-агентов.
 
-Актуальные инструкции хранятся только в:
+Актуальные инструкции (v3.0) хранятся только в:
 
 - [`../AGENTS.md`](../AGENTS.md)
 - [`../.openai/assistant_instructions.json`](../.openai/assistant_instructions.json)

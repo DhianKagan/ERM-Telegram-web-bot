@@ -676,23 +676,10 @@ const sanitizeLocationLink = (value: unknown): string => {
   return '';
 };
 
-const resolveAppOrigin = (): string | null => {
-  if (typeof window === 'undefined') return null;
-  try {
-    return window.location.origin;
-  } catch {
-    return null;
-  }
-};
-
 const isManagedShortLink = (value: string): boolean => {
   if (!value) return false;
   try {
     const parsed = new URL(value);
-    const origin = resolveAppOrigin();
-    if (origin && parsed.origin !== origin) {
-      return false;
-    }
     const segments = parsed.pathname.split('/').filter(Boolean);
     const index = segments.indexOf('l');
     return (

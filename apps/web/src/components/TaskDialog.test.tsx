@@ -661,4 +661,40 @@ describe('TaskDialog', () => {
       expect(screen.queryByDisplayValue('46.469660, 30.731809')).toBeNull();
     });
   });
+
+  it('разворачивает внешнюю короткую ссылку приложения и подставляет координаты', async () => {
+    authFetchMock.mockImplementation((url: string) => {
+      if (url === '/api/v1/maps/expand') {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            url: 'https://www.google.com/maps/search/?api=1&query=46.387098,30.706399',
+            coords: { lat: 46.387098, lng: 30.706399 },
+          }),
+        });
+      }
+      return defaultAuthFetch(url);
+    });
+
+    render(
+      <MemoryRouter>
+        <TaskDialog onClose={() => {}} id="1" />
+      </MemoryRouter>,
+    );
+
+    fireEvent.click(
+      await screen.findByRole('checkbox', { name: 'logisticsToggle' }),
+    );
+    fireEvent.change(await screen.findByPlaceholderText('googleMapsLink'), {
+      target: { value: 'https://agromarket.up.railway.app/l/DI8HEtn6' },
+    });
+
+    expect(
+      await screen.findByDisplayValue('46.387098, 30.706399'),
+    ).toBeTruthy();
+    expect(authFetchMock).toHaveBeenCalledWith(
+      '/api/v1/maps/expand',
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
 });

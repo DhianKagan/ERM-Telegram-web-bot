@@ -30,6 +30,10 @@ jest.mock('../src/api/middleware', () => ({
   },
 }));
 
+jest.mock('../src/middleware/auth', () => ({
+  __esModule: true,
+  default: () => (_req, _res, next) => next(),
+}));
 jest.mock('../src/services/route', () => ({
   getRouteDistance: jest.fn(async () => ({ distance: 100, waypoints: [] })),
   table: jest.fn(async () => ({})),

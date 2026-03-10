@@ -53,7 +53,7 @@ COPY --from=build /app/scripts/railway/start-by-role.sh /app/scripts/railway/sta
 # pnpm workspaces install places many packages in root node_modules; pm2 and other shared
 # deps can be hoisted there. Copy it so binaries like pm2-runtime are present.
 COPY --from=build /app/node_modules /app/node_modules
-ARG INSTALL_PLAYWRIGHT_CHROMIUM=false
+ARG INSTALL_PLAYWRIGHT_CHROMIUM=true
 RUN if [ "$INSTALL_PLAYWRIGHT_CHROMIUM" = "true" ]; then /app/apps/api/node_modules/.bin/playwright install --with-deps chromium; else echo "Skipping Playwright Chromium install"; fi
 RUN mkdir -p /var/log/pm2
 EXPOSE 3000

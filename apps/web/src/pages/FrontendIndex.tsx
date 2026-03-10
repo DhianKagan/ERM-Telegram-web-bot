@@ -381,6 +381,33 @@ const faqCategories: FaqCategory[] = [
     ],
   },
   {
+    id: 'assistant-prompts',
+    title: 'AI-ассистент и системные промпты',
+    description:
+      'Где находится единый источник AI-инструкций и как избегать конфликтующих версий.',
+    icon: SparklesIcon,
+    items: [
+      {
+        id: 'assistant-source-of-truth',
+        question:
+          'Где в проекте хранить и обновлять системные промпты для Codex?',
+        answer:
+          'Единые инструкции для ассистента поддерживаются только в двух файлах: AGENTS.md и .openai/assistant_instructions.json. Если в README или docs встречаются дубли, их нужно обновить или удалить, чтобы не было конфликтующих правил.',
+        module: 'AI Governance',
+        tags: ['prompts', 'codex', 'agents', 'source of truth'],
+      },
+      {
+        id: 'assistant-sync-frontend',
+        question: 'Зачем разделу /index знать про правила промптов?',
+        answer:
+          'Развёрнутый фронт и интерактивный FAQ используются как оперативная база знаний для команды. Отдельный блок про AI-инструкции помогает быстро проверить, где вносить изменения и по каким правилам вести PR без расхождений с документацией.',
+        module: 'Frontend FAQ',
+        tags: ['faq', 'frontend', 'documentation', 'pr'],
+        route: '/index',
+      },
+    ],
+  },
+  {
     id: 'faq-maintenance',
     title: 'Обновление FAQ',
     description: 'Как поддерживать раздел актуальным и полезным для команды.',
@@ -533,7 +560,7 @@ export default function FrontendIndex() {
             </p>
             <div className="mt-2 flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
               <ClockIcon className="h-3.5 w-3.5" />
-              Обновлено: 16 Feb 2026
+              Обновлено: 10 Mar 2026
             </div>
           </div>
         </div>

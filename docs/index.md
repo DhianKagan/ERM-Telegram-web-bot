@@ -41,4 +41,4 @@
 2. `README.md`
 3. `docs/*.md`
 
-Это правило синхронизировано с `AGENTS.md`.
+Это правило синхронизировано с `AGENTS.md` и `.openai/assistant_instructions.json` (v3.0).

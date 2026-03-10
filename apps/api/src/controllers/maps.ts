@@ -161,7 +161,9 @@ export async function expand(req: Request, res: Response): Promise<void> {
             continue;
           }
           coords = { lat: bestMatch.lat, lng: bestMatch.lng };
-          full = buildGoogleMapsLink(coords);
+          if (!looksLikeMapsUrl(full)) {
+            full = buildGoogleMapsLink(coords);
+          }
           break;
         } catch (error) {
           console.warn(

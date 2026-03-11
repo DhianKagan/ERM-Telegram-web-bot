@@ -55,19 +55,34 @@ describe('expandMapsUrl', () => {
     expect(warnSpy).toHaveBeenCalled();
   });
 
-  it('возвращает исходный URL при редиректе на intent-ссылку', async () => {
+  it('разворачивает редирект на intent-ссылку в https Google Maps URL', async () => {
     const mapsShortUrl = 'https://maps.app.goo.gl/W3ae6PPzPePpegJU7';
-    jest.spyOn(globalThis, 'fetch').mockResolvedValue({
-      status: 302,
-      headers: new Headers({
-        location:
-          'intent://maps.google.com/maps/place/AGROMARKET#Intent;scheme=https;package=com.google.android.apps.maps;end',
-      }),
-      text: async () => '',
-    } as Response);
+    const expandedUrl = 'https://maps.google.com/maps/place/AGROMARKET';
+    jest
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce({
+        status: 302,
+        headers: new Headers({
+          location:
+            'intent://maps.google.com/maps/place/AGROMARKET#Intent;scheme=https;package=com.google.android.apps.maps;end',
+        }),
+        text: async () => '',
+      } as Response)
+      .mockResolvedValueOnce({
+        status: 200,
+        headers: new Headers(),
+        url: expandedUrl,
+        text: async () => '<html><body>ok</body></html>',
+      } as Response)
+      .mockResolvedValueOnce({
+        status: 200,
+        headers: new Headers(),
+        url: expandedUrl,
+        text: async () => '<html><body>ok</body></html>',
+      } as Response);
 
     const expandMapsUrl = await importExpandMapsUrl();
-    await expect(expandMapsUrl(mapsShortUrl)).resolves.toBe(mapsShortUrl);
+    await expect(expandMapsUrl(mapsShortUrl)).resolves.toBe(expandedUrl);
   });
 
   it('возвращает исходный URL при ENOTFOUND во время fetch', async () => {

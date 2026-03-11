@@ -104,6 +104,62 @@ const tryGetWrappedMapsUrl = (value: URL): URL | null => {
   return null;
 };
 
+const tryParseIntentMapsUrl = (value: string): URL | null => {
+  if (!value || !value.startsWith('intent://')) {
+    return null;
+  }
+
+  const [rawIntentUrl, rawMeta = ''] = value.split('#Intent;', 2);
+  if (!rawIntentUrl) {
+    return null;
+  }
+
+  const meta = rawMeta.endsWith(';end')
+    ? rawMeta.slice(0, -';end'.length)
+    : rawMeta;
+  const entries = meta
+    .split(';')
+    .map((part) => part.trim())
+    .filter((part) => part.length > 0);
+
+  const readMetaValue = (prefix: string): string | null => {
+    const item = entries.find((entry) => entry.startsWith(prefix));
+    if (!item) {
+      return null;
+    }
+    return item.slice(prefix.length);
+  };
+
+  const fallbackUrlValue = readMetaValue('S.browser_fallback_url=');
+  if (fallbackUrlValue) {
+    try {
+      const fallback = new URL(decodeURIComponent(fallbackUrlValue));
+      if (isAllowedMapsHost(fallback.hostname.toLowerCase())) {
+        return fallback;
+      }
+    } catch {
+      // ignore invalid fallback URL and continue parsing intent target
+    }
+  }
+
+  const scheme = readMetaValue('scheme=') || 'https';
+  if (scheme !== 'http' && scheme !== 'https') {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(
+      `${scheme}://${rawIntentUrl.slice('intent://'.length)}`,
+    );
+    if (!isAllowedMapsHost(parsed.hostname.toLowerCase())) {
+      return null;
+    }
+    return parsed;
+  } catch {
+    return null;
+  }
+};
+
 const isTransientMapsFetchError = (error: unknown): boolean => {
   if (!(error instanceof Error)) {
     return false;
@@ -690,10 +746,18 @@ export async function expandMapsUrl(shortUrl: string): Promise<string> {
         try {
           nextUrl = new URL(location, currentUrl);
         } catch {
-          return { res, finalUrl: currentUrl };
+          const intentUrl = tryParseIntentMapsUrl(location);
+          if (!intentUrl) {
+            return { res, finalUrl: currentUrl };
+          }
+          nextUrl = intentUrl;
         }
         if (nextUrl.protocol !== 'http:' && nextUrl.protocol !== 'https:') {
-          return { res, finalUrl: currentUrl };
+          const intentUrl = tryParseIntentMapsUrl(nextUrl.toString());
+          if (!intentUrl) {
+            return { res, finalUrl: currentUrl };
+          }
+          nextUrl = intentUrl;
         }
         currentUrl = tryGetWrappedMapsUrl(nextUrl) ?? nextUrl;
         continue;

@@ -1,7 +1,7 @@
 // Контекст аутентификации, запрашивает профиль и CSRF-токен, JWT не хранится
 // Модули: React, services/auth, AuthContext, AuthActionsContext, utils/csrfToken
 import { useEffect, useState, type ReactNode } from 'react';
-import { getProfile, logout as apiLogout } from '../services/auth';
+import { getProfile, logout as apiLogout, refresh } from '../services/auth';
 import { clearAnonTasksCache } from '../services/tasks';
 import { taskStateController } from '../controllers/taskStateController';
 import { AuthContext } from './AuthContext';
@@ -60,6 +60,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
       document.removeEventListener('visibilitychange', onVisible);
     };
   }, []);
+
+  useEffect(() => {
+    const id = window.setInterval(
+      () => {
+        refresh().catch(() => {
+          clearAccessToken();
+          setUserState(null);
+        });
+      },
+      4 * 60 * 1000,
+    );
+
+    return () => window.clearInterval(id);
+  }, []);
+
   // logout полностью очищает кеш и закрывает мини-приложение
   const logout = async () => {
     await apiLogout();

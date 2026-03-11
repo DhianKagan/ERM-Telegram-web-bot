@@ -2,12 +2,14 @@
 // Назначение файла: проверяет, что AuthProvider передаёт объект контекста и сбрасывает пользователя при logout.
 // Основные модули: React, @testing-library/react, AuthProvider, useAuth.
 import { render, act } from '@testing-library/react';
+import { refresh } from '../services/auth';
 import { AuthProvider } from './AuthProvider';
 import { useAuth } from './useAuth';
 
 jest.mock('../services/auth', () => ({
   getProfile: jest.fn().mockResolvedValue(null),
   logout: jest.fn().mockResolvedValue(undefined),
+  refresh: jest.fn().mockResolvedValue(undefined),
 }));
 
 globalThis.fetch = jest.fn(
@@ -49,5 +51,26 @@ describe('AuthProvider', () => {
       await value.logout();
     });
     expect(value.user).toBeNull();
+  });
+
+  it('запускает один refresh-таймер на провайдер', () => {
+    jest.useFakeTimers();
+    function Child() {
+      useAuth();
+      return null;
+    }
+    render(
+      <AuthProvider>
+        <Child />
+        <Child />
+      </AuthProvider>,
+    );
+
+    act(() => {
+      jest.advanceTimersByTime(4 * 60 * 1000 + 1);
+    });
+
+    expect(refresh).toHaveBeenCalledTimes(1);
+    jest.useRealTimers();
   });
 });

@@ -39,7 +39,11 @@ function AppShell() {
   const { user } = useAuth();
   const { open, setOpen, isDesktop } = useSidebar();
   const { t } = useTranslation();
-  const contentOffsetClass = open ? 'lg:pl-64' : 'lg:pl-0';
+  const contentOffsetClass = isDesktop
+    ? open
+      ? 'lg:pl-64'
+      : 'lg:pl-20'
+    : 'lg:pl-0';
   const isServiceAccount = Boolean(user?.is_service_account);
   return (
     <>
@@ -62,6 +66,7 @@ function AppShell() {
         <main className="flex-1 p-4 pt-3 transition-all lg:pt-4">
           <Suspense fallback={<div>{t('loading')}</div>}>
             <Routes>
+              <Route path="/" element={<Navigate to="/index" replace />} />
               <Route
                 path="/index"
                 element={

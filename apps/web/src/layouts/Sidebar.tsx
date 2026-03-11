@@ -112,32 +112,44 @@ export default function Sidebar() {
     }
     if (role === 'manager') return [...baseItems, ...managerItems];
     return baseItems;
-  }, [role, adminItems, baseItems, managerItems]);
+  }, [role, adminItems, baseItems, managerItems, user?.is_service_account]);
 
-  const navItemClass =
-    'flex h-11 items-center gap-3 rounded-lg px-3 text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800';
-  const navIconClass = 'h-5 w-5 shrink-0';
-  const navLabelClass = 'truncate';
+  const compactDesktop = isDesktop && !open;
 
   return (
     <aside
       className={cn(
-        'fixed inset-y-0 left-0 z-50 flex h-full w-64 flex-col border-r border-stroke bg-white p-4 shadow-lg transition-transform duration-200 ease-in-out dark:bg-slate-900',
-        open ? 'translate-x-0' : '-translate-x-full',
+        'fixed inset-y-0 left-0 z-50 flex h-full flex-col border-r border-stroke bg-white p-3 shadow-lg transition-all duration-200 ease-in-out dark:bg-slate-900',
+        isDesktop ? (compactDesktop ? 'w-20' : 'w-64') : 'w-64',
+        isDesktop
+          ? 'translate-x-0'
+          : open
+            ? 'translate-x-0'
+            : '-translate-x-full',
       )}
       aria-hidden={isDesktop ? false : !open}
       aria-modal={!isDesktop && open ? true : undefined}
       role={isDesktop ? 'complementary' : 'dialog'}
       id={SIDEBAR_ID}
     >
-      <div className="flex items-center justify-between">
+      <div
+        className={cn(
+          'flex items-center',
+          compactDesktop ? 'justify-center' : 'justify-between',
+        )}
+      >
         <button
           onClick={toggle}
           className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-500 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/60 dark:text-slate-300 dark:hover:bg-slate-800"
-          aria-label="Закрыть меню"
+          aria-label={compactDesktop ? 'Развернуть меню' : 'Свернуть меню'}
           type="button"
         >
-          <XMarkIcon className="h-5 w-5" />
+          <XMarkIcon
+            className={cn(
+              'h-5 w-5 transition-transform',
+              compactDesktop && 'rotate-45',
+            )}
+          />
         </button>
       </div>
       <nav className="mt-4 space-y-1">
@@ -157,13 +169,20 @@ export default function Sidebar() {
               key={i.to}
               to={i.to}
               aria-label={i.label}
+              title={compactDesktop ? i.label : undefined}
               className={cn(
-                navItemClass,
+                'group relative flex h-11 items-center rounded-lg text-sm font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800',
+                compactDesktop ? 'justify-center px-2' : 'gap-3 px-3',
                 isActive && 'bg-slate-100 font-semibold dark:bg-slate-800',
               )}
             >
-              <i.icon className={navIconClass} />
-              <span className={navLabelClass}>{i.label}</span>
+              <i.icon className="h-5 w-5 shrink-0" />
+              {!compactDesktop && <span className="truncate">{i.label}</span>}
+              {compactDesktop && (
+                <span className="pointer-events-none absolute left-12 z-50 hidden whitespace-nowrap rounded-md bg-slate-900 px-2 py-1 text-xs text-white shadow group-hover:block dark:bg-slate-100 dark:text-slate-900">
+                  {i.label}
+                </span>
+              )}
             </Link>
           );
         })}

@@ -198,6 +198,43 @@ test('expandMapsUrl парсит ссылку google.com/maps из html-отве
   );
 });
 
+test('expandMapsUrl извлекает place-ссылку из HTML после redirect: follow', async () => {
+  const followedHtml =
+    '<html><head><link rel="canonical" href="https://www.google.com/maps/place/%D0%9D%D0%BE%D0%B2%D0%B0+%D0%9F%D0%BE%D1%88%D1%82%D0%B0/@46.3903081,30.7093932,892m/data=!3m1!1e3" /></head></html>';
+  global.fetch = jest
+    .fn()
+    .mockResolvedValueOnce({
+      status: 302,
+      headers: new Headers({
+        location: 'https://www.google.com/maps/@46.390308,30.709393,17z',
+      }),
+    })
+    .mockResolvedValueOnce({
+      status: 200,
+      headers: new Headers(),
+      text: jest.fn(),
+    })
+    .mockResolvedValueOnce({
+      status: 200,
+      headers: new Headers(),
+      url: 'https://www.google.com/maps/@46.390308,30.709393,17z',
+      text: jest.fn().mockResolvedValue(followedHtml),
+    });
+
+  const res = await expandMapsUrl('https://maps.app.goo.gl/test');
+
+  expect(fetch).toHaveBeenNthCalledWith(
+    3,
+    'https://www.google.com/maps/@46.390308,30.709393,17z',
+    expect.objectContaining({
+      redirect: 'follow',
+    }),
+  );
+  expect(res).toBe(
+    'https://www.google.com/maps/place/%D0%9D%D0%BE%D0%B2%D0%B0+%D0%9F%D0%BE%D1%88%D1%82%D0%B0/@46.3903081,30.7093932,892m/data=!3m1!1e3',
+  );
+});
+
 test('expandMapsUrl возвращает исходный URL при ошибке failed to fetch', async () => {
   global.fetch = jest.fn().mockRejectedValue(new Error('Failed to fetch'));
 
@@ -235,6 +272,81 @@ test('expandMapsUrl возвращает исходный URL при TLS/certifi
   const res = await expandMapsUrl('https://maps.app.goo.gl/test');
 
   expect(res).toBe('https://maps.app.goo.gl/test');
+});
+
+test('expandMapsUrl возвращает исходный URL при TypeError NetworkError', async () => {
+  global.fetch = jest
+    .fn()
+    .mockRejectedValue(new TypeError('NetworkError when attempting to fetch'));
+
+  const res = await expandMapsUrl('https://maps.app.goo.gl/test');
+
+  expect(res).toBe('https://maps.app.goo.gl/test');
+});
+
+test('expandMapsUrl использует headless fallback до fetch при MAPS_HEADLESS_FALLBACK=playwright', async () => {
+  const originalHeadlessFallback = process.env.MAPS_HEADLESS_FALLBACK;
+  const originalHeadlessTimeout = process.env.MAPS_HEADLESS_TIMEOUT_MS;
+  const originalFetch = global.fetch;
+  process.env.MAPS_HEADLESS_FALLBACK = 'playwright';
+  process.env.MAPS_HEADLESS_TIMEOUT_MS = '1500';
+
+  const gotoMock = jest.fn().mockResolvedValue(undefined);
+  const evaluateMock = jest
+    .fn()
+    .mockResolvedValue('https://www.google.com/maps/@46.390308,30.709393,17z');
+  const waitForTimeoutMock = jest.fn().mockResolvedValue(undefined);
+  const pageCloseMock = jest.fn().mockResolvedValue(undefined);
+  const contextCloseMock = jest.fn().mockResolvedValue(undefined);
+  const browserCloseMock = jest.fn().mockResolvedValue(undefined);
+
+  jest.doMock('playwright', () => ({
+    chromium: {
+      launch: jest.fn().mockResolvedValue({
+        newContext: jest.fn().mockResolvedValue({
+          newPage: jest.fn().mockResolvedValue({
+            goto: gotoMock,
+            evaluate: evaluateMock,
+            locator: jest.fn().mockReturnValue({
+              first: () => ({ textContent: jest.fn().mockResolvedValue(null) }),
+            }),
+            waitForTimeout: waitForTimeoutMock,
+            close: pageCloseMock,
+          }),
+          close: contextCloseMock,
+        }),
+        close: browserCloseMock,
+      }),
+    },
+  }));
+
+  const fetchMock = jest.fn();
+  global.fetch = fetchMock as typeof global.fetch;
+
+  let expandMapsUrlIsolated: (url: string) => Promise<string>;
+  await jest.isolateModulesAsync(async () => {
+    const mapsModule = await import('../src/services/maps');
+    expandMapsUrlIsolated = mapsModule.expandMapsUrl;
+  });
+
+  const res = await expandMapsUrlIsolated!('https://maps.app.goo.gl/test');
+
+  expect(res).toBe('https://www.google.com/maps/@46.390308,30.709393,17z');
+  expect(fetchMock).not.toHaveBeenCalled();
+  expect(gotoMock).toHaveBeenCalled();
+
+  jest.dontMock('playwright');
+  if (originalHeadlessFallback === undefined) {
+    delete process.env.MAPS_HEADLESS_FALLBACK;
+  } else {
+    process.env.MAPS_HEADLESS_FALLBACK = originalHeadlessFallback;
+  }
+  if (originalHeadlessTimeout === undefined) {
+    delete process.env.MAPS_HEADLESS_TIMEOUT_MS;
+  } else {
+    process.env.MAPS_HEADLESS_TIMEOUT_MS = originalHeadlessTimeout;
+  }
+  global.fetch = originalFetch;
 });
 
 test('expandMapsUrl не падает, если DNS Google-хоста возвращает только private IPv6', async () => {

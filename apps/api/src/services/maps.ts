@@ -142,6 +142,7 @@ const isTransientMapsFetchError = (error: unknown): boolean => {
     'failed to fetch',
     'failed to connect',
     'network error',
+    'networkerror',
     'network is unreachable',
     'timed out',
     'timeout',
@@ -321,10 +322,14 @@ const MAPS_BROWSER_LIKE_HEADERS: Record<string, string> = {
 };
 
 const STATIC_MAP_PATH = '/maps/api/staticmap';
+// MAPS_HEADLESS_FALLBACK=playwright — включает headless-fallback для
+// разворачивания коротких ссылок карт, когда серверный fetch блокируется.
 const MAPS_HEADLESS_FALLBACK_ENABLED =
   (process.env.MAPS_HEADLESS_FALLBACK || '').toLowerCase() === 'playwright';
 const MAPS_HEADLESS_MODULE_NAME =
   process.env.MAPS_HEADLESS_MODULE_NAME || 'playwright';
+// MAPS_HEADLESS_TIMEOUT_MS — таймаут загрузки headless-страницы, по умолчанию
+// 8000 мс, ограничен диапазоном 1000..20000 мс для предсказуемой нагрузки.
 const MAPS_HEADLESS_TIMEOUT_MS = Math.min(
   Math.max(
     Number.parseInt(process.env.MAPS_HEADLESS_TIMEOUT_MS || '', 10) || 8000,
@@ -701,6 +706,13 @@ export async function expandMapsUrl(shortUrl: string): Promise<string> {
   let res: Response;
   let finalUrl: URL;
 
+  const renderedCoordsBeforeFetch = await extractCoordsViaPlaywright(
+    urlObj.toString(),
+  );
+  if (renderedCoordsBeforeFetch) {
+    return buildCoordsUrl(renderedCoordsBeforeFetch);
+  }
+
   try {
     const expanded = await fetchWithSafeRedirects(urlObj);
     res = expanded.res;
@@ -713,7 +725,7 @@ export async function expandMapsUrl(shortUrl: string): Promise<string> {
       if (renderedCoords) {
         return buildCoordsUrl(renderedCoords);
       }
-      return normalizeMapsUrl(urlObj.toString());
+      return urlObj.toString();
     }
     throw error;
   }
@@ -734,6 +746,16 @@ export async function expandMapsUrl(shortUrl: string): Promise<string> {
       await assertSafeMapsUrl(followedUrlObj);
       if (isGoogleMapsPlaceUrl(followedUrl)) {
         return followedUrl;
+      }
+      if (typeof followed.text === 'function') {
+        const followedBody = await followed.text();
+        const followedCandidate = findMapsUrlInBody(followedBody);
+        if (followedCandidate) {
+          const normalizedCandidate = normalizeMapsUrl(followedCandidate);
+          if (isGoogleMapsPlaceUrl(normalizedCandidate)) {
+            return normalizedCandidate;
+          }
+        }
       }
       if (hasCoordsInUrl(followedUrl)) {
         return followedUrl;

@@ -92,6 +92,9 @@ importers:
       lint-staged:
         specifier: ^16.1.2
         version: 16.2.6
+      playwright:
+        specifier: ^1.58.2
+        version: 1.58.2
       prettier:
         specifier: 3.6.2
         version: 3.6.2
@@ -11620,6 +11623,8 @@ snapshots:
       blurhash: 2.0.5
       ckeditor5: 46.0.3
       lodash-es: 4.17.21
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-ckbox@46.0.3':
     dependencies:
@@ -11793,6 +11798,8 @@ snapshots:
     dependencies:
       '@ckeditor/ckeditor5-utils': 46.0.3
       es-toolkit: 1.39.5
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-enter@46.0.3':
     dependencies:
@@ -11988,8 +11995,6 @@ snapshots:
   '@ckeditor/ckeditor5-list@41.4.2':
     dependencies:
       ckeditor5: 46.0.3
-    transitivePeerDependencies:
-      - supports-color
 
   '@ckeditor/ckeditor5-list@46.0.3':
     dependencies:
@@ -12126,6 +12131,8 @@ snapshots:
       '@ckeditor/ckeditor5-ui': 46.0.3
       '@ckeditor/ckeditor5-utils': 46.0.3
       ckeditor5: 46.0.3
+    transitivePeerDependencies:
+      - supports-color
 
   '@ckeditor/ckeditor5-restricted-editing@46.0.3':
     dependencies:

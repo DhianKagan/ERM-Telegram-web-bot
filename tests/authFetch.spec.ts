@@ -1,14 +1,13 @@
 /** @jest-environment jsdom */
 // Назначение: unit-тесты для authFetch
 // Основные модули: jest, authFetch, Response
-jest.mock('../apps/web/src/lib/auth', () => ({
-  clearAccessToken: jest.fn(),
-  getAccessToken: () => null,
-  setAccessToken: jest.fn(),
-  shouldUseBearerAuth: () => false,
-}));
-
 import authFetch from '../apps/web/src/utils/authFetch';
+import {
+  clearAccessToken,
+  getAccessToken,
+  setAccessToken,
+  shouldUseBearerAuth,
+} from './mocks/webAuth';
 
 jest.mock('../apps/web/src/utils/csrfToken', () => ({
   getCsrfToken: () => 'token',
@@ -33,6 +32,12 @@ describe('authFetch', () => {
   afterEach(() => {
     (global.fetch as jest.Mock | undefined)?.mockReset?.();
     window.location.href = 'http://localhost/';
+    clearAccessToken.mockReset();
+    getAccessToken.mockReset();
+    getAccessToken.mockReturnValue(null);
+    setAccessToken.mockReset();
+    shouldUseBearerAuth.mockReset();
+    shouldUseBearerAuth.mockReturnValue(false);
   });
 
   test('отправляет токен и куки', async () => {
@@ -64,6 +69,22 @@ describe('authFetch', () => {
       expect.objectContaining({ method: 'POST' }),
     );
     expect(window.location.href).toBe('http://localhost/');
+  });
+
+  test('в bearer-режиме не вызывает /auth/profile без access token', async () => {
+    shouldUseBearerAuth.mockReturnValue(true);
+    const mockFetch = jest.fn().mockResolvedValue(makeResponse(401));
+    // @ts-ignore
+    global.fetch = mockFetch;
+
+    const res = await authFetch('/api/v1/auth/profile', { noRedirect: true });
+
+    expect(res.status).toBe(401);
+    expect(mockFetch).toHaveBeenCalledTimes(1);
+    expect(mockFetch).toHaveBeenCalledWith(
+      '/api/v1/auth/refresh',
+      expect.objectContaining({ method: 'POST' }),
+    );
   });
 
   test('shows toast on 403', async () => {

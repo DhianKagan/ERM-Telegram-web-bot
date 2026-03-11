@@ -28,6 +28,26 @@ const CSRF_PATH = '/api/v1/csrf';
 const PROFILE_PATH = '/api/v1/auth/profile';
 let csrfRequest: Promise<string | null> | null = null;
 
+const createUnauthorizedResponse = (): Response => {
+  if (typeof Response !== 'undefined') {
+    return new Response(null, {
+      status: 401,
+      statusText: 'Unauthorized',
+    });
+  }
+  return {
+    status: 401,
+    statusText: 'Unauthorized',
+    ok: false,
+    headers: new Headers(),
+    clone: function clone() {
+      return this as Response;
+    },
+    json: async () => ({}),
+    text: async () => '',
+  } as unknown as Response;
+};
+
 async function hasBearerDetail(res: Response): Promise<boolean> {
   const contentType = res.headers.get('content-type')?.toLowerCase() || '';
   if (!contentType.includes('application/json')) {
@@ -266,6 +286,8 @@ export default async function authFetch(
     if (refreshedToken) {
       setAccessToken(refreshedToken);
       headers.Authorization = `Bearer ${refreshedToken}`;
+    } else {
+      return createUnauthorizedResponse();
     }
   }
 

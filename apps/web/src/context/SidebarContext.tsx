@@ -2,6 +2,8 @@
 import React, { useEffect, useState } from 'react';
 import { SidebarContext } from './SidebarContext';
 
+const SIDEBAR_COLLAPSED_KEY = 'erm-sidebar-collapsed';
+
 export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
@@ -9,7 +11,12 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({
     if (typeof window === 'undefined') return true;
     return window.matchMedia('(min-width: 1024px)').matches;
   });
-  const [open, setOpen] = useState(isDesktop);
+  const [open, setOpen] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    const isWide = window.matchMedia('(min-width: 1024px)').matches;
+    if (!isWide) return false;
+    return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) !== 'true';
+  });
 
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
@@ -17,24 +24,35 @@ export const SidebarProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const handleChange = (event: MediaQueryListEvent) => {
       setIsDesktop(event.matches);
-      if (event.matches) {
-        // На десктопе по умолчанию панель открыта,
-        // но это не мешает пользователю её закрыть вручную.
-        setOpen(true);
-      } else {
+      if (!event.matches) {
         setOpen(false);
+        return;
       }
+      setOpen(window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) !== 'true');
     };
 
     setIsDesktop(mediaQuery.matches);
-    setOpen(mediaQuery.matches);
+    if (mediaQuery.matches) {
+      setOpen(window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) !== 'true');
+    } else {
+      setOpen(false);
+    }
     mediaQuery.addEventListener('change', handleChange);
 
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
-  // Разрешаем переключать панель независимо от размера экрана.
-  const toggle = () => setOpen((value) => !value);
+  const toggle = () =>
+    setOpen((value) => {
+      const next = !value;
+      if (typeof window !== 'undefined' && isDesktop) {
+        window.localStorage.setItem(
+          SIDEBAR_COLLAPSED_KEY,
+          next ? 'false' : 'true',
+        );
+      }
+      return next;
+    });
 
   return (
     <SidebarContext.Provider

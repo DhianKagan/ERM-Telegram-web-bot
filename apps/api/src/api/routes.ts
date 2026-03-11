@@ -734,18 +734,26 @@ export default async function registerRoutes(
     }),
   );
 
-  app.get('/', spaRateLimiter, async (_req: Request, res: Response, next) => {
-    try {
-      const template = await loadIndexTemplate(pub);
-      const nonce = String(res.locals.cspNonce ?? '');
-      const html = injectNonce(template, nonce);
-      res.setHeader('Cache-Control', 'no-cache');
-      res.setHeader('Content-Type', 'text/html; charset=utf-8');
-      res.send(html);
-    } catch (error) {
-      next(error);
-    }
+  app.get('/', spaRateLimiter, (_req: Request, res: Response) => {
+    res.redirect(302, '/index');
   });
+
+  app.get(
+    '/index',
+    spaRateLimiter,
+    async (_req: Request, res: Response, next) => {
+      try {
+        const template = await loadIndexTemplate(pub);
+        const nonce = String(res.locals.cspNonce ?? '');
+        const html = injectNonce(template, nonce);
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Content-Type', 'text/html; charset=utf-8');
+        res.send(html);
+      } catch (error) {
+        next(error);
+      }
+    },
+  );
 
   app.get('*', spaRateLimiter, async (req: Request, res: Response, next) => {
     // Не отдаём index.html для запросов статических файлов

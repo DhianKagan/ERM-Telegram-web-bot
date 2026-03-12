@@ -24,7 +24,7 @@
     "format:check": "prettier --check .",
     "format": "prettier --write .",
     "test:api": "pnpm --filter ./apps/api test --",
-    "prepare": "node scripts/run_husky_install.mjs",
+    "prepare": "node scripts/run_husky_install.mjs || node run_husky_install.mjs",
     "railway:start:api": "APP_ROLE=api node apps/api/dist/server.js",
     "railway:start:bot": "APP_ROLE=bot ./scripts/set_bot_commands.sh && APP_ROLE=bot node apps/api/dist/bot/runtime.js",
     "railway:start:worker": "APP_ROLE=worker node apps/worker/dist/index.js",

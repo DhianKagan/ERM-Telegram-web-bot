@@ -821,6 +821,14 @@ export async function expandMapsUrl(shortUrl: string): Promise<string> {
     throw new Error('Некорректный URL');
   }
 
+  const normalizedInputUrl = normalizeMapsUrl(urlObj.toString());
+  if (
+    hasCoordsInUrl(normalizedInputUrl) ||
+    isGoogleMapsPlaceUrl(normalizedInputUrl)
+  ) {
+    return normalizedInputUrl;
+  }
+
   const fetchWithSafeRedirects = async (
     initialUrl: URL,
     maxRedirects = 5,

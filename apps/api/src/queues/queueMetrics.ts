@@ -55,6 +55,11 @@ const collectQueueCounts = async (queueName: QueueName): Promise<void> => {
     counts.completed ?? 0,
   );
 
+  if ((counts.waiting ?? 0) === 0) {
+    queueOldestWaitGauge.set({ queue: queueName }, 0);
+    return;
+  }
+
   const oldestWaiting = await bundle.queue.getJobs(['waiting'], 0, 0, true);
   const oldest = oldestWaiting[0];
   if (!oldest || !oldest.timestamp) {

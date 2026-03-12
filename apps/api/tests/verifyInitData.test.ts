@@ -5,8 +5,8 @@ process.env.CHAT_ID = '1';
 process.env.JWT_SECRET = 's';
 process.env.MONGO_DATABASE_URL = 'mongodb://localhost/db';
 process.env.APP_URL = 'https://localhost';
-const crypto = require('crypto');
-const verify = require('../src/utils/verifyInitData').default;
+import crypto from 'node:crypto';
+import verify from '../src/utils/verifyInitData';
 
 function buildInitData(ts) {
   const data = {
@@ -41,4 +41,10 @@ test('просроченный auth_date вызывает ошибку', () => {
   const old = Math.floor(Date.now() / 1000) - 600;
   const initData = buildInitData(old);
   expect(() => verify(initData)).toThrow();
+});
+
+test('не-hex hash вызывает ошибку валидации без падения', () => {
+  const now = Math.floor(Date.now() / 1000);
+  const initData = `query_id=1&user=%7B%22id%22%3A1%2C%22first_name%22%3A%22a%22%7D&auth_date=${now}&hash=zzzz&signature=sig`;
+  expect(() => verify(initData)).toThrow('Недействительная подпись initData');
 });

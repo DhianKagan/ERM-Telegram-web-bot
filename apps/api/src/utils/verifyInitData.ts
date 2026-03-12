@@ -34,6 +34,21 @@ function buildDataCheckString(params: URLSearchParams) {
   return pairs.sort().join('\n');
 }
 
+function compareHexDigest(expectedHex: string, actualHex: string): boolean {
+  if (expectedHex.length !== actualHex.length) {
+    return false;
+  }
+  if (!/^[a-f0-9]+$/i.test(expectedHex) || !/^[a-f0-9]+$/i.test(actualHex)) {
+    return false;
+  }
+  const expected = Buffer.from(expectedHex, 'hex');
+  const actual = Buffer.from(actualHex, 'hex');
+  if (expected.length !== actual.length) {
+    return false;
+  }
+  return crypto.timingSafeEqual(expected, actual);
+}
+
 function validateSignature(
   params: URLSearchParams,
   token: string,
@@ -52,7 +67,7 @@ function validateSignature(
     .createHmac('sha256', secret)
     .update(dataString)
     .digest('hex');
-  if (calculated !== hash) {
+  if (!compareHexDigest(calculated, hash)) {
     throw new Error('Недействительная подпись initData');
   }
   const authDateRaw = params.get('auth_date');

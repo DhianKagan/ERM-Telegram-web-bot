@@ -56,6 +56,28 @@ test('expandMapsUrl отклоняет не-Google домен даже при н
   ).rejects.toThrow('Недопустимый домен URL');
 });
 
+test('expandMapsUrl разворачивает прямой consent wrapper до раннего выхода по координатам', async () => {
+  global.fetch = jest.fn();
+
+  const res = await expandMapsUrl(
+    'https://consent.google.com/m?continue=https%3A%2F%2Fwww.google.com%2Fmaps%2F%4046.3877422%2C30.7065156%2C17z',
+  );
+
+  expect(res).toBe('https://www.google.com/maps/@46.3877422,30.7065156,17z');
+  expect(fetch).not.toHaveBeenCalled();
+});
+
+test('expandMapsUrl разворачивает прямой google wrapper с url до раннего выхода по координатам', async () => {
+  global.fetch = jest.fn();
+
+  const res = await expandMapsUrl(
+    'https://www.google.com/url?url=https%3A%2F%2Fwww.google.com%2Fmaps%2F%4046.3877422%2C30.7065156%2C17z',
+  );
+
+  expect(res).toBe('https://www.google.com/maps/@46.3877422,30.7065156,17z');
+  expect(fetch).not.toHaveBeenCalled();
+});
+
 test('expandMapsUrl возвращает полный url', async () => {
   const text = jest.fn();
   global.fetch = jest

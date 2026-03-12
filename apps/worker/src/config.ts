@@ -68,6 +68,23 @@ const parseBoundedPositiveInt = (
   return parsed;
 };
 
+const parseBooleanFlag = (
+  value: string | undefined,
+  fallback: boolean,
+): boolean => {
+  const normalized = normalizeEnvValue(value).toLowerCase();
+  if (!normalized) {
+    return fallback;
+  }
+  if (['1', 'true', 'yes', 'on'].includes(normalized)) {
+    return true;
+  }
+  if (['0', 'false', 'no', 'off'].includes(normalized)) {
+    return false;
+  }
+  return fallback;
+};
+
 const redisUrlRaw = normalizeEnvValue(process.env.QUEUE_REDIS_URL);
 if (!redisUrlRaw) {
   throw new Error('QUEUE_REDIS_URL обязателен для запуска воркера BullMQ');
@@ -90,8 +107,10 @@ try {
   );
 }
 
-const geocoderEnabledFlag =
-  normalizeEnvValue(process.env.GEOCODER_ENABLED) !== '0';
+const geocoderEnabledFlag = parseBooleanFlag(
+  process.env.GEOCODER_ENABLED,
+  true,
+);
 const geocoderUrlRaw = normalizeEnvValue(process.env.GEOCODER_URL);
 let geocoderBaseUrl = '';
 let geocoderProvider: GeocoderProvider = 'nominatim';

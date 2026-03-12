@@ -821,6 +821,8 @@ export async function expandMapsUrl(shortUrl: string): Promise<string> {
     throw new Error('Некорректный URL');
   }
 
+  await assertSafeMapsUrl(urlObj);
+
   const normalizedInputUrl = normalizeMapsUrl(urlObj.toString());
   if (
     hasCoordsInUrl(normalizedInputUrl) ||

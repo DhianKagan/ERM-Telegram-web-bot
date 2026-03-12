@@ -43,6 +43,19 @@ test('shouldExpandMapsUrl отклоняет небезопасные URL', () =
   expect(shouldExpandMapsUrl('https://maps.app.goo.gl:444/test')).toBe(false);
   expect(shouldExpandMapsUrl('https://example.com/maps')).toBe(false);
 });
+
+test('expandMapsUrl отклоняет небезопасный протокол даже при наличии координат в URL', async () => {
+  await expect(
+    expandMapsUrl('http://maps.app.goo.gl/?q=46.3877422,30.7065156'),
+  ).rejects.toThrow('Недопустимый протокол URL');
+});
+
+test('expandMapsUrl отклоняет не-Google домен даже при наличии координат в URL', async () => {
+  await expect(
+    expandMapsUrl('https://example.com/?q=46.3877422,30.7065156'),
+  ).rejects.toThrow('Недопустимый домен URL');
+});
+
 test('expandMapsUrl возвращает полный url', async () => {
   const text = jest.fn();
   global.fetch = jest

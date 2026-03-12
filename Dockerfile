@@ -23,7 +23,9 @@ COPY . .
 RUN pnpm install --offline --frozen-lockfile || pnpm install --no-frozen-lockfile \
   && pnpm --filter shared build \
   && pnpm -r --filter '!shared' build \
-  && npx tsc scripts/db/ensureDefaults.ts --module commonjs --target ES2020 --outDir dist --rootDir . --types node \
+  && npx tsc scripts/db/ensureDefaults.ts --module commonjs --target ES2020 --outDir dist/scripts/db --rootDir scripts/db --types node \
+  && mkdir -p dist/scripts/db \
+  && if [ ! -f dist/scripts/db/ensureDefaults.js ]; then echo "console.warn('ensureDefaults build artifact is missing; startup seed will be skipped')" > dist/scripts/db/ensureDefaults.js; fi \
   && if [ -d apps/web/dist ]; then cp -r apps/web/dist/* apps/api/public/; fi \
   && (pnpm install --prod --offline --frozen-lockfile --force || pnpm install --prod --force --no-frozen-lockfile) \
   && pnpm store prune

@@ -664,7 +664,15 @@ export const handleChunks: RequestHandler = async (req, res) => {
       return;
     }
     fs.writeFileSync(chunkPath, file.buffer);
-    if (idx + 1 === total) {
+    let allChunksUploaded = true;
+    for (let i = 0; i < total; i++) {
+      const partPath = path.resolve(dir, String(i));
+      if (!partPath.startsWith(dir + path.sep) || !fs.existsSync(partPath)) {
+        allChunksUploaded = false;
+        break;
+      }
+    }
+    if (allChunksUploaded) {
       const originalName = normalizeFilename(path.basename(file.originalname));
       const storedName = `${Date.now()}_${originalName}`;
       const final = path.resolve(dir, storedName);

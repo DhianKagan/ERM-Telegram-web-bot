@@ -342,6 +342,27 @@ const isGoogleMapsPlaceUrl = (value: string): boolean => {
   }
 };
 
+const isGoogleMapsPathUrl = (value: string): boolean => {
+  if (!value) {
+    return false;
+  }
+  try {
+    const parsed = new URL(value);
+    const host = parsed.hostname.toLowerCase();
+    const isGoogleHost =
+      host === 'www.google.com' ||
+      host === 'maps.google.com' ||
+      host.startsWith('maps.google.') ||
+      host.startsWith('www.google.');
+    if (!isGoogleHost) {
+      return false;
+    }
+    return parsed.pathname.toLowerCase().startsWith('/maps');
+  } catch {
+    return false;
+  }
+};
+
 const findMapsUrlInBody = (body: string): string | null => {
   if (!body) return null;
   for (const pattern of MAPS_URL_PATTERNS) {
@@ -604,6 +625,89 @@ const extractCoordsViaPlaywright = async (
   }
 };
 
+const extractExpandedMapsUrlViaPlaywright = async (
+  url: string,
+): Promise<string | null> => {
+  if (!MAPS_HEADLESS_FALLBACK_ENABLED) {
+    return null;
+  }
+
+  if (isHeadlessBrowserUnavailable) {
+    return null;
+  }
+
+  try {
+    const chromium = await getPlaywrightChromium();
+    if (!chromium) {
+      return null;
+    }
+
+    const browser = await chromium.launch({
+      args: ['--no-sandbox', '--disable-setuid-sandbox'],
+      headless: true,
+    });
+
+    const context = await browser.newContext({
+      viewport: { width: 1366, height: 768 },
+      userAgent:
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    });
+    const page = await context.newPage();
+
+    try {
+      await page.goto(url, {
+        waitUntil: 'networkidle',
+        timeout: MAPS_HEADLESS_TIMEOUT_MS,
+      });
+
+      const rawCandidates = await page.evaluate(() => {
+        const result: string[] = [];
+        result.push(window.location.href);
+        const canonical = document
+          .querySelector('link[rel="canonical"]')
+          ?.getAttribute('href');
+        if (canonical) {
+          result.push(canonical);
+        }
+        const ogUrl = document
+          .querySelector('meta[property="og:url"]')
+          ?.getAttribute('content');
+        if (ogUrl) {
+          result.push(ogUrl);
+        }
+        return result;
+      });
+
+      const candidatesList = Array.isArray(rawCandidates)
+        ? rawCandidates
+        : [String(rawCandidates ?? '')];
+
+      const normalizedCandidates = candidatesList
+        .map((candidate) => candidate?.trim())
+        .filter((candidate): candidate is string => Boolean(candidate))
+        .map(normalizeMapsUrl)
+        .filter(isGoogleMapsPathUrl);
+
+      const placeCandidate = normalizedCandidates.find(isGoogleMapsPlaceUrl);
+      if (placeCandidate) {
+        return placeCandidate;
+      }
+
+      return normalizedCandidates[0] ?? null;
+    } finally {
+      await page.close();
+      await context.close();
+      await browser.close();
+    }
+  } catch (error) {
+    if (shouldDisableHeadlessFallback(error)) {
+      return null;
+    }
+    console.warn('Headless fallback for maps URL expansion failed', error);
+    return null;
+  }
+};
+
 export type MapsPlaceDetails = {
   name: string;
   category?: string;
@@ -770,6 +874,15 @@ export async function expandMapsUrl(shortUrl: string): Promise<string> {
   let res: Response;
   let finalUrl: URL;
 
+  const renderedExpandedUrlBeforeFetch =
+    await extractExpandedMapsUrlViaPlaywright(urlObj.toString());
+  if (
+    renderedExpandedUrlBeforeFetch &&
+    isGoogleMapsPlaceUrl(renderedExpandedUrlBeforeFetch)
+  ) {
+    return renderedExpandedUrlBeforeFetch;
+  }
+
   const renderedCoordsBeforeFetch = await extractCoordsViaPlaywright(
     urlObj.toString(),
   );
@@ -811,6 +924,13 @@ export async function expandMapsUrl(shortUrl: string): Promise<string> {
       if (isGoogleMapsPlaceUrl(followedUrl)) {
         return followedUrl;
       }
+
+      const renderedFollowedUrl =
+        await extractExpandedMapsUrlViaPlaywright(followedUrl);
+      if (renderedFollowedUrl && isGoogleMapsPlaceUrl(renderedFollowedUrl)) {
+        return renderedFollowedUrl;
+      }
+
       if (typeof followed.text === 'function') {
         const followedBody = await followed.text();
         const followedCandidate = findMapsUrlInBody(followedBody);
@@ -853,6 +973,12 @@ export async function expandMapsUrl(shortUrl: string): Promise<string> {
   const renderedCoords = await extractCoordsViaPlaywright(finalUrlString);
   if (renderedCoords) {
     return buildCoordsUrl(renderedCoords);
+  }
+
+  const renderedExpandedUrl =
+    await extractExpandedMapsUrlViaPlaywright(finalUrlString);
+  if (renderedExpandedUrl && isGoogleMapsPathUrl(renderedExpandedUrl)) {
+    return renderedExpandedUrl;
   }
 
   return finalUrlString;

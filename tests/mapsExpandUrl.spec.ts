@@ -156,4 +156,64 @@ describe('expandMapsUrl', () => {
     await expect(expandMapsUrl(mapsShortUrl)).resolves.toBe(expandedUrl);
     expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
+
+  it('использует headless URL fallback и возвращает place-ссылку вместо /maps/@', async () => {
+    const mapsShortUrl = 'https://maps.app.goo.gl/bGCLNTcmkyCwMMLV9';
+    const shortExpandedUrl =
+      'https://www.google.com/maps/@46.388127,30.705865,17z';
+    const placeExpandedUrl =
+      'https://www.google.com/maps/place/%D0%AD%D0%BF%D0%B8%D1%86%D0%B5%D0%BD%D1%82%D1%80/@46.3881269,30.7058647,2817m/data=!3m1!1e3!4m6!3m5!1s0x40c63354d55812ef:0x2ca1c014c59d4b0a!8m2!3d46.3877422!4d30.7065156!16s%2Fg%2F11xrdtt0f';
+
+    process.env.MAPS_HEADLESS_FALLBACK = 'playwright';
+
+    const gotoMock = jest.fn().mockResolvedValue(undefined);
+    const evaluateMock = jest
+      .fn()
+      .mockResolvedValue([placeExpandedUrl, shortExpandedUrl]);
+    const waitForTimeoutMock = jest.fn().mockResolvedValue(undefined);
+
+    jest.doMock('playwright', () => ({
+      chromium: {
+        launch: jest.fn().mockResolvedValue({
+          newContext: jest.fn().mockResolvedValue({
+            newPage: jest.fn().mockResolvedValue({
+              goto: gotoMock,
+              evaluate: evaluateMock,
+              locator: jest.fn().mockReturnValue({
+                first: () => ({
+                  textContent: jest.fn().mockResolvedValue(null),
+                }),
+              }),
+              waitForTimeout: waitForTimeoutMock,
+              close: jest.fn().mockResolvedValue(undefined),
+            }),
+            close: jest.fn().mockResolvedValue(undefined),
+          }),
+          close: jest.fn().mockResolvedValue(undefined),
+        }),
+      },
+    }));
+
+    const fetchSpy = jest
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce({
+        status: 200,
+        headers: new Headers(),
+        url: shortExpandedUrl,
+        text: async () => '<html><body>ok</body></html>',
+      } as Response)
+      .mockResolvedValueOnce({
+        status: 200,
+        headers: new Headers(),
+        url: shortExpandedUrl,
+        text: async () => '<html><body>ok</body></html>',
+      } as Response);
+
+    const expandMapsUrl = await importExpandMapsUrl();
+    await expect(expandMapsUrl(mapsShortUrl)).resolves.toBe(placeExpandedUrl);
+    expect(gotoMock).toHaveBeenCalled();
+    expect(fetchSpy).not.toHaveBeenCalled();
+
+    jest.dontMock('playwright');
+  });
 });

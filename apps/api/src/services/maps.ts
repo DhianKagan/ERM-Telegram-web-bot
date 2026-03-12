@@ -821,6 +821,18 @@ export async function expandMapsUrl(shortUrl: string): Promise<string> {
     throw new Error('Некорректный URL');
   }
 
+  const unwrappedInputUrl = tryGetWrappedMapsUrl(urlObj) ?? urlObj;
+
+  await assertSafeMapsUrl(unwrappedInputUrl);
+
+  const normalizedInputUrl = normalizeMapsUrl(unwrappedInputUrl.toString());
+  if (
+    hasCoordsInUrl(normalizedInputUrl) ||
+    isGoogleMapsPlaceUrl(normalizedInputUrl)
+  ) {
+    return normalizedInputUrl;
+  }
+
   const fetchWithSafeRedirects = async (
     initialUrl: URL,
     maxRedirects = 5,
@@ -875,7 +887,7 @@ export async function expandMapsUrl(shortUrl: string): Promise<string> {
   let finalUrl: URL;
 
   const renderedExpandedUrlBeforeFetch =
-    await extractExpandedMapsUrlViaPlaywright(urlObj.toString());
+    await extractExpandedMapsUrlViaPlaywright(unwrappedInputUrl.toString());
   if (
     renderedExpandedUrlBeforeFetch &&
     isGoogleMapsPlaceUrl(renderedExpandedUrlBeforeFetch)
@@ -884,25 +896,25 @@ export async function expandMapsUrl(shortUrl: string): Promise<string> {
   }
 
   const renderedCoordsBeforeFetch = await extractCoordsViaPlaywright(
-    urlObj.toString(),
+    unwrappedInputUrl.toString(),
   );
   if (renderedCoordsBeforeFetch) {
     return buildCoordsUrl(renderedCoordsBeforeFetch);
   }
 
   try {
-    const expanded = await fetchWithSafeRedirects(urlObj);
+    const expanded = await fetchWithSafeRedirects(unwrappedInputUrl);
     res = expanded.res;
     finalUrl = expanded.finalUrl;
   } catch (error) {
     if (isTransientMapsFetchError(error)) {
       const renderedCoords = await extractCoordsViaPlaywright(
-        urlObj.toString(),
+        unwrappedInputUrl.toString(),
       );
       if (renderedCoords) {
         return buildCoordsUrl(renderedCoords);
       }
-      return urlObj.toString();
+      return unwrappedInputUrl.toString();
     }
     throw error;
   }

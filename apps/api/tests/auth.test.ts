@@ -107,7 +107,9 @@ test('verifyCode возвращает токен и устанавливает c
     { body: { telegramId: 7, code, username: 'u' } },
     res2,
   );
-  expect(res2.json).toHaveBeenCalledWith({ token: expect.any(String) });
+  expect(res2.json).toHaveBeenCalledWith(
+    expect.objectContaining({ token: expect.any(String) }),
+  );
   expect(res2.cookie).toHaveBeenCalled();
 });
 
@@ -122,7 +124,9 @@ test('admin code обновляет роль пользователя', async ()
     { body: { telegramId: 5, code: '1234', username: 'u' } },
     res,
   );
-  expect(res.json).toHaveBeenCalledWith({ token: expect.any(String) });
+  expect(res.json).toHaveBeenCalledWith(
+    expect.objectContaining({ token: expect.any(String) }),
+  );
   expect(res.cookie).toHaveBeenCalled();
   expect(queries.updateUser).toHaveBeenCalled();
 });

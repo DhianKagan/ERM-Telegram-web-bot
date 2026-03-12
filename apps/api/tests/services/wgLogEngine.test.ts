@@ -1,4 +1,5 @@
 // Назначение: автотесты. Модули: jest.
+/* eslint-disable @typescript-eslint/no-require-imports */
 process.env.BOT_TOKEN = 't';
 process.env.CHAT_ID = '1';
 process.env.JWT_SECRET = 's';
@@ -44,12 +45,16 @@ test('listLogs учитывает traceId и диапазон дат', async () 
   jest.resetModules();
   process.env.SUPPRESS_LOGS = '0';
   const { writeLog, listLogs } = require('../../src/services/wgLogEngine');
+  const { runWithTrace } = require('../../src/utils/trace');
   await writeLog('Старое сообщение', 'info');
   await new Promise((resolve) => setTimeout(resolve, 1));
   const from = new Date().toISOString();
-  await writeLog('Новое сообщение', 'info', { traceId: 'custom-trace' });
+  await runWithTrace(
+    { traceId: 'custom-trace', traceparent: '00-test-00' },
+    () => writeLog('Новое сообщение', 'info'),
+  );
   await new Promise((resolve) => setTimeout(resolve, 0));
-  const result = await listLogs({ from });
+  const result = await listLogs({ from, traceId: 'custom-trace' });
   expect(result).toHaveLength(1);
   expect(result[0].message).toBe('Новое сообщение');
   expect(new Date(result[0].createdAt).getTime()).toBeGreaterThanOrEqual(

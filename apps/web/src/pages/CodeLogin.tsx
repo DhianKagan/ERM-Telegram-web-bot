@@ -36,63 +36,77 @@ export default function CodeLogin() {
 
   async function send(e?: React.FormEvent) {
     e?.preventDefault();
-    const r = await authFetch('/api/v1/auth/send_code', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ telegramId: Number(telegramId) }),
-    });
-    if (r.ok) {
-      setSent(true);
-      addToast('Код отправлен');
-    } else {
-      addToast('Не удалось отправить код', 'error');
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const r = await authFetch('/api/v1/auth/send_code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ telegramId: Number(telegramId) }),
+      });
+      if (r.ok) {
+        setSent(true);
+        addToast('Код отправлен');
+      } else if (r.status === 429) {
+        addToast(
+          'Слишком много попыток. Подождите минуту и попробуйте снова.',
+          'error',
+        );
+      } else {
+        addToast('Не удалось отправить код', 'error');
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
   async function verify(e?: React.FormEvent) {
     e?.preventDefault();
-    let res: Response | null = null;
-    const maxAttempts = 4;
-    for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-      res = await authFetch('/api/v1/auth/verify_code', {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const res = await authFetch('/api/v1/auth/verify_code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ telegramId: Number(telegramId), code }),
         noRedirect: true,
       });
       if (res.ok) {
-        break;
-      }
-      if (res.status !== 400 || attempt === maxAttempts) {
-        break;
-      }
-      const payload = (await res
-        .clone()
-        .json()
-        .catch(() => ({}))) as { detail?: string };
-      if (String(payload.detail || '').toLowerCase() !== 'invalid code') {
-        break;
-      }
-      await sleep(500);
-    }
-    if (!res) {
-      addToast('Неверный код', 'error');
-      return;
-    }
-    if (res.ok) {
-      if (shouldUseBearerAuth()) {
-        const data = (await res.json().catch(() => ({}))) as {
-          accessToken?: string;
-          token?: string;
-        };
-        const nextToken = data.accessToken || data.token;
-        if (nextToken) {
-          setAccessToken(nextToken);
+        if (shouldUseBearerAuth()) {
+          const data = (await res.json().catch(() => ({}))) as {
+            accessToken?: string;
+            token?: string;
+          };
+          const nextToken = data.accessToken || data.token;
+          if (nextToken) {
+            setAccessToken(nextToken);
+          } else {
+            await sleep(200);
+          }
         }
+        try {
+          const profile = await getProfile({ noRedirect: true });
+          setUser(profile);
+        } catch {
+          addToast(
+            'Сессия создана, но профиль пока недоступен. Повторите вход.',
+            'error',
+          );
+          return;
+        }
+        navigate('/requests', { replace: true });
+      } else if (res.status === 429) {
+        addToast(
+          'Превышен лимит попыток входа. Подождите минуту и повторите.',
+          'error',
+        );
+      } else {
+        addToast('Неверный код', 'error');
       }
-      navigate('/requests', { replace: true });
-    } else {
-      addToast('Неверный код', 'error');
+    } catch {
+      addToast('Не удалось выполнить вход', 'error');
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -220,9 +234,14 @@ export default function CodeLogin() {
       )}
       <button
         type="submit"
+        disabled={isSubmitting}
         className="min-h-[var(--touch-target)] rounded-[var(--radius)] bg-[var(--color-primary)] px-4 text-sm font-semibold text-white shadow-sm transition hover:bg-[var(--color-primary-600)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-400)]"
       >
-        {sent ? 'Войти по коду' : 'Отправить код'}
+        {isSubmitting
+          ? 'Обработка...'
+          : sent
+            ? 'Войти по коду'
+            : 'Отправить код'}
       </button>
     </form>
   );

@@ -850,6 +850,34 @@ describe('Chunk upload', () => {
     }
   });
 
+  test('не пытается собирать файл пока загружены не все части', async () => {
+    const secondChunkFirst = await request(app)
+      .post('/upload-chunk')
+      .field('fileId', 'out-of-order')
+      .field('chunkIndex', '1')
+      .field('totalChunks', '2')
+      .attach('file', Buffer.from('world'), {
+        filename: 'out-of-order.txt',
+        contentType: 'text/plain',
+      });
+    expect(secondChunkFirst.status).toBe(200);
+    expect(secondChunkFirst.body.received).toBe(1);
+
+    const firstChunkSecond = await request(app)
+      .post('/upload-chunk')
+      .field('fileId', 'out-of-order')
+      .field('chunkIndex', '0')
+      .field('totalChunks', '2')
+      .attach('file', Buffer.from('hello '), {
+        filename: 'out-of-order.txt',
+        contentType: 'text/plain',
+      });
+
+    expect(firstChunkSecond.status).toBe(200);
+    expect(firstChunkSecond.body.fileId).toBeDefined();
+    expect(storedFiles).toHaveLength(1);
+  });
+
   test('очищает устаревшие несвязанные файлы перед проверкой лимитов', async () => {
     const staleAt = new Date(Date.now() - 2 * 60 * 60 * 1000);
     for (let index = 0; index < 20; index += 1) {

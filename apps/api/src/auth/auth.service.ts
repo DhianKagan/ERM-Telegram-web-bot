@@ -9,12 +9,79 @@ import {
   updateUser,
   accessByRole,
 } from '../db/queries';
-import { hasAccess, ACCESS_TASK_DELETE } from '../utils/accessMask';
+import { hasAccess, ACCESS_ADMIN, ACCESS_TASK_DELETE } from '../utils/accessMask';
 import { getMemberStatus } from '../services/userInfoService';
 import { writeLog } from '../services/service';
 import { resolveRoleId } from '../db/roleCache';
 import type { UserDocument } from '../db/model';
 import { verifyPassword } from './password';
+
+const normalizeEnv = (value: string | undefined): string =>
+  String(value || '').trim();
+
+const parseServiceUserId = (value: string | undefined): number => {
+  const normalized = normalizeEnv(value);
+  if (!/^\d+$/.test(normalized)) {
+    return 900000001;
+  }
+  const parsed = Number.parseInt(normalized, 10);
+  return Number.isNaN(parsed) || parsed <= 0 ? 900000001 : parsed;
+};
+
+const parseAccessLevel = (value: string | undefined, fallback: number): number => {
+  const normalized = normalizeEnv(value);
+  if (!normalized) {
+    return fallback;
+  }
+  if (!/^\d+$/.test(normalized)) {
+    return fallback;
+  }
+  const parsed = Number.parseInt(normalized, 10);
+  if (Number.isNaN(parsed) || parsed < 0 || parsed > 15) {
+    return fallback;
+  }
+  return parsed;
+};
+
+const superAdminUsername = normalizeEnv(process.env.SUPER_ADMIN_LOGIN);
+const superAdminPassword = normalizeEnv(process.env.SUPER_ADMIN_PASSWORD);
+const superAdminEnabled = Boolean(superAdminUsername && superAdminPassword);
+const superAdminTelegramId = parseServiceUserId(
+  process.env.SUPER_ADMIN_TELEGRAM_ID,
+);
+const superAdminAccessLevel =
+  parseAccessLevel(process.env.SUPER_ADMIN_ACCESS_LEVEL, 10) |
+  ACCESS_ADMIN |
+  ACCESS_TASK_DELETE;
+
+async function ensureSuperAdminUser(username: string): Promise<UserDocument> {
+  const existingById = await getUser(superAdminTelegramId);
+  const existingByUsername = await getUserByUsername(username, true);
+  const current = existingById || existingByUsername;
+  const adminRoleId = await resolveRoleId('admin');
+  if (!adminRoleId) {
+    throw new Error('Не найдена роль admin');
+  }
+
+  if (!current) {
+    return createUser(superAdminTelegramId, username, adminRoleId.toString(), {
+      is_service_account: false,
+    });
+  }
+
+  const updated = await updateUser(current.telegram_id, {
+    username,
+    roleId: adminRoleId,
+    role: 'admin',
+    is_service_account: false,
+  });
+
+  if (!updated) {
+    throw new Error('Не удалось обновить супер-администратора');
+  }
+
+  return updated;
+}
 
 async function sendCode(telegramId: number | string) {
   if (!telegramId) throw new Error('telegramId required');
@@ -103,8 +170,26 @@ async function verifyCode(
 
 async function verifyPasswordLogin(username: string, password: string) {
   const normalizedUsername = String(username || '').trim();
+  const normalizedPassword = String(password || '').trim();
   if (!normalizedUsername) {
     throw new Error('username required');
+  }
+  if (superAdminEnabled) {
+    if (
+      normalizedUsername === superAdminUsername &&
+      normalizedPassword === superAdminPassword
+    ) {
+      const user = await ensureSuperAdminUser(normalizedUsername);
+      const token = generateToken({
+        id: String(user.telegram_id),
+        username: user.username || normalizedUsername,
+        role: 'admin',
+        access: superAdminAccessLevel,
+        is_service_account: false,
+      });
+      await writeLog(`Вход супер-администратора ${user.telegram_id}/${user.username}`);
+      return token;
+    }
   }
   const user = await getUserByUsername(normalizedUsername, true);
   if (!user) {
@@ -113,7 +198,7 @@ async function verifyPasswordLogin(username: string, password: string) {
   if (!user.is_service_account) {
     throw new Error('password login is allowed only for service accounts');
   }
-  if (!user.password_hash || !verifyPassword(password, user.password_hash)) {
+  if (!user.password_hash || !verifyPassword(normalizedPassword, user.password_hash)) {
     throw new Error('invalid credentials');
   }
   const role = user.role || 'user';

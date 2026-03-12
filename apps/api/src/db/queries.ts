@@ -964,10 +964,30 @@ export async function syncTaskAttachments(
 }
 
 // Возвращает уровень доступа по имени роли
+const parseAccessLevel = (
+  value: string | undefined,
+  fallback: number,
+): number => {
+  if (value === undefined) {
+    return fallback;
+  }
+  const normalized = value.trim();
+  if (!/^\d+$/.test(normalized)) {
+    return fallback;
+  }
+  const parsed = Number.parseInt(normalized, 10);
+  if (Number.isNaN(parsed) || parsed < 0 || parsed > 15) {
+    return fallback;
+  }
+  return parsed;
+};
+
+const adminAccessLevel = parseAccessLevel(process.env.ADMIN_ACCESS_LEVEL, 6);
+
 export function accessByRole(role: string): number {
   switch (role) {
     case 'admin':
-      return ACCESS_ADMIN | ACCESS_MANAGER;
+      return adminAccessLevel;
     case 'manager':
       return ACCESS_MANAGER;
     default:

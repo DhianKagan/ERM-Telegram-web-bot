@@ -76,7 +76,7 @@ export const verifyCode = async (req: Request, res: Response) => {
       const payload = decodeLegacyToken(token);
       const session = await issueSession(payload, {
         ip: req.ip,
-        userAgent: req.get('user-agent') || undefined,
+        userAgent: req.get?.('user-agent') || undefined,
       });
       setRefreshCookie(res, session.refreshToken);
       res.json({ token, accessToken: session.accessToken });
@@ -120,7 +120,7 @@ export const login = async (req: Request, res: Response) => {
     const payload = decodeLegacyToken(legacyToken);
     const session = await issueSession(payload, {
       ip: req.ip,
-      userAgent: req.get('user-agent') || undefined,
+      userAgent: req.get?.('user-agent') || undefined,
     });
     setRefreshCookie(res, session.refreshToken);
     res.json({ accessToken: session.accessToken });
@@ -209,7 +209,7 @@ export const refresh = async (req: Request, res: Response) => {
   if (refreshCookie) {
     const session = await rotateSession(refreshCookie, {
       ip: req.ip,
-      userAgent: req.get('user-agent') || undefined,
+      userAgent: req.get?.('user-agent') || undefined,
     });
     if (!session) {
       clearRefreshCookie(res);

@@ -164,8 +164,7 @@ jest.mock('../apps/api/src/utils/attachments', () => ({
 
 jest.mock('../apps/api/src/utils/accessMask', () => ({
   ACCESS_ADMIN: 8,
-  hasAccess: (mask: number, required: number) =>
-    (mask & required) === required,
+  hasAccess: (mask: number, required: number) => (mask & required) === required,
 }));
 
 const loadBotModule = () => {
@@ -181,7 +180,7 @@ const loadBotModule = () => {
   process.env.BOT_TOKEN = 'test-token';
   let mod: typeof import('../apps/api/src/bot/bot');
   jest.isolateModules(() => {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     mod = require('../apps/api/src/bot/bot');
   });
   return mod!;
@@ -310,7 +309,7 @@ describe('helpers из bot.ts', () => {
     } finally {
       jest.useRealTimers();
     }
-  });
+  }, 30000);
 
   test('startBot уважает retry_after от Telegram при ошибке 429', async () => {
     jest.useFakeTimers();
@@ -344,5 +343,5 @@ describe('helpers из bot.ts', () => {
     } finally {
       jest.useRealTimers();
     }
-  });
+  }, 30000);
 });

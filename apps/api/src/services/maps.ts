@@ -1006,6 +1006,8 @@ export async function expandMapsUrl(shortUrl: string): Promise<string> {
 
 // Проверка, что IP-адрес не является внутренним, loopback или link-local
 function isPrivateIp(ip: string): boolean {
+  const normalizedIp = ip.toLowerCase();
+
   if (net.isIPv4(ip)) {
     // 10.0.0.0/8
     if (ip.startsWith('10.')) return true;
@@ -1020,11 +1022,12 @@ function isPrivateIp(ip: string): boolean {
     if (ip.startsWith('169.254.')) return true;
   } else if (net.isIPv6(ip)) {
     // ::1/128 (loopback)
-    if (ip === '::1') return true;
+    if (normalizedIp === '::1') return true;
     // fc00::/7 (unique local address)
-    if (ip.startsWith('fc') || ip.startsWith('fd')) return true;
-    // fe80::/10 (link-local)
-    if (ip.startsWith('fe80')) return true;
+    if (normalizedIp.startsWith('fc') || normalizedIp.startsWith('fd'))
+      return true;
+    // fe80::/10 (link-local, диапазон fe8x..febx)
+    if (/^fe[89ab]/.test(normalizedIp)) return true;
   }
   return false;
 }

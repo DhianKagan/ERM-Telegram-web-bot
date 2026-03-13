@@ -134,33 +134,22 @@ jest
   .spyOn(queries, 'getUsersMap')
   .mockResolvedValue({ 1: { telegram_id: 1, name: 'User' } });
 
-jest.mock('../src/api/middleware', () => {
-  const asyncHandler = jest.fn(
-    (handler: (req: Request, res: Response, next: NextFunction) => unknown) =>
-      handler,
-  );
-  const errorHandler = jest.fn((err: unknown, _req: Request, res: Response) =>
-    res.status(500).json({
-      error: err instanceof Error ? err.message : String(err),
-    }),
-  );
-  const passNext = (_req: unknown, _res: unknown, next: NextFunction) => next();
+jest.mock('../src/middleware/auth', () => {
   return {
-    verifyToken: (req: RequestWithUser, _res: Response, next: NextFunction) => {
-      const rawRole = req.headers['x-role'];
-      const role = Array.isArray(rawRole)
-        ? (rawRole[0] ?? 'admin')
-        : (rawRole ?? 'admin');
-      const rawAccess = req.headers['x-access'];
-      const accessValue = Array.isArray(rawAccess) ? rawAccess[0] : rawAccess;
-      const access = accessValue !== undefined ? Number(accessValue) : 6;
-      req.user = { role, id: 1, telegram_id: 1, access };
-      next();
-    },
-    asyncHandler,
-    errorHandler,
-    checkRole: () => passNext,
-    checkTaskAccess: passNext,
+    __esModule: true,
+    default:
+      () =>
+      (req: RequestWithUser, _res: Response, next: NextFunction): void => {
+        const rawRole = req.headers['x-role'];
+        const role = Array.isArray(rawRole)
+          ? (rawRole[0] ?? 'admin')
+          : (rawRole ?? 'admin');
+        const rawAccess = req.headers['x-access'];
+        const accessValue = Array.isArray(rawAccess) ? rawAccess[0] : rawAccess;
+        const access = accessValue !== undefined ? Number(accessValue) : 6;
+        req.user = { role, id: 1, telegram_id: 1, access };
+        next();
+      },
   };
 });
 

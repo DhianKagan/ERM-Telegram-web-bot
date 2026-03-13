@@ -42,14 +42,22 @@ const ALLOWED_MAPS_HOSTS = new Set([
   'www.google.com',
 ]);
 
+const GOOGLE_DOMAIN_PATTERN = /^google\.(?:[a-z]{2,24}|[a-z]{2,24}\.[a-z]{2})$/;
+
+const prefixedGoogleDomainPattern = (prefix: 'maps' | 'www'): RegExp =>
+  new RegExp(`^${prefix}\\.google\\.(?:[a-z]{2,24}|[a-z]{2,24}\\.[a-z]{2})$`);
+
+const MAPS_GOOGLE_DOMAIN_PATTERN = prefixedGoogleDomainPattern('maps');
+const WWW_GOOGLE_DOMAIN_PATTERN = prefixedGoogleDomainPattern('www');
+
 const isAllowedMapsHost = (host: string): boolean => {
   if (ALLOWED_MAPS_HOSTS.has(host)) {
     return true;
   }
   return (
-    host.startsWith('maps.google.') ||
-    host.startsWith('www.google.') ||
-    host.startsWith('google.')
+    MAPS_GOOGLE_DOMAIN_PATTERN.test(host) ||
+    WWW_GOOGLE_DOMAIN_PATTERN.test(host) ||
+    GOOGLE_DOMAIN_PATTERN.test(host)
   );
 };
 

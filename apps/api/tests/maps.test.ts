@@ -41,6 +41,10 @@ test('shouldExpandMapsUrl отклоняет небезопасные URL', () =
   expect(shouldExpandMapsUrl('http://maps.app.goo.gl/test')).toBe(false);
   expect(shouldExpandMapsUrl('https://user@maps.app.goo.gl/test')).toBe(false);
   expect(shouldExpandMapsUrl('https://maps.app.goo.gl:444/test')).toBe(false);
+  expect(shouldExpandMapsUrl('https://maps.google.com.evil.test/path')).toBe(
+    false,
+  );
+  expect(shouldExpandMapsUrl('https://google.evil.test/maps')).toBe(false);
   expect(shouldExpandMapsUrl('https://example.com/maps')).toBe(false);
 });
 
@@ -53,6 +57,12 @@ test('expandMapsUrl отклоняет небезопасный протокол
 test('expandMapsUrl отклоняет не-Google домен даже при наличии координат в URL', async () => {
   await expect(
     expandMapsUrl('https://example.com/?q=46.3877422,30.7065156'),
+  ).rejects.toThrow('Недопустимый домен URL');
+});
+
+test('expandMapsUrl отклоняет хост с префиксом google в поддомене злоумышленника', async () => {
+  await expect(
+    expandMapsUrl('https://maps.google.com.evil.test/?q=46.3877422,30.7065156'),
   ).rejects.toThrow('Недопустимый домен URL');
 });
 

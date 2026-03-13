@@ -72,17 +72,15 @@ export default function CodeLogin() {
         noRedirect: true,
       });
       if (res.ok) {
-        if (shouldUseBearerAuth()) {
-          const data = (await res.json().catch(() => ({}))) as {
-            accessToken?: string;
-            token?: string;
-          };
-          const nextToken = data.accessToken || data.token;
-          if (nextToken) {
-            setAccessToken(nextToken);
-          } else {
-            await sleep(200);
-          }
+        const data = (await res.json().catch(() => ({}))) as {
+          accessToken?: string;
+          token?: string;
+        };
+        const nextToken = data.accessToken || data.token;
+        if (nextToken) {
+          setAccessToken(nextToken);
+        } else if (shouldUseBearerAuth()) {
+          await sleep(200);
         }
         try {
           const profile = await getProfile({ noRedirect: true });
@@ -126,15 +124,13 @@ export default function CodeLogin() {
       });
 
       if (res.ok) {
-        if (shouldUseBearerAuth()) {
-          const data = (await res.json().catch(() => ({}))) as {
-            accessToken?: string;
-            token?: string;
-          };
-          const nextToken = data.accessToken || data.token;
-          if (nextToken) {
-            setAccessToken(nextToken);
-          }
+        const data = (await res.json().catch(() => ({}))) as {
+          accessToken?: string;
+          token?: string;
+        };
+        const nextToken = data.accessToken || data.token;
+        if (nextToken) {
+          setAccessToken(nextToken);
         }
         const profile = await getProfile({ noRedirect: true });
         setUser(profile);

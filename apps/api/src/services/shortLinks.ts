@@ -106,7 +106,10 @@ export const extractSlug = (input: string): string | null => {
   if (!trimmed) return null;
   if (trimmed.startsWith('/')) {
     const prefix = SHORT_PATH_PREFIX.replace(/\/+$/, '');
-    if (!trimmed.startsWith(prefix)) {
+    if (
+      !trimmed.startsWith(prefix) ||
+      (trimmed.length > prefix.length && trimmed[prefix.length] !== '/')
+    ) {
       return null;
     }
     const slugCandidate =
@@ -119,7 +122,11 @@ export const extractSlug = (input: string): string | null => {
       return null;
     }
     const prefix = SHORT_PATH_PREFIX.replace(/\/+$/, '');
-    if (!parsed.pathname.startsWith(prefix)) {
+    if (
+      !parsed.pathname.startsWith(prefix) ||
+      (parsed.pathname.length > prefix.length &&
+        parsed.pathname[prefix.length] !== '/')
+    ) {
       return null;
     }
     const slugCandidate =

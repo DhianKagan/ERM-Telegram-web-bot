@@ -121,4 +121,54 @@ describe('authFetch', () => {
     expect(jsonFinal).not.toHaveBeenCalled();
     expect(handler).toHaveBeenCalled();
   });
+
+  test('корректно читает заголовки XHR без пробела после двоеточия', async () => {
+    const OriginalXHR = global.XMLHttpRequest;
+    const OriginalResponse = global.Response;
+    class MockXHR {
+      response = 'ok';
+      status = 200;
+      statusText = 'OK';
+      withCredentials = false;
+      upload = { onprogress: () => undefined };
+      onload: () => void = () => undefined;
+      onerror: () => void = () => undefined;
+      onabort: () => void = () => undefined;
+      open() {}
+      setRequestHeader() {}
+      getAllResponseHeaders() {
+        return 'x-test:value-without-space';
+      }
+      send() {
+        this.onload();
+      }
+    }
+    class MockResponse {
+      status: number;
+      statusText: string;
+      ok: boolean;
+      headers: Headers;
+      constructor(_: unknown, init: ResponseInit = {}) {
+        this.status = init.status || 200;
+        this.statusText = init.statusText || '';
+        this.ok = this.status >= 200 && this.status < 300;
+        this.headers = new Headers(init.headers);
+      }
+    }
+    // @ts-ignore
+    global.XMLHttpRequest = MockXHR;
+    // @ts-ignore
+    global.Response = MockResponse;
+
+    const res = await authFetch('/foo', {
+      noRedirect: true,
+      onProgress: () => undefined,
+    });
+    expect(res.headers.get('x-test')).toBe('value-without-space');
+
+    // @ts-ignore
+    global.XMLHttpRequest = OriginalXHR;
+    // @ts-ignore
+    global.Response = OriginalResponse;
+  });
 });

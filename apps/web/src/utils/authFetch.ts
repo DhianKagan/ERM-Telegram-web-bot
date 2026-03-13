@@ -178,7 +178,12 @@ async function sendRequest(
             .trim()
             .split(/\r?\n/)
             .forEach((line) => {
-              const [key, val] = line.split(': ');
+              const separatorIndex = line.indexOf(':');
+              if (separatorIndex <= 0) {
+                return;
+              }
+              const key = line.slice(0, separatorIndex).trim();
+              const val = line.slice(separatorIndex + 1).trim();
               if (key) headers.append(key, val);
             });
         }

@@ -25,6 +25,20 @@ describe('expandMapsUrl', () => {
     jest.restoreAllMocks();
   });
 
+  it('блокирует URL, если DNS вернул смешанный список с IPv6 link-local fe90::/10', async () => {
+    const mapsUrl = 'https://maps.google.com/maps/place/AGROMARKET';
+    const { lookup } = await import('dns/promises');
+    (lookup as jest.Mock).mockResolvedValue([
+      { address: 'fe90::1' },
+      { address: '8.8.8.8' },
+    ]);
+
+    const expandMapsUrl = await importExpandMapsUrl();
+    await expect(expandMapsUrl(mapsUrl)).rejects.toThrow(
+      'Домен URL разрешается во внутренний или запрещённый IP',
+    );
+  });
+
   it('возвращает исходный URL при временной сетевой ошибке fetch', async () => {
     const mapsShortUrl = 'https://maps.app.goo.gl/h4DvKu4FwHBpfnJz9';
     jest

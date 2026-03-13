@@ -105,12 +105,13 @@ export const extractSlug = (input: string): string | null => {
   const trimmed = input.trim();
   if (!trimmed) return null;
   if (trimmed.startsWith('/')) {
-    const normalized = trimmed.replace(/^\/+/, '');
-    if (normalized.startsWith(`${SHORT_PATH_SEGMENT}/`)) {
-      const [, slugCandidate] = normalized.split('/');
-      return normalizeSlug(slugCandidate ?? '');
+    const prefix = SHORT_PATH_PREFIX.replace(/\/+$/, '');
+    if (!trimmed.startsWith(prefix)) {
+      return null;
     }
-    return null;
+    const slugCandidate =
+      trimmed.slice(prefix.length).replace(/^\/+/, '').split('/')[0] ?? '';
+    return normalizeSlug(slugCandidate);
   }
   try {
     const parsed = new URL(trimmed, APP_ORIGIN ?? undefined);

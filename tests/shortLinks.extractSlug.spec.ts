@@ -30,4 +30,22 @@ describe('shortLinks.extractSlug', () => {
 
     expect(extractSlug('/l/demoSlug')).toBeNull();
   });
+
+  it('не извлекает slug из пути с похожим, но некорректным префиксом', async () => {
+    const { extractSlug } = await importWithAppUrl(
+      'https://example.com/telegram/webapp/',
+    );
+
+    expect(extractSlug('/telegram/webapp-l/demoSlug')).toBeNull();
+  });
+
+  it('не извлекает slug из абсолютного URL с похожим, но некорректным префиксом', async () => {
+    const { extractSlug } = await importWithAppUrl(
+      'https://example.com/telegram/webapp/',
+    );
+
+    expect(
+      extractSlug('https://example.com/telegram/webapp-l/demoSlug'),
+    ).toBeNull();
+  });
 });

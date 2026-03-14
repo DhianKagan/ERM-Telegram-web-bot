@@ -4,7 +4,6 @@
   "description": "Монорепозиторий ERM Telegram Web Bot и связанных пакетов.",
   "packageManager": "pnpm@10.20.0+sha512.cf9998222162dd85864d0a8102e7892e7ba4ceadebbf5a31f9c2fce48dfce317a9c53b9f6464d1ef9042cba2e02ae02a9f7c143a2b438cd93c91840f0192b9dd",
   "workspaces": [
-    "ERM-Telegram-web-bot",
     "apps/*",
     "packages/*"
   ],
@@ -24,7 +23,7 @@
     "format:check": "prettier --check .",
     "format": "prettier --write .",
     "test:api": "pnpm --filter ./apps/api test --",
-    "prepare": "node scripts/run_husky_install.mjs || node run_husky_install.mjs",
+    "prepare": "node scripts/run_husky_install.mjs",
     "railway:start:api": "APP_ROLE=api node apps/api/dist/server.js",
     "railway:start:bot": "APP_ROLE=bot ./scripts/set_bot_commands.sh && APP_ROLE=bot node apps/api/dist/bot/runtime.js",
     "railway:start:worker": "APP_ROLE=worker node apps/worker/dist/index.js",

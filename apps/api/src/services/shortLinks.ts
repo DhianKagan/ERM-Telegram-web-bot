@@ -113,7 +113,7 @@ export const extractSlug = (input: string): string | null => {
       return null;
     }
     const slugCandidate =
-      trimmed.slice(prefix.length).replace(/^\/+/, '').split('/')[0] ?? '';
+      trimmed.slice(prefix.length).replace(/^\/+/, '').split(/[/?#]/)[0] ?? '';
     return normalizeSlug(slugCandidate);
   }
   try {

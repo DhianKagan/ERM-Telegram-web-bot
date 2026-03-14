@@ -48,4 +48,14 @@ describe('shortLinks.extractSlug', () => {
       extractSlug('https://example.com/telegram/webapp-l/demoSlug'),
     ).toBeNull();
   });
+
+  it('извлекает slug из относительного пути с query и hash', async () => {
+    const { extractSlug } = await importWithAppUrl(
+      'https://example.com/telegram/webapp/',
+    );
+
+    expect(extractSlug('/telegram/webapp/l/demoSlug?from=bot#section')).toBe(
+      'demoSlug',
+    );
+  });
 });

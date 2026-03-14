@@ -60,7 +60,6 @@ interface TableQuery extends Record<string, string> {
 
 router.get(
   '/table',
-  authMiddleware(),
   tableLimiter as unknown as RequestHandler,
   validate([query('points').isString()]),
   asyncHandler(async (req, res) => {

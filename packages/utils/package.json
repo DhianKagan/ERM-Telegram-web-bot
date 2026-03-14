@@ -8,7 +8,7 @@
     "build": "pnpm exec tsc -b tsconfig.json --force",
     "lint": "pnpm exec eslint -c ../../eslint.config.ts src --ext .ts",
     "typecheck": "pnpm exec tsc --noEmit -p tsconfig.json",
-    "test": "node -e \"console.log('utils: no tests')\"",
+    "test": "node -e \"console.log('utils: no tests')\" --",
     "ci:fast": "pnpm run build && pnpm run typecheck && pnpm run lint && pnpm run test",
     "ci:full": "pnpm run ci:fast"
   },

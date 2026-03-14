@@ -13,7 +13,21 @@ import {
 } from '../services/fileService';
 import { writeLog } from '../services/wgLogEngine';
 
-const PRECISION_DECIMALS = Number(process.env.ROUTE_PRECISION_DECIMALS || '6');
+const parsePrecisionDecimals = (value: string | undefined): number => {
+  const normalized = String(value ?? '').trim();
+  if (!normalized) {
+    return 6;
+  }
+  const parsed = Number(normalized);
+  if (!Number.isInteger(parsed) || parsed < 0 || parsed > 12) {
+    return 6;
+  }
+  return parsed;
+};
+
+const PRECISION_DECIMALS = parsePrecisionDecimals(
+  process.env.ROUTE_PRECISION_DECIMALS,
+);
 
 /**
  * Безопасное округление координаты (локальная реализация).

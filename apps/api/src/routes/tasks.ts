@@ -411,9 +411,12 @@ const ctrl = container.resolve(TasksController);
 const ensureRequestHandler = (
   value: unknown,
   methodName: string,
+  owner?: unknown,
 ): RequestHandler => {
   if (typeof value === 'function') {
-    return value as RequestHandler;
+    return owner
+      ? (value as RequestHandler).bind(owner)
+      : (value as RequestHandler);
   }
   console.error(
     `Контроллер задач не реализует метод ${methodName}, используется заглушка`,
@@ -428,10 +431,12 @@ const ensureRequestHandler = (
 const downloadPdfHandler = ensureRequestHandler(
   ctrl.downloadPdf,
   'downloadPdf',
+  ctrl,
 );
 const downloadExcelHandler = ensureRequestHandler(
   ctrl.downloadExcel,
   'downloadExcel',
+  ctrl,
 );
 
 const chunkUploadDirs = new Map<string, string>();

@@ -14,4 +14,11 @@ describe('parsePointInput', () => {
       lng: 30.5234,
     });
   });
+
+  test('для массива [lon, lat] сохраняет порядок GeoJSON', () => {
+    expect(parsePointInput([30.5234, 50.4501])).toEqual({
+      lat: 50.4501,
+      lng: 30.5234,
+    });
+  });
 });

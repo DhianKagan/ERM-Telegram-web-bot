@@ -150,7 +150,7 @@ const tryParseIntentMapsUrl = (value: string): URL | null => {
     }
   }
 
-  const scheme = readMetaValue('scheme=') || 'https';
+  const scheme = (readMetaValue('scheme=') || 'https').trim().toLowerCase();
   if (scheme !== 'http' && scheme !== 'https') {
     return null;
   }

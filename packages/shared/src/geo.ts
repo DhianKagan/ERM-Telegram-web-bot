@@ -38,6 +38,7 @@ export function normalizePointsString(
     if (!p) continue;
     const coords = p.split(',').map((s) => s.trim());
     if (coords.length !== 2) continue;
+    if (!coords[0] || !coords[1]) continue;
     const lon = Number(coords[0]);
     const lat = Number(coords[1]);
     if (!Number.isFinite(lon) || !Number.isFinite(lat)) continue;

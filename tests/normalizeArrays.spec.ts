@@ -4,8 +4,15 @@ import type { Request, Response, NextFunction } from 'express';
 import { normalizeArrays } from '../apps/api/src/routes/tasks';
 
 describe('normalizeArrays', () => {
-  const createReq = (body: Record<string, unknown>): Request =>
-    ({ body }) as unknown as Request;
+  const createReq = (
+    body: Record<string, unknown>,
+    options: { method?: string; userId?: string | number } = {},
+  ): Request =>
+    ({
+      body,
+      method: options.method,
+      user: options.userId !== undefined ? { id: options.userId } : undefined,
+    }) as unknown as Request;
   const res = {} as Response;
 
   it('парсит вложения из строки в формате JSON5', () => {
@@ -78,6 +85,45 @@ describe('normalizeArrays', () => {
       (req.body as { assigned_user_id: unknown }).assigned_user_id,
     ).toBeNull();
     expect((req.body as { assignees: unknown[] }).assignees).toEqual([]);
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  it('парсит points из JSON-строки', () => {
+    const req = createReq({ points: '[[30.5234,50.4501],[30.524,50.451]]' });
+    const next = jest.fn() as unknown as NextFunction;
+
+    normalizeArrays(req, res, next);
+
+    expect((req.body as { points: unknown }).points).toEqual([
+      [30.5234, 50.4501],
+      [30.524, 50.451],
+    ]);
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  it('для POST подставляет assigned_user_id и assignees из req.user.id, если они не переданы', () => {
+    const req = createReq({}, { method: 'POST', userId: 77 });
+    const next = jest.fn() as unknown as NextFunction;
+
+    normalizeArrays(req, res, next);
+
+    expect((req.body as { assigned_user_id: unknown }).assigned_user_id).toBe(
+      '77',
+    );
+    expect((req.body as { assignees: unknown[] }).assignees).toEqual(['77']);
+    expect(next).toHaveBeenCalledTimes(1);
+  });
+
+  it('не подставляет assigned_user_id для не-POST запросов', () => {
+    const req = createReq({}, { method: 'PATCH', userId: 77 });
+    const next = jest.fn() as unknown as NextFunction;
+
+    normalizeArrays(req, res, next);
+
+    expect((req.body as { assigned_user_id?: unknown }).assigned_user_id).toBe(
+      undefined,
+    );
+    expect((req.body as { assignees?: unknown[] }).assignees).toBeUndefined();
     expect(next).toHaveBeenCalledTimes(1);
   });
 });

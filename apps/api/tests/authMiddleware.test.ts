@@ -62,6 +62,17 @@ test('authMiddleware в bearer-only режиме пропускает запро
   expect(verifyToken).toHaveBeenCalledWith(req, res, next);
 });
 
+test('authMiddleware в bearer-only режиме принимает lowercase bearer', () => {
+  const req = { headers: { authorization: 'bearer token' } };
+  const res = {};
+  const next = jest.fn();
+
+  const mw = authMiddleware({ bearerOnly: true });
+  mw(req, res, next);
+
+  expect(verifyToken).toHaveBeenCalledWith(req, res, next);
+});
+
 test('authMiddleware по умолчанию включает bearer-only из config', async () => {
   jest.resetModules();
   jest.doMock('../src/api/middleware', () => ({

@@ -97,6 +97,24 @@ test('POST /api/v1/maps/expand возвращает url и coords', async () => 
   expect(resolveShortLink).not.toHaveBeenCalled();
 });
 
+test('POST /api/v1/maps/expand отклоняет домен не из google-контурa', async () => {
+  (expandMapsUrl as jest.Mock).mockRejectedValue(
+    new Error('expand failed for non-google host'),
+  );
+  (extractCoords as jest.Mock).mockReturnValue(null);
+
+  const res = await request(app)
+    .post('/api/v1/maps/expand')
+    .send({ url: 'https://evilgoogle.com/maps/place/Київ' });
+
+  expect(res.status).toBe(400);
+  expect(res.body).toMatchObject({
+    title: 'Некорректная ссылка',
+    detail: 'invalid url',
+  });
+  expect(ensureShortLink).not.toHaveBeenCalled();
+});
+
 test('POST /api/v1/maps/expand обрабатывает управляемую короткую ссылку', async () => {
   (isShortLink as jest.Mock).mockReturnValueOnce(true);
   (resolveShortLink as jest.Mock).mockResolvedValueOnce(

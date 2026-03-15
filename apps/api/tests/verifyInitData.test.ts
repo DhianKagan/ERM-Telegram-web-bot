@@ -43,6 +43,12 @@ test('просроченный auth_date вызывает ошибку', () => {
   expect(() => verify(initData)).toThrow();
 });
 
+test('auth_date далеко в будущем вызывает ошибку', () => {
+  const future = Math.floor(Date.now() / 1000) + 120;
+  const initData = buildInitData(future);
+  expect(() => verify(initData)).toThrow('auth_date из будущего');
+});
+
 test('не-hex hash вызывает ошибку валидации без падения', () => {
   const now = Math.floor(Date.now() / 1000);
   const initData = `query_id=1&user=%7B%22id%22%3A1%2C%22first_name%22%3A%22a%22%7D&auth_date=${now}&hash=zzzz&signature=sig`;

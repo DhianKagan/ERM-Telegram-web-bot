@@ -7,6 +7,7 @@ const { botToken } = config;
 
 interface ValidateOptions {
   expiresIn?: number;
+  maxClockSkew?: number;
 }
 
 type TelegramUser = {
@@ -79,8 +80,12 @@ function validateSignature(
     throw new Error('Некорректное значение auth_date');
   }
   const expiresIn = options.expiresIn ?? 0;
+  const maxClockSkew = options.maxClockSkew ?? 0;
+  const now = Math.floor(Date.now() / 1000);
+  if (maxClockSkew > 0 && authDate > now + maxClockSkew) {
+    throw new Error('auth_date из будущего');
+  }
   if (expiresIn > 0) {
-    const now = Math.floor(Date.now() / 1000);
     if (now - authDate > expiresIn) {
       throw new Error('initData просрочен');
     }
@@ -120,7 +125,10 @@ export default function verifyInitData(initData: string) {
     throw new Error('BOT_TOKEN не задан');
   }
   const params = new URLSearchParams(initData);
-  const authDate = validateSignature(params, token, { expiresIn: 300 });
+  const authDate = validateSignature(params, token, {
+    expiresIn: 300,
+    maxClockSkew: 30,
+  });
   return parseInitData(params, authDate);
 }
 

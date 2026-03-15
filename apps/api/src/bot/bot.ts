@@ -1977,6 +1977,7 @@ export async function startBot(retry = 0): Promise<void> {
     const isRateLimited = code === 429;
     const canRetry = retry < MAX_RETRIES || isConflict || isRateLimited;
     if (retryableCodes.has(code ?? 0) && canRetry) {
+      let retryAfterSeconds: number | null = null;
       if (isConflict && !telegramWebhookUrl) {
         console.warn(
           'Обнаружен активный запрос getUpdates, сбрасываем предыдущую сессию',
@@ -1984,11 +1985,16 @@ export async function startBot(retry = 0): Promise<void> {
         await resetLongPollingSession();
       }
       if (isRateLimited) {
-        await waitForRetryAfter(err, 'Telegram вернул 429 при запуске бота');
+        retryAfterSeconds = await waitForRetryAfter(
+          err,
+          'Telegram вернул 429 при запуске бота',
+        );
       }
       console.error('Ошибка Telegram, повторная попытка запуска');
-      const delay = 1000 * 2 ** retry;
-      await sleep(delay);
+      const delay = retryAfterSeconds ? 0 : 1000 * 2 ** retry;
+      if (delay > 0) {
+        await sleep(delay);
+      }
       const nextRetry = isConflict || isRateLimited ? retry : retry + 1;
       return startBot(nextRetry);
     }

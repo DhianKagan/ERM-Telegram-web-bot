@@ -88,7 +88,11 @@ export function normalizeTaskFilters(
     normalized.kanban = kanbanValue;
   } else if (typeof kanbanValue === 'string') {
     const normalizedValue = kanbanValue.trim().toLowerCase();
-    normalized.kanban = normalizedValue === 'true' || normalizedValue === '1';
+    if (normalizedValue === 'true' || normalizedValue === '1') {
+      normalized.kanban = true;
+    } else if (normalizedValue === 'false' || normalizedValue === '0') {
+      normalized.kanban = false;
+    }
   }
 
   if (statusValues.length === 1) {

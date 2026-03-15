@@ -86,4 +86,14 @@ describe('task filter utilities', () => {
       kanban: false,
     });
   });
+
+  it('корректно обрабатывает строковые значения kanban', () => {
+    expect(normalizeTaskFilters({ kanban: 'false' }).normalized.kanban).toBe(
+      false,
+    );
+    expect(normalizeTaskFilters({ kanban: '0' }).normalized.kanban).toBe(false);
+    expect(normalizeTaskFilters({ kanban: 'unexpected' }).normalized).toEqual(
+      {},
+    );
+  });
 });

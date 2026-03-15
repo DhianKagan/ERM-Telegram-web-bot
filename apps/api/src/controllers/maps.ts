@@ -23,7 +23,9 @@ const looksLikeMapsUrl = (value: string): boolean => {
     if (host === 'maps.app.goo.gl') {
       return true;
     }
-    if (!host.includes('google.')) {
+    const isGoogleDomain =
+      /^google\.[a-z.]+$/.test(host) || /\.google\.[a-z.]+$/.test(host);
+    if (!isGoogleDomain) {
       return false;
     }
     return parsed.pathname.startsWith('/maps');

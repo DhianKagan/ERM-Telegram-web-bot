@@ -9,7 +9,7 @@
     "start": "node dist/index.js",
     "lint": "pnpm exec eslint -c ../../eslint.config.ts src",
     "typecheck": "pnpm exec tsc --noEmit",
-    "test": "node -e \"console.log('worker: no tests')\"",
+    "test": "node -e \"console.log('worker: no tests')\" --",
     "ci:fast": "pnpm run build && pnpm run typecheck && pnpm run lint && pnpm run test",
     "ci:full": "pnpm run ci:fast"
   },

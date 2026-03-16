@@ -59,8 +59,9 @@ export function verifyToken(
   let token: string | undefined;
   let fromHeader = false;
   if (auth) {
-    if (auth.startsWith('Bearer ')) {
-      token = auth.slice(7).trim();
+    const bearerMatch = /^Bearer\s+(.+)$/i.exec(auth);
+    if (bearerMatch) {
+      token = bearerMatch[1].trim();
       if (!token) {
         writeLog(
           `Неверный формат токена ${req.method} ${req.originalUrl} ip:${req.ip}`,

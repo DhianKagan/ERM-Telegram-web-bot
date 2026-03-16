@@ -16,7 +16,7 @@ export default function authMiddleware(
     const bearerOnly = options.bearerOnly ?? authBearerEnabled;
     if (bearerOnly) {
       const authHeader = req.headers.authorization;
-      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      if (!authHeader || !/^Bearer\s+/i.test(authHeader)) {
         res.status(401).json({
           type: 'about:blank',
           title: 'Ошибка авторизации',

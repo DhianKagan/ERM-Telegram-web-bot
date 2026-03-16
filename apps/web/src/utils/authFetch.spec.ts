@@ -238,6 +238,33 @@ describe('authFetch', () => {
     );
   });
 
+  it('добавляет X-XSRF-TOKEN при refresh, если csrf доступен', async () => {
+    process.env.VITE_AUTH_BEARER_ENABLED = 'false';
+    getCsrfTokenMock.mockReturnValue('csrf-token');
+
+    const fetchMock = globalThis.fetch as jest.MockedFunction<
+      typeof globalThis.fetch
+    >;
+    fetchMock
+      .mockResolvedValueOnce(new Response(null, { status: 401 }))
+      .mockResolvedValueOnce(
+        new Response(JSON.stringify({ accessToken: 'fresh-token' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      )
+      .mockResolvedValueOnce(new Response(null, { status: 200 }));
+
+    const authFetch = await loadAuthFetch();
+    const res = await authFetch('/api/v1/auth/profile', { noRedirect: true });
+
+    expect(res.status).toBe(200);
+    const refreshRequest = fetchMock.mock.calls[1][1] as RequestInit;
+    expect(
+      (refreshRequest.headers as Record<string, string>)['X-XSRF-TOKEN'],
+    ).toBe('csrf-token');
+  });
+
   it('показывает toast о конфигурации, если profile после refresh снова возвращает Bearer-401', async () => {
     process.env.VITE_AUTH_BEARER_ENABLED = 'false';
 

@@ -251,9 +251,22 @@ async function fetchCsrfToken(): Promise<string | null> {
 
 async function refreshAccessToken(): Promise<string | null> {
   try {
+    let csrfToken = getCsrfToken();
+    if (!csrfToken && !unavailablePaths.has(CSRF_PATH)) {
+      csrfToken = await fetchCsrfToken();
+      if (csrfToken) {
+        setCsrfToken(csrfToken);
+      }
+    }
+    const refreshHeaders: Record<string, string> = {};
+    if (csrfToken) {
+      refreshHeaders['X-XSRF-TOKEN'] = csrfToken;
+    }
+
     const r = await fetch('/api/v1/auth/refresh', {
       method: 'POST',
       credentials: 'include',
+      headers: refreshHeaders,
     });
     if (!r.ok) {
       return null;

@@ -258,11 +258,36 @@ async function refreshAccessToken(): Promise<string | null> {
     if (!r.ok) {
       return null;
     }
-    const data = (await r.json().catch(() => ({}))) as {
-      accessToken?: string;
-      token?: string;
+    const tryExtractToken = (
+      value: unknown,
+    ): { accessToken?: string; token?: string } | null => {
+      if (!value || typeof value !== 'object') {
+        return null;
+      }
+      return value as { accessToken?: string; token?: string };
     };
-    return data.accessToken || data.token || null;
+
+    const jsonPayload = tryExtractToken(
+      await r
+        .clone()
+        .json()
+        .catch(() => null),
+    );
+    const jsonToken = jsonPayload?.accessToken || jsonPayload?.token;
+    if (jsonToken) {
+      return jsonToken;
+    }
+
+    const textPayload = await r.text().catch(() => '');
+    if (!textPayload) {
+      return null;
+    }
+    try {
+      const parsed = tryExtractToken(JSON.parse(textPayload));
+      return parsed?.accessToken || parsed?.token || null;
+    } catch {
+      return null;
+    }
   } catch {
     return null;
   }

@@ -2,7 +2,7 @@
 // Модули: React, @tanstack/react-table, heroicons, EmployeeLink
 import React from 'react';
 import type { ColumnDef } from '@tanstack/react-table';
-import { PROJECT_TIMEZONE, PROJECT_TIMEZONE_LABEL, type Task } from 'shared';
+import { type Task } from 'shared';
 import { QuestionMarkCircleIcon } from '@heroicons/react/20/solid';
 import EmployeeLink from '../components/EmployeeLink';
 import RowActionButtons, {
@@ -223,21 +223,19 @@ const fullDateTimeFmt = new Intl.DateTimeFormat('ru-RU', {
   hour: '2-digit',
   minute: '2-digit',
   hour12: false,
-  timeZone: PROJECT_TIMEZONE,
+  timeZoneName: 'short',
 });
 
 const datePartFmt = new Intl.DateTimeFormat('ru-RU', {
   day: '2-digit',
   month: '2-digit',
   year: 'numeric',
-  timeZone: PROJECT_TIMEZONE,
 });
 
 const timePartFmt = new Intl.DateTimeFormat('ru-RU', {
   hour: '2-digit',
   minute: '2-digit',
   hour12: false,
-  timeZone: PROJECT_TIMEZONE,
 });
 
 const parseDateInput = (value?: string | null) => {
@@ -251,7 +249,7 @@ const parseDateInput = (value?: string | null) => {
 const formatDate = (value?: string) => {
   const date = parseDateInput(value);
   if (!date) return null;
-  const full = `${fullDateTimeFmt.format(date).replace(', ', ' ')} ${PROJECT_TIMEZONE_LABEL}`;
+  const full = fullDateTimeFmt.format(date).replace(', ', ' ');
   const datePart = datePartFmt.format(date);
   const timePart = timePartFmt.format(date);
   return {

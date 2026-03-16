@@ -90,7 +90,11 @@ export default function FiltersPanel({ filters, onChange }: Props) {
           onChange={(e) => onChange({ ...filters, to: e.target.value })}
         />
       </FormGroup>
-      <FormGroup label="no-csrf" htmlFor={noCsrfId}>
+      <FormGroup
+        label="Логи без CSRF"
+        htmlFor={noCsrfId}
+        hint="Показывать только запросы без CSRF-токена"
+      >
         <label className="flex items-center gap-2 text-sm">
           <input
             id={noCsrfId}
@@ -99,7 +103,7 @@ export default function FiltersPanel({ filters, onChange }: Props) {
             checked={filters.noCsrf || false}
             onChange={(e) => onChange({ ...filters, noCsrf: e.target.checked })}
           />
-          <span>Включить фильтр</span>
+          <span>Только без CSRF</span>
         </label>
       </FormGroup>
     </div>

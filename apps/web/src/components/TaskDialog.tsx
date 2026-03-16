@@ -2522,6 +2522,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         setStart('');
         setStartCoordinates(null);
         setStartLink('');
+        setAlertMsg('Некорректная ссылка Google Maps для точки отправления');
         return;
       }
       setStart(resolved.title);
@@ -2544,6 +2545,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         setEnd('');
         setFinishCoordinates(null);
         setEndLink('');
+        setAlertMsg('Некорректная ссылка Google Maps для точки назначения');
         return;
       }
       setEnd(resolved.title);
@@ -2596,6 +2598,9 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
           prev.map((point) => {
             if (point.id !== id) return point;
             if (!resolved) {
+              setAlertMsg(
+                'Некорректная ссылка Google Maps для промежуточной точки',
+              );
               return {
                 ...point,
                 title: '',
@@ -3474,6 +3479,14 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   const [showCancelConfirm, setShowCancelConfirm] = React.useState(false);
   const [showDoneConfirm, setShowDoneConfirm] = React.useState(false);
   const [pendingDoneOption, setPendingDoneOption] = React.useState('');
+  React.useEffect(() => {
+    if (!editing) return;
+    const timeoutId = window.setTimeout(() => {
+      titleRef.current?.focus();
+    }, 0);
+    return () => window.clearTimeout(timeoutId);
+  }, [editing, isEdit]);
+
   React.useEffect(() => {
     if (!canFinalizeStatus && showDoneSelect) {
       setShowDoneSelect(false);

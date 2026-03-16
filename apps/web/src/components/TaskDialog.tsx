@@ -2516,10 +2516,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     const sanitized = sanitizeLocationLink(value);
     setStartLink(sanitized || value);
     if (!sanitized) {
-      if (!value.trim()) {
-        setStart('');
-        setStartCoordinates(null);
-        setStartCollectionId('');
+      setStart('');
+      setStartCoordinates(null);
+      setStartCollectionId('');
+      if (showInvalidAlert && value.trim()) {
+        setAlertMsg('Некорректная ссылка Google Maps для точки отправления');
       }
       setIsStartLinkResolving(false);
       return;
@@ -2550,10 +2551,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     const sanitized = sanitizeLocationLink(value);
     setEndLink(sanitized || value);
     if (!sanitized) {
-      if (!value.trim()) {
-        setEnd('');
-        setFinishCoordinates(null);
-        setFinishCollectionId('');
+      setEnd('');
+      setFinishCoordinates(null);
+      setFinishCollectionId('');
+      if (showInvalidAlert && value.trim()) {
+        setAlertMsg('Некорректная ссылка Google Maps для точки назначения');
       }
       setIsEndLinkResolving(false);
       return;
@@ -2610,18 +2612,21 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
         ),
       );
       if (!sanitized) {
-        if (!value.trim()) {
-          setViaPoints((prev) =>
-            prev.map((point) =>
-              point.id === id
-                ? {
-                    ...point,
-                    title: '',
-                    coordinates: null,
-                    collectionId: '',
-                  }
-                : point,
-            ),
+        setViaPoints((prev) =>
+          prev.map((point) =>
+            point.id === id
+              ? {
+                  ...point,
+                  title: '',
+                  coordinates: null,
+                  collectionId: '',
+                }
+              : point,
+          ),
+        );
+        if (showInvalidAlert && value.trim()) {
+          setAlertMsg(
+            'Некорректная ссылка Google Maps для промежуточной точки',
           );
         }
         setResolvingViaIds((prev) => prev.filter((itemId) => itemId !== id));

@@ -87,6 +87,44 @@ describe('authFetch', () => {
     );
   });
 
+  test('повторяет запрос после refresh даже если refresh ответил JSON с text/plain', async () => {
+    shouldUseBearerAuth.mockReturnValue(true);
+
+    const nonJsonRefreshResponse = {
+      status: 200,
+      ok: true,
+      headers: new Headers({ 'content-type': 'text/plain' }),
+      clone: jest.fn().mockReturnValue({
+        json: jest
+          .fn()
+          .mockRejectedValue(new Error('invalid json content type')),
+      }),
+      text: jest.fn().mockResolvedValue('{"accessToken":"token-from-text"}'),
+    } as unknown as Response;
+
+    const mockFetch = jest
+      .fn()
+      .mockResolvedValueOnce(makeResponse(401))
+      .mockResolvedValueOnce(nonJsonRefreshResponse)
+      .mockResolvedValueOnce(makeResponse(200));
+    // @ts-ignore
+    global.fetch = mockFetch;
+
+    const res = await authFetch('/foo', { noRedirect: true });
+
+    expect(res.status).toBe(200);
+    expect(setAccessToken).toHaveBeenCalledWith('token-from-text');
+    expect(mockFetch).toHaveBeenNthCalledWith(
+      3,
+      '/foo',
+      expect.objectContaining({
+        headers: expect.objectContaining({
+          Authorization: 'Bearer token-from-text',
+        }),
+      }),
+    );
+  });
+
   test('shows toast on 403', async () => {
     const mockFetch = jest
       .fn()

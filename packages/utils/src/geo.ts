@@ -16,7 +16,9 @@ const resolvedPrecisionDecimals = Number(
   process.env.ROUTE_PRECISION_DECIMALS || String(DEFAULT_PRECISION_DECIMALS),
 );
 const precisionDecimals =
-  Number.isFinite(resolvedPrecisionDecimals) && resolvedPrecisionDecimals >= 0
+  Number.isFinite(resolvedPrecisionDecimals) &&
+  Number.isInteger(resolvedPrecisionDecimals) &&
+  resolvedPrecisionDecimals >= 0
     ? resolvedPrecisionDecimals
     : DEFAULT_PRECISION_DECIMALS;
 

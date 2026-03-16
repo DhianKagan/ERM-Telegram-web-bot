@@ -2511,18 +2511,29 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     requestId,
   ]);
 
-  const handleStartLink = async (value: string) => {
+  const handleStartLink = async (value: string, showInvalidAlert = false) => {
     autoRouteRef.current = true;
     const sanitized = sanitizeLocationLink(value);
     setStartLink(sanitized || value);
+    if (!sanitized) {
+      if (!value.trim()) {
+        setStart('');
+        setStartCoordinates(null);
+        setStartCollectionId('');
+      }
+      setIsStartLinkResolving(false);
+      return;
+    }
     setIsStartLinkResolving(Boolean(sanitized));
     try {
       const resolved = await resolveLocationLink(value);
       if (!resolved) {
-        setStart('');
-        setStartCoordinates(null);
-        setStartLink('');
-        setAlertMsg('Некорректная ссылка Google Maps для точки отправления');
+        if (showInvalidAlert) {
+          setStart('');
+          setStartCoordinates(null);
+          setStartLink('');
+          setAlertMsg('Некорректная ссылка Google Maps для точки отправления');
+        }
         return;
       }
       setStart(resolved.title);
@@ -2534,18 +2545,29 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
     }
   };
 
-  const handleEndLink = async (value: string) => {
+  const handleEndLink = async (value: string, showInvalidAlert = false) => {
     autoRouteRef.current = true;
     const sanitized = sanitizeLocationLink(value);
     setEndLink(sanitized || value);
+    if (!sanitized) {
+      if (!value.trim()) {
+        setEnd('');
+        setFinishCoordinates(null);
+        setFinishCollectionId('');
+      }
+      setIsEndLinkResolving(false);
+      return;
+    }
     setIsEndLinkResolving(Boolean(sanitized));
     try {
       const resolved = await resolveLocationLink(value);
       if (!resolved) {
-        setEnd('');
-        setFinishCoordinates(null);
-        setEndLink('');
-        setAlertMsg('Некорректная ссылка Google Maps для точки назначения');
+        if (showInvalidAlert) {
+          setEnd('');
+          setFinishCoordinates(null);
+          setEndLink('');
+          setAlertMsg('Некорректная ссылка Google Maps для точки назначения');
+        }
         return;
       }
       setEnd(resolved.title);
@@ -2574,7 +2596,7 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
   }, []);
 
   const handleViaLinkChange = React.useCallback(
-    async (id: string, value: string) => {
+    async (id: string, value: string, showInvalidAlert = false) => {
       autoRouteRef.current = true;
       const sanitized = sanitizeLocationLink(value);
       setViaPoints((prev) =>
@@ -2587,6 +2609,24 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
             : point,
         ),
       );
+      if (!sanitized) {
+        if (!value.trim()) {
+          setViaPoints((prev) =>
+            prev.map((point) =>
+              point.id === id
+                ? {
+                    ...point,
+                    title: '',
+                    coordinates: null,
+                    collectionId: '',
+                  }
+                : point,
+            ),
+          );
+        }
+        setResolvingViaIds((prev) => prev.filter((itemId) => itemId !== id));
+        return;
+      }
       if (sanitized) {
         setResolvingViaIds((prev) =>
           prev.includes(id) ? prev : [...prev, id],
@@ -2598,16 +2638,19 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
           prev.map((point) => {
             if (point.id !== id) return point;
             if (!resolved) {
-              setAlertMsg(
-                'Некорректная ссылка Google Maps для промежуточной точки',
-              );
-              return {
-                ...point,
-                title: '',
-                link: '',
-                coordinates: null,
-                collectionId: '',
-              };
+              if (showInvalidAlert) {
+                setAlertMsg(
+                  'Некорректная ссылка Google Maps для промежуточной точки',
+                );
+                return {
+                  ...point,
+                  title: '',
+                  link: '',
+                  coordinates: null,
+                  collectionId: '',
+                };
+              }
+              return point;
             }
             return {
               ...point,
@@ -4052,8 +4095,11 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                 name="startLink"
                                 value={startLink}
                                 onChange={(e) =>
-                                  handleStartLink(e.target.value)
+                                  void handleStartLink(e.target.value)
                                 }
+                                onBlur={(e) => {
+                                  void handleStartLink(e.target.value, true);
+                                }}
                                 placeholder={t('googleMapsLink')}
                                 className="focus:ring-brand-200 focus:border-accentPrimary min-w-0 flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
                                 disabled={!editing}
@@ -4222,6 +4268,13 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                           event.target.value,
                                         );
                                       }}
+                                      onBlur={(event) => {
+                                        void handleViaLinkChange(
+                                          point.id,
+                                          event.target.value,
+                                          true,
+                                        );
+                                      }}
                                       placeholder={t('googleMapsLink')}
                                       className="focus:ring-brand-200 focus:border-accentPrimary min-w-0 flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
                                       disabled={!editing}
@@ -4350,7 +4403,12 @@ export default function TaskDialog({ onClose, onSave, id, kind }: Props) {
                                 ref={finishLinkInputRef}
                                 name="endLink"
                                 value={endLink}
-                                onChange={(e) => handleEndLink(e.target.value)}
+                                onChange={(e) =>
+                                  void handleEndLink(e.target.value)
+                                }
+                                onBlur={(e) => {
+                                  void handleEndLink(e.target.value, true);
+                                }}
                                 placeholder={t('googleMapsLink')}
                                 className="focus:ring-brand-200 focus:border-accentPrimary min-w-0 flex-1 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-sm focus:ring focus:outline-none"
                                 disabled={!editing}

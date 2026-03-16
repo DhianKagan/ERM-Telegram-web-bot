@@ -444,7 +444,20 @@ export default function RequestsPage() {
                 ))
               ) : (
                 <div className="rounded-lg border border-border/70 bg-card p-4 text-sm text-muted-foreground">
-                  Нет данных для отображения
+                  Нет данных для отображения. Начните с первого действия.
+                  <div className="mt-3">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        params.set('newRequest', '1');
+                        setParams(params);
+                      }}
+                    >
+                      Создать первую заявку
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>

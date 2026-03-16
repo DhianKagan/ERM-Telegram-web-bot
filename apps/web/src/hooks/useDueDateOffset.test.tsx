@@ -58,4 +58,64 @@ describe('useDueDateOffset', () => {
       dueDate: '2024-02-02T12:30',
     });
   });
+
+  it('обновляет dueDate при изменении defaultOffsetMs', async () => {
+    const Wrapper: React.FC = () => {
+      const { register, setValue, watch } = useForm<{
+        startDate?: string;
+        dueDate?: string;
+      }>({
+        defaultValues: {
+          startDate: '2024-02-01T09:00',
+          dueDate: '',
+        },
+      });
+      const [offset, setOffset] = React.useState(60 * 60 * 1000);
+      const formatInputDate = React.useCallback(
+        (value: Date) => value.toISOString().slice(0, 16),
+        [],
+      );
+
+      useDueDateOffset({
+        startDateValue: watch('startDate'),
+        setValue,
+        defaultOffsetMs: offset,
+        formatInputDate,
+      });
+
+      return (
+        <div>
+          <input
+            data-testid="start"
+            id="test-start-date"
+            {...register('startDate')}
+          />
+          <input
+            data-testid="due"
+            id="test-due-date"
+            {...register('dueDate')}
+          />
+          <button type="button" onClick={() => setOffset(2 * 60 * 60 * 1000)}>
+            Изменить смещение
+          </button>
+        </div>
+      );
+    };
+
+    const { getByTestId, getByText } = render(<Wrapper />);
+
+    await waitFor(() =>
+      expect((getByTestId('due') as HTMLInputElement).value).toBe(
+        '2024-02-01T10:00',
+      ),
+    );
+
+    fireEvent.click(getByText('Изменить смещение'));
+
+    await waitFor(() =>
+      expect((getByTestId('due') as HTMLInputElement).value).toBe(
+        '2024-02-01T11:00',
+      ),
+    );
+  });
 });

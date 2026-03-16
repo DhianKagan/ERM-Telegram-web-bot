@@ -1971,8 +1971,7 @@ export async function startBot(retry = 0): Promise<void> {
       console.log('Бот запущен');
     }
   } catch (err: unknown) {
-    const e = err as { response?: { error_code?: number } };
-    const code = e.response?.error_code;
+    const code = extractTelegramErrorCode(err);
     const isConflict = code === 409;
     const isRateLimited = code === 429;
     const canRetry = retry < MAX_RETRIES || isConflict || isRateLimited;

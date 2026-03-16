@@ -148,6 +148,41 @@ test('startBot ожидает retry_after после ошибки 429 метод
   jest.useRealTimers();
 });
 
+
+
+test('startBot обрабатывает верхнеуровневый error_code=429 при запуске', async () => {
+  jest.useFakeTimers();
+  const timeoutSpy = jest.spyOn(global, 'setTimeout');
+  const { startBot, __resetCloseThrottleForTests } = await import(
+    '../src/bot/bot'
+  );
+  __resetCloseThrottleForTests();
+  const { __launch } = (await import('telegraf')) as unknown as {
+    __launch: jest.Mock;
+  };
+  const retryAfterSeconds = 2;
+
+  __launch.mockClear();
+  timeoutSpy.mockClear();
+
+  __launch
+    .mockRejectedValueOnce({
+      error_code: 429,
+      parameters: { retry_after: retryAfterSeconds },
+    })
+    .mockResolvedValue(undefined);
+
+  const promise = startBot();
+  await jest.runAllTimersAsync();
+  await promise;
+
+  const delays = timeoutSpy.mock.calls.map((call) => call[1]);
+  expect(delays).toContain(retryAfterSeconds * 1000);
+  expect(__launch).toHaveBeenCalledTimes(2);
+
+  timeoutSpy.mockRestore();
+  jest.useRealTimers();
+});
 test('startBot не вызывает close повторно, пока действует throttling', async () => {
   jest.useFakeTimers();
   const { startBot, __resetCloseThrottleForTests } = await import(

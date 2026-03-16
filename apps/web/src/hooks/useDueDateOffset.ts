@@ -35,6 +35,11 @@ const useDueDateOffset = <TFormValues extends FormValuesWithDueDate>(
   const [dueOffset, setDueOffset] = React.useState(defaultOffsetMs);
 
   React.useEffect(() => {
+    if (!Number.isFinite(defaultOffsetMs)) return;
+    setDueOffset(defaultOffsetMs);
+  }, [defaultOffsetMs]);
+
+  React.useEffect(() => {
     if (!autoSync) return;
     if (!startDateValue) return;
     if (!Number.isFinite(dueOffset)) return;

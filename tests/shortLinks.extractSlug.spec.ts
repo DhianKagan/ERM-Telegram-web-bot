@@ -23,6 +23,16 @@ describe('shortLinks.extractSlug', () => {
     expect(extractSlug('/telegram/webapp/l/demoSlug')).toBe('demoSlug');
   });
 
+  it('извлекает slug из абсолютного URL c базовым префиксом приложения', async () => {
+    const { extractSlug } = await importWithAppUrl(
+      'https://example.com/telegram/webapp/',
+    );
+
+    expect(extractSlug('https://example.com/telegram/webapp/l/demoSlug')).toBe(
+      'demoSlug',
+    );
+  });
+
   it('не извлекает slug из пути без базового префикса приложения', async () => {
     const { extractSlug } = await importWithAppUrl(
       'https://example.com/telegram/webapp/',

@@ -65,8 +65,10 @@ export const refresh = () =>
   }).then(async (res) => {
     const data = (await res.json().catch(() => ({}))) as {
       accessToken?: string;
+      token?: string;
     };
-    if (data.accessToken) {
-      setAccessToken(data.accessToken);
+    const nextAccessToken = data.accessToken || data.token;
+    if (nextAccessToken) {
+      setAccessToken(nextAccessToken);
     }
   });

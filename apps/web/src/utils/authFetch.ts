@@ -26,6 +26,7 @@ function normalizePath(input: string): string {
 
 const CSRF_PATH = '/api/v1/csrf';
 const PROFILE_PATH = '/api/v1/auth/profile';
+const REFRESH_PATH = '/api/v1/auth/refresh';
 let csrfRequest: Promise<string | null> | null = null;
 
 const createUnauthorizedResponse = (): Response => {
@@ -209,7 +210,10 @@ async function sendRequest(
       }
     });
   }
-  return fetch(url, opts);
+  return fetch(url, {
+    ...opts,
+    headers: { ...(opts.headers || {}) },
+  });
 }
 
 async function fetchCsrfToken(): Promise<string | null> {
@@ -341,13 +345,14 @@ export default async function authFetch(
       statusText: 'Not Found',
     });
   }
-  if (!useBearer && !token && !unavailablePaths.has(CSRF_PATH)) {
+  const needsCsrfHeader = !useBearer || path === REFRESH_PATH;
+  if (needsCsrfHeader && !token && !unavailablePaths.has(CSRF_PATH)) {
     token = await fetchCsrfToken();
     if (token) {
       saveToken(token);
     }
   }
-  if (!useBearer && token) headers['X-XSRF-TOKEN'] = token;
+  if (needsCsrfHeader && token) headers['X-XSRF-TOKEN'] = token;
 
   const opts: FetchOptions = { ...fetchOpts, credentials: 'include', headers };
   let res = await sendRequest(url, opts, onProgress);

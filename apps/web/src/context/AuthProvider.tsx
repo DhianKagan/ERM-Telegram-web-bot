@@ -7,7 +7,11 @@ import { taskStateController } from '../controllers/taskStateController';
 import { AuthContext } from './AuthContext';
 import { AuthActionsContext } from './AuthActionsContext';
 import { setCsrfToken } from '../utils/csrfToken';
-import { clearAccessToken, shouldUseBearerAuth } from '../lib/auth';
+import {
+  clearAccessToken,
+  getAccessToken,
+  shouldUseBearerAuth,
+} from '../lib/auth';
 import type { User } from '../types/user';
 
 interface AuthProviderProps {
@@ -23,6 +27,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   };
   const [loading, setLoading] = useState(true);
   useEffect(() => {
+    const useBearer = shouldUseBearerAuth();
     const loadCsrf = async () => {
       try {
         const res = await fetch('/api/v1/csrf', { credentials: 'include' });
@@ -34,27 +39,39 @@ export function AuthProvider({ children }: AuthProviderProps) {
         /* игнорируем */
       }
     };
-    if (!shouldUseBearerAuth()) {
-      loadCsrf();
-    }
-    const onVisible = () => {
-      if (!document.hidden && !shouldUseBearerAuth()) loadCsrf();
+    const bootstrapSession = async () => {
+      if (useBearer) {
+        await refresh().catch(() => {
+          clearAccessToken();
+        });
+        if (!getAccessToken()) {
+          setUser(null);
+          setLoading(false);
+          return;
+        }
+      } else {
+        await loadCsrf();
+      }
+      getProfile({ noRedirect: true })
+        .then((u) => {
+          setUser(u);
+          setLoading(false);
+        })
+        .catch(() => {
+          setUser(null);
+          setLoading(false);
+        });
     };
-    if (!shouldUseBearerAuth()) {
+    const onVisible = () => {
+      if (!document.hidden && !useBearer) loadCsrf();
+    };
+    if (!useBearer) {
       window.addEventListener('focus', loadCsrf);
     }
     document.addEventListener('visibilitychange', onVisible);
-    getProfile({ noRedirect: true })
-      .then((u) => {
-        setUser(u);
-        setLoading(false);
-      })
-      .catch(() => {
-        setUser(null);
-        setLoading(false);
-      });
+    void bootstrapSession();
     return () => {
-      if (!shouldUseBearerAuth()) {
+      if (!useBearer) {
         window.removeEventListener('focus', loadCsrf);
       }
       document.removeEventListener('visibilitychange', onVisible);

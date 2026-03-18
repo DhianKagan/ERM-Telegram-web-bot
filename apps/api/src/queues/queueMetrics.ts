@@ -43,6 +43,11 @@ const getMetricsQueue = (queueName: QueueName): Queue | null => {
     prefix: queueConfig.prefix,
   });
 
+  queue.on('error', (error) => {
+    console.error('Очередь метрик BullMQ недоступна', queueName, error);
+    void closeMetricsQueue(queueName);
+  });
+
   metricsQueues.set(queueName, queue);
   return queue;
 };

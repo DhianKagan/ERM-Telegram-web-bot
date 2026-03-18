@@ -1,5 +1,12 @@
 import { QueueName } from 'shared';
 
+type MockQueue = {
+  getJobCounts: jest.Mock;
+  getJobs: jest.Mock;
+  close: jest.Mock;
+  on: jest.Mock;
+};
+
 const queueCtor = jest.fn();
 
 jest.mock('bullmq', () => ({
@@ -22,6 +29,22 @@ const flushPromises = async (): Promise<void> => {
   await new Promise<void>((resolve) => setImmediate(resolve));
 };
 
+const queueMetricsModule = import('../src/queues/queueMetrics');
+
+const createMockQueue = (overrides: Partial<MockQueue> = {}): MockQueue => ({
+  getJobCounts: jest.fn().mockResolvedValue({
+    waiting: 0,
+    active: 0,
+    delayed: 0,
+    failed: 0,
+    completed: 0,
+  }),
+  getJobs: jest.fn().mockResolvedValue([]),
+  close: jest.fn().mockResolvedValue(undefined),
+  on: jest.fn().mockReturnThis(),
+  ...overrides,
+});
+
 describe('queueMetrics poller', () => {
   beforeEach(() => {
     queueCtor.mockReset();
@@ -33,24 +56,10 @@ describe('queueMetrics poller', () => {
   });
 
   test('закрывает проблемную read-only очередь и создаёт новую при повторном запуске', async () => {
-    const genericQueueFactory = () => ({
-      getJobCounts: jest.fn().mockResolvedValue({
-        waiting: 0,
-        active: 0,
-        delayed: 0,
-        failed: 0,
-        completed: 0,
-      }),
-      getJobs: jest.fn().mockResolvedValue([]),
-      close: jest.fn().mockResolvedValue(undefined),
-    });
-
-    const geocodingFirst = {
+    const geocodingFirst = createMockQueue({
       getJobCounts: jest.fn().mockRejectedValue(new Error('read ETIMEDOUT')),
-      getJobs: jest.fn(),
-      close: jest.fn().mockResolvedValue(undefined),
-    };
-    const geocodingSecond = {
+    });
+    const geocodingSecond = createMockQueue({
       getJobCounts: jest.fn().mockResolvedValue({
         waiting: 0,
         active: 0,
@@ -58,9 +67,7 @@ describe('queueMetrics poller', () => {
         failed: 0,
         completed: 1,
       }),
-      getJobs: jest.fn().mockResolvedValue([]),
-      close: jest.fn().mockResolvedValue(undefined),
-    };
+    });
 
     const createdByQueue: Record<string, number> = {};
     queueCtor.mockImplementation((queueName: QueueName) => {
@@ -74,12 +81,11 @@ describe('queueMetrics poller', () => {
       if (queueName === QueueName.LogisticsGeocoding) {
         return geocodingSecond;
       }
-      return genericQueueFactory();
+      return createMockQueue();
     });
 
-    const { startQueueMetricsPoller, stopQueueMetricsPoller } = await import(
-      '../src/queues/queueMetrics'
-    );
+    const { startQueueMetricsPoller, stopQueueMetricsPoller } =
+      await queueMetricsModule;
 
     startQueueMetricsPoller();
     await flushPromises();
@@ -104,5 +110,46 @@ describe('queueMetrics poller', () => {
     await flushPromises();
 
     expect(geocodingSecond.close).toHaveBeenCalledTimes(1);
+  });
+
+  test('регистрирует обработчик ошибки очереди метрик и закрывает очередь при событии error', async () => {
+    const geocodingQueue = createMockQueue();
+    const otherQueues = [createMockQueue(), createMockQueue()];
+
+    queueCtor
+      .mockImplementationOnce(() => geocodingQueue)
+      .mockImplementationOnce(() => otherQueues[0])
+      .mockImplementationOnce(() => otherQueues[1]);
+
+    const { startQueueMetricsPoller, stopQueueMetricsPoller } =
+      await queueMetricsModule;
+
+    startQueueMetricsPoller();
+    await flushPromises();
+
+    expect(geocodingQueue.on).toHaveBeenCalledWith(
+      'error',
+      expect.any(Function),
+    );
+
+    const [, errorHandler] = geocodingQueue.on.mock.calls.find(
+      ([eventName]) => eventName === 'error',
+    ) ?? [undefined, undefined];
+
+    expect(errorHandler).toEqual(expect.any(Function));
+
+    const disconnectError = new Error('redis connection lost');
+    errorHandler(disconnectError);
+    await flushPromises();
+
+    expect(console.error).toHaveBeenCalledWith(
+      'Очередь метрик BullMQ недоступна',
+      QueueName.LogisticsGeocoding,
+      disconnectError,
+    );
+    expect(geocodingQueue.close).toHaveBeenCalledTimes(1);
+
+    stopQueueMetricsPoller();
+    await flushPromises();
   });
 });

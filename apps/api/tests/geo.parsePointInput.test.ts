@@ -21,4 +21,11 @@ describe('parsePointInput', () => {
       lng: 30.5234,
     });
   });
+
+  test('для строки предпочитает пользовательский формат lat,lng', () => {
+    expect(parsePointInput('50.4501, 30.5234')).toEqual({
+      lat: 50.4501,
+      lng: 30.5234,
+    });
+  });
 });

@@ -162,16 +162,16 @@ function parsePointInput(
       const a = Number(parts[0]);
       const b = Number(parts[1]);
       if (Number.isFinite(a) && Number.isFinite(b)) {
-        if (isValidLon(a) && isValidLat(b)) {
-          return {
-            lat: roundCoord(b, precisionDecimals),
-            lng: roundCoord(a, precisionDecimals),
-          };
-        }
         if (isValidLat(a) && isValidLon(b)) {
           return {
             lat: roundCoord(a, precisionDecimals),
             lng: roundCoord(b, precisionDecimals),
+          };
+        }
+        if (isValidLon(a) && isValidLat(b)) {
+          return {
+            lat: roundCoord(b, precisionDecimals),
+            lng: roundCoord(a, precisionDecimals),
           };
         }
       }

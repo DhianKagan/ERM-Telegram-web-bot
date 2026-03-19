@@ -183,6 +183,60 @@ describe('routePlans service analytics', function () {
     assert.equal(message.reason, 'created');
   });
 
+  it('не дублирует одну и ту же задачу в нескольких маршрутах', async () => {
+    if (skipSuite) return;
+    const [firstTask, secondTask] = await Task.create([
+      {
+        title: 'Доставка 1',
+        request_id: 'REQ-DUP-1',
+        task_number: 'REQ-DUP-1',
+        created_by: 1,
+        status: 'Новая',
+        start_location: 'Київ',
+        end_location: 'Бровари',
+        startCoordinates: { lat: 50.45, lng: 30.523 },
+        finishCoordinates: { lat: 50.511, lng: 30.79 },
+        route_distance_km: 20,
+      },
+      {
+        title: 'Доставка 2',
+        request_id: 'REQ-DUP-2',
+        task_number: 'REQ-DUP-2',
+        created_by: 1,
+        status: 'Новая',
+        start_location: 'Київ',
+        end_location: 'Бориспіль',
+        startCoordinates: { lat: 50.45, lng: 30.523 },
+        finishCoordinates: { lat: 50.345, lng: 30.955 },
+        route_distance_km: 35,
+      },
+    ]);
+
+    const firstTaskId = (firstTask!._id as Types.ObjectId).toHexString();
+    const secondTaskId = (secondTask!._id as Types.ObjectId).toHexString();
+
+    const plan = await createDraftFromInputs([
+      {
+        tasks: [firstTaskId],
+      },
+      {
+        tasks: [firstTaskId, secondTaskId],
+      },
+    ]);
+
+    assert.equal(plan.tasks.length, 2);
+    assert.equal(plan.metrics.totalTasks, 2);
+    assert.equal(plan.routes.length, 2);
+    assert.deepEqual(
+      plan.routes[0]?.tasks.map((task) => task.taskId),
+      [firstTaskId],
+    );
+    assert.deepEqual(
+      plan.routes[1]?.tasks.map((task) => task.taskId),
+      [secondTaskId],
+    );
+  });
+
   it('публикует событие при обновлении маршрутного плана', async () => {
     if (skipSuite) return;
     const plan = await createDraftFromInputs([

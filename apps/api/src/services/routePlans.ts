@@ -643,16 +643,28 @@ async function buildRoutesFromInput(
     : routesInput;
   const routes: RoutePlanRouteEntry[] = [];
   const uniqueTaskIds = new Map<string, Types.ObjectId>();
+  const assignedTaskIds = new Set<string>();
   let totalDistance = 0;
   let totalStops = 0;
   let totalTasks = 0;
 
   const normalizedInputs = effectiveInputs
     .map((route, idx) => {
+      const routeSeenTaskIds = new Set<string>();
       const tasks = Array.isArray(route.tasks)
         ? route.tasks
             .map((id) => normalizeId(id))
-            .filter((id): id is string => Boolean(id))
+            .filter((id): id is string => {
+              if (!id) {
+                return false;
+              }
+              if (routeSeenTaskIds.has(id) || assignedTaskIds.has(id)) {
+                return false;
+              }
+              routeSeenTaskIds.add(id);
+              assignedTaskIds.add(id);
+              return true;
+            })
         : [];
       return {
         id:

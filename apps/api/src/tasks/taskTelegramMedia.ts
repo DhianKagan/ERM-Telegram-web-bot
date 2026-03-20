@@ -225,10 +225,13 @@ const buildCaptionFromSections = (
 
   if (!selected.length) {
     const safeLimit = Math.max(0, limit - 1);
-    const snippet = fullText.slice(0, safeLimit);
-    const sanitized = escapeMarkdownV2(snippet);
-    const caption =
-      sanitized.length < fullText.length ? `${sanitized}…` : sanitized;
+    let breakIndex = findBreakIndex(fullText, safeLimit);
+    breakIndex = adjustBreakIndex(fullText, breakIndex);
+    if (breakIndex <= 0 || breakIndex > fullText.length) {
+      breakIndex = Math.min(safeLimit, fullText.length);
+    }
+    const snippet = fullText.slice(0, breakIndex);
+    const caption = snippet.length < fullText.length ? `${snippet}…` : snippet;
     return { caption, leftover: sections.slice() };
   }
 

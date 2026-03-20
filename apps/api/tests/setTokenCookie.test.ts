@@ -29,7 +29,7 @@ describe('setTokenCookie', () => {
     expect(options.domain).toBeUndefined();
   });
 
-  it('использует secure=true и SameSite=none в production по умолчанию', () => {
+  it('использует host-only cookie без Domain в production по умолчанию', () => {
     process.env.NODE_ENV = 'production';
     delete process.env.COOKIE_SECURE;
 
@@ -40,6 +40,6 @@ describe('setTokenCookie', () => {
 
     expect(options.secure).toBe(true);
     expect(options.sameSite).toBe('none');
-    expect(options.domain).toBe('example.com');
+    expect(options.domain).toBeUndefined();
   });
 });

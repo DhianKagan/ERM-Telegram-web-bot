@@ -14,6 +14,10 @@ import registerRoutes from './routes';
 import { startDiskMonitor } from '../services/diskSpace';
 import { startQueueMetricsPoller } from '../queues/queueMetrics';
 import sanitizeError from '../utils/sanitizeError';
+import {
+  isSecureCookiesEnabled,
+  resolveCookieName,
+} from '../utils/cookieSecurity';
 
 process.on('unhandledRejection', (err) => {
   console.error('Unhandled rejection in API:', sanitizeError(err));
@@ -132,20 +136,26 @@ export async function buildApp(): Promise<express.Express> {
   // (original code performed a stat on pub/tiles and used express.static if present)
 
   const domain =
-    process.env.NODE_ENV === 'production'
-      ? config.cookieDomain || new URL(config.appUrl).hostname
-      : undefined;
-  const secureCookie = process.env.COOKIE_SECURE !== 'false';
+    process.env.NODE_ENV === 'production' ? config.cookieDomain : undefined;
+  const secureCookie = isSecureCookiesEnabled();
   const cookieFlags: session.CookieOptions = {
     httpOnly: true,
     secure: secureCookie,
     sameSite: secureCookie ? 'none' : 'lax',
+    path: '/',
     ...(domain ? { domain } : {}),
   };
   const sessionOpts: session.SessionOptions = {
+    name: resolveCookieName('erm.sid', {
+      secure: secureCookie,
+      domain,
+      path: '/',
+    }),
     secret: sessionSecret,
     resave: false,
     saveUninitialized: false,
+    proxy: secureCookie,
+    unset: 'destroy',
     cookie: { ...cookieFlags, maxAge: 7 * 24 * 60 * 60 * 1000 },
   };
   if (process.env.NODE_ENV !== 'test') {

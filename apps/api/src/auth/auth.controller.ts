@@ -11,6 +11,10 @@ import { Request, Response, CookieOptions } from 'express';
 import config from '../config';
 import type { UserDocument } from '../db/model';
 import { sendProblem } from '../utils/problem';
+import {
+  isSecureCookiesEnabled,
+  resolveCookieName,
+} from '../utils/cookieSecurity';
 import { refreshToken } from './auth';
 import { authPasswordLoginAttemptsTotal } from '../metrics';
 import { recordPasswordLoginDiagnostic } from './authDiagnostics';
@@ -24,10 +28,7 @@ import {
 import { authBearerEnabled } from '../config';
 
 const buildRefreshCookieOptions = (): CookieOptions => {
-  const secure =
-    process.env.COOKIE_SECURE === undefined
-      ? process.env.NODE_ENV === 'production'
-      : process.env.COOKIE_SECURE !== 'false';
+  const secure = isSecureCookiesEnabled();
   const opts: CookieOptions = {
     httpOnly: true,
     secure,
@@ -35,21 +36,41 @@ const buildRefreshCookieOptions = (): CookieOptions => {
     path: tokenSettings.refreshCookiePath,
     maxAge: tokenSettings.refreshTtl * 1000,
   };
+  if (secure && process.env.NODE_ENV === 'production' && config.cookieDomain) {
+    opts.domain = config.cookieDomain;
+  }
   return opts;
 };
 
 const setRefreshCookie = (res: Response, refreshTokenValue: string): void => {
   res.cookie(
-    tokenSettings.refreshCookieName,
+    resolveCookieName(tokenSettings.refreshCookieName, {
+      secure: isSecureCookiesEnabled(),
+      domain: config.cookieDomain,
+      path: tokenSettings.refreshCookiePath,
+    }),
     refreshTokenValue,
     buildRefreshCookieOptions(),
   );
 };
 
+const getRefreshCookieNames = (): string[] => {
+  const resolved = resolveCookieName(tokenSettings.refreshCookieName, {
+    secure: isSecureCookiesEnabled(),
+    domain: config.cookieDomain,
+    path: tokenSettings.refreshCookiePath,
+  });
+  return resolved === tokenSettings.refreshCookieName
+    ? [resolved]
+    : [resolved, tokenSettings.refreshCookieName];
+};
+
 const clearRefreshCookie = (res: Response): void => {
   const opts = buildRefreshCookieOptions();
   delete opts.maxAge;
-  res.clearCookie(tokenSettings.refreshCookieName, opts);
+  for (const cookieName of getRefreshCookieNames()) {
+    res.clearCookie(cookieName, opts);
+  }
 };
 
 export const sendCode = async (req: Request, res: Response) => {
@@ -71,7 +92,6 @@ export const verifyCode = async (req: Request, res: Response) => {
   const { telegramId, code, username } = req.body;
   try {
     const token = await service.verifyCode(telegramId, code, username);
-    setTokenCookie(res, token);
     if (authBearerEnabled) {
       const payload = decodeLegacyToken(token);
       const session = await issueSession(payload, {
@@ -79,9 +99,10 @@ export const verifyCode = async (req: Request, res: Response) => {
         userAgent: req.get?.('user-agent') || undefined,
       });
       setRefreshCookie(res, session.refreshToken);
-      res.json({ token, accessToken: session.accessToken });
+      res.json({ accessToken: session.accessToken });
       return;
     }
+    setTokenCookie(res, token);
     res.json({ token });
   } catch (e) {
     sendProblem(req, res, {
@@ -191,9 +212,10 @@ export const logout = async (req: Request, res: Response) => {
   const opts: CookieOptions = buildTokenCookieOptions(config, undefined);
   delete opts.maxAge;
   res.clearCookie('token', opts);
-  const refresh = (req.cookies as Record<string, string> | undefined)?.[
-    tokenSettings.refreshCookieName
-  ];
+  const cookies = (req.cookies as Record<string, string> | undefined) || {};
+  const refresh = getRefreshCookieNames()
+    .map((cookieName) => cookies[cookieName])
+    .find(Boolean);
   if (refresh) {
     await revokeRefresh(refresh);
   }
@@ -202,9 +224,10 @@ export const logout = async (req: Request, res: Response) => {
 };
 
 export const refresh = async (req: Request, res: Response) => {
-  const refreshCookie = (req.cookies as Record<string, string> | undefined)?.[
-    tokenSettings.refreshCookieName
-  ];
+  const cookies = (req.cookies as Record<string, string> | undefined) || {};
+  const refreshCookie = getRefreshCookieNames()
+    .map((cookieName) => cookies[cookieName])
+    .find(Boolean);
 
   if (refreshCookie) {
     const session = await rotateSession(refreshCookie, {

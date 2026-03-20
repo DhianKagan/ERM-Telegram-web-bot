@@ -38,4 +38,27 @@ describe('token service', () => {
     const reused = await rotateSession('broken-refresh-token');
     expect(reused).toBeNull();
   });
+
+  test('rotateSession отклоняет refresh при смене user-agent', async () => {
+    const session = await issueSession(
+      {
+        id: '1',
+        username: 'u',
+        role: 'user',
+        access: 1,
+        is_service_account: false,
+      },
+      {
+        ip: '127.0.0.1',
+        userAgent: 'agent-a',
+      },
+    );
+
+    const rotated = await rotateSession(session.refreshToken, {
+      ip: '127.0.0.2',
+      userAgent: 'agent-b',
+    });
+
+    expect(rotated).toBeNull();
+  });
 });

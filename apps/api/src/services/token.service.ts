@@ -83,9 +83,20 @@ const buildRecord = (
   userId,
   createdAt: Date.now(),
   expiresAt: Date.now() + ttlSeconds * 1000,
-  ip: meta.ip,
-  userAgent: meta.userAgent,
+  ipHash: hashSessionBindingValue(meta.ip),
+  userAgentHash: hashSessionBindingValue(meta.userAgent),
 });
+
+const hashSessionBindingValue = (value?: string): string | undefined => {
+  const normalized = value?.trim();
+  if (!normalized) {
+    return undefined;
+  }
+  return crypto
+    .createHash('sha256')
+    .update(`${getJwtSecret()}:${normalized}`)
+    .digest('hex');
+};
 
 const parseRefreshPayload = (refreshToken: string): AccessPayload | null => {
   try {
@@ -140,6 +151,9 @@ export async function rotateSession(
 
   if (result.status === 'reused') {
     await getRefreshStore().revokeAllByUser(result.userId);
+    return null;
+  }
+  if (result.status === 'binding_mismatch') {
     return null;
   }
   if (result.status !== 'rotated') {

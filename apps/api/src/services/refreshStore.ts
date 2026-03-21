@@ -5,13 +5,14 @@ export interface RefreshSessionRecord {
   userId: string;
   createdAt: number;
   expiresAt: number;
-  ip?: string;
-  userAgent?: string;
+  ipHash?: string;
+  userAgentHash?: string;
 }
 
 type RotateResult =
   | { status: 'rotated'; userId: string }
   | { status: 'missing' }
+  | { status: 'binding_mismatch'; userId: string }
   | { status: 'reused'; userId: string };
 
 interface RefreshStore {
@@ -54,6 +55,13 @@ class MemoryRefreshStore implements RefreshStore {
         return { status: 'reused', userId: reusedBy };
       }
       return { status: 'missing' };
+    }
+    if (
+      active.userAgentHash &&
+      active.userAgentHash !== nextRecord.userAgentHash
+    ) {
+      await this.revokeAllByUser(active.userId);
+      return { status: 'binding_mismatch', userId: active.userId };
     }
     this.active.delete(oldHash);
     this.revoked.set(oldHash, active.userId);
@@ -147,6 +155,13 @@ class RedisRefreshStore implements RefreshStore {
     }
 
     const active = JSON.parse(activePayload) as RefreshSessionRecord;
+    if (
+      active.userAgentHash &&
+      active.userAgentHash !== nextRecord.userAgentHash
+    ) {
+      await this.revokeAllByUser(active.userId);
+      return { status: 'binding_mismatch', userId: active.userId };
+    }
     await this.redis
       .multi()
       .del(this.activeKey(oldHash))

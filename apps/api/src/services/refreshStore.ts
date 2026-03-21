@@ -58,7 +58,6 @@ class MemoryRefreshStore implements RefreshStore {
     }
     if (
       active.userAgentHash &&
-      nextRecord.userAgentHash &&
       active.userAgentHash !== nextRecord.userAgentHash
     ) {
       await this.revokeAllByUser(active.userId);
@@ -158,7 +157,6 @@ class RedisRefreshStore implements RefreshStore {
     const active = JSON.parse(activePayload) as RefreshSessionRecord;
     if (
       active.userAgentHash &&
-      nextRecord.userAgentHash &&
       active.userAgentHash !== nextRecord.userAgentHash
     ) {
       await this.revokeAllByUser(active.userId);

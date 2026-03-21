@@ -4,6 +4,7 @@ import service from './auth.service';
 import formatUser from '../utils/formatUser';
 import { writeLog } from '../services/service';
 import setTokenCookie, {
+  buildLegacyTokenCookieOptions,
   buildTokenCookieOptions,
 } from '../utils/setTokenCookie';
 import type { RequestWithUser } from '../types/request';
@@ -212,6 +213,15 @@ export const logout = async (req: Request, res: Response) => {
   const opts: CookieOptions = buildTokenCookieOptions(config, undefined);
   delete opts.maxAge;
   res.clearCookie('token', opts);
+
+  const legacyOpts: CookieOptions = buildLegacyTokenCookieOptions(
+    config,
+    undefined,
+    req.baseUrl || undefined,
+  );
+  delete legacyOpts.maxAge;
+  res.clearCookie('token', legacyOpts);
+
   const cookies = (req.cookies as Record<string, string> | undefined) || {};
   const refresh = getRefreshCookieNames()
     .map((cookieName) => cookies[cookieName])

@@ -1,6 +1,7 @@
 // Назначение: проверка флагов cookie токена для разных окружений.
 // Модули: jest, setTokenCookie
 import setTokenCookie, {
+  buildLegacyTokenCookieOptions,
   buildTokenCookieOptions,
 } from '../src/utils/setTokenCookie';
 
@@ -41,5 +42,24 @@ describe('setTokenCookie', () => {
     expect(options.secure).toBe(true);
     expect(options.sameSite).toBe('none');
     expect(options.domain).toBeUndefined();
+  });
+
+  it('собирает legacy-опции cookie с прежним domain и path для очистки', () => {
+    process.env.NODE_ENV = 'production';
+    delete process.env.COOKIE_SECURE;
+
+    const options = buildLegacyTokenCookieOptions(
+      {
+        appUrl: 'https://example.com',
+        cookieDomain: undefined,
+      } as typeof import('../src/config').default,
+      undefined,
+      '/api/v1/auth',
+    );
+
+    expect(options.secure).toBe(true);
+    expect(options.sameSite).toBe('none');
+    expect(options.domain).toBe('example.com');
+    expect(options.path).toBe('/api/v1/auth');
   });
 });

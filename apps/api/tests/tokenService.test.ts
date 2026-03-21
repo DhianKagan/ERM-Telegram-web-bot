@@ -61,4 +61,26 @@ describe('token service', () => {
 
     expect(rotated).toBeNull();
   });
+
+  test('rotateSession отклоняет refresh при отсутствии user-agent у нового запроса', async () => {
+    const session = await issueSession(
+      {
+        id: '1',
+        username: 'u',
+        role: 'user',
+        access: 1,
+        is_service_account: false,
+      },
+      {
+        ip: '127.0.0.1',
+        userAgent: 'agent-a',
+      },
+    );
+
+    const rotated = await rotateSession(session.refreshToken, {
+      ip: '127.0.0.1',
+    });
+
+    expect(rotated).toBeNull();
+  });
 });

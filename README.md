@@ -62,21 +62,5 @@ pnpm check:full   # полный CI-набор
 
 ## Разворачивание коротких Google Maps ссылок (`/api/v1/maps/expand`)
 
-Для URL вида `https://maps.app.goo.gl/...` обычный серверный `fetch` может не получить финальную ссылку с координатами.
-В API предусмотрен headless-fallback через Playwright (`extractCoordsViaPlaywright`).
-
-1. Убедитесь, что пакет `playwright` установлен (в workspace зависимостях).
-2. Включите fallback переменной окружения:
-
-```bash
-MAPS_HEADLESS_FALLBACK=playwright
-```
-
-3. При необходимости увеличьте таймаут рендера страницы:
-
-```bash
-MAPS_HEADLESS_TIMEOUT_MS=12000
-```
-
-Допустимый диапазон `MAPS_HEADLESS_TIMEOUT_MS`: `1000..20000` мс (по умолчанию `8000`).
-После перезапуска сервиса маршрут `/api/v1/maps/expand` сможет раскрывать короткие ссылки и возвращать `url`, `coords` и `place` при успешном извлечении.
+Маршрут `/api/v1/maps/expand` умеет раскрывать короткие ссылки Google Maps и возвращать `url`, `coords` и `place`.
+Подробная runtime-настройка fallback через Playwright, переменных `MAPS_HEADLESS_FALLBACK=playwright` и `MAPS_HEADLESS_TIMEOUT_MS` вынесена в [`docs/technical_manual.md`](docs/technical_manual.md#api-headless-fallback-для-google-maps-expand).

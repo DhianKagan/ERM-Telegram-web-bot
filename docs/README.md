@@ -10,6 +10,7 @@
 
 - [Индекс документации](index.md)
 - [Технический мануал](technical_manual.md)
+- [Google Maps expand: headless-fallback и runtime-настройка](technical_manual.md#api-headless-fallback-для-google-maps-expand)
 - [Архитектура](architecture.md)
 - [Права и роли](permissions.md)
 - [Поддержка и FAQ](support_faq.md)

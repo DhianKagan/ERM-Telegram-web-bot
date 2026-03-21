@@ -8,15 +8,16 @@
 
 ## 2) Канонические документы
 
-| Раздел             | Документ                                     | Статус       |
-| ------------------ | -------------------------------------------- | ------------ |
-| Обзор проекта      | [`../README.md`](../README.md)               | ✅ актуально |
-| Общий вход в docs  | [`README.md`](README.md)                     | ✅ актуально |
-| Архитектура        | [`architecture.md`](architecture.md)         | ✅ актуально |
-| Технический мануал | [`technical_manual.md`](technical_manual.md) | ✅ актуально |
-| Права и роли       | [`permissions.md`](permissions.md)           | ✅ актуально |
-| Вклад в проект     | [`../CONTRIBUTING.md`](../CONTRIBUTING.md)   | ✅ актуально |
-| Безопасность       | [`../SECURITY.md`](../SECURITY.md)           | ✅ актуально |
+| Раздел              | Документ                                                                                                                               | Статус       |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| Обзор проекта       | [`../README.md`](../README.md)                                                                                                         | ✅ актуально |
+| Общий вход в docs   | [`README.md`](README.md)                                                                                                               | ✅ актуально |
+| Архитектура         | [`architecture.md`](architecture.md)                                                                                                   | ✅ актуально |
+| Технический мануал  | [`technical_manual.md`](technical_manual.md)                                                                                           | ✅ актуально |
+| Maps expand runtime | [`technical_manual.md#api-headless-fallback-для-google-maps-expand`](technical_manual.md#api-headless-fallback-для-google-maps-expand) | ✅ актуально |
+| Права и роли        | [`permissions.md`](permissions.md)                                                                                                     | ✅ актуально |
+| Вклад в проект      | [`../CONTRIBUTING.md`](../CONTRIBUTING.md)                                                                                             | ✅ актуально |
+| Безопасность        | [`../SECURITY.md`](../SECURITY.md)                                                                                                     | ✅ актуально |
 
 ## 3) Эксплуатационные runbook-документы
 

@@ -43,3 +43,4 @@ pnpm railway:start:api
 - Техмануал: [`../../docs/technical_manual.md`](../../docs/technical_manual.md)
 - Права и роли: [`../../docs/permissions.md`](../../docs/permissions.md)
 - Railway: [`../../docs/railway_full_setup.md`](../../docs/railway_full_setup.md)
+- Google Maps expand runtime: подробности см. [`../../docs/technical_manual.md#api-headless-fallback-для-google-maps-expand`](../../docs/technical_manual.md#api-headless-fallback-для-google-maps-expand)

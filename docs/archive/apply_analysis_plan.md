@@ -57,4 +57,4 @@
 
 - Используйте его как reference-слой для сверки того, что уже закрыто, а не как основной backlog.
 - Новые work-item'ы фиксируйте в актуальных runbook/roadmap-документах, а не в этом файле.
-- Для TypeScript-части ориентир перенесён в исторический срез `docs/typescript_migration_plan.md` и в актуальные описания из `docs/technical_manual.md`.
+- Для TypeScript-части ориентир перенесён в исторический срез `docs/archive/typescript_migration_plan.md` и в актуальные описания из `docs/technical_manual.md`.

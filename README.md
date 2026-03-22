@@ -40,18 +40,20 @@ pnpm typecheck    # проверка TypeScript
 pnpm test         # тесты
 pnpm check        # быстрый CI-набор
 pnpm check:full   # полный CI-набор
+pnpm run docs:audit
 ```
 
 ## Документация
 
-Канонический список поддерживаемых документов ведётся в [`docs/index.md`](docs/index.md); ниже оставлены только быстрые ссылки на основные entry points.
+Канонический список поддерживаемых документов ведётся только в [`docs/index.md`](docs/index.md). Ниже оставлены только актуальные entry points без отдельных списков и historical-материалов.
 
-- Точка входа: [`docs/README.md`](docs/README.md)
-- Единый индекс и модель поддержки: [`docs/index.md`](docs/index.md)
-- Техническое руководство: [`docs/technical_manual.md`](docs/technical_manual.md)
-- Архитектура: [`docs/architecture.md`](docs/architecture.md)
-- Права и роли: [`docs/permissions.md`](docs/permissions.md)
+- Точка входа в документацию: [`docs/README.md`](docs/README.md)
+- Канонический индекс и статусы документов: [`docs/index.md`](docs/index.md)
+- Технический мануал: [`docs/technical_manual.md`](docs/technical_manual.md)
+- Архитектурный обзор: [`docs/architecture.md`](docs/architecture.md)
 - Безопасность: [`SECURITY.md`](SECURITY.md), [`INCIDENT_RESPONSE.md`](INCIDENT_RESPONSE.md)
+
+Актуальные runbook-материалы, supporting docs и архив перечислены из одного места в [`docs/index.md`](docs/index.md) и доступны через [`docs/README.md`](docs/README.md).
 
 ## Правила для ассистентов
 

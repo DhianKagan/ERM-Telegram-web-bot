@@ -15,7 +15,7 @@ describe('auth controller verifyCode in bearer mode', () => {
     jest.dontMock('../src/config');
   });
 
-  test('возвращает только accessToken и refresh-cookie без legacy token cookie', async () => {
+  test('возвращает accessToken c legacy-алиасом token и refresh-cookie без legacy token cookie', async () => {
     jest.doMock('../src/auth/auth.service', () => ({
       __esModule: true,
       default: {
@@ -94,6 +94,9 @@ describe('auth controller verifyCode in bearer mode', () => {
         path: '/api/v1/auth',
       }),
     );
-    expect(res.json).toHaveBeenCalledWith({ accessToken: 'fresh-access' });
+    expect(res.json).toHaveBeenCalledWith({
+      accessToken: 'fresh-access',
+      token: 'fresh-access',
+    });
   });
 });

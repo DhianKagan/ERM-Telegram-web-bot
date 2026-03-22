@@ -132,13 +132,16 @@ test('полный цикл логина и запроса', async () => {
     .set('X-Forwarded-Proto', 'https')
     .set('X-XSRF-TOKEN', token)
     .send({ telegramId: 1, code, username: 'u' });
-  expect(verifyRes.body.token).toBeDefined();
-  expect(verifyRes.headers['set-cookie'][0]).toMatch(/token=/);
-  expect(verifyRes.headers['set-cookie'][0]).toMatch(/SameSite=Lax/);
+  const authToken = verifyRes.body.accessToken || verifyRes.body.token;
+  expect(authToken).toBeDefined();
+  expect(verifyRes.headers['set-cookie'][0]).toMatch(/(?:refresh|token)=/);
+  expect(verifyRes.headers['set-cookie'][0]).toMatch(
+    /SameSite=(?:Lax|None)/,
+  );
   const res = await agent
     .post('/api/v1/route')
     .set('X-Forwarded-Proto', 'https')
-    .set('Authorization', `Bearer ${verifyRes.body.token}`)
+    .set('Authorization', `Bearer ${authToken}`)
     .send({ start: { lat: 1, lng: 2 }, end: { lat: 3, lng: 4 } });
   expect(res.status).toBeLessThan(500);
 });

@@ -16,22 +16,14 @@
 Если ошибка повторяется в CI, убедитесь, что шаг «Диагностика Playwright»
 в workflow CI появился в сводке и откройте загруженные артефакты браузеров.
 
-## Что означает лог `Headless fallback disabled: module "playwright" is not installed in this runtime`?
+## Где искать troubleshooting для `/api/v1/maps/expand`?
 
-Это сообщение появляется только когда включён `MAPS_HEADLESS_FALLBACK=playwright`,
-но пакет `playwright` не установлен в рантайме сервиса.
-
-Как исправить:
-
-1. Если headless-fallback **не нужен**, удалите переменную `MAPS_HEADLESS_FALLBACK`
-   (или установите любое значение, отличное от `playwright`) и перезапустите сервис.
-2. Если headless-fallback **нужен**, добавьте `playwright` в production-зависимости
-   сервиса API и выполните установку браузеров (`pnpm exec playwright install chromium`) на этапе сборки образа.
-
-Проверка после деплоя:
-
-- лог с `Headless fallback disabled...` больше не появляется;
-- при необходимости fallback координаты из сложных карт-ссылок начинают извлекаться корректно.
+Единый источник troubleshooting по раскрытию Google Maps ссылок, включая кейсы с логами
+`Headless fallback disabled: module "playwright" is not installed in this runtime`
+и `Headless fallback disabled: browser executable is missing for module "playwright"`,
+теперь находится в `docs/technical_manual.md`, раздел
+[`/api/v1/maps/expand`: раскрытие Google Maps ссылок](./technical_manual.md#apiv1mapsexpand-раскрытие-google-maps-ссылок).
+Используйте именно этот раздел, чтобы не поддерживать две расходящиеся инструкции.
 
 ## Есть ли онлайн-трекинг транспорта?
 

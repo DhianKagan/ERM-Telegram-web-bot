@@ -49,7 +49,8 @@
 
      **Если service использует Dockerfile runtime (частый случай) и `pnpm` в финальном слое недоступен:**
      - Не добавляйте инлайн-назначение переменных (`APP_ROLE=...`) в `Start Command`: в Railway Docker runtime команда может запускаться без shell и падать с ошибкой `The executable "app_role=..." could not be found`.
-     - Укажите переменную сервиса `APP_ROLE` в разделе Variables (`api`/`bot`/`worker`).
+     - Укажите переменную сервиса `APP_ROLE` в разделе Variables **только как роль**: `api`, `bot` или `worker`.
+     - Не записывайте в `APP_ROLE` полную команду вроде `api node apps/api/dist/server.js`: такой формат случайно «работает» только потому, что `start-by-role.sh` берёт первый токен, но это считается некорректной конфигурацией и усложняет аудит.
      - В `Start Command` оставьте только бинарь Node:
        - `erm-api`: `node apps/api/dist/server.js`
        - `erm-bot`: `node apps/api/dist/bot/runtime.js`
@@ -60,6 +61,24 @@
    > Для фронта/внутренних вызовов внутри Railway private network используйте актуальный internal hostname API: `erm-api.railway.internal` (вместо старого `agrmcs.railway.internal`).
 
 3. Отключите ненужные переменные (см. матрицу ниже), чтобы сервисы не тянули лишнюю конфигурацию.
+
+### 2.1 Рекомендуемая схема heap-лимитов Node.js
+
+Для split-режима удобно держать лимиты памяти отдельно от Start Command:
+
+- shared / environment variables:
+  - `API_NODE_OPTIONS=--max-old-space-size=384`
+  - `BOT_NODE_OPTIONS=--max-old-space-size=256`
+  - `WORKER_NODE_OPTIONS=--max-old-space-size=256`
+- service variables:
+  - `erm-api`: `NODE_OPTIONS=${{shared.API_NODE_OPTIONS}}`
+  - `erm-bot`: `NODE_OPTIONS=${{shared.BOT_NODE_OPTIONS}}`
+  - `erm-worker`: `NODE_OPTIONS=${{shared.WORKER_NODE_OPTIONS}}`
+
+Это даёт два плюса:
+
+1. лимит меняется без переписывания Start Command;
+2. audit/runbook сразу показывает, какой heap выделен каждому сервису.
 
 ## 3) Точная матрица переменных окружения
 

@@ -20,6 +20,7 @@
 - `docs/technical_manual.md` описывает runtime, настройку, troubleshooting, `/api/v1/maps/expand` и `MAPS_HEADLESS_FALLBACK`.
 - `docs/architecture.md` поддерживается как каноническое дополнение для структуры monorepo, когда меняются каталоги, процессы или системные связи.
 - Runbook-материалы поддерживаются отдельно от канонического набора и должны ссылаться на него, а не заменять его.
+- Railway/admin recovery runbook-материалы помечаются как `Internal-only`; production snapshots и evidence не должны оставаться в active docs.
 
 ## Актуальные разделы
 

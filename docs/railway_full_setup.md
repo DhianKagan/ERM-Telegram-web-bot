@@ -29,8 +29,8 @@
 
 1. Создайте ещё один сервис через **Deploy from GitHub** и выберите репозиторий `AgroxOD/OSRM-Odessa-Region`.
 2. Railway установит зависимости и запустит приложение автоматически.
-3. После запуска сервис будет доступен по выданному Railway домену, например `https://osrm-yourapp.up.railway.app`.
-4. Укажите адрес сервиса, например `https://osrm-yourapp.up.railway.app` в переменной `ROUTING_URL` и конечный endpoint
+3. После запуска сервис будет доступен по выданному Railway домену, например `https://<public-osrm-domain>`.
+4. Укажите адрес сервиса, например `https://<public-osrm-domain>` в переменной `ROUTING_URL` и конечный endpoint
    `https://router.project-osrm.org/route/v1/driving` (или маршрут вашего сервиса) в `VITE_ROUTING_URL` основного приложения.
 5. При необходимости задайте переменную `OSRM_ALGORITHM` со значением `ch` или `mld`.
 

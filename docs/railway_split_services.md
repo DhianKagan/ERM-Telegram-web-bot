@@ -2,6 +2,8 @@
 
 # Railway: точный переход на 3 сервиса (API / Bot / Worker) + резервный single-container
 
+> Internal-only: operational runbook для maintainers/SRE. Point-in-time production snapshots, реальные hostnames и deployment IDs должны храниться только в archive/internal evidence.
+
 Этот runbook фиксирует рабочую схему, в которой:
 
 - **основной режим** — три отдельных Railway-сервиса (`erm-api`, `erm-bot`, `erm-worker`);
@@ -58,7 +60,7 @@
      - Либо очистите `Start Command`: Docker image сам запустит нужный процесс через `/app/scripts/railway/start-by-role.sh` по `APP_ROLE`.
 
    > Для split-режима не используйте в Start Command `./scripts/set_bot_commands.sh`: в Dockerfile runtime каталога `scripts/` может не быть.
-   > Для фронта/внутренних вызовов внутри Railway private network используйте актуальный internal hostname API: `erm-api.railway.internal` (вместо старого `agrmcs.railway.internal`).
+   > Для фронта/внутренних вызовов внутри Railway private network используйте placeholder вида `<internal-api-host>`; реальные `*.railway.internal` hostnames не фиксируйте в active docs.
 
 3. Отключите ненужные переменные (см. матрицу ниже), чтобы сервисы не тянули лишнюю конфигурацию.
 
@@ -163,24 +165,24 @@
 | `erm-bot`    | Telegram webhook/polling, в основном I/O-bound, низкий steady CPU                    | `0.25 vCPU`, `256 MB RAM` (следующий шаг — `0.5 vCPU` / `384–512 MB`)              | `--max-old-space-size=256` | не вводить `QUEUE_*`; один runtime процесса достаточно                                                          | `0` вне redeploy; любой burst рестартов считать аномалией | пропуски webhook/update ack, memory `>80–85%`, burst рестартов, задержка команд пользователя       |
 | `erm-worker` | BullMQ background jobs, CPU/network mixed, чувствителен к queue lag и внешним API    | `0.5 vCPU`, `512 MB RAM` (допустимо до `1 vCPU` / `1024 MB` только после baseline) | `--max-old-space-size=256` | `QUEUE_CONCURRENCY=1` по умолчанию; поднимать до `2` только после подтверждённого queue lag без memory pressure | `0` вне redeploy; alert при `>3` рестартах за `15 min`    | `bullmq_queue_oldest_wait_seconds > 180`, `failed jobs > 0`, CPU saturation, OSRM/geocoder latency |
 
-### 4.1 Что уже подтверждено фактической нагрузкой, а что ещё нет
+### 4.1 Что должно подтверждаться evidence package, а не храниться в active docs
 
-На 22 Mar 2026 (Europe/Kyiv) из доступных артефактов подтверждено следующее:
+Point-in-time production-факты не должны жить в этом runbook. Для каждого infra-release собирайте evidence отдельно и храните его в archive/internal ticket:
 
-- `erm-api`: `/health` и `/api/monitor/health` отвечают `200`, в runbook нет признаков циклических runtime-рестартов.
-- `erm-bot`: предыдущий active deployment работает штатно (`Webhook Telegram настроен`, `runtime: Бот успешно запущен.`); новый deployment, зависший в `BUILDING`, считается проблемой delivery-пайплайна, а не доказанной runtime-перегрузкой.
-- `erm-worker`: worker стартует стабильно (`BullMQ workers started`), а split-runbook уже требует подтверждать, что задания переходят в `completed` и не застревают в `failed`/`stalled`.
-- По task board всё ещё **не закрыты** пункты baseline/after (`T4.1`, `T4.3`) и runtime-валидация раздельной concurrency (`T2.2`). Это значит, что CPU avg/p95, RSS avg/p95 и restart-rate пока не собраны в полноценный production-baseline.
+- результаты `GET /health` и `GET /api/monitor/health`;
+- выдержки runtime-логов без секретов и без привязки к постоянным deployment IDs в active docs;
+- признаки стабильного старта bot/worker (`Webhook Telegram настроен`, `BullMQ workers started` и т.п.);
+- окно наблюдения `7–14` дней по CPU, memory, restarts, queue lag и failed jobs.
 
-Итог: текущие лимиты памяти выглядят безопасно-консервативными, но единственное значение, которое нельзя агрессивно повышать без фактов, — `QUEUE_CONCURRENCY`. Для production его безопасно зафиксировать на `1`, пока не будет 7–14 дней наблюдения по queue lag, failed jobs и memory headroom.
+Итоговое правило остаётся прежним: лимиты памяти можно считать безопасно-консервативными только пока evidence не показывает sustained saturation; `QUEUE_CONCURRENCY` не повышать без подтверждённого queue lag и достаточного memory headroom.
 
-### 4.2 Сопоставление конфигурации и фактической нагрузки
+### 4.2 Как сопоставлять конфигурацию и фактическую нагрузку
 
-| Сервис       | Что зафиксировано сейчас                                                          | Что видно по фактической нагрузке                                             | Практический вывод                                                                           |
-| ------------ | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `erm-api`    | heap `384 MB`; Railway restart контролирует сама платформа; healthcheck `/health` | сервис отвечает `200`, признаков restart loop в runbook нет                   | оставляем `0.5 vCPU / 512 MB`, не повышаем CPU/RAM до появления sustained saturation         |
-| `erm-bot`    | heap `256 MB`; отдельный runtime без очередей                                     | активный deployment стабилен, проблем CPU/RAM не зафиксировано                | минимальный профиль `0.25 vCPU / 256 MB` остаётся целевым default                            |
-| `erm-worker` | heap `256 MB`; concurrency должна управляться env; сервис критичен к Redis/OSRM   | worker запускается стабильно, но baseline по queue lag/restarts ещё не собран | фиксируем `QUEUE_CONCURRENCY=1`, а масштабирование начинаем с метрик очереди, а не «на глаз» |
+| Сервис   | Что должно быть зафиксировано в конфигурации                                   | Что нужно подтвердить по фактической нагрузке                             | Практический вывод                                                                    |
+| -------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `api`    | heap `384 MB`; healthcheck `/health`; restart policy контролируется Railway    | health endpoints отвечают `200`, нет restart loop и sustained saturation  | не повышать CPU/RAM до появления подтверждённой деградации                            |
+| `bot`    | heap `256 MB`; отдельный runtime без очередей                                  | есть успешная инициализация webhook/polling, нет burst-рестартов          | минимальный профиль остаётся default, пока нет подтверждённой нехватки ресурсов       |
+| `worker` | heap `256 MB`; concurrency управляется env; сервис зависит от Redis/OSRM/Mongo | jobs переходят в `completed`, queue lag/restarts контролируются метриками | `QUEUE_CONCURRENCY=1` остаётся безопасным baseline до появления достаточного evidence |
 
 ### 4.3 Порядок пересмотра лимитов при росте нагрузки
 
@@ -233,7 +235,7 @@
 
 **Rollback**
 
-1. Вернуть предыдущий успешный deployment `erm-bot`.
+1. Вернуть предыдущий успешный deployment бота по данным Railway UI / release ticket.
 2. Откатить последние изменения `NODE_OPTIONS`/ресурсов только для `erm-bot`.
 3. Проверить и при необходимости заново выставить `TELEGRAM_WEBHOOK_URL`/`TELEGRAM_WEBHOOK_SECRET`.
 4. Если split-runtime бота нестабилен системно, временно вернуть bot-процесс в single-container fallback через pm2.

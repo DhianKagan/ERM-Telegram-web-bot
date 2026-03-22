@@ -2,6 +2,8 @@
 
 # Минимальная настройка Railway для автоконвейера логов
 
+> Internal-only: инструкция для maintainers/SRE. Не выносите реальные project names, hostnames, токены и service identifiers в публичные материалы.
+
 Документ описывает единственные шаги, которые нужно выполнить вручную, чтобы все дальнейшие операции (выгрузка логов, анализ, улучшения кода) выполнялись скриптом `scripts/railway_log_pipeline.sh`.
 
 ## 1. Подготовка проекта на Railway
@@ -19,12 +21,9 @@
 
 ## 2. Выпуск токена и настройка CLI
 
-1. На странице профиля Railway откройте **Account → Generate Token** и сохраните значение.
-2. Установите Railway CLI: `npm install -g @railway/cli`.
-3. Выполните авторизацию одной командой:
-   ```bash
-   railway login --token <скопированный_токен>
-   ```
+1. Установите Railway CLI: `npm install -g @railway/cli`.
+2. Выполните `railway login` и завершите интерактивную авторизацию.
+3. Если нужен headless/token-based доступ, храните Railway token только в password manager / CI secret и не вставляйте его в shell history или документацию.
 4. В корне репозитория выполните `railway link` и выберите нужный проект.
 5. При необходимости переключите окружение командой `railway environment switch <environment-id>`.
 
@@ -32,8 +31,8 @@
 
 1. Скопируйте пример файла: `cp Railway/config/pipeline.example.env Railway/config/pipeline.env`.
 2. Укажите значения переменных:
-   - `RAILWAY_SERVICE` — имя сервиса (как в CLI, например `erm-api`).
-   - `RAILWAY_ENVIRONMENT` — имя окружения (обычно `production`).
+   - `RAILWAY_SERVICE` — имя сервиса в Railway CLI (например, `<railway-api-service>`).
+   - `RAILWAY_ENVIRONMENT` — имя окружения (например, `<environment>`).
    - `RAILWAY_DEPLOY=latest` — оставьте `latest`, если нужен последний деплой.
    - `RAILWAY_TAIL=400` — при необходимости измените количество строк.
 

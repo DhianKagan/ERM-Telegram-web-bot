@@ -2,13 +2,15 @@
 
 # Автоматизированный сбор и анализ логов деплоев Railway
 
+> Internal-only: runbook для maintainers/SRE. Не публикуйте operational details, admin endpoints и attach с логами вне доверенного контура.
+
 Процесс построен так, чтобы вы выполнили только базовую настройку Railway, а далее скрипт сам выгружает логи, анализирует ошибки и запускает улучшения кода.
 
 ## 1. Что нужно сделать вручную
 
 1. Настройте проект по краткому чек-листу из [railway_minimal_setup.md](./railway_minimal_setup.md).
 2. Установите Railway CLI: `npm install -g @railway/cli`.
-3. Создайте токен в Railway (Profile → **Account** → **Generate Token**) и выполните `railway login --token <значение>`.
+3. Выполните `railway login` и завершите интерактивную авторизацию Railway CLI. Если нужен headless/token-based доступ, храните токен только в password manager / CI secret и не передавайте его в shell history или скриншоты.
 4. Свяжите репозиторий с проектом: `railway link`.
 5. Скопируйте конфигурацию конвейера: `cp Railway/config/pipeline.example.env Railway/config/pipeline.env` и задайте значения переменных.
 
@@ -51,7 +53,7 @@
 Для оперативной проверки API/Redis/Mongo/S3/BullMQ и обязательных метрик выполните:
 
 ```bash
-API_BASE_URL=https://agromarket.up.railway.app ./scripts/railway/quick_stack_validation.sh
+API_BASE_URL=https://<public-api-domain> ./scripts/railway/quick_stack_validation.sh
 ```
 
 Скрипт проверяет `GET /api/monitor/health` и `GET /metrics`, валидирует статусы `s3/storage/redis/mongo/bullmq=ok` и наличие метрик:
@@ -72,7 +74,7 @@ API_BASE_URL=https://agromarket.up.railway.app ./scripts/railway/quick_stack_val
 Пример с кастомными порогами:
 
 ```bash
-API_BASE_URL=https://agromarket.up.railway.app \
+API_BASE_URL=https://<public-api-domain> \
 QUEUE_LAG_LIMIT_SECONDS=300 \
 FAILED_JOBS_LIMIT=5 \
 ./scripts/railway/quick_stack_validation.sh
@@ -105,7 +107,7 @@ FAILED_JOBS_LIMIT=5 \
 
 ## 5. Если что-то пошло не так
 
-- `Not authenticated` — повторите `railway login --token <значение>`.
+- `Not authenticated` — повторите `railway login` и убедитесь, что CLI привязан к нужному аккаунту/проекту без передачи токена через историю shell.
 - `Project not linked` — выполните `railway link` в корне репозитория.
 - `No deployments found` — проверьте значение переменных `RAILWAY_SERVICE` и `RAILWAY_ENVIRONMENT` в конфигурации.
 - Конвейер завершился с ошибкой — изучите `Railway/analysis/*` и вывод команд. При необходимости используйте `--skip-improvements`, чтобы получить отчёт без автоисправлений.

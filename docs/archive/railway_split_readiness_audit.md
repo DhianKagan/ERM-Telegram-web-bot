@@ -10,7 +10,7 @@
 
 При этом остаются два практических условия запуска:
 
-1. В Railway нужно вручную создать **три отдельных сервиса** (`erm-api`, `erm-bot`, `erm-worker`) и задать каждому свой Start Command.
+1. В Railway нужно вручную создать **три отдельных сервиса** (`<railway-api-service>`, `<railway-bot-service>`, `<railway-worker-service>`) и задать каждому свой Start Command.
 2. Для локальной проверки через `docker-compose.services.yml` нужен заполненный env-файл (по умолчанию используется `Railway/.env`, можно переопределить через `ENV_FILE`).
 
 ## Что проверено
@@ -43,14 +43,14 @@
 
 ## Рекомендованный preflight перед релизом
 
-1. Создать/проверить три Railway services: `erm-api`, `erm-bot`, `erm-worker`.
+1. Создать/проверить три Railway services: `<railway-api-service>`, `<railway-bot-service>`, `<railway-worker-service>`.
 2. Для каждого выставить Start Command по типу builder:
    - Nixpacks/runtime с `pnpm`: `pnpm run railway:start:{api|bot|worker}`
    - Dockerfile runtime без `pnpm`: `APP_ROLE=<role> node apps/<service>/dist/<entry>.js`
      - `api`: `APP_ROLE=api node apps/api/dist/server.js`
      - `bot`: `APP_ROLE=bot node apps/api/dist/bot/runtime.js`
      - `worker`: `APP_ROLE=worker node apps/worker/dist/index.js`
-3. Для внутренних вызовов в private network использовать актуальный host `erm-api.railway.internal` (вместо старого `agrmcs.railway.internal`).
+3. Для внутренних вызовов в private network использовать актуальный host вида `<internal-api-host>` (без фиксации реального hostname в документации).
 4. Убедиться, что `QUEUE_PREFIX` одинаковый у `api` и `worker`.
 5. Для `api` не фиксировать `PORT` вручную (Railway подставляет порт сам).
 6. Проверить health endpoints после деплоя: `/` и `/health`.

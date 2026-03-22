@@ -1,0 +1,45 @@
+# Назначение файла: проверка docs security hygiene и doc-audit для PR/push с изменениями документации.
+name: Docs Security Gate
+
+on:
+  pull_request:
+    paths:
+      - 'README.md'
+      - 'SECURITY.md'
+      - 'INCIDENT_RESPONSE.md'
+      - 'docs/**'
+      - 'scripts/docs_qa.mjs'
+      - '.github/workflows/docs-security.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'README.md'
+      - 'SECURITY.md'
+      - 'INCIDENT_RESPONSE.md'
+      - 'docs/**'
+      - 'scripts/docs_qa.mjs'
+      - '.github/workflows/docs-security.yml'
+
+jobs:
+  docs-security:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Enable corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run docs audit
+        run: pnpm run docs:audit

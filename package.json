@@ -19,7 +19,7 @@
     "rebuild": "pnpm rebuild",
     "clean": "pnpm store prune && pnpm -r exec rimraf node_modules dist",
     "setup": "pnpm install && pnpm approve-builds esbuild sharp ffmpeg-static && pnpm rebuild",
-    "codex:check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm audit",
+    "codex:check": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm run docs:qa && pnpm audit",
     "format:check": "prettier --check .",
     "format": "prettier --write .",
     "test:api": "pnpm --filter ./apps/api test --",
@@ -28,14 +28,15 @@
     "railway:start:bot": "APP_ROLE=bot ./scripts/set_bot_commands.sh && APP_ROLE=bot node apps/api/dist/bot/runtime.js",
     "railway:start:worker": "APP_ROLE=worker node apps/worker/dist/index.js",
     "db:cleanup-legacy-file-links": "pnpm --filter apps/api exec tsx ../../scripts/db/cleanup_legacy_file_links.ts",
-    "ci:fast": "turbo run ci:fast",
-    "ci:full": "turbo run ci:full",
+    "ci:fast": "turbo run ci:fast && pnpm run docs:qa",
+    "ci:full": "turbo run ci:full && pnpm run docs:qa",
     "railway:quick-validate": "./scripts/railway/quick_stack_validation.sh",
     "debug:full-cycle": "node tools/debug/full_cycle_check.mjs",
     "deps:analyze": "./scripts/check_repo_deps.sh",
     "deps:audit": "./scripts/audit_deps.sh",
     "deps:update:browserslist": "pnpm --filter web run update:browserslist",
-    "deps:update:critical": "pnpm run deps:update:browserslist"
+    "deps:update:critical": "pnpm run deps:update:browserslist",
+    "docs:qa": "node scripts/docs_qa.mjs"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [

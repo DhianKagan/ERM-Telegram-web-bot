@@ -100,7 +100,10 @@ export const verifyCode = async (req: Request, res: Response) => {
         userAgent: req.get?.('user-agent') || undefined,
       });
       setRefreshCookie(res, session.refreshToken);
-      res.json({ accessToken: session.accessToken });
+      res.json({
+        accessToken: session.accessToken,
+        token: session.accessToken,
+      });
       return;
     }
     setTokenCookie(res, token);

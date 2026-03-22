@@ -255,6 +255,28 @@
 3. Если проблема возникла после кода/релиза — откатить `erm-worker` на предыдущий успешный deployment.
 4. При переполнении очереди временно остановить генерацию новых задач со стороны API или выполнить recovery по отдельному queue runbook.
 
+## 6.4 Обязательный release preflight перед каждым инфраструктурным релизом
+
+Перед **каждым** infra-release Railway split-окружения нужно пройти отдельный preflight runbook: [`railway_split_release_preflight.md`](./railway_split_release_preflight.md).
+
+Это относится не только к первичному split-rollout, но и к любому изменению:
+
+- Railway services / Variables / Start Command;
+- private-network host и service-to-service wiring;
+- `QUEUE_*`, Redis wiring, concurrency, attempts, backoff;
+- RAM/CPU лимитов и `NODE_OPTIONS`;
+- healthcheck path, health endpoints или runtime builder-профиля.
+
+Release workflow должен выглядеть так:
+
+1. Обновить change set и runbook-ссылки.
+2. Пройти preflight checklist и приложить evidence.
+3. Выполнить deploy / redeploy в Railway.
+4. Повторить post-deploy health/log/metrics checks.
+5. Зафиксировать observation window и итог `completed` / `blocked`.
+
+Если preflight не завершён или не приложен evidence package, инфраструктурный релиз считается **blocked**.
+
 ## 7) Резервный rollback на single-container (временный)
 
 Если split-деплой ведёт себя нестабильно, можно временно вернуть запуск «всё в одном контейнере»:

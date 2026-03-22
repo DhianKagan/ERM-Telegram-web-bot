@@ -36,7 +36,8 @@
     "deps:audit": "./scripts/audit_deps.sh",
     "deps:update:browserslist": "pnpm --filter web run update:browserslist",
     "deps:update:critical": "pnpm run deps:update:browserslist",
-    "docs:qa": "node scripts/docs_qa.mjs"
+    "docs:qa": "node scripts/docs_qa.mjs",
+    "docs:audit": "node scripts/docs_qa.mjs"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [

@@ -20,7 +20,7 @@
 
 ## 3) Исправление комментария/документации (несоответствие)
 
-**Где:** `docs/codebase_review_2026-02-11.md`.
+**Где:** `docs/archive/codebase_review_2026-02-11.md`.
 
 **Наблюдение:** пункт про `hasRenderableComment()` устарел: в `apps/api/src/tasks/taskComments.ts` уже используется `convertHtmlToMarkdownSafe()` с type-guard и fallback.
 

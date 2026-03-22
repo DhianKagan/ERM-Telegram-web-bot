@@ -1,7 +1,7 @@
 # A5 baseline — обязательные проверки монорепозитория
 
 Дата запуска: 12 Feb 2026 (Europe/Kyiv)
-Источник шага: `docs/monorepo-unification-task-breakdown.md` → Шаг A5.
+Источник шага: `docs/archive/monorepo-unification-task-breakdown.md` → Шаг A5.
 
 ## Контекст
 

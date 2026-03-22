@@ -19,6 +19,8 @@ jobs:
         run: corepack enable
       - name: Установка зависимостей
         run: pnpm install --frozen-lockfile
+      - name: Doc audit
+        run: pnpm run docs:audit
       - name: Линтеры
         run: pnpm lint
       - name: Юнит и API тесты

@@ -1,7 +1,7 @@
 # Шаг B1 — консолидация внутренних пакетов в `packages/*`
 
 Дата: 12 Feb 2026 (Europe/Kyiv)
-Источник: `docs/monorepo-unification-task-breakdown.md`.
+Источник: `docs/archive/monorepo-unification-task-breakdown.md`.
 
 ## Что сделано
 

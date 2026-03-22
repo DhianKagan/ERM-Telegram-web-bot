@@ -4,7 +4,6 @@
 
 Перед настройкой отдельных сервисов проверить, что общие зависимости, правила сборки и shared-код максимально унифицированы и автоматизированы.
 
-
 ## Как пользоваться этим планом из чата
 
 - Выполняйте задачи **строго по порядку**: сначала Вариант A, затем (опционально) Вариант B.
@@ -19,8 +18,7 @@
 
 **Запрос в чат**
 
-`Сделай Шаг A1 из docs/monorepo-unification-task-breakdown.md: аудит workspace и матрица пакетов`.
-
+`Сделай Шаг A1 из docs/archive/monorepo-unification-task-breakdown.md: аудит workspace и матрица пакетов`.
 
 **Что сделать**
 
@@ -39,8 +37,7 @@
 
 **Запрос в чат**
 
-`Сделай Шаг A2 из docs/monorepo-unification-task-breakdown.md: выровняй scripts build/lint/typecheck/test`.
-
+`Сделай Шаг A2 из docs/archive/monorepo-unification-task-breakdown.md: выровняй scripts build/lint/typecheck/test`.
 
 **Что сделать**
 
@@ -58,8 +55,7 @@
 
 **Запрос в чат**
 
-`Сделай Шаг A3 из docs/monorepo-unification-task-breakdown.md: централизация devDependencies и pnpm.overrides`.
-
+`Сделай Шаг A3 из docs/archive/monorepo-unification-task-breakdown.md: централизация devDependencies и pnpm.overrides`.
 
 **Что сделать**
 
@@ -77,8 +73,7 @@
 
 **Запрос в чат**
 
-`Сделай Шаг A4 из docs/monorepo-unification-task-breakdown.md: вынеси очевидные дубли в packages/shared`.
-
+`Сделай Шаг A4 из docs/archive/monorepo-unification-task-breakdown.md: вынеси очевидные дубли в packages/shared`.
 
 **Что сделать**
 
@@ -97,8 +92,7 @@
 
 **Запрос в чат**
 
-`Сделай Шаг A5 из docs/monorepo-unification-task-breakdown.md: прогони обязательные проверки и зафиксируй baseline`.
-
+`Сделай Шаг A5 из docs/archive/monorepo-unification-task-breakdown.md: прогони обязательные проверки и зафиксируй baseline`.
 
 **Что сделать**
 
@@ -119,7 +113,7 @@
 
 **Запрос в чат**
 
-`Сделай Шаг B1 из docs/monorepo-unification-task-breakdown.md: консолидация внутренних пакетов в packages/*`.
+`Сделай Шаг B1 из docs/archive/monorepo-unification-task-breakdown.md: консолидация внутренних пакетов в packages/*`.
 
 **Что сделать**
 
@@ -135,8 +129,7 @@
 
 **Запрос в чат**
 
-`Сделай Шаг B2 из docs/monorepo-unification-task-breakdown.md: формализуй package boundaries и контракты`.
-
+`Сделай Шаг B2 из docs/archive/monorepo-unification-task-breakdown.md: формализуй package boundaries и контракты`.
 
 **Что сделать**
 
@@ -145,14 +138,13 @@
 
 **Риск**
 
-
 - Понадобятся точечные рефакторинги в каждом приложении.
 
 ### Шаг B3. Единая оркестрация сборки/тестов через task runner
 
 **Запрос в чат**
 
-`Сделай Шаг B3 из docs/monorepo-unification-task-breakdown.md: оркестрация через Turborepo/Nx`.
+`Сделай Шаг B3 из docs/archive/monorepo-unification-task-breakdown.md: оркестрация через Turborepo/Nx`.
 
 **Что сделать**
 

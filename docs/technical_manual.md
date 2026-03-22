@@ -134,44 +134,80 @@ API справочников постепенно переезжает с кол
 - Таймаут запроса настраивается опцией `matrixTimeoutMs`, значение проксируется до `AbortController` в адаптере.
 - Все фолбэки логируются через `console.error` с указанием провайдера матрицы и количества задач, чтобы упрощать диагностику.
 
-### API headless-fallback для Google Maps expand
+### `/api/v1/maps/expand`: раскрытие Google Maps ссылок
 
-Маршрут `GET /api/v1/maps/expand` нужен для разворачивания коротких Google Maps URL, включая ссылки вида `https://maps.app.goo.gl/...`.
-Если обычный серверный `fetch` не получает финальную ссылку или координаты, сервис `apps/api/src/services/maps.ts` использует headless-fallback через Playwright (`extractExpandedMapsUrlViaPlaywright`, `extractCoordsViaPlaywright`, `extractPlaceDetailsViaPlaywright`).
+Маршрут `POST /api/v1/maps/expand` принимает JSON вида `{ "url": "..." }` и возвращает нормализованный результат для клиента `apps/web`: раскрытый `url`, необязательные `coords`, `place` и `short`. Поток запроса собирается в контроллере `apps/api/src/controllers/maps.ts`, основная логика раскрытия и геокодирования находится в `apps/api/src/services/maps.ts`, а типизированный клиентский контракт описан в `apps/web/src/services/maps.ts`.
 
-#### Когда включать fallback
+#### Ключевые исходники
 
-Включайте headless-режим, если `/api/v1/maps/expand` должен стабильно раскрывать короткие Google Maps ссылки в окружениях, где серверный редирект или HTML-ответ от Google не содержит нужных данных.
+- `apps/api/src/controllers/maps.ts` — orchestration для `expand`: чтение `req.body.url`, fallback на управляемые short-link, извлечение `place`, добор координат через `searchAddress`, формирование ответа.
+- `apps/api/src/services/maps.ts` — allowlist/безопасность URL, обычное раскрытие через `fetch`, Playwright fallback, парсинг `place`, вызовы Nominatim.
+- `apps/web/src/services/maps.ts` — клиентский `expandLink`, который ожидает от API `url`, `coords`, `place`, `short` и нормализует их для UI.
+
+#### Поток обработки по коду
+
+1. **Первичная валидация allowlist-доменов.**
+   `shouldExpandMapsUrl` и `assertSafeMapsUrl` пропускают только `https`-URL без `userinfo`, без нестандартного порта и только на Google Maps / Google wrapper host из allowlist (`maps.app.goo.gl`, `goo.gl`, `google.*`, `www.google.*`, `maps.google.*`). Это отсекает ссылки наподобие `http://...`, `user@host` и домены вида `maps.google.com.evil.test` ещё до сетевых вызовов.
+2. **Защита от небезопасных URL и приватных IP.**
+   После проверки hostname сервис делает DNS `lookup(..., { all: true })` и запрещает адреса из private / loopback / link-local диапазонов. Исключение сделано только для жёстко ограниченного Google allowlist, когда DNS в изолированной сети возвращает только внутренние IPv6-адреса: такой кейс не считается SSRF-вектором и не должен давать ложный `400`.
+3. **Обычное раскрытие через `fetch`.**
+   `expandMapsUrl` сначала разворачивает Google wrapper URL (`consent.google.com`, `/url`, intent URL), затем идёт по безопасной цепочке redirect с `fetch(..., { redirect: 'manual' })`. Если уже найден `place`-URL или координаты, сервис завершает обработку без лишних запросов. Для `maps.app.goo.gl` дополнительно есть проход с `redirect: 'follow'` и browser-like headers, чтобы поймать canonical/place-ссылку из ответа.
+4. **Headless-fallback через Playwright.**
+   Если включён `MAPS_HEADLESS_FALLBACK=playwright`, сервис пытается получить данные через `extractExpandedMapsUrlViaPlaywright`, `extractCoordsViaPlaywright` и позднее `extractPlaceDetailsViaPlaywright`. Headless fallback используется как ранняя попытка до `fetch` для short-link, как резерв после transient network/fetch ошибок и как поздний fallback, если HTML/redirect не дали координаты или финальный `place`-URL.
+5. **Извлечение `place` и текстовых подсказок.**
+   Контроллер сначала пытается взять название места прямо из URL (`/maps/place/...` или query-параметры). Если в URL нет ни координат, ни названия, он вызывает `extractPlaceDetailsViaPlaywright`, который читает `name`, `category`, `address` из DOM Google Maps. Для дальнейшего геокодирования контроллер собирает текстовые подсказки в порядке приоритета: `place.address` → `place.name` → текстовый query из URL.
+6. **Добор координат через `searchAddress`.**
+   Если после раскрытия и парсинга `coords` всё ещё отсутствуют, контроллер по очереди отправляет текстовые подсказки в `searchAddress(..., { limit: 1 })`. Сервис `searchAddress` ходит в Nominatim `/search`, нормализует `label`/`description`/`lat`/`lng` и возвращает лучший матч. Если исходная ссылка уже является Google Maps URL, контроллер сохраняет раскрытый `url`; если это был внешний managed short-link без map-path, он перестраивает `url` в `https://www.google.com/maps/search/?api=1&query=<lat>,<lng>`.
+
+#### Runtime и настройки headless-fallback
+
+Включение fallback:
 
 ```bash
 MAPS_HEADLESS_FALLBACK=playwright
-```
-
-Значение `playwright` включает fallback; любое другое значение оставляет только стандартный серверный `fetch`.
-
-#### Таймаут и допустимый диапазон
-
-```bash
 MAPS_HEADLESS_TIMEOUT_MS=12000
 ```
 
-- значение по умолчанию: `8000` мс;
-- допустимый диапазон: `1000..20000` мс;
-- сервис принудительно ограничивает значение этим диапазоном, чтобы нагрузка оставалась предсказуемой.
+- `MAPS_HEADLESS_FALLBACK=playwright` включает Playwright fallback; любое другое значение оставляет только серверный `fetch`.
+- `MAPS_HEADLESS_TIMEOUT_MS` по умолчанию равен `8000` мс и принудительно ограничивается диапазоном `1000..20000` мс.
+- Пакет `playwright` **уже присутствует** в зависимостях `apps/api/package.json`, поэтому формулировку «module is not installed» нужно читать шире: для runtime важны не только npm/pnpm-зависимости, но и наличие браузеров Playwright, совместимого container image и файлов браузерных executable в целевом окружении.
+- После изменения переменных окружения нужен перезапуск API-сервиса.
 
-#### Что нужно в рантайме
+#### Troubleshooting: единый источник
 
-1. Пакет `playwright` должен быть доступен в runtime API.
-2. В окружении должны быть установлены браузеры Playwright, иначе fallback сам отключится и запишет предупреждение в лог.
-3. После изменения переменных окружения перезапустите API-сервис.
+Ниже — каноничный troubleshooting для `/api/v1/maps/expand`; FAQ саппорта должен ссылаться именно на этот раздел, чтобы не было двух расходящихся инструкций.
+
+**Лог:** `Headless fallback disabled: module "playwright" is not installed in this runtime`
+
+Что это означает на практике:
+
+- код попытался динамически импортировать модуль из `MAPS_HEADLESS_MODULE_NAME` (по умолчанию `playwright`) и не нашёл его в текущем runtime; либо сборка/runtime-слой не содержит нужный пакет, несмотря на наличие зависимости в репозитории;
+- это **не** покрывает второй частый кейс, когда пакет есть, но отсутствуют браузеры — тогда сервис пишет другой лог: `Headless fallback disabled: browser executable is missing for module "playwright"`.
+
+Как проверять и исправлять:
+
+1. Если fallback не нужен, уберите `MAPS_HEADLESS_FALLBACK=playwright` и перезапустите сервис.
+2. Если fallback нужен, проверьте одновременно:
+   - что production/runtime-образ действительно содержит пакет `playwright` из `apps/api/package.json`;
+   - что браузеры установлены (`./scripts/ensure_playwright_browsers.sh`, `pnpm exec playwright install chromium` или эквивалент на этапе сборки образа);
+   - что runtime использует совместимый образ/слой и не отбрасывает кэш `~/.cache/ms-playwright` или сами browser executables.
+3. Для CI и деградаций браузеров используйте `./scripts/run_playwright_diagnostics.sh` и сводку шага «Диагностика Playwright».
 
 #### Что возвращает маршрут
 
-При успешном раскрытии `/api/v1/maps/expand` возвращает данные, достаточные для дальнейшей работы клиента:
+`/api/v1/maps/expand` возвращает структуру, которую читает `expandLink` на web-клиенте:
 
-- `url` — финальный раскрытый URL Google Maps;
-- `coords` — извлечённые координаты;
-- `place` — сведения о месте, если их удалось прочитать из страницы.
+- `url` — обязательный раскрытый URL Google Maps;
+- `coords` — координаты или `null`, если извлечь их не удалось;
+- `place` — `{ name, category?, address? }`, если сервис смог прочитать данные места;
+- `short` — короткая ссылка приложения, если контроллер смог её создать или нормализовать.
+
+#### Тесты для регрессий
+
+- `apps/api/tests/maps.test.ts` — unit/regression для allowlist, небезопасных URL, safe redirect chain, Playwright fallback, DNS/private IP и `searchAddress`.
+- `apps/api/tests/mapsRoute.test.ts` — маршрутный orchestration тест для `/api/v1/maps/expand`: 400 на чужой домен, short-link, сохранение `place`, добор координат через `searchAddress`, отсутствие лишнего headless fallback.
+- `tests/mapsExpandUrl.spec.ts` — отдельные сценарии degrade/fallback: transient fetch error, недоступный Playwright module, intent redirect, prefer place-url и headless URL fallback.
+- `apps/web/src/components/TaskDialog.test.tsx` — интеграция web-формы с `expandLink`/`searchAddress`: подстановка координат, пустой результат поиска, работа с внешней короткой ссылкой.
 
 Для API-специфичной runtime-ссылки рядом с приложением см. также `apps/api/README.md`.
 

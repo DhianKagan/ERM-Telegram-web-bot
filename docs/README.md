@@ -9,11 +9,13 @@
 ### Базовые
 
 - [Индекс документации](index.md)
+- [Архитектура monorepo и runtime-слоёв](architecture.md)
 - [Технический мануал](technical_manual.md)
 - [Google Maps expand: headless-fallback и runtime-настройка](technical_manual.md#api-headless-fallback-для-google-maps-expand)
-- [Архитектура](architecture.md)
 - [Права и роли](permissions.md)
 - [Поддержка и FAQ](support_faq.md)
+
+> Если нужен канонический обзор структуры проекта, начинайте с `architecture.md`: документ синхронизирован с текущими каталогами `apps/api`, `apps/web`, `apps/worker`, `packages/shared` и `scripts`.
 
 ### Эксплуатация / Railway
 

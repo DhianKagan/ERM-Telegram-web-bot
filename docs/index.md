@@ -8,16 +8,18 @@
 
 ## 2) Канонические документы
 
-| Раздел              | Документ                                                                                                                               | Статус       |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
-| Обзор проекта       | [`../README.md`](../README.md)                                                                                                         | ✅ актуально |
-| Общий вход в docs   | [`README.md`](README.md)                                                                                                               | ✅ актуально |
-| Архитектура         | [`architecture.md`](architecture.md)                                                                                                   | ✅ актуально |
-| Технический мануал  | [`technical_manual.md`](technical_manual.md)                                                                                           | ✅ актуально |
-| Maps expand runtime | [`technical_manual.md#api-headless-fallback-для-google-maps-expand`](technical_manual.md#api-headless-fallback-для-google-maps-expand) | ✅ актуально |
-| Права и роли        | [`permissions.md`](permissions.md)                                                                                                     | ✅ актуально |
-| Вклад в проект      | [`../CONTRIBUTING.md`](../CONTRIBUTING.md)                                                                                             | ✅ актуально |
-| Безопасность        | [`../SECURITY.md`](../SECURITY.md)                                                                                                     | ✅ актуально |
+| Раздел               | Документ                                                                                                                               | Статус       |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------ |
+| Обзор проекта        | [`../README.md`](../README.md)                                                                                                         | ✅ актуально |
+| Общий вход в docs    | [`README.md`](README.md)                                                                                                               | ✅ актуально |
+| Архитектура monorepo | [`architecture.md`](architecture.md)                                                                                                   | ✅ канон     |
+| Технический мануал   | [`technical_manual.md`](technical_manual.md)                                                                                           | ✅ актуально |
+| Maps expand runtime  | [`technical_manual.md#api-headless-fallback-для-google-maps-expand`](technical_manual.md#api-headless-fallback-для-google-maps-expand) | ✅ актуально |
+| Права и роли         | [`permissions.md`](permissions.md)                                                                                                     | ✅ актуально |
+| Вклад в проект       | [`../CONTRIBUTING.md`](../CONTRIBUTING.md)                                                                                             | ✅ актуально |
+| Безопасность         | [`../SECURITY.md`](../SECURITY.md)                                                                                                     | ✅ актуально |
+
+> `architecture.md` — канонический документ по фактической структуре `apps/api`, `apps/web`, `apps/worker`, `packages/shared` и operational-слою `scripts`.
 
 ## 3) Эксплуатационные runbook-документы
 
@@ -33,6 +35,7 @@
 
 - Исследования, разовые аудиты и task-board документы остаются в `docs/` как reference-материалы.
 - Устаревшие гайды и черновики переносятся в [`archive/`](archive/).
+- Если старый документ ссылается на `src/common`, `decorators` или `modules/*` как на текущую верхнеуровневую архитектуру, его нужно считать историческим до обновления.
 
 ## 5) Правило согласованности
 

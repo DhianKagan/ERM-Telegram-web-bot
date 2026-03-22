@@ -34,7 +34,7 @@ jobs:
       - name: Установка зависимостей
         run: pnpm install --frozen-lockfile
 
-      - name: Быстрый цикл (lint → unit → build)
+      - name: Быстрый цикл (lint → unit → build + docs QA)
         run: pnpm run ci:fast
 
       - name: Сохранить артефакты (линт/юнит-репорты)

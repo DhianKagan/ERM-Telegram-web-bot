@@ -44,8 +44,10 @@ pnpm check:full   # полный CI-набор
 
 ## Документация
 
+Канонический список поддерживаемых документов ведётся в [`docs/index.md`](docs/index.md); ниже оставлены только быстрые ссылки на основные entry points.
+
 - Точка входа: [`docs/README.md`](docs/README.md)
-- Единый индекс: [`docs/index.md`](docs/index.md)
+- Единый индекс и модель поддержки: [`docs/index.md`](docs/index.md)
 - Техническое руководство: [`docs/technical_manual.md`](docs/technical_manual.md)
 - Архитектура: [`docs/architecture.md`](docs/architecture.md)
 - Права и роли: [`docs/permissions.md`](docs/permissions.md)

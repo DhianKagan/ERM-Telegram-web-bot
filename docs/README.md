@@ -2,7 +2,24 @@
 
 # Документация ERM Telegram Web Bot
 
-Этот файл — основной вход в документацию. Содержимое синхронизировано с `README.md` и `docs/index.md`.
+Этот файл — навигационный вход в документацию. Канонический список поддерживаемых документов фиксируется в [`docs/index.md`](index.md), а здесь собраны быстрые переходы без дублирования отдельной «второй правды».
+
+## Канонический набор документов
+
+- [Корневой обзор проекта (`../README.md`)](../README.md)
+- [Навигационный вход в docs (`docs/README.md`)](README.md)
+- [Индекс и модель поддержки документации (`docs/index.md`)](index.md)
+- [Технический мануал (`docs/technical_manual.md`)](technical_manual.md)
+- [Архитектурный обзор (`docs/architecture.md`)](architecture.md)
+
+## Модель поддержки документации
+
+- `README.md` даёт верхнеуровневый обзор проекта и ведёт в docs.
+- `docs/README.md` остаётся удобной точкой входа для человека, но не хранит собственный отдельный список source-of-truth вне `docs/index.md`.
+- `docs/index.md` — единственное место, где перечислен канонический набор документов и слои поддержки.
+- `docs/technical_manual.md` описывает runtime, настройку, `/api/v1/maps/expand` и `MAPS_HEADLESS_FALLBACK`.
+- `docs/architecture.md` поддерживается как каноническое дополнение для структуры monorepo, когда меняются каталоги, процессы или системные связи.
+- Runbook-материалы поддерживаются отдельно от канонического набора и должны ссылаться на него, а не заменять его.
 
 ## Актуальные документы
 
@@ -14,8 +31,6 @@
 - [Google Maps expand: headless-fallback и runtime-настройка](technical_manual.md#api-headless-fallback-для-google-maps-expand)
 - [Права и роли](permissions.md)
 - [Поддержка и FAQ](support_faq.md)
-
-> Если нужен канонический обзор структуры проекта, начинайте с `architecture.md`: документ синхронизирован с текущими каталогами `apps/api`, `apps/web`, `apps/worker`, `packages/shared` и `scripts`.
 
 ### Эксплуатация / Railway
 

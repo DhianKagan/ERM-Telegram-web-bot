@@ -2,6 +2,8 @@
 
 # Railway split release preflight
 
+> Internal-only: preflight содержит infra/admin checks и должен использоваться только в trusted maintainer/SRE scope. Evidence храните во внутреннем тикете/архиве, а не в active docs.
+
 Используйте этот preflight **перед каждым инфраструктурным релизом** Railway split-окружения (`erm-api`, `erm-bot`, `erm-worker`), а не эпизодически.
 
 Под инфраструктурным релизом здесь понимается любой change set, который меняет хотя бы одно из следующего:
@@ -54,9 +56,9 @@ Preflight должен быть отдельным обязательным ша
 
 Подтвердить, что:
 
-- для внутренних HTTP-вызовов используется `http://erm-api.railway.internal`;
-- старый hostname `agrmcs.railway.internal` не используется в активных Railway variables, secrets или release notes;
-- Redis/Mongo/S3 private-network endpoints указывают на актуальные `*.railway.internal` hostnames.
+- для внутренних HTTP-вызовов используется placeholder вида `http://<internal-api-host>`;
+- legacy internal hostname не используется в активных Railway variables, secrets или release notes;
+- Redis/Mongo/S3 private-network endpoints указывают на актуальные internal hostnames, но реальные адреса не фиксируются в active docs.
 
 ### 2.3 Queue settings
 
@@ -129,5 +131,5 @@ Preflight должен быть отдельным обязательным ша
 ## 5) Связанные документы
 
 - Детальная схема split-окружения: [`railway_split_services.md`](./railway_split_services.md)
-- Точечный production audit / факт-проверка: [`railway_split_readiness_audit.md`](./railway_split_readiness_audit.md)
+- Точечный production audit / факт-проверка (archive/internal evidence): [`archive/railway_split_readiness_audit.md`](./archive/railway_split_readiness_audit.md)
 - Сбор логов и attach артефактов: [`railway_logs.md`](./railway_logs.md)

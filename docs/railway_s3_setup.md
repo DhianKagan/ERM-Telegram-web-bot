@@ -2,6 +2,8 @@
 
 # Railway: как поднять отдельный S3 для хранения файлов
 
+> Internal-only: runbook содержит storage/admin проверки и должен использоваться только в доверенном контуре maintainers/SRE.
+
 Документ описывает 2 рабочих варианта:
 
 1. **Минимальный (быстрый):** поднять S3-совместимый сервис `minio` внутри Railway project.
@@ -49,7 +51,7 @@ minio server /data --console-address :9001
 
 - `STORAGE_BACKEND=s3`
 - `STORAGE_DIR=/tmp/erm-storage`
-- `S3_ENDPOINT=http://erm-s3.railway.internal:9000`
+- `S3_ENDPOINT=http://<internal-s3-host>:9000`
 - `S3_REGION=us-east-1`
 - `S3_BUCKET=erm-files`
 - `S3_ACCESS_KEY_ID=<MINIO_ROOT_USER>`
@@ -57,7 +59,7 @@ minio server /data --console-address :9001
 - `S3_FORCE_PATH_STYLE=true`
 - `S3_USE_SSL` (опционально; обычно не нужен, схема берётся из `S3_ENDPOINT`)
 
-> Для приватной сети Railway используйте internal hostname `*.railway.internal`.
+> Для приватной сети Railway используйте internal hostname вида `<internal-service-host>` и не фиксируйте реальные `*.railway.internal` адреса в active docs.
 >
 > Если подключаетесь через публичный домен (`https://...up.railway.app`) вместо internal hostname, оставляйте `https` endpoint и используйте те же ключи MinIO.
 
@@ -76,7 +78,7 @@ minio server /data --console-address :9001
 
 Это означает:
 
-1. Если `S3_ENDPOINT` указывает на `*.railway.internal`, presigned URL будут внутренними и не откроются в браузере клиента.
+1. Если `S3_ENDPOINT` указывает на `<internal-service-host>`, presigned URL будут внутренними и не откроются в браузере клиента.
 2. Для внешнего доступа используйте публичный `https://...up.railway.app` endpoint MinIO (bucket при этом можно оставить приватным).
 3. Если хотите полностью приватный MinIO, отдавайте файлы/thumbnail через API-ручки и не полагайтесь на прямые presigned URL во внешнем клиенте.
 
@@ -154,7 +156,7 @@ pnpm --filter apps/api run check:s3
 1. В `erm-api` заполнены S3-переменные (`S3_ENDPOINT`, `S3_REGION`, `S3_BUCKET`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `S3_FORCE_PATH_STYLE`).
 2. Установлен `STORAGE_BACKEND=s3`.
 3. `STORAGE_DIR` указывает на существующую директорию (например, `/tmp/erm-storage`) для служебной совместимости.
-4. `S3_ENDPOINT` использует правильную схему (`https://` для публичного Railway endpoint, `http://` для private `*.railway.internal`).
+4. `S3_ENDPOINT` использует правильную схему (`https://` для публичного Railway endpoint, `http://` для private `<internal-service-host>`).
 5. Доступен хотя бы один тестовый upload/download через API (`/api/v1/files/:id`) после включения `STORAGE_BACKEND=s3`.
 6. Только после успешной проверки можно отключать volume для приложения (`erm-api`), оставляя volume только у самого S3-сервиса (MinIO), если он self-hosted.
 

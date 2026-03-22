@@ -116,6 +116,65 @@ const criticalRunbooks = [
   'docs/support_faq.md',
 ];
 
+const internalOnlyDocs = [
+  'docs/queue_recovery_runbook.md',
+  'docs/railway_logs.md',
+  'docs/railway_minimal_setup.md',
+  'docs/railway_s3_setup.md',
+  'docs/railway_split_release_preflight.md',
+  'docs/railway_split_services.md',
+];
+
+const activeDocsSecurityChecks = [
+  {
+    pattern: /\b[a-z0-9-]+\.railway\.internal\b/i,
+    message:
+      'Active docs must not contain real Railway internal hostnames; use placeholders like <internal-api-host>.',
+  },
+  {
+    pattern: /https:\/\/[a-z0-9-]+\.up\.railway\.app\b/i,
+    message:
+      'Active docs must not contain real public Railway hostnames; use placeholders like <public-api-domain>.',
+  },
+  {
+    pattern: /railway\s+login\s+--token\b/i,
+    message:
+      'Docs must not recommend passing Railway tokens directly in the command line.',
+  },
+  {
+    pattern: /export\s+[A-Z0-9_]*TOKEN[A-Z0-9_]*\s*=\s*/i,
+    message:
+      'Docs must not recommend exporting tokens directly with inline values; use secure prompts or secret stores.',
+  },
+  {
+    pattern: /^BOT_TOKEN=(?!\"\$BOT_TOKEN\").*set_bot_commands\.sh/im,
+    message:
+      'Docs must not recommend inline BOT_TOKEN=... command examples; use secure prompts.',
+  },
+  {
+    pattern:
+      /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/i,
+    message:
+      'Active docs must not contain concrete deployment IDs or UUID-like production identifiers.',
+  },
+];
+
+const docsSecurityScope = [
+  'README.md',
+  'SECURITY.md',
+  'INCIDENT_RESPONSE.md',
+  'docs/README.md',
+  'docs/index.md',
+  ...Array.from(
+    new Set(
+      fs
+        .readdirSync(path.join(repoRoot, 'docs'))
+        .filter((entry) => entry.endsWith('.md'))
+        .map((entry) => `docs/${entry}`),
+    ),
+  ),
+].filter((entry) => !entry.startsWith('docs/archive/'));
+
 const failures = [];
 
 function readFile(relativePath) {
@@ -185,6 +244,28 @@ for (const doc of canonicalDocs) {
 
 const docsReadme = readFile('docs/README.md');
 const docsIndex = readFile('docs/index.md');
+
+for (const docPath of internalOnlyDocs) {
+  const content = readFile(docPath);
+  ensure(
+    /Internal-only/i.test(content),
+    `${docPath}: missing required Internal-only marker for sensitive operational runbook`,
+  );
+}
+
+for (const docPath of docsSecurityScope) {
+  if (!fs.existsSync(path.join(repoRoot, docPath))) continue;
+  const content = readFile(docPath);
+
+  for (const check of activeDocsSecurityChecks) {
+    ensure(!check.pattern.test(content), `${docPath}: ${check.message}`);
+  }
+}
+
+ensure(
+  !fs.existsSync(path.join(repoRoot, 'docs/railway_split_readiness_audit.md')),
+  'docs/railway_split_readiness_audit.md should not exist in active docs; keep point-in-time audits only in docs/archive/',
+);
 
 for (const runbookPath of criticalRunbooks.map((entry) =>
   path.basename(entry),

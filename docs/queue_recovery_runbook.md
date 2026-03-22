@@ -2,6 +2,8 @@
 
 # Runbook: восстановление geocoding и dead-letter очередей
 
+> Internal-only: документ описывает admin-only диагностику и recovery-операции. Не публикуйте его вне trusted maintainer/SRE scope.
+
 ## Когда применять
 
 Используйте этот runbook, если в `/metrics` наблюдаются признаки деградации:

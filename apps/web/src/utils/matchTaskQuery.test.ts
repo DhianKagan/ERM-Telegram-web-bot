@@ -59,4 +59,13 @@ describe('matchTaskQuery', () => {
     const task = baseTask();
     expect(matchTaskQuery(task, 'несуществующий запрос', users)).toBe(false);
   });
+
+  it('находит задачу по исполнителю, если API вернул исполнителей объектами', () => {
+    const task = {
+      ...baseTask(),
+      assignees: [{ telegram_id: 102, name: 'Иванова Анна' }],
+    } as unknown as TaskRow;
+
+    expect(matchTaskQuery(task, 'анна', users)).toBe(true);
+  });
 });

@@ -32,6 +32,15 @@ const DEFAULT_PAGE_SIZE = 25;
 const REQUEST_TYPE_NAME = 'Заявка';
 
 const toNumber = (value: unknown): number | null => {
+  if (typeof value === 'object' && value !== null) {
+    const record = value as Record<string, unknown>;
+    for (const key of ['telegram_id', 'user_id', 'id'] as const) {
+      const nested = toNumber(record[key]);
+      if (nested !== null) {
+        return nested;
+      }
+    }
+  }
   if (typeof value === 'number' && Number.isFinite(value)) {
     return value;
   }
@@ -44,9 +53,13 @@ const toNumber = (value: unknown): number | null => {
 
 const normalizeAssignees = (value: unknown): number[] => {
   if (Array.isArray(value)) {
-    return value
-      .map((candidate) => toNumber(candidate))
-      .filter((candidate): candidate is number => candidate !== null);
+    return Array.from(
+      new Set(
+        value
+          .map((candidate) => toNumber(candidate))
+          .filter((candidate): candidate is number => candidate !== null),
+      ),
+    );
   }
   const candidate = toNumber(value);
   return candidate !== null ? [candidate] : [];

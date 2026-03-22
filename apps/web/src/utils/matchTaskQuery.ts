@@ -5,6 +5,8 @@ import { expandSearchTokens } from './searchSynonyms';
 
 type UserLike = Record<string, unknown>;
 
+const USER_ID_KEYS = ['telegram_id', 'user_id', 'id'] as const;
+
 const normalizeCandidate = (value: string) => {
   const trimmed = value.trim().toLowerCase();
   if (!trimmed) return [] as string[];
@@ -65,6 +67,15 @@ const addUserCandidates = (user: UserLike | undefined, target: Set<string>) => {
 };
 
 const toNumber = (value: unknown): number | undefined => {
+  if (typeof value === 'object' && value !== null) {
+    const record = value as Record<string, unknown>;
+    for (const key of USER_ID_KEYS) {
+      const nested = toNumber(record[key]);
+      if (nested !== undefined) {
+        return nested;
+      }
+    }
+  }
   if (typeof value === 'number' && Number.isFinite(value)) return value;
   if (typeof value === 'string') {
     const trimmed = value.trim();
@@ -113,10 +124,20 @@ const collectTaskSearchValues = (
   appendUserId(task.created_by ?? task.creator ?? task.createdBy);
   appendUserId(task.assigned_user_id);
   appendUserId((task as Record<string, unknown>).controller_user_id);
-  (task.assignees || []).forEach((id) => appendUserId(id));
+  (task.assignees || []).forEach((id) => {
+    appendUserId(id);
+    if (typeof id === 'object' && id !== null) {
+      addUserCandidates(id as UserLike, candidates);
+    }
+  });
   (
     (task as Record<string, unknown>).controllers as unknown[] | undefined
-  )?.forEach((id) => appendUserId(id));
+  )?.forEach((id) => {
+    appendUserId(id);
+    if (typeof id === 'object' && id !== null) {
+      addUserCandidates(id as UserLike, candidates);
+    }
+  });
 
   userIds.forEach((id) => addUserCandidates(users[id], candidates));
 

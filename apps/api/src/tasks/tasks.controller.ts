@@ -67,6 +67,7 @@ import { ensureCommentHtml, syncCommentMessage } from '../tasks/taskComments';
 import { cleanupUploadedFiles } from '../utils/requestUploads';
 import { normalizeFilename } from '../utils/filename';
 import { normalizeTaskFilters } from './filterUtils';
+import { collectAssigneeIds } from '../utils/assigneeIds';
 import {
   finalizePendingUploads as finalizeTaskUploads,
   purgeTemporaryUploads as dropPendingUploads,
@@ -3812,10 +3813,9 @@ export default class TasksController {
         assignedIds.add(previousTask.assigned_user_id);
       }
       if (Array.isArray(previousTask.assignees)) {
-        previousTask.assignees
-          .map((value) => Number(value))
-          .filter((value) => Number.isFinite(value))
-          .forEach((value) => assignedIds.add(value));
+        collectAssigneeIds(previousTask.assignees).forEach((value) =>
+          assignedIds.add(value),
+        );
       }
       const controllerIds = new Set<number>();
       const primaryController = Number(previousTask.controller_user_id);
@@ -3823,10 +3823,9 @@ export default class TasksController {
         controllerIds.add(primaryController);
       }
       if (Array.isArray(previousTask.controllers)) {
-        previousTask.controllers
-          .map((value) => Number(value))
-          .filter((value) => Number.isFinite(value))
-          .forEach((value) => controllerIds.add(value));
+        collectAssigneeIds(previousTask.controllers).forEach((value) =>
+          controllerIds.add(value),
+        );
       }
       const actorAccess = Number(req.user?.access ?? 0);
       const actorRole = typeof req.user?.role === 'string' ? req.user.role : '';

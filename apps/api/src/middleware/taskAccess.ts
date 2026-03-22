@@ -13,6 +13,7 @@ import * as service from '../services/tasks';
 import { writeLog } from '../services/service';
 import type { RequestWithUser, TaskInfo } from '../types/request';
 import { sendProblem } from '../utils/problem';
+import { collectAssigneeIds } from '../utils/assigneeIds';
 
 export default async function checkTaskAccess(
   req: RequestWithUser,
@@ -43,10 +44,9 @@ export default async function checkTaskAccess(
     assignedIds.add(task.assigned_user_id);
   }
   if (Array.isArray(task.assignees)) {
-    task.assignees
-      .map((value) => Number(value))
-      .filter((value) => Number.isFinite(value))
-      .forEach((value) => assignedIds.add(value));
+    collectAssigneeIds(task.assignees).forEach((value) =>
+      assignedIds.add(value),
+    );
   }
   const controllerIds = new Set<number>();
   const primaryController = Number(task.controller_user_id);
@@ -54,10 +54,9 @@ export default async function checkTaskAccess(
     controllerIds.add(primaryController);
   }
   if (Array.isArray(task.controllers)) {
-    task.controllers
-      .map((value) => Number(value))
-      .filter((value) => Number.isFinite(value))
-      .forEach((value) => controllerIds.add(value));
+    collectAssigneeIds(task.controllers).forEach((value) =>
+      controllerIds.add(value),
+    );
   }
   const status =
     typeof task.status === 'string'

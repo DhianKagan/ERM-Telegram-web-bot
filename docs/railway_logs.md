@@ -78,6 +78,25 @@ FAILED_JOBS_LIMIT=5 \
 ./scripts/railway/quick_stack_validation.sh
 ```
 
+## 3.2 Как собрать evidence packet для пересмотра runtime-профилей
+
+Когда нужно решить, повышать ли RAM/CPU/concurrency для `api`, `bot` или `worker`, собирайте один и тот же минимальный пакет фактов по каждому сервису:
+
+1. **Deployment status + restart history** за последние `24h` из Railway UI. Ищите burst `>3` рестартов за `15 min`.
+2. **Последние runtime-логи** через `./scripts/railway_log_pipeline.sh --deploy latest --tail 600` отдельно по сервису:
+   - `api`: ищем `health`, `bind`, OOM, timeout, 5xx;
+   - `bot`: ищем `Webhook Telegram настроен`, ошибки Telegram API, повторные старты runtime;
+   - `worker`: ищем `BullMQ workers started`, `failed`, `stalled`, Redis/OSRM/Mongo ошибки.
+3. **Health + metrics snapshot** через `./scripts/railway/quick_stack_validation.sh`, чтобы подтвердить состояние API и очередей.
+4. **Window наблюдения 7–14 дней** по метрикам `CPU avg/p95`, `memory avg/p95`, `restarts`, `p95 latency` (для API), `bullmq_queue_oldest_wait_seconds` и `bullmq_jobs_total{state="failed"}` (для worker).
+
+Практическая интерпретация:
+
+- если нет restart bursts, нет OOM и memory держится ниже `80–85%`, RAM не повышаем;
+- если `worker` упирается только в queue lag, начинаем с проверки внешних зависимостей и только потом обсуждаем `QUEUE_CONCURRENCY 1 → 2`;
+- если `bot` стабилен по логам и не показывает runtime-errors, зависший deployment в `BUILDING` трактуем как deployment issue, а не как повод увеличивать CPU/RAM;
+- если `api` отвечает `200`, но p95 ухудшается, сначала проверяем downstream-зависимости и только затем повышаем ресурсы.
+
 ## 4. Передача материалов ассистенту
 
 1. Прикрепите файл отчёта из `Railway/analysis/*.md` и, при необходимости, исходный лог из `Railway/logs/`.

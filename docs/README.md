@@ -40,6 +40,7 @@
 - [Полная настройка Railway](railway_full_setup.md)
 - [Минимальная настройка Railway](railway_minimal_setup.md)
 - [Разделение сервисов в Railway](railway_split_services.md)
+- [Preflight перед infra-release Railway split](railway_split_release_preflight.md)
 - [S3-настройка для Railway](railway_s3_setup.md)
 - [Логи Railway](railway_logs.md)
 - [Поддержка и FAQ](support_faq.md)

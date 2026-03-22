@@ -16,6 +16,20 @@ Split-конфигурация в Railway **настроена и частичн
 6. `erm-api` и `erm-worker` успешно задеплоились и прошли runtime-проверку.
 7. У `erm-bot` новый деплой `77a3a757-9720-4952-a366-9518de71d830` после запуска остался в статусе `BUILDING`, но предыдущий active deployment `7f011e42-db7f-4dea-b2d5-62d421b8f516` остаётся `SUCCESS` и продолжает обслуживать runtime.
 
+## Release preflight policy
+
+Отдельный preflight checklist теперь поддерживается в [`docs/railway_split_release_preflight.md`](./railway_split_release_preflight.md).
+
+Его нужно выполнять **перед каждым инфраструктурным релизом** Railway split-окружения, а не эпизодически. В preflight вынесены обязательные проверки по:
+
+- наличию и конфигурации сервисов `erm-api` / `erm-bot` / `erm-worker`;
+- `Start Command`, `APP_ROLE` и builder/runtime-профилю;
+- private-network host (`erm-api.railway.internal`) и queue wiring;
+- `QUEUE_*` настройкам, heap/RAM limits и health endpoints;
+- обязательному evidence package: логи, метрики, ссылки на Railway-конфигурацию и даты окна наблюдения.
+
+Этот audit остаётся point-in-time факт-проверкой production-состояния на 22 Mar 2026 (Europe/Kyiv), а release-gate нужно вести через отдельный preflight runbook выше.
+
 ## Что именно подтверждено в Railway
 
 ### 1) Наличие трёх отдельных сервисов

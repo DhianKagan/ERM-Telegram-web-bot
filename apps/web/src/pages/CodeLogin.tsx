@@ -3,11 +3,16 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useToast } from '../context/useToast';
 import { useAuth } from '../context/useAuth';
-import { getProfile } from '../services/auth';
+import { getProfile, refresh } from '../services/auth';
 import authFetch from '../utils/authFetch';
 import { setAccessToken, shouldUseBearerAuth } from '../lib/auth';
 
 type LoginMode = 'telegram' | 'password';
+
+type LoginResponsePayload = {
+  accessToken?: string;
+  token?: string;
+};
 
 export default function CodeLogin() {
   const navigate = useNavigate();
@@ -33,6 +38,36 @@ export default function CodeLogin() {
     new Promise((resolve) => {
       setTimeout(resolve, ms);
     });
+
+  const finalizeSession = async (
+    payload: LoginResponsePayload,
+  ): Promise<boolean> => {
+    const nextToken = payload.accessToken || payload.token;
+    if (nextToken) {
+      setAccessToken(nextToken);
+    } else if (shouldUseBearerAuth()) {
+      await sleep(200);
+    }
+
+    try {
+      const profile = await getProfile({ noRedirect: true });
+      setUser(profile);
+      return true;
+    } catch {
+      try {
+        await refresh();
+        const profile = await getProfile({ noRedirect: true });
+        setUser(profile);
+        return true;
+      } catch {
+        addToast(
+          'Сессия создана, но профиль пока недоступен. Повторите вход.',
+          'error',
+        );
+        return false;
+      }
+    }
+  };
 
   async function send(e?: React.FormEvent) {
     e?.preventDefault();
@@ -72,24 +107,11 @@ export default function CodeLogin() {
         noRedirect: true,
       });
       if (res.ok) {
-        const data = (await res.json().catch(() => ({}))) as {
-          accessToken?: string;
-          token?: string;
-        };
-        const nextToken = data.accessToken || data.token;
-        if (nextToken) {
-          setAccessToken(nextToken);
-        } else if (shouldUseBearerAuth()) {
-          await sleep(200);
-        }
-        try {
-          const profile = await getProfile({ noRedirect: true });
-          setUser(profile);
-        } catch {
-          addToast(
-            'Сессия создана, но профиль пока недоступен. Повторите вход.',
-            'error',
-          );
+        const data = (await res
+          .json()
+          .catch(() => ({}))) as LoginResponsePayload;
+        const sessionReady = await finalizeSession(data);
+        if (!sessionReady) {
           return;
         }
         navigate('/requests', { replace: true });
@@ -124,16 +146,13 @@ export default function CodeLogin() {
       });
 
       if (res.ok) {
-        const data = (await res.json().catch(() => ({}))) as {
-          accessToken?: string;
-          token?: string;
-        };
-        const nextToken = data.accessToken || data.token;
-        if (nextToken) {
-          setAccessToken(nextToken);
+        const data = (await res
+          .json()
+          .catch(() => ({}))) as LoginResponsePayload;
+        const sessionReady = await finalizeSession(data);
+        if (!sessionReady) {
+          return;
         }
-        const profile = await getProfile({ noRedirect: true });
-        setUser(profile);
         navigate('/requests', { replace: true });
         return;
       }

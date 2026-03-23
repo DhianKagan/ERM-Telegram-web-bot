@@ -58,12 +58,12 @@ router.post(
 router.post(
   '/logout',
   authLimiter as unknown as RequestHandler,
-  authCtrl.logout as unknown as RequestHandler,
+  asyncHandler(authCtrl.logout),
 );
 router.post(
   '/refresh',
   authLimiter as unknown as RequestHandler,
-  authCtrl.refresh as unknown as RequestHandler,
+  asyncHandler(authCtrl.refresh),
 );
 
 router.get(

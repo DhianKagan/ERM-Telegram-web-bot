@@ -90,8 +90,17 @@ export function verifyToken(
       );
       return;
     } else {
-      token = auth;
-      fromHeader = true;
+      const part = auth.slice(0, 8);
+      writeLog(`Неверная схема авторизации ${part} ip:${req.ip}`).catch(
+        () => {},
+      );
+      apiErrors.inc({ method: req.method, path: req.originalUrl, status: 403 });
+      sendAuthProblem(
+        res,
+        403,
+        'Заголовок авторизации должен использовать схему Bearer.',
+      );
+      return;
     }
   } else if (req.cookies && (req.cookies as Record<string, string>).token) {
     token = (req.cookies as Record<string, string>).token;

@@ -4,7 +4,11 @@ import { Queue } from 'bullmq';
 import { Gauge } from 'prom-client';
 import { QueueName } from 'shared';
 import { register } from '../metrics';
-import { queueConfig } from '../config/queue';
+import {
+  isQueueAvailable,
+  markQueueUnavailable,
+  queueConfig,
+} from '../config/queue';
 
 const queueJobsGauge = new Gauge({
   name: 'bullmq_jobs_total',
@@ -29,7 +33,7 @@ const monitoredQueues: QueueName[] = [
 const metricsQueues = new Map<QueueName, Queue>();
 
 const getMetricsQueue = (queueName: QueueName): Queue | null => {
-  if (!queueConfig.enabled || !queueConfig.connection) {
+  if (!isQueueAvailable() || !queueConfig.connection) {
     return null;
   }
 
@@ -45,6 +49,7 @@ const getMetricsQueue = (queueName: QueueName): Queue | null => {
 
   queue.on('error', (error) => {
     console.error('Очередь метрик BullMQ недоступна', queueName, error);
+    markQueueUnavailable();
     void closeMetricsQueue(queueName);
   });
 
@@ -113,6 +118,7 @@ const collectQueueCounts = async (queueName: QueueName): Promise<void> => {
     const ageSeconds = Math.max(0, (Date.now() - oldest.timestamp) / 1000);
     queueOldestWaitGauge.set({ queue: queueName }, ageSeconds);
   } catch (error) {
+    markQueueUnavailable();
     await closeMetricsQueue(queueName);
     throw error;
   }
@@ -121,7 +127,7 @@ const collectQueueCounts = async (queueName: QueueName): Promise<void> => {
 let poller: NodeJS.Timeout | null = null;
 
 export const startQueueMetricsPoller = (): void => {
-  if (!queueConfig.enabled || !queueConfig.connection) {
+  if (!queueConfig.connection) {
     return;
   }
   if (poller) {

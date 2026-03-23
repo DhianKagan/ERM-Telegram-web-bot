@@ -11,7 +11,12 @@ import {
 } from 'shared';
 import { geocodeAddress } from '../geo/geocoder';
 import { getOsrmDistance } from '../geo/osrm';
-import { queueConfig } from '../config/queue';
+import {
+  isQueueAvailable,
+  markQueueAvailable,
+  markQueueUnavailable,
+  queueConfig,
+} from '../config/queue';
 import {
   bullmqJobProcessingDurationSeconds,
   bullmqJobsProcessedTotal,
@@ -40,11 +45,11 @@ const buildJobId = (prefix: string, payload: unknown): string => {
 };
 
 const disableQueues = (reason: string, error?: unknown): void => {
-  if (!queueConfig.enabled) {
-    return;
+  const wasAvailable = queueConfig.enabled;
+  markQueueUnavailable();
+  if (wasAvailable) {
+    console.error(`Очереди BullMQ отключены: ${reason}`, error);
   }
-  queueConfig.enabled = false;
-  console.error(`Очереди BullMQ отключены: ${reason}`, error);
   for (const bundle of bundles.values()) {
     void bundle.queue.close().catch(() => undefined);
     void bundle.events.close().catch(() => undefined);
@@ -53,15 +58,15 @@ const disableQueues = (reason: string, error?: unknown): void => {
 };
 
 const enableQueues = (): void => {
-  if (queueConfig.enabled || !queueConfig.connection) {
+  if (!queueConfig.connection || queueConfig.enabled) {
     return;
   }
-  queueConfig.enabled = true;
+  markQueueAvailable();
   console.info('Очереди BullMQ снова доступны');
 };
 
 const createQueueBundle = (queueName: QueueName): QueueBundle | null => {
-  if (!queueConfig.enabled || !queueConfig.connection) {
+  if (!isQueueAvailable() || !queueConfig.connection) {
     return null;
   }
 
@@ -106,7 +111,7 @@ const createQueueBundle = (queueName: QueueName): QueueBundle | null => {
 };
 
 export const getQueueBundle = (queueName: QueueName): QueueBundle | null => {
-  if (!queueConfig.enabled || !queueConfig.connection) {
+  if (!isQueueAvailable() || !queueConfig.connection) {
     return null;
   }
   const existing = bundles.get(queueName);

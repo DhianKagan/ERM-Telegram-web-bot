@@ -13,16 +13,23 @@ jest.mock('bullmq', () => ({
   Queue: jest.fn((...args) => queueCtor(...args)),
 }));
 
+const mockedQueueConfig = {
+  enabled: true,
+  connection: { host: '127.0.0.1', port: 6379 },
+  prefix: 'erm',
+  attempts: 3,
+  backoffMs: 5000,
+  jobTimeoutMs: 30000,
+  metricsIntervalMs: 60_000,
+  reconnectCooldownMs: 60_000,
+};
+
 jest.mock('../src/config/queue', () => ({
-  queueConfig: {
-    enabled: true,
-    connection: { host: '127.0.0.1', port: 6379 },
-    prefix: 'erm',
-    attempts: 3,
-    backoffMs: 5000,
-    jobTimeoutMs: 30000,
-    metricsIntervalMs: 60_000,
-  },
+  queueConfig: mockedQueueConfig,
+  isQueueAvailable: jest.fn(() => Boolean(mockedQueueConfig.enabled)),
+  markQueueUnavailable: jest.fn(() => {
+    mockedQueueConfig.enabled = false;
+  }),
 }));
 
 const flushPromises = async (): Promise<void> => {
@@ -48,6 +55,7 @@ const createMockQueue = (overrides: Partial<MockQueue> = {}): MockQueue => ({
 describe('queueMetrics poller', () => {
   beforeEach(() => {
     queueCtor.mockReset();
+    mockedQueueConfig.enabled = true;
     jest.spyOn(console, 'error').mockImplementation(() => undefined);
   });
 
@@ -100,6 +108,7 @@ describe('queueMetrics poller', () => {
     stopQueueMetricsPoller();
     await flushPromises();
 
+    mockedQueueConfig.enabled = true;
     startQueueMetricsPoller();
     await flushPromises();
 

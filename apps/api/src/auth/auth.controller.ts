@@ -28,6 +28,22 @@ import {
 } from '../services/token.service';
 import { authBearerEnabled } from '../config';
 
+const buildSessionMeta = (req: Request) => ({
+  ip: req.ip,
+  userAgent: req.get?.('user-agent') || undefined,
+});
+
+const issueBearerSession = async (
+  req: Request,
+  res: Response,
+  legacyToken: string,
+) => {
+  const payload = decodeLegacyToken(legacyToken);
+  const session = await issueSession(payload, buildSessionMeta(req));
+  setRefreshCookie(res, session.refreshToken);
+  return session;
+};
+
 const buildRefreshCookieOptions = (): CookieOptions => {
   const secure = isSecureCookiesEnabled();
   const opts: CookieOptions = {
@@ -94,12 +110,7 @@ export const verifyCode = async (req: Request, res: Response) => {
   try {
     const token = await service.verifyCode(telegramId, code, username);
     if (authBearerEnabled) {
-      const payload = decodeLegacyToken(token);
-      const session = await issueSession(payload, {
-        ip: req.ip,
-        userAgent: req.get?.('user-agent') || undefined,
-      });
-      setRefreshCookie(res, session.refreshToken);
+      const session = await issueBearerSession(req, res, token);
       res.json({
         accessToken: session.accessToken,
         token: session.accessToken,
@@ -124,6 +135,14 @@ export const passwordLogin = async (req: Request, res: Response) => {
     const token = await service.verifyPasswordLogin(username, password);
     authPasswordLoginAttemptsTotal.inc({ status: 'success' });
     recordPasswordLoginDiagnostic(true);
+    if (authBearerEnabled) {
+      const session = await issueBearerSession(req, res, token);
+      res.json({
+        accessToken: session.accessToken,
+        token: session.accessToken,
+      });
+      return;
+    }
     setTokenCookie(res, token);
     res.json({ token });
   } catch (e) {
@@ -142,12 +161,7 @@ export const login = async (req: Request, res: Response) => {
   const { username, password } = req.body;
   try {
     const legacyToken = await service.verifyPasswordLogin(username, password);
-    const payload = decodeLegacyToken(legacyToken);
-    const session = await issueSession(payload, {
-      ip: req.ip,
-      userAgent: req.get?.('user-agent') || undefined,
-    });
-    setRefreshCookie(res, session.refreshToken);
+    const session = await issueBearerSession(req, res, legacyToken);
     res.json({ accessToken: session.accessToken });
   } catch (e) {
     sendProblem(req, res, {
@@ -162,6 +176,14 @@ export const login = async (req: Request, res: Response) => {
 export const verifyInitData = async (req: Request, res: Response) => {
   try {
     const token = await service.verifyInitData(req.body.initData);
+    if (authBearerEnabled) {
+      const session = await issueBearerSession(req, res, token);
+      res.json({
+        accessToken: session.accessToken,
+        token: session.accessToken,
+      });
+      return;
+    }
     setTokenCookie(res, token);
     res.json({ token });
   } catch (e) {
@@ -244,8 +266,7 @@ export const refresh = async (req: Request, res: Response) => {
 
   if (refreshCookie) {
     const session = await rotateSession(refreshCookie, {
-      ip: req.ip,
-      userAgent: req.get?.('user-agent') || undefined,
+      ...buildSessionMeta(req),
     });
     if (!session) {
       clearRefreshCookie(res);
@@ -254,6 +275,11 @@ export const refresh = async (req: Request, res: Response) => {
     }
     setRefreshCookie(res, session.refreshToken);
     res.json({ accessToken: session.accessToken });
+    return;
+  }
+
+  if (authBearerEnabled) {
+    res.sendStatus(401);
     return;
   }
 

@@ -56,6 +56,10 @@ class MemoryRefreshStore implements RefreshStore {
       }
       return { status: 'missing' };
     }
+    if (active.ipHash && active.ipHash !== nextRecord.ipHash) {
+      await this.revokeAllByUser(active.userId);
+      return { status: 'binding_mismatch', userId: active.userId };
+    }
     if (
       active.userAgentHash &&
       active.userAgentHash !== nextRecord.userAgentHash
@@ -155,6 +159,10 @@ class RedisRefreshStore implements RefreshStore {
     }
 
     const active = JSON.parse(activePayload) as RefreshSessionRecord;
+    if (active.ipHash && active.ipHash !== nextRecord.ipHash) {
+      await this.revokeAllByUser(active.userId);
+      return { status: 'binding_mismatch', userId: active.userId };
+    }
     if (
       active.userAgentHash &&
       active.userAgentHash !== nextRecord.userAgentHash
@@ -209,84 +217,6 @@ class RedisRefreshStore implements RefreshStore {
   }
 }
 
-class ResilientRefreshStore implements RefreshStore {
-  private readonly fallback = new MemoryRefreshStore();
-  private degraded = false;
-  private readonly operationTimeoutMs: number;
-
-  constructor(primary: RefreshStore, operationTimeoutMs?: number) {
-    this.primary = primary;
-    this.operationTimeoutMs =
-      Number.isFinite(operationTimeoutMs) && (operationTimeoutMs ?? 0) > 0
-        ? Math.floor(operationTimeoutMs as number)
-        : 0;
-  }
-
-  private readonly primary: RefreshStore;
-
-  private withTimeout<T>(promise: Promise<T>): Promise<T> {
-    if (!this.operationTimeoutMs) {
-      return promise;
-    }
-    return new Promise<T>((resolve, reject) => {
-      const timer = setTimeout(() => {
-        reject(new Error('refresh store operation timeout'));
-      }, this.operationTimeoutMs);
-      promise.then(
-        (value) => {
-          clearTimeout(timer);
-          resolve(value);
-        },
-        (error: unknown) => {
-          clearTimeout(timer);
-          reject(error);
-        },
-      );
-    });
-  }
-
-  private async withFallback<T>(
-    op: (store: RefreshStore) => Promise<T>,
-  ): Promise<T> {
-    if (this.degraded) {
-      return op(this.fallback);
-    }
-    try {
-      return await this.withTimeout(op(this.primary));
-    } catch {
-      this.degraded = true;
-      return op(this.fallback);
-    }
-  }
-
-  async save(
-    hash: string,
-    record: RefreshSessionRecord,
-    ttlSeconds: number,
-  ): Promise<void> {
-    await this.withFallback((store) => store.save(hash, record, ttlSeconds));
-  }
-
-  async rotate(
-    oldHash: string,
-    newHash: string,
-    nextRecord: RefreshSessionRecord,
-    ttlSeconds: number,
-  ): Promise<RotateResult> {
-    return this.withFallback((store) =>
-      store.rotate(oldHash, newHash, nextRecord, ttlSeconds),
-    );
-  }
-
-  async revoke(hash: string, ttlSeconds: number): Promise<void> {
-    await this.withFallback((store) => store.revoke(hash, ttlSeconds));
-  }
-
-  async revokeAllByUser(userId: string): Promise<void> {
-    await this.withFallback((store) => store.revokeAllByUser(userId));
-  }
-}
-
 let cachedStore: RefreshStore | null = null;
 
 function buildStore(): RefreshStore {
@@ -310,16 +240,9 @@ function buildStore(): RefreshStore {
       enableOfflineQueue: false,
     });
     redis.connect().catch(() => undefined);
-    const operationTimeoutMs = Number.parseInt(
-      process.env.AUTH_REDIS_OPERATION_TIMEOUT_MS || '250',
-      10,
-    );
-    return new ResilientRefreshStore(
-      new RedisRefreshStore(
-        redis,
-        process.env.REFRESH_REDIS_PREFIX || 'erm:auth:refresh',
-      ),
-      operationTimeoutMs,
+    return new RedisRefreshStore(
+      redis,
+      process.env.REFRESH_REDIS_PREFIX || 'erm:auth:refresh',
     );
   } catch {
     return new MemoryRefreshStore();

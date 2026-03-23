@@ -63,6 +63,18 @@ test('с lowercase bearer токеном 200', async () => {
   expect(res.status).toBe(200);
 });
 
+test('с Authorization без Bearer возвращает problem+json с 403', async () => {
+  const token = jwt.sign({ id: 3 }, process.env.JWT_SECRET);
+  const res = await request(app).get('/secure').set('Authorization', token);
+  expect(res.status).toBe(403);
+  expect(res.headers['content-type']).toContain('application/problem+json');
+  expect(res.body).toMatchObject({
+    status: 403,
+    title: 'Ошибка авторизации',
+    detail: 'Заголовок авторизации должен использовать схему Bearer.',
+  });
+});
+
 test('токен с другим алгоритмом возвращает problem+json', async () => {
   const token = jwt.sign({ id: 1 }, process.env.JWT_SECRET, {
     algorithm: 'HS512',

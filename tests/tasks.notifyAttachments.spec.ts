@@ -545,6 +545,71 @@ describe('notifyTaskCreated вложения', () => {
     });
   });
 
+  it('удаляет старое сообщение задачи при переносе в другую тему', async () => {
+    const previousMessageId = 611;
+    const nextMessageId = 612;
+    const nextCommentMessageId = 613;
+    const nextDirectMessageId = 614;
+
+    sendMessageMock.mockResolvedValueOnce({ message_id: nextMessageId });
+    sendMessageMock.mockResolvedValueOnce({ message_id: nextCommentMessageId });
+    sendMessageMock.mockResolvedValueOnce({ message_id: nextDirectMessageId });
+
+    const previousTask = {
+      _id: '507f1f77bcf86cd799439014',
+      task_number: 'TOPIC-1',
+      title: 'Смена темы',
+      attachments: [],
+      telegram_message_id: previousMessageId,
+      telegram_topic_id: 111,
+      assignees: [42],
+      assigned_user_id: 42,
+      created_by: 10,
+      history: [],
+      status: 'Новая',
+      toObject() {
+        return this;
+      },
+    } as unknown as TaskDocument & { toObject(): unknown };
+
+    const updatedTask = {
+      ...previousTask,
+      telegram_topic_id: 7777,
+      toObject() {
+        return this;
+      },
+    } as unknown as TaskDocument & { toObject(): unknown };
+
+    taskFindByIdMock.mockResolvedValue(updatedTask);
+
+    const controller = createController();
+    await (
+      controller as unknown as {
+        broadcastTaskSnapshot(
+          task: TaskDocument,
+          actorId: number,
+          options?: {
+            previous?: TaskDocument | null;
+            action?: 'создана' | 'обновлена';
+            note?: string | null;
+          },
+        ): Promise<void>;
+      }
+    ).broadcastTaskSnapshot(updatedTask, 99, {
+      previous: previousTask,
+      action: 'обновлена',
+    });
+
+    expect(deleteMessageMock).toHaveBeenCalledWith(
+      expect.any(String),
+      previousMessageId,
+    );
+    const groupCall = sendMessageMock.mock.calls.find(
+      (call) => call?.[1] && !String(call[1]).includes('💬 *Комментарий*'),
+    );
+    expect(groupCall?.[2]?.message_thread_id).toBe(7777);
+  });
+
   it('для ошибки wrong type of the web page content отправляет изображение как документ', async () => {
     resolvePhotosTargetMock.mockResolvedValueOnce(null);
 

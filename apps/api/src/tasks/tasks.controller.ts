@@ -1814,12 +1814,11 @@ export default class TasksController {
       return 'failed';
     }
     if (!this.areTopicsEqual(expectedTopic, actualTopic)) {
-      console.warn('Пропускаем удаление сообщения задачи из другой темы', {
+      console.info('Удаляем сообщение задачи после смены темы', {
         expectedTopic,
         actualTopic,
         messageId,
       });
-      return 'skipped';
     }
     try {
       await bot.telegram.deleteMessage(chat, messageId);
@@ -4279,7 +4278,7 @@ export default class TasksController {
             groupChatId,
             messageId,
             typeof plain.title === 'string' ? plain.title : undefined,
-            meta.actual ?? meta.expected,
+            meta.expected ?? meta.actual,
           );
         }
       }

@@ -51,6 +51,20 @@ if (redisUrlRaw) {
 
 const prefixRaw = normalizeEnvValue(process.env.QUEUE_PREFIX) || 'erm';
 const prefix = prefixRaw || 'erm';
+const reconnectCooldownMs = parsePositiveInt(
+  process.env.QUEUE_RECONNECT_COOLDOWN_MS,
+  60000,
+);
+
+let queueReconnectTimer: NodeJS.Timeout | null = null;
+let reconnectAt = 0;
+
+const clearReconnectTimer = (): void => {
+  if (queueReconnectTimer) {
+    clearTimeout(queueReconnectTimer);
+    queueReconnectTimer = null;
+  }
+};
 
 export const queueConfig = {
   enabled: Boolean(redisUrl),
@@ -63,6 +77,57 @@ export const queueConfig = {
     process.env.QUEUE_METRICS_INTERVAL_MS,
     15000,
   ),
+  reconnectCooldownMs,
+};
+
+export const isQueueAvailable = (): boolean => {
+  if (!queueConfig.connection) {
+    return false;
+  }
+  if (!queueConfig.enabled && reconnectAt > 0 && Date.now() >= reconnectAt) {
+    reconnectAt = 0;
+    queueConfig.enabled = true;
+    clearReconnectTimer();
+  }
+  return queueConfig.enabled;
+};
+
+export const markQueueUnavailable = (): void => {
+  if (!queueConfig.connection) {
+    queueConfig.enabled = false;
+    reconnectAt = 0;
+    clearReconnectTimer();
+    return;
+  }
+
+  queueConfig.enabled = false;
+  reconnectAt = Date.now() + queueConfig.reconnectCooldownMs;
+  clearReconnectTimer();
+  queueReconnectTimer = setTimeout(() => {
+    reconnectAt = 0;
+    queueConfig.enabled = true;
+    queueReconnectTimer = null;
+  }, queueConfig.reconnectCooldownMs);
+  queueReconnectTimer.unref?.();
+};
+
+export const markQueueAvailable = (): void => {
+  if (!queueConfig.connection) {
+    queueConfig.enabled = false;
+    reconnectAt = 0;
+    clearReconnectTimer();
+    return;
+  }
+
+  queueConfig.enabled = true;
+  reconnectAt = 0;
+  clearReconnectTimer();
+};
+
+export const __resetQueueAvailabilityForTests = (): void => {
+  queueConfig.enabled = Boolean(queueConfig.connection);
+  reconnectAt = 0;
+  clearReconnectTimer();
 };
 
 export type QueueConfig = typeof queueConfig;

@@ -31,6 +31,26 @@ interface RefreshStore {
   revokeAllByUser(userId: string): Promise<void>;
 }
 
+type RedisCommandResult<T> = { ok: true; value: T } | { ok: false };
+
+const isRedisUnavailableError = (error: unknown): boolean => {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message.toLowerCase();
+  return (
+    message.includes("stream isn't writeable") ||
+    message.includes('stream is not writeable') ||
+    message.includes('offline queue') ||
+    message.includes('connection is closed') ||
+    message.includes('connection closed') ||
+    message.includes('connect econnrefused') ||
+    message.includes('connect etimedout') ||
+    message.includes('ready check failed')
+  );
+};
+
 class MemoryRefreshStore implements RefreshStore {
   private readonly active = new Map<string, RefreshSessionRecord>();
   private readonly revoked = new Map<string, string>();
@@ -129,18 +149,36 @@ class RedisRefreshStore implements RefreshStore {
     return `${this.prefix}:user:${userId}`;
   }
 
+  private async runRedisCommand<T>(
+    action: () => Promise<T>,
+  ): Promise<RedisCommandResult<T>> {
+    try {
+      return { ok: true, value: await action() };
+    } catch (error) {
+      if (isRedisUnavailableError(error)) {
+        return { ok: false };
+      }
+      throw error;
+    }
+  }
+
   async save(
     hash: string,
     record: RefreshSessionRecord,
     ttlSeconds: number,
   ): Promise<void> {
     const payload = JSON.stringify(record);
-    await this.redis
-      .multi()
-      .set(this.activeKey(hash), payload, 'EX', ttlSeconds)
-      .sadd(this.userKey(record.userId), hash)
-      .expire(this.userKey(record.userId), ttlSeconds)
-      .exec();
+    const result = await this.runRedisCommand(() =>
+      this.redis
+        .multi()
+        .set(this.activeKey(hash), payload, 'EX', ttlSeconds)
+        .sadd(this.userKey(record.userId), hash)
+        .expire(this.userKey(record.userId), ttlSeconds)
+        .exec(),
+    );
+    if (!result.ok) {
+      throw new Error('REDIS_REFRESH_STORE_UNAVAILABLE');
+    }
   }
 
   async rotate(
@@ -149,9 +187,21 @@ class RedisRefreshStore implements RefreshStore {
     nextRecord: RefreshSessionRecord,
     ttlSeconds: number,
   ): Promise<RotateResult> {
-    const activePayload = await this.redis.get(this.activeKey(oldHash));
+    const activePayloadResult = await this.runRedisCommand(() =>
+      this.redis.get(this.activeKey(oldHash)),
+    );
+    if (!activePayloadResult.ok) {
+      throw new Error('REDIS_REFRESH_STORE_UNAVAILABLE');
+    }
+    const activePayload = activePayloadResult.value;
     if (!activePayload) {
-      const reusedBy = await this.redis.get(this.revokedKey(oldHash));
+      const reusedByResult = await this.runRedisCommand(() =>
+        this.redis.get(this.revokedKey(oldHash)),
+      );
+      if (!reusedByResult.ok) {
+        throw new Error('REDIS_REFRESH_STORE_UNAVAILABLE');
+      }
+      const reusedBy = reusedByResult.value;
       if (reusedBy) {
         return { status: 'reused', userId: reusedBy };
       }
@@ -170,40 +220,62 @@ class RedisRefreshStore implements RefreshStore {
       await this.revokeAllByUser(active.userId);
       return { status: 'binding_mismatch', userId: active.userId };
     }
-    await this.redis
-      .multi()
-      .del(this.activeKey(oldHash))
-      .set(this.revokedKey(oldHash), active.userId, 'EX', ttlSeconds)
-      .srem(this.userKey(active.userId), oldHash)
-      .set(
-        this.activeKey(newHash),
-        JSON.stringify(nextRecord),
-        'EX',
-        ttlSeconds,
-      )
-      .sadd(this.userKey(active.userId), newHash)
-      .expire(this.userKey(active.userId), ttlSeconds)
-      .exec();
+    const updateResult = await this.runRedisCommand(() =>
+      this.redis
+        .multi()
+        .del(this.activeKey(oldHash))
+        .set(this.revokedKey(oldHash), active.userId, 'EX', ttlSeconds)
+        .srem(this.userKey(active.userId), oldHash)
+        .set(
+          this.activeKey(newHash),
+          JSON.stringify(nextRecord),
+          'EX',
+          ttlSeconds,
+        )
+        .sadd(this.userKey(active.userId), newHash)
+        .expire(this.userKey(active.userId), ttlSeconds)
+        .exec(),
+    );
+    if (!updateResult.ok) {
+      throw new Error('REDIS_REFRESH_STORE_UNAVAILABLE');
+    }
 
     return { status: 'rotated', userId: active.userId };
   }
 
   async revoke(hash: string, ttlSeconds: number): Promise<void> {
-    const activePayload = await this.redis.get(this.activeKey(hash));
+    const activePayloadResult = await this.runRedisCommand(() =>
+      this.redis.get(this.activeKey(hash)),
+    );
+    if (!activePayloadResult.ok) {
+      throw new Error('REDIS_REFRESH_STORE_UNAVAILABLE');
+    }
+    const activePayload = activePayloadResult.value;
     if (!activePayload) {
       return;
     }
     const active = JSON.parse(activePayload) as RefreshSessionRecord;
-    await this.redis
-      .multi()
-      .del(this.activeKey(hash))
-      .set(this.revokedKey(hash), active.userId, 'EX', ttlSeconds)
-      .srem(this.userKey(active.userId), hash)
-      .exec();
+    const revokeResult = await this.runRedisCommand(() =>
+      this.redis
+        .multi()
+        .del(this.activeKey(hash))
+        .set(this.revokedKey(hash), active.userId, 'EX', ttlSeconds)
+        .srem(this.userKey(active.userId), hash)
+        .exec(),
+    );
+    if (!revokeResult.ok) {
+      throw new Error('REDIS_REFRESH_STORE_UNAVAILABLE');
+    }
   }
 
   async revokeAllByUser(userId: string): Promise<void> {
-    const hashes = await this.redis.smembers(this.userKey(userId));
+    const hashesResult = await this.runRedisCommand(() =>
+      this.redis.smembers(this.userKey(userId)),
+    );
+    if (!hashesResult.ok) {
+      throw new Error('REDIS_REFRESH_STORE_UNAVAILABLE');
+    }
+    const hashes = hashesResult.value;
     if (!hashes.length) {
       return;
     }
@@ -213,7 +285,89 @@ class RedisRefreshStore implements RefreshStore {
       tx.set(this.revokedKey(hash), userId, 'EX', 24 * 60 * 60);
     }
     tx.del(this.userKey(userId));
-    await tx.exec();
+    const execResult = await this.runRedisCommand(() => tx.exec());
+    if (!execResult.ok) {
+      throw new Error('REDIS_REFRESH_STORE_UNAVAILABLE');
+    }
+  }
+}
+
+class ResilientRefreshStore implements RefreshStore {
+  private activeStore: RefreshStore;
+
+  constructor(
+    primaryStore: RefreshStore,
+    private readonly fallbackStore: RefreshStore,
+  ) {
+    this.activeStore = primaryStore;
+  }
+
+  private switchToFallback(error: unknown): RefreshStore {
+    if (
+      error instanceof Error &&
+      error.message === 'REDIS_REFRESH_STORE_UNAVAILABLE'
+    ) {
+      if (this.activeStore !== this.fallbackStore) {
+        console.warn(
+          '[auth] refresh Redis unavailable, switching refresh sessions to in-memory store',
+        );
+        this.activeStore = this.fallbackStore;
+      }
+      return this.fallbackStore;
+    }
+
+    throw error;
+  }
+
+  async save(
+    hash: string,
+    record: RefreshSessionRecord,
+    ttlSeconds: number,
+  ): Promise<void> {
+    try {
+      await this.activeStore.save(hash, record, ttlSeconds);
+    } catch (error) {
+      await this.switchToFallback(error).save(hash, record, ttlSeconds);
+    }
+  }
+
+  async rotate(
+    oldHash: string,
+    newHash: string,
+    nextRecord: RefreshSessionRecord,
+    ttlSeconds: number,
+  ): Promise<RotateResult> {
+    try {
+      return await this.activeStore.rotate(
+        oldHash,
+        newHash,
+        nextRecord,
+        ttlSeconds,
+      );
+    } catch (error) {
+      return this.switchToFallback(error).rotate(
+        oldHash,
+        newHash,
+        nextRecord,
+        ttlSeconds,
+      );
+    }
+  }
+
+  async revoke(hash: string, ttlSeconds: number): Promise<void> {
+    try {
+      await this.activeStore.revoke(hash, ttlSeconds);
+    } catch (error) {
+      await this.switchToFallback(error).revoke(hash, ttlSeconds);
+    }
+  }
+
+  async revokeAllByUser(userId: string): Promise<void> {
+    try {
+      await this.activeStore.revokeAllByUser(userId);
+    } catch (error) {
+      await this.switchToFallback(error).revokeAllByUser(userId);
+    }
   }
 }
 
@@ -226,6 +380,7 @@ function buildStore(): RefreshStore {
   }
 
   try {
+    const fallbackStore = new MemoryRefreshStore();
     const redis = new Redis(redisUrl, {
       lazyConnect: true,
       connectTimeout: Number.parseInt(
@@ -240,9 +395,12 @@ function buildStore(): RefreshStore {
       enableOfflineQueue: false,
     });
     redis.connect().catch(() => undefined);
-    return new RedisRefreshStore(
-      redis,
-      process.env.REFRESH_REDIS_PREFIX || 'erm:auth:refresh',
+    return new ResilientRefreshStore(
+      new RedisRefreshStore(
+        redis,
+        process.env.REFRESH_REDIS_PREFIX || 'erm:auth:refresh',
+      ),
+      fallbackStore,
     );
   } catch {
     return new MemoryRefreshStore();

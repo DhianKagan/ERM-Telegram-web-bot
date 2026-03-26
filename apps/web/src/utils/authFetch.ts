@@ -6,6 +6,7 @@ import { showToast } from './toast';
 import {
   clearAccessToken,
   getAccessToken,
+  getAccessTokenFromCookie,
   setAccessToken,
   shouldUseBearerAuth,
 } from '../lib/auth';
@@ -326,8 +327,13 @@ export default async function authFetch(
   }
 
   const accessToken = getAccessToken();
-  if (accessToken) {
-    headers.Authorization = `Bearer ${accessToken}`;
+  const accessTokenFromCookie = getAccessTokenFromCookie();
+  const resolvedAccessToken = accessToken || accessTokenFromCookie;
+  if (resolvedAccessToken) {
+    if (!accessToken && accessTokenFromCookie) {
+      setAccessToken(accessTokenFromCookie);
+    }
+    headers.Authorization = `Bearer ${resolvedAccessToken}`;
   } else if (useBearer && isProfileRequest) {
     const refreshedToken = await refreshAccessToken();
     if (refreshedToken) {
